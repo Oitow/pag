@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "updated": "2026-10-29",
+  "repo": "Oitow/pag",
+  "items": [
+    { "id": "wurzelwerk", "type": "idea", "title": "Wurzelwerk", "path": "ideas/wurzelwerk.md", "status": "konzept", "priority": 5, "tags": ["roguelite", "autobattle", "logistik"], "links": ["game-wurzelwerk"], "summary": "Baum-Roguelite mit Auto-Kampf und Logistik", "updated": "2026-10-29" },
+    { "id": "loot-arpg", "type": "idea", "title": "Loot-ARPG", "path": "ideas/loot-arpg.md", "status": "idee", "priority": 3, "tags": ["arpg", "loot"], "links": [], "summary": "Diablo-artiges ARPG", "updated": "2026-10-29" },
+    { "id": "survival-sim", "type": "idea", "title": "Koop-Survival-Sim", "path": "ideas/survival-sim.md", "status": "idee", "priority": 2, "tags": ["survival", "voxel", "koop"], "links": [], "summary": "Survival mit Basisbau in einer Voxel-Welt", "updated": "2026-10-29" },
+    { "id": "game-wurzelwerk", "type": "game", "title": "Wurzelwerk (Spiel)", "path": "games/wurzelwerk/index.html", "status": "prototyp", "priority": 5, "tags": ["in-arbeit"], "links": ["wurzelwerk"], "summary": "Spielbarer Prototyp von Wurzelwerk – in Arbeit", "updated": "2026-10-29" },
+    { "id": "design-methoden", "type": "doc", "title": "Design-Methoden", "path": "docs/design-methoden.md", "status": "fertig", "priority": 2, "tags": ["methoden"], "links": ["wurzelwerk"], "summary": "MDA, Spielertypen, SDT, Core Loop, Flow, Pillars, Playtest" },
+    { "id": "referenzspiele", "type": "doc", "title": "Referenzspiele", "path": "docs/referenzspiele.md", "status": "fertig", "priority": 2, "tags": ["recherche"], "links": [], "summary": "Simple vs. komplexe Indie-Hits" },
+    { "id": "pc-spieler", "type": "doc", "title": "Was PC-Spieler mögen", "path": "docs/pc-spieler.md", "status": "fertig", "priority": 2, "tags": ["recherche"], "links": [], "summary": "Vorlieben von PC-Spielern" }
+  ]
+}

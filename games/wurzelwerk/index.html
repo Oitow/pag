@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Wurzelwerk</title>
+<style>
+html,body{margin:0;height:100%;background:#05070d;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;font-family:system-ui,sans-serif;color:#e8f5e0}
+canvas{display:block;width:100vw;height:100vh}
+#hud{position:fixed;top:0;left:0;right:0;padding:10px 12px;display:flex;gap:10px;align-items:center;pointer-events:none;font-size:14px;text-shadow:0 1px 4px #000}
+.bar{flex:1;height:10px;background:#ffffff18;border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;width:50%;border-radius:6px}
+#hp i{background:linear-gradient(90deg,#ff5d7a,#ffb27a)}
+#en i{background:linear-gradient(90deg,#4dffb0,#c6ff6a)}
+#hint{position:fixed;bottom:14px;left:0;right:0;text-align:center;font-size:13px;opacity:.75;pointer-events:none}
+.ov{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:#02040acc;backdrop-filter:blur(4px);padding:20px;box-sizing:border-box;text-align:center}
+.ov h1{margin:0 0 6px;font-size:30px;color:#b6ff9e;text-shadow:0 0 18px #6dff9a}
+.ov p{opacity:.8;margin:4px 0 16px}
+.card{width:100%;max-width:340px;margin:6px 0;padding:14px;border-radius:14px;background:linear-gradient(145deg,#173322,#0e1d24);border:1px solid #6dff9a55;box-shadow:0 0 18px #3dff8a22;cursor:pointer;text-align:left}
+.card b{color:#d4ff8a;font-size:16px}.card div{font-size:13px;opacity:.85;margin-top:4px}
+.card:active{transform:scale(.97)}
+button{font-size:18px;padding:12px 28px;border-radius:30px;border:0;background:linear-gradient(90deg,#4dffb0,#c6ff6a);color:#06200f;font-weight:700}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="hud"><span>❤</span><div class="bar" id="hp"><i></i></div><span>⚡<b id="ent">0</b></span><div class="bar" id="en"><i></i></div><span id="wv">Welle 1</span></div>
+<div id="hint">Tippe in den Boden: Wurzel · Tippe in den Himmel: Ast</div>
+<div class="ov" id="start"><h1>Wurzelwerk</h1><p>Lass deinen magischen Baum wachsen.<br>Wurzeln saugen Nährstoffe aus leuchtenden Flecken.<br>Äste tragen Früchte, die Schädlinge beschießen.</p><button id="go">Saat pflanzen</button></div>
+<div class="ov" id="mut"><h1>Mutation</h1><p>Welle überstanden! Wähle eine Mutation:</p><div id="cards" style="width:100%;display:flex;flex-direction:column;align-items:center"></div></div>
+<div class="ov" id="over"><h1>Der Baum fällt</h1><p id="ovtxt"></p><button id="re">Neuer Run</button></div>
+<script>
+const cv=document.getElementById('c'),cx=cv.getContext('2d');
+let W,H,DPR,GY,TX;
+function rs(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;cx.setTransform(DPR,0,0,DPR,0,0);GY=H*0.6;TX=W/2}
+addEventListener('resize',()=>{rs();if(S)layout()});rs();
+const R=(a,b)=>a+Math.random()*(b-a),D=(a,b,c,d)=>Math.hypot(a-c,b-d);
+const MUTS=[
+{id:'fast',n:'Schnelle Früchte',d:'Früchte feuern 30% schneller.',f:s=>s.rate*=1.3},
+{id:'dmg',n:'Harte Schale',d:'Früchte verursachen +40% Schaden.',f:s=>s.dmg*=1.4},
+{id:'poison',n:'Giftfrüchte',d:'Treffer vergiften: Schaden über Zeit.',f:s=>s.poison+=4},
+{id:'thorn',n:'Dornenrinde',d:'Schädlinge am Stamm erleiden Schaden.',f:s=>s.thorns+=6},
+{id:'root',n:'Effiziente Wurzeln',d:'+40% Nährstoffe aus dem Boden.',f:s=>s.eff*=1.4},
+{id:'cheap',n:'Wüchsig',d:'Wachstum kostet 25% weniger Energie.',f:s=>s.cost*=0.75},
+{id:'range',n:'Weite Krone',d:'+30% Reichweite der Früchte.',f:s=>s.range*=1.3},
+{id:'multi',n:'Doppelfrucht',d:'+1 Projektil pro Schuss.',f:s=>s.multi++},
+{id:'bark',n:'Dicke Borke',d:'+30 max. Leben, voll geheilt.',f:s=>{s.maxhp+=30;s.hp=s.maxhp}},
+{id:'burst',n:'Platzfrüchte',d:'Früchte explodieren im Umkreis.',f:s=>s.splash+=28},
+{id:'sun',n:'Photosynthese',d:'+1.5 Energie pro Sekunde passiv.',f:s=>s.sun+=1.5},
+{id:'strangle',n:'Würgewurzeln',d:'Wurzeln schaden Krabblern, die sie berühren.',f:s=>s.strangle+=8},
+];
+let S=null,last=0;
+function layout(){}
+function newRun(){
+S={hp:100,maxhp:100,en:40,rate:1,dmg:10,poison:0,thorns:0,eff:1,cost:1,range:170,multi:1,splash:0,sun:0.6,strangle:0,
+wave:0,t:0,pests:[],shots:[],parts:[],spawnLeft:0,spawnT:0,state:'play',kills:0,muts:[],
+roots:[{x:TX,y:GY+4,px:null,g:1}],branches:[{x:TX,y:GY-90,px:TX,py:GY,g:1,fruit:0,cd:0}],
+patches:[],shake:0};
+for(let i=0;i<9;i++)addPatch();
+nextWave();
+}
+function addPatch(){S.patches.push({x:R(20,W-20),y:R(GY+40,H-30),r:R(14,26),amt:R(60,140),ph:R(0,6)})}
+function nextWave(){S.wave++;S.spawnLeft=4+Math.floor(S.wave*2.2);S.spawnT=1.5;S.state='play';document.getElementById('wv').textContent='Welle '+S.wave}
+function spawn(){
+const w=S.wave,fly=w>=3&&Math.random()<Math.min(.45,.1+w*.04),side=Math.random()<.5?-1:1;
+const hp=(14+w*7)*(fly?.7:1)*(Math.random()<.08&&w>3?4:1);
+S.pests.push({x:side<0?-20:W+20,y:fly?R(60,GY-120):GY-6,fly,hp,max:hp,sp:(fly?42:30)+w*1.5+R(-5,5),pois:0,big:hp>(14+w*7)*2,wob:R(0,6),bite:0});
+}
+function cost(len,kind){return Math.round((kind=='b'?6:4)+len*(kind=='b'?.09:.06))*S.cost}
+function nearest(arr,x,y){let b=null,bd=1e9;for(const n of arr){if(n.g<1)continue;const d=D(n.x,n.y,x,y);if(d<bd){bd=d;b=n}}return b}
+function grow(x,y){
+if(S.state!='play')return;
+const sky=y<GY;
+if(sky){
+ const nodes=S.branches.concat([{x:TX,y:GY-30,g:1}]);
+ const n=nearest(nodes,x,y);let dx=x-n.x,dy=y-n.y,l=Math.hypot(dx,dy);
+ if(l<14)return;const ml=110;if(l>ml){dx*=ml/l;dy*=ml/l;l=ml}
+ const tx=n.x+dx,ty=Math.min(GY-20,n.y+dy),c=cost(l,'b');
+ if(S.en<c){fx(x,y,'#ff6680','Zu wenig Energie');return}
+ S.en-=c;S.branches.push({x:tx,y:ty,px:n.x,py:n.y,g:0,fruit:0,cd:R(0,.5),len:l});
+}else{
+ const n=nearest(S.roots,x,y);let dx=x-n.x,dy=y-n.y,l=Math.hypot(dx,dy);
+ if(l<14)return;const ml=100;if(l>ml){dx*=ml/l;dy*=ml/l;l=ml}
+ const tx=n.x+dx,ty=Math.max(GY+6,n.y+dy),c=cost(l,'r');
+ if(S.en<c){fx(x,y,'#ff6680','Zu wenig Energie');return}
+ S.en-=c;S.roots.push({x:tx,y:ty,px:n.x,py:n.y,g:0,len:l,wig:R(-1,1)});
+}
+}
+const texts=[];
+function fx(x,y,col,t){texts.push({x,y,t,col,l:1})}
+function burst(x,y,col,n){for(let i=0;i<n;i++){const a=R(0,6.28),s=R(20,120);S.parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:R(.3,.8),col})}}
+function hitPest(p,dmg){p.hp-=dmg;if(S.poison)p.pois=Math.max(p.pois,3)}
+function upd(dt){
+S.t+=dt;
+// growth
+for(const r of S.roots)if(r.g<1)r.g=Math.min(1,r.g+dt*2.5);
+for(const b of S.branches)if(b.g<1)b.g=Math.min(1,b.g+dt*2.5);
+// nutrients
+let inc=S.sun;
+for(const p of S.patches){if(p.amt<=0)continue;let n=0;for(const r of S.roots)if(r.g>=1&&D(r.x,r.y,p.x,p.y)<p.r+8)n++;
+ if(n){const take=Math.min(p.amt,dt*2.2*Math.min(n,3));p.amt-=take;inc+=take/dt*S.eff;p.flow=1}else p.flow=0}
+S.patches=S.patches.filter(p=>p.amt>0);while(S.patches.length<7)addPatch();
+S.inc=inc;S.en=Math.min(999,S.en+inc*dt);
+S.hp=Math.min(S.maxhp,S.hp+dt*0.4);
+// spawn
+if(S.spawnLeft>0){S.spawnT-=dt;if(S.spawnT<=0){spawn();S.spawnLeft--;S.spawnT=Math.max(.35,1.6-S.wave*.06)*R(.6,1.3)}}
+// pests
+for(const p of S.pests){
+ p.wob+=dt*8;
+ if(p.pois>0){p.pois-=dt;p.hp-=S.poison*dt}
+ const tx=TX,ty=p.fly?GY-70:GY-6,d=D(p.x,p.y,tx,ty);
+ if(d>(p.fly?26:22)){p.x+=(tx-p.x)/d*p.sp*dt;p.y+=(ty-p.y)/d*p.sp*dt+(p.fly?Math.sin(p.wob)*20*dt:0)}
+ else{p.bite-=dt;if(p.bite<=0){p.bite=.8;S.hp-=p.big?9:4;S.shake=.15;burst(TX,ty,'#ffb36b',4);if(S.thorns){p.hp-=S.thorns*2;burst(p.x,p.y,'#9dff7a',4)}}}
+ if(S.strangle&&!p.fly)for(const r of S.roots)if(r.g>=1&&r.y<GY+30&&Math.abs(r.x-p.x)<14){p.hp-=S.strangle*dt;break}
+}
+for(const p of S.pests)if(p.hp<=0&&!p.dead){p.dead=1;S.kills++;burst(p.x,p.y,'#c6ff6a',12);S.en+=2+S.wave*.3}
+S.pests=S.pests.filter(p=>!p.dead);
+// fruits
+for(const b of S.branches){
+ if(b.g<1)continue;b.fruit=Math.min(1,b.fruit+dt*.8);
+ b.cd-=dt*S.rate;if(b.cd>0||b.fruit<1)continue;
+ let tg=null,bd=S.range;for(const p of S.pests){const d=D(p.x,p.y,b.x,b.y);if(d<bd){bd=d;tg=p}}
+ if(!tg)continue;b.cd=1.1;
+ for(let k=0;k<S.multi;k++){const a=Math.atan2(tg.y-b.y,tg.x-b.x)+(k-(S.multi-1)/2)*.18;
+  S.shots.push({x:b.x,y:b.y+6,vx:Math.cos(a)*340,vy:Math.sin(a)*340,l:1.2,tg})}
+}
+for(const s of S.shots){
+ if(s.tg&&!s.tg.dead){const a=Math.atan2(s.tg.y-s.y,s.tg.x-s.x),c=Math.atan2(s.vy,s.vx);let da=a-c;da=Math.atan2(Math.sin(da),Math.cos(da));const na=c+da*Math.min(1,dt*6);s.vx=Math.cos(na)*340;s.vy=Math.sin(na)*340}
+ s.x+=s.vx*dt;s.y+=s.vy*dt;s.l-=dt;
+ for(const p of S.pests){if(D(p.x,p.y,s.x,s.y)<(p.big?16:11)){hitPest(p,S.dmg);s.l=0;burst(s.x,s.y,S.poison?'#b06bff':'#ffd36b',5);
+  if(S.splash)for(const q of S.pests)if(q!==p&&D(q.x,q.y,s.x,s.y)<S.splash)hitPest(q,S.dmg*.5);break}}
+}
+S.shots=S.shots.filter(s=>s.l>0);
+for(const q of S.parts){q.x+=q.vx*dt;q.y+=q.vy*dt;q.vx*=.94;q.vy*=.94;q.l-=dt}
+S.parts=S.parts.filter(q=>q.l>0);
+for(const t of texts){t.y-=30*dt;t.l-=dt}for(let i=texts.length-1;i>=0;i--)if(texts[i].l<=0)texts.splice(i,1);
+S.shake=Math.max(0,S.shake-dt);
+if(S.hp<=0){S.state='over';document.getElementById('ovtxt').innerHTML='Welle '+S.wave+' erreicht · '+S.kills+' Schädlinge besiegt<br>Mutationen: '+(S.muts.join(', ')||'keine');show('over')}
+else if(S.spawnLeft<=0&&!S.pests.length&&S.state=='play'){S.state='mut';offer()}
+}
+function show(id){for(const o of['start','mut','over'])document.getElementById(o).style.display=o==id?'flex':'none'}
+function offer(){
+const pool=[...MUTS].sort(()=>Math.random()-.5).slice(0,3),el=document.getElementById('cards');el.innerHTML='';
+for(const m of pool){const d=document.createElement('div');d.className='card';d.innerHTML='<b>'+m.n+'</b><div>'+m.d+'</div>';
+ d.onclick=()=>{m.f(S);S.muts.push(m.n);show(null);S.state='pause';setTimeout(nextWave,1200)};el.appendChild(d)}
+setTimeout(()=>show('mut'),600);
+}
+// ---------- render
+let stars=[];for(let i=0;i<70;i++)stars.push([Math.random(),Math.random()*.55,R(.5,1.6),R(0,6)]);
+function draw(){
+const t=performance.now()/1000;
+cx.save();if(S&&S.shake)cx.translate(R(-3,3),R(-3,3));
+let g=cx.createLinearGradient(0,0,0,GY);g.addColorStop(0,'#070a1c');g.addColorStop(1,'#16263a');cx.fillStyle=g;cx.fillRect(0,0,W,GY);
+for(const s of stars){cx.globalAlpha=.4+.4*Math.sin(t*1.5+s[3]);cx.fillStyle='#cfe8ff';cx.fillRect(s[0]*W,s[1]*H,s[2],s[2])}cx.globalAlpha=1;
+g=cx.createLinearGradient(0,GY,0,H);g.addColorStop(0,'#2a1a12');g.addColorStop(1,'#0c0806');cx.fillStyle=g;cx.fillRect(0,GY,W,H-GY);
+cx.fillStyle='#2f5a2a';cx.fillRect(0,GY-3,W,6);
+if(!S){cx.restore();return}
+cx.globalCompositeOperation='lighter';
+for(const p of S.patches){const a=Math.min(1,p.amt/80),pr=p.r*(1+.08*Math.sin(t*2+p.ph));
+ g=cx.createRadialGradient(p.x,p.y,0,p.x,p.y,pr*1.8);g.addColorStop(0,`rgba(90,255,190,${.55*a})`);g.addColorStop(1,'rgba(40,120,255,0)');cx.fillStyle=g;cx.beginPath();cx.arc(p.x,p.y,pr*1.8,0,7);cx.fill()}
+cx.globalCompositeOperation='source-over';
+// roots
+cx.lineCap='round';
+for(const r of S.roots){if(r.px==null)continue;const ex=r.px+(r.x-r.px)*r.g,ey=r.py+(r.y-r.py)*r.g,mx=(r.px+ex)/2+r.wig*10,my=(r.py+ey)/2;
+ cx.strokeStyle='#6b4a2e';cx.lineWidth=5;cx.beginPath();cx.moveTo(r.px,r.py);cx.quadraticCurveTo(mx,my,ex,ey);cx.stroke();
+ cx.strokeStyle='rgba(120,255,200,.55)';cx.lineWidth=1.6;cx.setLineDash([4,10]);cx.lineDashOffset=t*30;cx.stroke();cx.setLineDash([])}
+// trunk
+g=cx.createLinearGradient(TX-14,0,TX+14,0);g.addColorStop(0,'#3d2817');g.addColorStop(.5,'#7a5434');g.addColorStop(1,'#3d2817');
+cx.fillStyle=g;cx.beginPath();cx.moveTo(TX-16,GY+4);cx.quadraticCurveTo(TX-8,GY-50,TX-6,GY-92);cx.lineTo(TX+6,GY-92);cx.quadraticCurveTo(TX+8,GY-50,TX+16,GY+4);cx.fill();
+const hpf=S.hp/S.maxhp;cx.shadowColor='#6dff9a';cx.shadowBlur=14;cx.fillStyle=`rgba(${Math.round(255-hpf*150)},${Math.round(120+hpf*135)},150,.9)`;cx.beginPath();cx.arc(TX,GY-55,4+2*Math.sin(t*3),0,7);cx.fill();cx.shadowBlur=0;
+// branches
+for(const b of S.branches){if(b.px==null)continue;const ex=b.px+(b.x-b.px)*b.g,ey=b.py+(b.y-b.py)*b.g;
+ cx.strokeStyle='#5e3f26';cx.lineWidth=b===S.branches[0]?11:5;cx.beginPath();cx.moveTo(b.px,b.py);cx.lineTo(ex,ey);cx.stroke()}
+cx.globalCompositeOperation='lighter';
+for(const b of S.branches){if(b.g<1)continue;
+ g=cx.createRadialGradient(b.x,b.y,0,b.x,b.y,30);g.addColorStop(0,'rgba(80,220,120,.45)');g.addColorStop(1,'rgba(30,120,80,0)');cx.fillStyle=g;cx.beginPath();cx.arc(b.x,b.y,30,0,7);cx.fill();
+ const fr=3+4*b.fruit;cx.fillStyle=S.poison?'#c07bff':'#ffcc5a';cx.shadowColor=cx.fillStyle;cx.shadowBlur=10;cx.beginPath();cx.arc(b.x,b.y+8,fr,0,7);cx.fill();cx.shadowBlur=0}
+for(const s of S.shots){cx.fillStyle=S.poison?'#c07bff':'#ffd36b';cx.beginPath();cx.arc(s.x,s.y,4,0,7);cx.fill();cx.globalAlpha=.3;cx.beginPath();cx.arc(s.x-s.vx*.02,s.y-s.vy*.02,3,0,7);cx.fill();cx.globalAlpha=1}
+for(const q of S.parts){cx.globalAlpha=Math.max(0,q.l*1.5);cx.fillStyle=q.col;cx.fillRect(q.x-1.5,q.y-1.5,3,3)}cx.globalAlpha=1;
+cx.globalCompositeOperation='source-over';
+// pests
+for(const p of S.pests){const s=p.big?1.7:1,dir=p.x<TX?1:-1;cx.save();cx.translate(p.x,p.y);cx.scale(dir*s,s);
+ if(p.fly){cx.fillStyle='rgba(200,220,255,.5)';const f=Math.sin(p.wob*3)*4;cx.beginPath();cx.ellipse(-2,-6,6,3+f*.3,-.5,0,7);cx.ellipse(3,-6,6,3-f*.3,.5,0,7);cx.fill();cx.fillStyle=p.pois>0?'#9a5cff':'#d94b3a'}
+ else cx.fillStyle=p.pois>0?'#9a5cff':'#8f6a2a';
+ cx.beginPath();cx.ellipse(0,0,9,6,0,0,7);cx.fill();cx.fillStyle='#1a1008';cx.beginPath();cx.arc(7,-1,4,0,7);cx.fill();
+ cx.fillStyle='#ff4';cx.fillRect(8,-3,2,2);
+ if(!p.fly){cx.strokeStyle='#1a1008';cx.lineWidth=1.2;for(let i=-1;i<=1;i++){const k=Math.sin(p.wob+i)*2;cx.beginPath();cx.moveTo(i*4,4);cx.lineTo(i*4+k,8);cx.stroke()}}
+ cx.restore();
+ if(p.hp<p.max){cx.fillStyle='#0008';cx.fillRect(p.x-10,p.y-16*s,20,3);cx.fillStyle='#ff5d7a';cx.fillRect(p.x-10,p.y-16*s,20*p.hp/p.max,3)}}
+for(const tx of texts){cx.globalAlpha=tx.l;cx.fillStyle=tx.col;cx.font='bold 13px system-ui';cx.textAlign='center';cx.fillText(tx.t,tx.x,tx.y)}cx.globalAlpha=1;
+cx.restore();
+}
+const hpI=document.querySelector('#hp i'),enI=document.querySelector('#en i'),enT=document.getElementById('ent');
+function loop(now){const dt=Math.min(.05,(now-last)/1000||0);last=now;
+ if(S&&(S.state=='play'||S.state=='pause'))upd(dt);
+ draw();
+ if(S){hpI.style.width=Math.max(0,S.hp/S.maxhp*100)+'%';enI.style.width=Math.min(100,S.en/150*100)+'%';enT.textContent=Math.floor(S.en)+' (+'+(S.inc||0).toFixed(1)+'/s)'}
+ requestAnimationFrame(loop)}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();if(S)grow(e.clientX,e.clientY)});
+document.getElementById('go').onclick=()=>{newRun();show(null)};
+document.getElementById('re').onclick=()=>{newRun();show(null)};
+show('start');requestAnimationFrame(loop);
+</script></body></html>
