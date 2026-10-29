@@ -1,199 +1,693 @@
 <!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#14201a">
 <title>Wurzelwerk</title>
 <style>
-html,body{margin:0;height:100%;background:#05070d;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;font-family:system-ui,sans-serif;color:#e8f5e0}
-canvas{display:block;width:100vw;height:100vh}
-#hud{position:fixed;top:0;left:0;right:0;padding:10px 12px;display:flex;gap:10px;align-items:center;pointer-events:none;font-size:14px;text-shadow:0 1px 4px #000}
-.bar{flex:1;height:10px;background:#ffffff18;border-radius:6px;overflow:hidden}
-.bar i{display:block;height:100%;width:50%;border-radius:6px}
-#hp i{background:linear-gradient(90deg,#ff5d7a,#ffb27a)}
-#en i{background:linear-gradient(90deg,#4dffb0,#c6ff6a)}
-#hint{position:fixed;bottom:14px;left:0;right:0;text-align:center;font-size:13px;opacity:.75;pointer-events:none}
-.ov{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:#02040acc;backdrop-filter:blur(4px);padding:20px;box-sizing:border-box;text-align:center}
-.ov h1{margin:0 0 6px;font-size:30px;color:#b6ff9e;text-shadow:0 0 18px #6dff9a}
-.ov p{opacity:.8;margin:4px 0 16px}
-.card{width:100%;max-width:340px;margin:6px 0;padding:14px;border-radius:14px;background:linear-gradient(145deg,#173322,#0e1d24);border:1px solid #6dff9a55;box-shadow:0 0 18px #3dff8a22;cursor:pointer;text-align:left}
-.card b{color:#d4ff8a;font-size:16px}.card div{font-size:13px;opacity:.85;margin-top:4px}
-.card:active{transform:scale(.97)}
-button{font-size:18px;padding:12px 28px;border-radius:30px;border:0;background:linear-gradient(90deg,#4dffb0,#c6ff6a);color:#06200f;font-weight:700}
+html,body{margin:0;height:100%;background:#22150e;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;font-family:system-ui,sans-serif;color:#f3f7e8;-webkit-tap-highlight-color:transparent}
+#c{display:block;position:fixed;inset:0;width:100vw;height:100vh}
+.pill{background:#14201acc;border:1px solid #a6e37a55;border-radius:20px;font-variant-numeric:tabular-nums;font-weight:700}
+#top{position:fixed;top:8px;left:8px;right:8px;display:flex;gap:8px;align-items:center;pointer-events:none}
+#hpw{flex:1;display:flex;align-items:center;gap:6px;padding:6px 10px}
+#hpb{flex:1;height:8px;background:#0006;border-radius:5px;position:relative;overflow:hidden}
+#hpb i{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
+#hpLag{background:#fff;transition:width .15s linear .15s}#hpFill{background:#5fb85a}
+#wave{padding:6px 12px;font-size:14px}
+#pause{pointer-events:auto;width:34px;height:34px;padding:0;font-size:14px;color:#f3f7e8}
+#muts{position:fixed;top:52px;right:8px;display:flex;flex-direction:column;gap:6px}
+#muts div{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;border:2px solid #f3ecd6;pointer-events:auto}
+#tip{position:fixed;top:52px;left:12px;right:50px;font-size:13px;padding:8px 12px;display:none}
+#bot{position:fixed;left:8px;right:8px;bottom:10px;display:flex;flex-direction:column;gap:8px;align-items:stretch;pointer-events:none}
+#res{display:flex;gap:8px}
+#res .pill{flex:1;padding:7px 10px;font-size:16px;display:flex;align-items:center;gap:6px}
+#res small{font-size:12px;opacity:.75;margin-left:auto;color:#7dffb8}
+.ic{width:12px;height:12px;display:inline-block}
+.icw{background:#4fc3f7;border-radius:50% 50% 50% 0;transform:rotate(-45deg)}
+.icm{background:#c9a0ff;transform:rotate(45deg) scale(.8)}
+#go{pointer-events:auto;height:52px;border:0;border-radius:26px;font-size:18px;font-weight:800;background:#ffc93c;color:#2a1d12;box-shadow:0 4px 0 #b8861d}
+#go:active{transform:translateY(3px);box-shadow:0 1px 0 #b8861d}
+#go.hide{visibility:hidden}
+#hint{position:fixed;left:0;right:0;text-align:center;font-size:15px;font-weight:700;pointer-events:none;text-shadow:0 2px 4px #000c;display:none}
+.ov{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:#0b1026cc;padding:20px;box-sizing:border-box;text-align:center;z-index:5}
+.ov h1{margin:0 0 8px;font-size:34px;color:#a6e37a;letter-spacing:1px}
+.ov p{opacity:.85;margin:4px 0 18px;line-height:1.45}
+.btn{font-size:18px;padding:13px 32px;border-radius:30px;border:0;background:#ffc93c;color:#2a1d12;font-weight:800;box-shadow:0 4px 0 #b8861d}
+#cards,#fcards{display:flex;gap:8px;justify-content:center;width:100%;max-width:420px}
+.card{flex:1;max-width:130px;background:#f3ecd6;color:#2a1d12;border-radius:12px;padding:8px 6px 10px;box-shadow:0 6px 14px #0008;display:flex;flex-direction:column;align-items:center;gap:4px;transform:translateY(40px) rotate(-3deg);opacity:0;transition:transform .25s cubic-bezier(.2,1.4,.5,1),opacity .2s;border:3px solid transparent}
+.card.in{transform:none;opacity:1}.card.pick{transform:scale(1.05)}.card.out{transform:translateY(80px);opacity:0}
+.card.fit{border-color:#ffc93c;box-shadow:0 0 0 2px #ffc93c88,0 6px 14px #0008}
+.card.off{opacity:.45!important}
+.card b{font-size:14px}.card span{font-size:11.5px;line-height:1.3}
+.card canvas{width:56px;height:56px}
+.chip{font-size:10px;color:#fff;border-radius:8px;padding:1px 6px;font-weight:700}
+.cost{font-size:12px;font-weight:800}
+#sheet{position:fixed;left:0;right:0;bottom:0;background:#14201aee;border-top:1px solid #a6e37a55;border-radius:18px 18px 0 0;padding:14px 10px 18px;display:none;flex-direction:column;align-items:center;gap:10px;z-index:4}
+#sheet .x{font-size:13px;opacity:.7}
 </style></head><body>
 <canvas id="c"></canvas>
-<div id="hud"><span>❤</span><div class="bar" id="hp"><i></i></div><span>⚡<b id="ent">0</b></span><div class="bar" id="en"><i></i></div><span id="wv">Welle 1</span></div>
-<div id="hint">Tippe in den Boden: Wurzel · Tippe in den Himmel: Ast</div>
-<div class="ov" id="start"><h1>Wurzelwerk</h1><p>Lass deinen magischen Baum wachsen.<br>Wurzeln saugen Nährstoffe aus leuchtenden Flecken.<br>Äste tragen Früchte, die Schädlinge beschießen.</p><button id="go">Saat pflanzen</button></div>
-<div class="ov" id="mut"><h1>Mutation</h1><p>Welle überstanden! Wähle eine Mutation:</p><div id="cards" style="width:100%;display:flex;flex-direction:column;align-items:center"></div></div>
-<div class="ov" id="over"><h1>Der Baum fällt</h1><p id="ovtxt"></p><button id="re">Neuer Run</button></div>
+<div id="top"><div id="hpw" class="pill"><span style="color:#5fb85a">&#10047;</span><div id="hpb"><i id="hpLag"></i><i id="hpFill"></i></div></div><div id="wave" class="pill">Welle 1/8</div><button id="pause" class="pill">II</button></div>
+<div id="muts"></div><div id="tip" class="pill"></div>
+<div id="hint"></div>
+<div id="bot"><div id="res"><div class="pill"><i class="ic icw"></i><b id="wv">0</b><small id="wr">+0/s</small></div><div class="pill"><i class="ic icm"></i><b id="mv">0</b><small id="mr">+0/s</small></div></div><button id="go">Welle starten</button></div>
+<div id="sheet"><div class="x">Knospe – wähle eine Frucht (Tippe daneben = abbrechen)</div><div id="fcards"></div></div>
+<div class="ov" id="title"><h1>Wurzelwerk</h1><p>Wurzeln saugen Wasser &amp; Mineral.<br>Äste tragen Früchte, die Schädlinge abwehren.<br>Überstehe 8 Wellen.</p><button class="btn" id="startBtn">Pflanzen</button><p id="best" style="margin-top:16px;font-size:13px"></p></div>
+<div class="ov" id="mut"><h1>Mutation</h1><p>Welle überstanden! Wähle eine:</p><div id="cards"></div></div>
+<div class="ov" id="end"><h1 id="endT">Der Baum fällt</h1><p id="endP"></p><button class="btn" id="again">Neuer Baum</button></div>
+<div class="ov" id="paused"><h1>Pause</h1><p></p><button class="btn" id="resume">Weiter</button><p><label style="font-size:14px"><input type="checkbox" id="noshake"> Wackeln aus</label></p></div>
 <script>
-const cv=document.getElementById('c'),cx=cv.getContext('2d');
-let W,H,DPR,GY,TX;
-function rs(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;cx.setTransform(DPR,0,0,DPR,0,0);GY=H*0.6;TX=W/2}
-addEventListener('resize',()=>{rs();if(S)layout()});rs();
-const R=(a,b)=>a+Math.random()*(b-a),D=(a,b,c,d)=>Math.hypot(a-c,b-d);
-const MUTS=[
-{id:'fast',n:'Schnelle Früchte',d:'Früchte feuern 30% schneller.',f:s=>s.rate*=1.3},
-{id:'dmg',n:'Harte Schale',d:'Früchte verursachen +40% Schaden.',f:s=>s.dmg*=1.4},
-{id:'poison',n:'Giftfrüchte',d:'Treffer vergiften: Schaden über Zeit.',f:s=>s.poison+=4},
-{id:'thorn',n:'Dornenrinde',d:'Schädlinge am Stamm erleiden Schaden.',f:s=>s.thorns+=6},
-{id:'root',n:'Effiziente Wurzeln',d:'+40% Nährstoffe aus dem Boden.',f:s=>s.eff*=1.4},
-{id:'cheap',n:'Wüchsig',d:'Wachstum kostet 25% weniger Energie.',f:s=>s.cost*=0.75},
-{id:'range',n:'Weite Krone',d:'+30% Reichweite der Früchte.',f:s=>s.range*=1.3},
-{id:'multi',n:'Doppelfrucht',d:'+1 Projektil pro Schuss.',f:s=>s.multi++},
-{id:'bark',n:'Dicke Borke',d:'+30 max. Leben, voll geheilt.',f:s=>{s.maxhp+=30;s.hp=s.maxhp}},
-{id:'burst',n:'Platzfrüchte',d:'Früchte explodieren im Umkreis.',f:s=>s.splash+=28},
-{id:'sun',n:'Photosynthese',d:'+1.5 Energie pro Sekunde passiv.',f:s=>s.sun+=1.5},
-{id:'strangle',n:'Würgewurzeln',d:'Wurzeln schaden Krabblern, die sie berühren.',f:s=>s.strangle+=8},
+'use strict';
+// ================= BALANCE (alle Zahlen hier) =================
+const BALANCE = {
+  grid: { soilW: 9, soilH: 7, airW: 9, airH: 6, waterSources: 5, mineralSources: 4, stones: [8, 10] },
+  eco: {
+    start: { w: 40, m: 50 }, sourceYield: 1.5,
+    root: { w: 6, m: 2, growth: 0.08 },
+    thicken: [null, { w: 15, m: 10 }, { w: 35, m: 25 }], maxTier: 3, throughput: [2, 4, 7],
+    branch: { w: 4, m: 6, heightFactor: 0.35 },
+    fruitCostMult: 1.3, waveReward: (wave) => 20 + 8 * wave,
+  },
+  limits: { maxBranches: 14, maxFruits: 8, maxEnemies: 24 },
+  fruits: {
+    thorn: { cost: { w: 10, m: 20 }, dmg: 11, rate: 0.5, range: 2.5, rangePerH: 0.4, use: { w: 0.2, m: 0.6 }, projSpeed: 8 },
+    spore: { cost: { w: 20, m: 10 }, dps: 4, rate: 0.25, range: 2.0, rangePerH: 0.4, use: { w: 1.2, m: 0.3 }, radius: 1.0, duration: 4 },
+    honey: { cost: { w: 15, m: 15 }, yield: { w: 0.6, m: 0.6 } },
+    starvedRateMult: 0.4,
+  },
+  enemies: {
+    aphid:  { hp: 14,  speed: 1.4,  dps: 1,  armor: 0, swarm: [4, 6] },
+    beetle: { hp: 110, speed: 0.5,  dps: 4,  armor: 3 },
+    crow:   { hp: 22,  speed: 2.2,  dps: 2,  armor: 0 },
+    boss:   { hp: 1800, speed: 0.25, dps: 12, armor: 2, eatRootEvery: 3 },
+    hpScale: 0.15,
+  },
+  waves: [
+    { a: 10, b: 0, c: 0, spawn: 1.2 }, { a: 16, b: 0, c: 0, spawn: 1.0 },
+    { a: 14, b: 2, c: 0, spawn: 1.4 }, { a: 16, b: 3, c: 3, spawn: 1.3 },
+    { a: 18, b: 4, c: 4, spawn: 1.2 }, { a: 20, b: 5, c: 6, spawn: 1.1 },
+    { a: 22, b: 6, c: 6, spawn: 1.0 }, { a: 24, b: 6, c: 8, spawn: 1.0, boss: true },
+  ],
+  trunk: { maxHp: 100, buildRegen: 0.25 },
+  mutations: {
+    wanderRoot: { tiles: 2 },
+    chainFruit: { jumps: 2, dmgMult: 0.7, jumpRange: 1.5 },
+    symbiosis: { yield: { w: 0.5, m: 0.5 }, maxNodes: 4 },
+    windfall: { dmg: 15, radius: 1.0 },
+    echoRoot: { perThroughput: 0.04, cap: 1.8 },
+    thornBark: { dps: 6 },
+  },
+  // Darstellung/Feel (keine Spielwerte)
+  fx: { bossSpawnAt: 0.3, hitStop: 0.04, shakeHit: 4, shakeBig: 6, maxParticles: 300, maxPopups: 20 },
+};
+const B = BALANCE;
+
+// ================= Hilfen =================
+const $ = id => document.getElementById(id);
+const cv = $('c'), cx = cv.getContext('2d');
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeOutBack = t => 1 + 2.7 * (t - 1) ** 3 + 1.7 * (t - 1) ** 2;
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const store = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
+const N8 = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+
+// ================= Sound =================
+let A = null, M = null; const sndLast = {}; let sndActive = 0;
+function audioInit() { if (A) { if (A.state === 'suspended') A.resume(); return; } try { A = new (window.AudioContext || window.webkitAudioContext)(); M = A.createGain(); M.gain.value = 0.4; M.connect(A.destination); } catch (e) { A = null; } }
+function canPlay(k) { if (!A || sndActive >= 8) return false; const n = performance.now(); if (sndLast[k] && n - sndLast[k] < 30) return false; sndLast[k] = n; return true; }
+function tone(f, dur, type = 'sine', vol = .3, slide = 0, delay = 0, filt = 0) {
+  const t0 = A.currentTime + delay, o = A.createOscillator(), g = A.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t0); if (slide) o.frequency.exponentialRampToValueAtTime(f * slide, t0 + dur);
+  g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + (filt ? dur * .4 : .005)); g.gain.exponentialRampToValueAtTime(.001, t0 + dur);
+  let n = o; if (filt) { const fl = A.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = filt; o.connect(fl); n = fl; }
+  n.connect(g).connect(M); o.start(t0); o.stop(t0 + dur + .02); sndActive++; o.onended = () => sndActive--;
+}
+let noiseBuf = null;
+function noise(dur, freq, vol) { if (!noiseBuf) { noiseBuf = A.createBuffer(1, A.sampleRate * .1, A.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+  const s = A.createBufferSource(), f = A.createBiquadFilter(), g = A.createGain(); s.buffer = noiseBuf; f.type = 'bandpass'; f.frequency.value = freq;
+  g.gain.setValueAtTime(vol, A.currentTime); g.gain.exponentialRampToValueAtTime(.001, A.currentTime + dur); s.connect(f).connect(g).connect(M); s.start(); s.stop(A.currentTime + dur); sndActive++; s.onended = () => sndActive--; }
+const SFX = {
+  grow() { if (canPlay('grow')) { tone(300, .15, 'sine', .25, 2); tone(450, .15, 'sine', .12, 2, .03); } },
+  shot() { if (canPlay('shot')) tone(900 * (.95 + Math.random() * .1), .06, 'triangle', .12, .55); },
+  hit() { if (canPlay('hit')) noise(.04, 2000, .25); },
+  kill() { if (canPlay('kill')) tone(400, .12, 'square', .15, .3); },
+  trunk() { if (canPlay('trunk')) tone(90, .25, 'sine', .5, .55); },
+  poor() { if (canPlay('poor')) { tone(180, .05, 'square', .12); tone(180, .05, 'square', .12, 0, .08); } },
+  mut() { if (canPlay('mut')) [523, 659, 784, 1047].forEach((f, i) => tone(f, .14, 'sine', .25, 0, i * .08)); },
+  wave() { if (canPlay('wave')) tone(110, .6, 'sawtooth', .3, 0, 0, 400); },
+  tick() { if (canPlay('tick')) tone(1200, .02, 'sine', .08); },
+};
+const sfx = k => { if (A) try { SFX[k](); } catch (e) {} };
+
+// ================= Layout =================
+let W, H, DPR = Math.min(2, devicePixelRatio || 1), T, OX, GY, TOPY, TX, TOP_UI = 56, BOT_UI = 128;
+function layout() {
+  W = innerWidth; H = innerHeight; cv.width = W * DPR | 0; cv.height = H * DPR | 0;
+  const G = B.grid;
+  T = Math.min(W / G.soilW, (H - TOP_UI - BOT_UI - 20) / (G.soilH + G.airH + 2.2));
+  OX = (W - G.soilW * T) / 2;
+  GY = H - BOT_UI - G.soilH * T;               // Bodenoberkante
+  TOPY = GY - 1.4 * T;                          // Stamm-Spitze
+  TX = OX + 4.5 * T;
+  buildStatic(); bgDirty = true;
+}
+const sx = x => OX + (x + .5) * T, sy = y => GY + (y + .5) * T;        // Boden-Tile-Mitte
+const ax = x => OX + (x + .5) * T, ay = h => TOPY - (h + .5) * T;      // Luft-Tile-Mitte
+
+// ================= Sprites (vorgerendert) =================
+function glowSprite(col, core) { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, core); gr.addColorStop(.25, col); gr.addColorStop(1, col.slice(0, 7) + '00'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return c; }
+const SPR = { water: glowSprite('#4fc3f7cc', '#d6f4ff'), mineral: glowSprite('#c9a0ffcc', '#f1e4ff'), spore: glowSprite('#b98cff88', '#d9c2ff'), flow: glowSprite('#7dffb888', '#eafff2'), red: glowSprite('#ff5d4aaa', '#ffd0c8'), honey: glowSprite('#ffc93c88', '#fff2b8') };
+let bgDay, bgNight, trunkSpr, bgDirty = true;
+function buildStatic() {
+  const mk = () => { const c = document.createElement('canvas'); c.width = W * DPR | 0; c.height = H * DPR | 0; const g = c.getContext('2d'); g.setTransform(DPR, 0, 0, DPR, 0, 0); return [c, g]; };
+  const draw = (g, top, bot, stars) => {
+    let gr = g.createLinearGradient(0, 0, 0, GY); gr.addColorStop(0, top); gr.addColorStop(1, bot); g.fillStyle = gr; g.fillRect(0, 0, W, GY + 2);
+    const r = mulberry(7);
+    if (stars) { g.fillStyle = '#cfe8ff'; for (let i = 0; i < 70; i++) { const s = r() < .15 ? 2 : 1; g.globalAlpha = .3 + r() * .7; g.fillRect(r() * W, r() * (GY - 40), s, s); } g.globalAlpha = 1; }
+    // ferne Hügel
+    g.fillStyle = stars ? '#1a2a44' : '#9fd3b0'; g.beginPath(); g.moveTo(0, GY); for (let x = 0; x <= W; x += 20) g.lineTo(x, GY - 18 - Math.sin(x * .02) * 10 - Math.sin(x * .053) * 6); g.lineTo(W, GY); g.fill();
+    // Bodenschichten
+    const L = [['#4a3021', 0], ['#3a2519', 2.3], ['#22150e', 4.6]];
+    for (const [c, y0] of L) { g.fillStyle = c; g.beginPath(); g.moveTo(0, GY + y0 * T); for (let x = 0; x <= W; x += 16) g.lineTo(x, GY + y0 * T + (y0 ? Math.sin(x * .03 + y0) * 5 : 0)); g.lineTo(W, H); g.lineTo(0, H); g.fill(); }
+    g.fillStyle = '#ffffff08'; for (let i = 0; i < 60; i++) g.fillRect(r() * W, GY + r() * (H - GY), 2 + r() * 3, 2);
+    // Grasnarbe
+    g.fillStyle = '#4f8a3a'; g.fillRect(0, GY - 3, W, 7); g.fillStyle = '#7fbf4d'; g.fillRect(0, GY - 4, W, 2);
+    g.strokeStyle = '#7fbf4d'; g.lineWidth = 1.5; g.beginPath(); for (let x = 2; x < W; x += 5 + r() * 6) { g.moveTo(x, GY - 3); g.lineTo(x + r() * 4 - 2, GY - 7 - r() * 6); } g.stroke();
+    // Steine
+    if (S) for (let y = 0; y < B.grid.soilH; y++) for (let x = 0; x < B.grid.soilW; x++) if (S.soil[y][x].type === 'stone') {
+      const cxp = sx(x), cyp = sy(y), rr = mulberry(x * 31 + y * 7); g.fillStyle = '#3e3a37'; g.beginPath();
+      for (let i = 0; i < 7; i++) { const a = i / 7 * 6.283, d = T * (.36 + rr() * .1); g.lineTo(cxp + Math.cos(a) * d, cyp + Math.sin(a) * d * .85 + 2); } g.fill();
+      g.fillStyle = '#5a5450'; g.beginPath(); for (let i = 0; i < 7; i++) { const a = i / 7 * 6.283, d = T * (.3 + rr() * .08); g.lineTo(cxp + Math.cos(a) * d - 2, cyp + Math.sin(a) * d * .8 - 2); } g.fill();
+      g.fillStyle = '#ffffff22'; g.fillRect(cxp - T * .15, cyp - T * .2, T * .14, 3);
+    }
+  };
+  let g; [bgDay, g] = mk(); draw(g, '#7ec8e3', '#cdeccf', false);
+  [bgNight, g] = mk(); draw(g, '#0b1026', '#23365a', true);
+  // Stamm
+  const tc = document.createElement('canvas'), tw = T * 1.3, th = GY - TOPY + T * .9; tc.width = tw * DPR; tc.height = th * DPR; const t = tc.getContext('2d'); t.scale(DPR, DPR);
+  const cxm = tw / 2, bw = T * .5, tw2 = T * .3;
+  const shape = () => { t.beginPath(); t.moveTo(cxm - tw2, 0); t.quadraticCurveTo(cxm - bw * .8, th * .6, cxm - bw - T * .12, th - T * .5); t.quadraticCurveTo(cxm, th, cxm + bw + T * .12, th - T * .5); t.quadraticCurveTo(cxm + bw * .8, th * .6, cxm + tw2, 0); t.closePath(); };
+  shape(); t.fillStyle = '#6b4a2e'; t.fill(); t.save(); shape(); t.clip(); t.fillStyle = '#9c7048'; t.fillRect(cxm + bw * .25, 0, tw, th); t.fillStyle = '#3d2817'; t.fillRect(0, 0, cxm - bw * .55, th);
+  const rr = mulberry(3); t.strokeStyle = '#3d2817'; t.lineWidth = 1.5; t.beginPath(); for (let i = 0; i < 6; i++) { const x = cxm - bw * .5 + rr() * bw, y = rr() * th * .6; t.moveTo(x, y); t.lineTo(x + rr() * 2 - 1, y + T * (.3 + rr() * .4)); } t.stroke(); t.restore();
+  trunkSpr = tc; trunkSpr.ox = TX - cxm; trunkSpr.oy = TOPY - 2;
+}
+
+// ================= Zustand =================
+let S = null, phase = 'title', paused = false;
+const hints = store.get('ww_hints', {});
+const MUTS = [
+  { id: 'wanderRoot', n: 'Wanderwurzel', tag: 'Boden', icon: 'root', d: () => `Nach jeder Welle wachsen ${B.mutations.wanderRoot.tiles} Wurzeln gratis zur nächsten freien Quelle.` },
+  { id: 'chainFruit', n: 'Kettenfrucht', tag: 'Frucht', icon: 'chain', d: () => `Dornen springen auf ${B.mutations.chainFruit.jumps} weitere Ziele (${B.mutations.chainFruit.dmgMult * 100 | 0}% Schaden).` },
+  { id: 'symbiosis', n: 'Symbiose-Pilz', tag: 'Boden', icon: 'shroom', d: () => `Jede Wurzel-Kreuzung (3+ Nachbarn) erzeugt +${B.mutations.symbiosis.yield.w} W/M pro s.` },
+  { id: 'windfall', n: 'Fallobst', tag: 'Frucht', icon: 'boom', d: () => `Besiegte Gegner in Fruchtreichweite explodieren (${B.mutations.windfall.dmg} Schaden).` },
+  { id: 'echoRoot', n: 'Echowurzel', tag: 'Boden+Frucht', icon: 'echo', d: () => `Früchte feuern schneller, je mehr durch die Wurzeln fließt (bis ×${B.mutations.echoRoot.cap}).` },
+  { id: 'thornBark', n: 'Dornenrinde', tag: 'Stamm', icon: 'bark', d: () => `Gegner am Stamm erleiden ${B.mutations.thornBark.dps} Schaden pro s.` },
 ];
-let S=null,last=0;
-function layout(){}
-function newRun(){
-S={hp:100,maxhp:100,en:40,rate:1,dmg:10,poison:0,thorns:0,eff:1,cost:1,range:170,multi:1,splash:0,sun:0.6,strangle:0,
-wave:0,t:0,pests:[],shots:[],parts:[],spawnLeft:0,spawnT:0,state:'play',kills:0,muts:[],
-roots:[{x:TX,y:GY+4,px:null,g:1}],branches:[{x:TX,y:GY-90,px:TX,py:GY,g:1,fruit:0,cd:0}],
-patches:[],shake:0};
-for(let i=0;i<9;i++)addPatch();
-nextWave();
+const TAGCOL = { Boden: '#8a6440', Frucht: '#e2405a', Stamm: '#5fb85a' };
+const FRUITS = {
+  thorn: { n: 'Dornenbeere', col: '#e2405a', hi: '#ffb3c0', d: 'Schießt Dornen auf den nächsten Gegner.', mix: 'v. a. Mineral' },
+  spore: { n: 'Sporenkapsel', col: '#9b6bff', hi: '#d9c2ff', d: 'Giftwolke, Schaden über Zeit. Ignoriert Panzer.', mix: 'v. a. Wasser' },
+  honey: { n: 'Honigblüte', col: '#ffc93c', hi: '#fff2b8', d: 'Greift nicht an, erzeugt Nährstoffe.', mix: 'Wasser + Mineral' },
+};
+
+function newRun() {
+  const seed = (Math.random() * 1e9) | 0, rng = mulberry(seed);
+  S = { seed, rng, wave: 0, hp: B.trunk.maxHp, w: B.eco.start.w, m: B.eco.start.m, kills: 0, maxThru: 0, muts: [],
+    soil: [], air: [], roots: 1, branches: 1, fruits: [], enemies: [], proj: [], clouds: [], zaps: [], boomQ: [],
+    rate: { w: 0, m: 0, thru: 0 }, spawnQ: [], spawnT: 0, spawnTotal: 0, spawned: 0, preview: null, sel: null, rangeT: 0, t: 0 };
+  genGrid(rng);
+  const G = B.grid;
+  for (let h = 0; h < G.airH; h++) { S.air.push([]); for (let x = 0; x < G.airW; x++) S.air[h].push({ br: false, par: null, g: 1, fruit: null, leaves: null }); }
+  addBranch(4, 0, null, true);
+  recalcFlow(); bgDirty = true; buildStatic();
 }
-function addPatch(){S.patches.push({x:R(20,W-20),y:R(GY+40,H-30),r:R(14,26),amt:R(60,140),ph:R(0,6)})}
-function nextWave(){S.wave++;S.spawnLeft=4+Math.floor(S.wave*2.2);S.spawnT=1.5;S.state='play';document.getElementById('wv').textContent='Welle '+S.wave}
-function spawn(){
-const w=S.wave,fly=w>=3&&Math.random()<Math.min(.45,.1+w*.04),side=Math.random()<.5?-1:1;
-const hp=(14+w*7)*(fly?.7:1)*(Math.random()<.08&&w>3?4:1);
-S.pests.push({x:side<0?-20:W+20,y:fly?R(60,GY-120):GY-6,fly,hp,max:hp,sp:(fly?42:30)+w*1.5+R(-5,5),pois:0,big:hp>(14+w*7)*2,wob:R(0,6),bite:0});
+function genGrid(rng) {
+  const G = B.grid;
+  for (let tries = 0; tries < 200; tries++) {
+    const soil = []; for (let y = 0; y < G.soilH; y++) { soil.push([]); for (let x = 0; x < G.soilW; x++) soil[y].push({ type: 'earth', root: 0, par: -1, g: 1, load: 0, flow: 0, d: 99 }); }
+    soil[0][4].type = 'trunk'; soil[0][4].root = 3; soil[1][4].root = 1; soil[2][3].type = 'water';
+    const free = (x, y) => soil[y][x].type === 'earth' && !soil[y][x].root;
+    const cheb = (x, y) => Math.max(Math.abs(x - 4), Math.abs(y - 1));
+    const place = (type, n, ok) => { let k = 0, g = 0; while (k < n && g++ < 500) { const x = rng() * G.soilW | 0, y = rng() * G.soilH | 0; if (free(x, y) && ok(x, y)) { soil[y][x].type = type; k++; } } };
+    place('water', G.waterSources - 1, (x, y) => cheb(x, y) >= 2 && cheb(x, y) <= 6);
+    place('mineral', 1, (x, y) => y === G.soilH - 1);
+    place('mineral', G.mineralSources - 1, (x, y) => cheb(x, y) >= 3 && y < G.soilH - 1);
+    const nSt = G.stones[0] + (rng() * (G.stones[1] - G.stones[0] + 1) | 0);
+    place('stone', nSt, (x, y) => y >= 1 && cheb(x, y) >= 2);
+    // Erreichbarkeit prüfen
+    const seen = new Set(['4,0']), q = [[4, 0]];
+    while (q.length) { const [x, y] = q.shift(); for (const [dx, dy] of N8) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= G.soilW || ny >= G.soilH) continue; const k = nx + ',' + ny; if (seen.has(k) || soil[ny][nx].type === 'stone') continue; seen.add(k); q.push([nx, ny]); } }
+    let ok = true, cntW = 0, cntM = 0; for (let y = 0; y < G.soilH; y++) for (let x = 0; x < G.soilW; x++) { const t = soil[y][x].type; if (t === 'water') cntW++; if (t === 'mineral') cntM++; if ((t === 'water' || t === 'mineral') && !seen.has(x + ',' + y)) ok = false; }
+    if (ok && cntW === G.waterSources && cntM === G.mineralSources) { S.soil = soil; return; }
+  }
 }
-function cost(len,kind){return Math.round((kind=='b'?6:4)+len*(kind=='b'?.09:.06))*S.cost}
-function nearest(arr,x,y){let b=null,bd=1e9;for(const n of arr){if(n.g<1)continue;const d=D(n.x,n.y,x,y);if(d<bd){bd=d;b=n}}return b}
-function grow(x,y){
-if(S.state!='play')return;
-const sky=y<GY;
-if(sky){
- const nodes=S.branches.concat([{x:TX,y:GY-30,g:1}]);
- const n=nearest(nodes,x,y);let dx=x-n.x,dy=y-n.y,l=Math.hypot(dx,dy);
- if(l<14)return;const ml=110;if(l>ml){dx*=ml/l;dy*=ml/l;l=ml}
- const tx=n.x+dx,ty=Math.min(GY-20,n.y+dy),c=cost(l,'b');
- if(S.en<c){fx(x,y,'#ff6680','Zu wenig Energie');return}
- S.en-=c;S.branches.push({x:tx,y:ty,px:n.x,py:n.y,g:0,fruit:0,cd:R(0,.5),len:l});
-}else{
- const n=nearest(S.roots,x,y);let dx=x-n.x,dy=y-n.y,l=Math.hypot(dx,dy);
- if(l<14)return;const ml=100;if(l>ml){dx*=ml/l;dy*=ml/l;l=ml}
- const tx=n.x+dx,ty=Math.max(GY+6,n.y+dy),c=cost(l,'r');
- if(S.en<c){fx(x,y,'#ff6680','Zu wenig Energie');return}
- S.en-=c;S.roots.push({x:tx,y:ty,px:n.x,py:n.y,g:0,len:l,wig:R(-1,1)});
+
+// ================= Wurzel-Netz & Fluss =================
+function inSoil(x, y) { return x >= 0 && y >= 0 && x < B.grid.soilW && y < B.grid.soilH; }
+function inAir(x, h) { return x >= 0 && h >= 0 && x < B.grid.airW && h < B.grid.airH; }
+let flowOrder = [];
+function recalcFlow() {
+  const G = B.grid, sl = S.soil;
+  for (const row of sl) for (const t of row) { t.d = 99; t.par = -1; t.flow = 0; t.load = 0; t.inW = 0; t.inM = 0; }
+  sl[0][4].d = 0; const q = [[4, 0]]; flowOrder = [];
+  while (q.length) { const [x, y] = q.shift(); flowOrder.push([x, y]);
+    for (const [dx, dy] of N8) { const nx = x + dx, ny = y + dy; if (!inSoil(nx, ny)) continue; const t = sl[ny][nx]; if (!t.root || t.d < 99) continue; t.d = sl[y][x].d + 1; t.par = x + ny * 0 + y * 100; t.px = x; t.py = y; q.push([nx, ny]); } }
+  const Y = B.eco.sourceYield; let tw = 0, tm = 0;
+  for (let i = flowOrder.length - 1; i >= 0; i--) { const [x, y] = flowOrder[i], t = sl[y][x];
+    if (t.type === 'water') t.inW += Y; if (t.type === 'mineral') t.inM += Y;
+    if (t.type === 'trunk') { tw = t.inW; tm = t.inM; break; }
+    const cap = B.eco.throughput[t.root - 1], tot = t.inW + t.inM; t.load = tot / cap;
+    let k = 1; if (tot > cap) k = cap / tot; t.flow = Math.min(tot, cap);
+    const p = sl[t.py][t.px]; p.inW += t.inW * k; p.inM += t.inM * k; }
+  // Symbiose
+  let sym = 0; if (hasMut('symbiosis')) { for (const [x, y] of flowOrder) { if (sl[y][x].type === 'trunk') continue; let n = 0; for (const [dx, dy] of N8) { const nx = x + dx, ny = y + dy; if (inSoil(nx, ny) && sl[ny][nx].root && sl[ny][nx].d < 99) n++; } if (n >= 3) sym++; } sym = Math.min(sym, B.mutations.symbiosis.maxNodes); }
+  S.symNodes = sym;
+  S.rate.thru = tw + tm;
+  let hw = 0, hm = 0; for (const f of S.fruits) if (f.type === 'honey') { hw += B.fruits.honey.yield.w; hm += B.fruits.honey.yield.m; }
+  S.rate.w = tw + hw + sym * B.mutations.symbiosis.yield.w; S.rate.m = tm + hm + sym * B.mutations.symbiosis.yield.m;
+  S.maxThru = Math.max(S.maxThru, S.rate.thru);
+  S.overload = false; for (const row of sl) for (const t of row) if (t.root && t.type !== 'trunk' && t.load > 1) S.overload = true;
 }
+const hasMut = id => S.muts.includes(id);
+function rootCost(k = 0) { const c = B.eco.root, f = 1 + c.growth * (S.roots - 1 + k); return { w: Math.round(c.w * f), m: Math.round(c.m * f) }; }
+function branchCost(h) { const c = B.eco.branch, f = 1 + c.heightFactor * h; return { w: Math.round(c.w * f), m: Math.round(c.m * f) }; }
+function fruitCost(type) { const c = B.fruits[type].cost, f = B.eco.fruitCostMult ** S.fruits.length; return { w: Math.round(c.w * f), m: Math.round(c.m * f) }; }
+const afford = c => S.w >= c.w && S.m >= c.m;
+function pay(c) { S.w -= c.w; S.m -= c.m; }
+// Pfad (BFS) vom Netz zu Ziel über freie Tiles
+function findPath(kind, tx, ty) {
+  const G = B.grid, Wd = kind === 'soil' ? G.soilW : G.airW, Hd = kind === 'soil' ? G.soilH : G.airH;
+  const isNet = (x, y) => kind === 'soil' ? S.soil[y][x].root > 0 : S.air[y][x].br;
+  const passable = (x, y) => kind === 'soil' ? S.soil[y][x].type !== 'stone' && !S.soil[y][x].root : !S.air[y][x].br;
+  const prev = new Map(), q = [];
+  for (let y = 0; y < Hd; y++) for (let x = 0; x < Wd; x++) if (isNet(x, y) && (kind === 'air' || S.soil[y][x].d < 99)) { prev.set(x + y * 100, -1); q.push([x, y]); }
+  while (q.length) { const [x, y] = q.shift(); if (x === tx && y === ty) break;
+    for (const [dx, dy] of N8) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= Wd || ny >= Hd) continue; const k = nx + ny * 100; if (prev.has(k) || !passable(nx, ny)) continue; prev.set(k, x + y * 100); q.push([nx, ny]); } }
+  if (!prev.has(tx + ty * 100)) return null;
+  const path = []; let k = tx + ty * 100; while (k !== -1 && !isNet(k % 100, k / 100 | 0)) { path.unshift([k % 100, k / 100 | 0]); k = prev.get(k); }
+  return path;
 }
-const texts=[];
-function fx(x,y,col,t){texts.push({x,y,t,col,l:1})}
-function burst(x,y,col,n){for(let i=0;i<n;i++){const a=R(0,6.28),s=R(20,120);S.parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:R(.3,.8),col})}}
-function hitPest(p,dmg){p.hp-=dmg;if(S.poison)p.pois=Math.max(p.pois,3)}
-function upd(dt){
-S.t+=dt;
-// growth
-for(const r of S.roots)if(r.g<1)r.g=Math.min(1,r.g+dt*2.5);
-for(const b of S.branches)if(b.g<1)b.g=Math.min(1,b.g+dt*2.5);
-// nutrients
-let inc=S.sun;
-for(const p of S.patches){if(p.amt<=0)continue;let n=0;for(const r of S.roots)if(r.g>=1&&D(r.x,r.y,p.x,p.y)<p.r+8)n++;
- if(n){const take=Math.min(p.amt,dt*2.2*Math.min(n,3));p.amt-=take;inc+=take/dt*S.eff;p.flow=1}else p.flow=0}
-S.patches=S.patches.filter(p=>p.amt>0);while(S.patches.length<7)addPatch();
-S.inc=inc;S.en=Math.min(999,S.en+inc*dt);
-S.hp=Math.min(S.maxhp,S.hp+dt*0.4);
-// spawn
-if(S.spawnLeft>0){S.spawnT-=dt;if(S.spawnT<=0){spawn();S.spawnLeft--;S.spawnT=Math.max(.35,1.6-S.wave*.06)*R(.6,1.3)}}
-// pests
-for(const p of S.pests){
- p.wob+=dt*8;
- if(p.pois>0){p.pois-=dt;p.hp-=S.poison*dt}
- const tx=TX,ty=p.fly?GY-70:GY-6,d=D(p.x,p.y,tx,ty);
- if(d>(p.fly?26:22)){p.x+=(tx-p.x)/d*p.sp*dt;p.y+=(ty-p.y)/d*p.sp*dt+(p.fly?Math.sin(p.wob)*20*dt:0)}
- else{p.bite-=dt;if(p.bite<=0){p.bite=.8;S.hp-=p.big?9:4;S.shake=.15;burst(TX,ty,'#ffb36b',4);if(S.thorns){p.hp-=S.thorns*2;burst(p.x,p.y,'#9dff7a',4)}}}
- if(S.strangle&&!p.fly)for(const r of S.roots)if(r.g>=1&&r.y<GY+30&&Math.abs(r.x-p.x)<14){p.hp-=S.strangle*dt;break}
+function pathCost(kind, path) { let w = 0, m = 0; path.forEach(([x, y], i) => { const c = kind === 'soil' ? rootCost(i) : branchCost(y); w += c.w; m += c.m; }); return { w, m }; }
+function addRoot(x, y, delay = 0) { const t = S.soil[y][x]; t.root = 1; t.g = -delay; S.roots++; }
+function addBranch(x, h, _, silent) {
+  const t = S.air[h][x]; t.br = true; t.g = silent ? 1 : 0;
+  // Elternknoten: Nachbar-Ast mit kleinster Höhe
+  let best = null; for (const [dx, dy] of N8) { const nx = x + dx, nh = h + dy; if (inAir(nx, nh) && S.air[nh][nx].br && (nx !== x || nh !== h)) { if (!best || nh < best[1] || (nh === best[1] && Math.abs(nx - 4) < Math.abs(best[0] - 4))) best = [nx, nh]; } }
+  t.par = (x === 4 && h === 0) ? null : best;
+  t.depth = t.par ? S.air[t.par[1]][t.par[0]].depth + 1 : 0;
+  const r = mulberry(x * 13 + h * 71 + S.seed), n = 5 + (r() * 4 | 0); t.leaves = [];
+  for (let i = 0; i < n; i++) { const a = r() * 6.283, d = r() * T * .32; t.leaves.push([Math.cos(a) * d, Math.sin(a) * d * .8 - T * .08, T * (.17 + r() * .12)]); }
+  if (!silent) S.branches++;
 }
-for(const p of S.pests)if(p.hp<=0&&!p.dead){p.dead=1;S.kills++;burst(p.x,p.y,'#c6ff6a',12);S.en+=2+S.wave*.3}
-S.pests=S.pests.filter(p=>!p.dead);
-// fruits
-for(const b of S.branches){
- if(b.g<1)continue;b.fruit=Math.min(1,b.fruit+dt*.8);
- b.cd-=dt*S.rate;if(b.cd>0||b.fruit<1)continue;
- let tg=null,bd=S.range;for(const p of S.pests){const d=D(p.x,p.y,b.x,b.y);if(d<bd){bd=d;tg=p}}
- if(!tg)continue;b.cd=1.1;
- for(let k=0;k<S.multi;k++){const a=Math.atan2(tg.y-b.y,tg.x-b.x)+(k-(S.multi-1)/2)*.18;
-  S.shots.push({x:b.x,y:b.y+6,vx:Math.cos(a)*340,vy:Math.sin(a)*340,l:1.2,tg})}
+
+// ================= Eingabe =================
+function toTile(px, py) {
+  const x = Math.floor((px - OX) / T); if (x < 0 || x >= B.grid.soilW) return null;
+  if (py >= GY) { const y = Math.floor((py - GY) / T); return inSoil(x, y) ? { k: 'soil', x, y } : null; }
+  const h = Math.floor((TOPY - py) / T); return inAir(x, h) ? { k: 'air', x, y: h } : null;
 }
-for(const s of S.shots){
- if(s.tg&&!s.tg.dead){const a=Math.atan2(s.tg.y-s.y,s.tg.x-s.x),c=Math.atan2(s.vy,s.vx);let da=a-c;da=Math.atan2(Math.sin(da),Math.cos(da));const na=c+da*Math.min(1,dt*6);s.vx=Math.cos(na)*340;s.vy=Math.sin(na)*340}
- s.x+=s.vx*dt;s.y+=s.vy*dt;s.l-=dt;
- for(const p of S.pests){if(D(p.x,p.y,s.x,s.y)<(p.big?16:11)){hitPest(p,S.dmg);s.l=0;burst(s.x,s.y,S.poison?'#b06bff':'#ffd36b',5);
-  if(S.splash)for(const q of S.pests)if(q!==p&&D(q.x,q.y,s.x,s.y)<S.splash)hitPest(q,S.dmg*.5);break}}
+function popMsg(x, y, txt, col) { popup(x, y - T * .4, txt, col || '#ff5d7a', 13); }
+function onTap(px, py) {
+  if (phase !== 'build' && phase !== 'fight') return;
+  if (paused) return;
+  const t = toTile(px, py); S.sel = null;
+  if (!t) { S.preview = null; return; }
+  const pv = S.preview, same = pv && pv.k === t.k && pv.x === t.x && pv.y === t.y;
+  if (t.k === 'soil') {
+    const tile = S.soil[t.y][t.x];
+    if (tile.type === 'stone' || tile.type === 'trunk') { S.preview = null; return; }
+    if (tile.root) { // verdicken
+      S.preview = null;
+      if (tile.d >= 99) { popMsg(sx(t.x), sy(t.y), 'abgeschnitten'); return; }
+      if (tile.root >= B.eco.maxTier) { popMsg(sx(t.x), sy(t.y), 'max. Stufe', '#f3f7e8'); return; }
+      const c = B.eco.thicken[tile.root]; if (!afford(c)) { sfx('poor'); popMsg(sx(t.x), sy(t.y), `${c.w}W ${c.m}M`); return; }
+      pay(c); tile.root++; tile.g = 0; sfx('grow'); burst(sx(t.x), sy(t.y), '#a8825a', 6); recalcFlow(); hints.thick = 1; store.set('ww_hints', hints); return;
+    }
+    const path = findPath('soil', t.x, t.y); if (!path) { S.preview = null; return; }
+    const c = pathCost('soil', path);
+    if (path.length === 1 || same) { if (!afford(c)) { sfx('poor'); popMsg(sx(t.x), sy(t.y), 'zu teuer'); S.preview = null; return; }
+      pay(c); path.forEach(([x, y], i) => addRoot(x, y, i * .12)); sfx('grow'); recalcFlow(); S.preview = null; if (hintStep === 0) advHint(); return; }
+    S.preview = { k: 'soil', x: t.x, y: t.y, path, c }; return;
+  }
+  // Luft
+  const a = S.air[t.y][t.x];
+  if (a.br) { S.preview = null;
+    if (a.fruit) { S.sel = a; S.rangeT = 2.5; return; }
+    if (S.fruits.length >= B.limits.maxFruits) { popMsg(ax(t.x), ay(t.y), 'max. Früchte'); return; }
+    openSheet(t.x, t.y); return; }
+  const path = findPath('air', t.x, t.y); if (!path) return;
+  if (S.branches + path.length > B.limits.maxBranches) { popMsg(ax(t.x), ay(t.y), 'max. Äste'); S.preview = null; return; }
+  const c = pathCost('air', path);
+  if (path.length === 1 || same) { if (!afford(c)) { sfx('poor'); popMsg(ax(t.x), ay(t.y), 'zu teuer'); S.preview = null; return; }
+    pay(c); path.forEach(([x, h]) => addBranch(x, h)); sfx('grow'); const [lx, lh] = path[path.length - 1]; burst(ax(lx), ay(lh), '#a6e37a', 6); S.preview = null; return; }
+  S.preview = { k: 'air', x: t.x, y: t.y, path, c };
 }
-S.shots=S.shots.filter(s=>s.l>0);
-for(const q of S.parts){q.x+=q.vx*dt;q.y+=q.vy*dt;q.vx*=.94;q.vy*=.94;q.l-=dt}
-S.parts=S.parts.filter(q=>q.l>0);
-for(const t of texts){t.y-=30*dt;t.l-=dt}for(let i=texts.length-1;i>=0;i--)if(texts[i].l<=0)texts.splice(i,1);
-S.shake=Math.max(0,S.shake-dt);
-if(S.hp<=0){S.state='over';document.getElementById('ovtxt').innerHTML='Welle '+S.wave+' erreicht · '+S.kills+' Schädlinge besiegt<br>Mutationen: '+(S.muts.join(', ')||'keine');show('over')}
-else if(S.spawnLeft<=0&&!S.pests.length&&S.state=='play'){S.state='mut';offer()}
+let downPos = null;
+cv.addEventListener('pointerdown', e => { audioInit(); downPos = [e.clientX, e.clientY]; });
+cv.addEventListener('pointerup', e => { if (!downPos) return; if (Math.hypot(e.clientX - downPos[0], e.clientY - downPos[1]) < 20) onTap(e.clientX, e.clientY); downPos = null; });
+
+// ================= Frucht-Auswahl =================
+let sheetTile = null;
+function openSheet(x, h) {
+  sheetTile = [x, h]; const box = $('fcards'); box.innerHTML = '';
+  for (const k of ['thorn', 'spore', 'honey']) { const F = FRUITS[k], c = fruitCost(k), ok = afford(c);
+    const el = document.createElement('div'); el.className = 'card' + (ok ? '' : ' off') + (hintStep === 1 && k === 'thorn' ? ' fit' : '');
+    el.innerHTML = `<canvas width="112" height="112"></canvas><b>${F.n}</b><span>${F.d}</span><span style="opacity:.7">${F.mix}</span><span class="cost">${c.w} W · ${c.m} M</span>`;
+    drawFruitIcon(el.querySelector('canvas').getContext('2d'), k);
+    el.onclick = ev => { ev.stopPropagation(); if (!afford(fruitCost(k))) { sfx('poor'); return; } pay(fruitCost(k)); plantFruit(sheetTile[0], sheetTile[1], k); closeSheet(); };
+    box.appendChild(el); }
+  $('sheet').style.display = 'flex'; requestAnimationFrame(() => box.querySelectorAll('.card').forEach((c, i) => setTimeout(() => c.classList.add('in'), i * 60)));
 }
-function show(id){for(const o of['start','mut','over'])document.getElementById(o).style.display=o==id?'flex':'none'}
-function offer(){
-const pool=[...MUTS].sort(()=>Math.random()-.5).slice(0,3),el=document.getElementById('cards');el.innerHTML='';
-for(const m of pool){const d=document.createElement('div');d.className='card';d.innerHTML='<b>'+m.n+'</b><div>'+m.d+'</div>';
- d.onclick=()=>{m.f(S);S.muts.push(m.n);show(null);S.state='pause';setTimeout(nextWave,1200)};el.appendChild(d)}
-setTimeout(()=>show('mut'),600);
+function closeSheet() { $('sheet').style.display = 'none'; sheetTile = null; }
+$('sheet').addEventListener('click', e => { if (e.target === $('sheet') || e.target.classList.contains('x')) closeSheet(); });
+cv.addEventListener('pointerdown', () => { if (sheetTile) closeSheet(); }, true);
+function plantFruit(x, h, type) { const a = S.air[h][x]; a.fruit = { type, x, h, px: ax(x), py: ay(h) + T * .15, cd: .5, sq: 0, g: 0 }; S.fruits.push(a.fruit); sfx('grow'); burst(ax(x), ay(h), FRUITS[type].col, 8); recalcFlow(); if (hintStep === 1) advHint(); }
+function fruitRange(f) { const F = B.fruits[f.type]; return (F.range + F.rangePerH * f.h) * T; }
+
+// ================= Wellen =================
+function startWave() {
+  if (phase !== 'build') return;
+  S.wave++; phase = 'fight'; S.preview = null; closeSheet(); sfx('wave'); flashT = 1; bgDirty = true;
+  const wv = B.waves[S.wave - 1], q = [], r = S.rng;
+  let a = wv.a; while (a > 0) { const n = Math.min(a, B.enemies.aphid.swarm[0] + (r() * (B.enemies.aphid.swarm[1] - B.enemies.aphid.swarm[0] + 1) | 0)); q.push({ t: 'aphid', n }); a -= n; }
+  for (let i = 0; i < wv.b; i++) q.push({ t: 'beetle', n: 1 });
+  let c = wv.c; while (c > 0) { const n = Math.min(c, 1 + (r() * 2 | 0)); q.push({ t: 'crow', n }); c -= n; }
+  for (let i = q.length - 1; i > 1; i--) { const j = 1 + (r() * i | 0); [q[i], q[j]] = [q[j], q[i]]; }
+  if (wv.boss) q.splice(Math.floor(q.length * B.fx.bossSpawnAt), 0, { t: 'boss', n: 1 });
+  S.spawnQ = q; S.spawnT = .8; if (hintStep === 2) advHint();
 }
-// ---------- render
-let stars=[];for(let i=0;i<70;i++)stars.push([Math.random(),Math.random()*.55,R(.5,1.6),R(0,6)]);
-function draw(){
-const t=performance.now()/1000;
-cx.save();if(S&&S.shake)cx.translate(R(-3,3),R(-3,3));
-let g=cx.createLinearGradient(0,0,0,GY);g.addColorStop(0,'#070a1c');g.addColorStop(1,'#16263a');cx.fillStyle=g;cx.fillRect(0,0,W,GY);
-for(const s of stars){cx.globalAlpha=.4+.4*Math.sin(t*1.5+s[3]);cx.fillStyle='#cfe8ff';cx.fillRect(s[0]*W,s[1]*H,s[2],s[2])}cx.globalAlpha=1;
-g=cx.createLinearGradient(0,GY,0,H);g.addColorStop(0,'#2a1a12');g.addColorStop(1,'#0c0806');cx.fillStyle=g;cx.fillRect(0,GY,W,H-GY);
-cx.fillStyle='#2f5a2a';cx.fillRect(0,GY-3,W,6);
-if(!S){cx.restore();return}
-cx.globalCompositeOperation='lighter';
-for(const p of S.patches){const a=Math.min(1,p.amt/80),pr=p.r*(1+.08*Math.sin(t*2+p.ph));
- g=cx.createRadialGradient(p.x,p.y,0,p.x,p.y,pr*1.8);g.addColorStop(0,`rgba(90,255,190,${.55*a})`);g.addColorStop(1,'rgba(40,120,255,0)');cx.fillStyle=g;cx.beginPath();cx.arc(p.x,p.y,pr*1.8,0,7);cx.fill()}
-cx.globalCompositeOperation='source-over';
-// roots
-cx.lineCap='round';
-for(const r of S.roots){if(r.px==null)continue;const ex=r.px+(r.x-r.px)*r.g,ey=r.py+(r.y-r.py)*r.g,mx=(r.px+ex)/2+r.wig*10,my=(r.py+ey)/2;
- cx.strokeStyle='#6b4a2e';cx.lineWidth=5;cx.beginPath();cx.moveTo(r.px,r.py);cx.quadraticCurveTo(mx,my,ex,ey);cx.stroke();
- cx.strokeStyle='rgba(120,255,200,.55)';cx.lineWidth=1.6;cx.setLineDash([4,10]);cx.lineDashOffset=t*30;cx.stroke();cx.setLineDash([])}
-// trunk
-g=cx.createLinearGradient(TX-14,0,TX+14,0);g.addColorStop(0,'#3d2817');g.addColorStop(.5,'#7a5434');g.addColorStop(1,'#3d2817');
-cx.fillStyle=g;cx.beginPath();cx.moveTo(TX-16,GY+4);cx.quadraticCurveTo(TX-8,GY-50,TX-6,GY-92);cx.lineTo(TX+6,GY-92);cx.quadraticCurveTo(TX+8,GY-50,TX+16,GY+4);cx.fill();
-const hpf=S.hp/S.maxhp;cx.shadowColor='#6dff9a';cx.shadowBlur=14;cx.fillStyle=`rgba(${Math.round(255-hpf*150)},${Math.round(120+hpf*135)},150,.9)`;cx.beginPath();cx.arc(TX,GY-55,4+2*Math.sin(t*3),0,7);cx.fill();cx.shadowBlur=0;
-// branches
-for(const b of S.branches){if(b.px==null)continue;const ex=b.px+(b.x-b.px)*b.g,ey=b.py+(b.y-b.py)*b.g;
- cx.strokeStyle='#5e3f26';cx.lineWidth=b===S.branches[0]?11:5;cx.beginPath();cx.moveTo(b.px,b.py);cx.lineTo(ex,ey);cx.stroke()}
-cx.globalCompositeOperation='lighter';
-for(const b of S.branches){if(b.g<1)continue;
- g=cx.createRadialGradient(b.x,b.y,0,b.x,b.y,30);g.addColorStop(0,'rgba(80,220,120,.45)');g.addColorStop(1,'rgba(30,120,80,0)');cx.fillStyle=g;cx.beginPath();cx.arc(b.x,b.y,30,0,7);cx.fill();
- const fr=3+4*b.fruit;cx.fillStyle=S.poison?'#c07bff':'#ffcc5a';cx.shadowColor=cx.fillStyle;cx.shadowBlur=10;cx.beginPath();cx.arc(b.x,b.y+8,fr,0,7);cx.fill();cx.shadowBlur=0}
-for(const s of S.shots){cx.fillStyle=S.poison?'#c07bff':'#ffd36b';cx.beginPath();cx.arc(s.x,s.y,4,0,7);cx.fill();cx.globalAlpha=.3;cx.beginPath();cx.arc(s.x-s.vx*.02,s.y-s.vy*.02,3,0,7);cx.fill();cx.globalAlpha=1}
-for(const q of S.parts){cx.globalAlpha=Math.max(0,q.l*1.5);cx.fillStyle=q.col;cx.fillRect(q.x-1.5,q.y-1.5,3,3)}cx.globalAlpha=1;
-cx.globalCompositeOperation='source-over';
-// pests
-for(const p of S.pests){const s=p.big?1.7:1,dir=p.x<TX?1:-1;cx.save();cx.translate(p.x,p.y);cx.scale(dir*s,s);
- if(p.fly){cx.fillStyle='rgba(200,220,255,.5)';const f=Math.sin(p.wob*3)*4;cx.beginPath();cx.ellipse(-2,-6,6,3+f*.3,-.5,0,7);cx.ellipse(3,-6,6,3-f*.3,.5,0,7);cx.fill();cx.fillStyle=p.pois>0?'#9a5cff':'#d94b3a'}
- else cx.fillStyle=p.pois>0?'#9a5cff':'#8f6a2a';
- cx.beginPath();cx.ellipse(0,0,9,6,0,0,7);cx.fill();cx.fillStyle='#1a1008';cx.beginPath();cx.arc(7,-1,4,0,7);cx.fill();
- cx.fillStyle='#ff4';cx.fillRect(8,-3,2,2);
- if(!p.fly){cx.strokeStyle='#1a1008';cx.lineWidth=1.2;for(let i=-1;i<=1;i++){const k=Math.sin(p.wob+i)*2;cx.beginPath();cx.moveTo(i*4,4);cx.lineTo(i*4+k,8);cx.stroke()}}
- cx.restore();
- if(p.hp<p.max){cx.fillStyle='#0008';cx.fillRect(p.x-10,p.y-16*s,20,3);cx.fillStyle='#ff5d7a';cx.fillRect(p.x-10,p.y-16*s,20*p.hp/p.max,3)}}
-for(const tx of texts){cx.globalAlpha=tx.l;cx.fillStyle=tx.col;cx.font='bold 13px system-ui';cx.textAlign='center';cx.fillText(tx.t,tx.x,tx.y)}cx.globalAlpha=1;
-cx.restore();
+function spawn(type, i, n) {
+  const E = B.enemies[type], sc = type === 'boss' ? 1 : 1 + B.enemies.hpScale * (S.wave - 1), side = S.rng() < .5 ? -1 : 1;
+  const e = { type, hp: E.hp * sc, max: E.hp * sc, sp: E.speed * T, dps: E.dps, armor: E.armor, flash: 0, ph: Math.random() * 6, atk: false, id: Math.random(), dir: -side, eat: 0 };
+  if (type === 'crow') { e.x = OX + T * (.5 + S.rng() * 8); e.y = -20 - i * 30; e.tx = TX + (S.rng() - .5) * T * .8; e.ty = TOPY - T * .2; }
+  else if (type === 'boss') { e.x = sx(4); e.y = GY + B.grid.soilH * T + T * .3; e.row = B.grid.soilH; shake(B.fx.shakeBig); popup(W / 2, GY + T * 2, 'HOLZWURM!', '#ff5d7a', 22); }
+  else { e.x = side < 0 ? -20 - i * T * .35 : W + 20 + i * T * .35; e.y = GY - 3; e.stop = T * (.45 + S.rng() * .5); }
+  S.enemies.push(e);
 }
-const hpI=document.querySelector('#hp i'),enI=document.querySelector('#en i'),enT=document.getElementById('ent');
-function loop(now){const dt=Math.min(.05,(now-last)/1000||0);last=now;
- if(S&&(S.state=='play'||S.state=='pause'))upd(dt);
- draw();
- if(S){hpI.style.width=Math.max(0,S.hp/S.maxhp*100)+'%';enI.style.width=Math.min(100,S.en/150*100)+'%';enT.textContent=Math.floor(S.en)+' (+'+(S.inc||0).toFixed(1)+'/s)'}
- requestAnimationFrame(loop)}
-cv.addEventListener('pointerdown',e=>{e.preventDefault();if(S)grow(e.clientX,e.clientY)});
-document.getElementById('go').onclick=()=>{newRun();show(null)};
-document.getElementById('re').onclick=()=>{newRun();show(null)};
-show('start');requestAnimationFrame(loop);
-</script></body></html>
+function waveDone() {
+  phase = 'reward'; const rw = B.eco.waveReward(S.wave); S.w += rw; S.m += rw;
+  popup(W / 2, GY - T * 2, `+${rw} W  +${rw} M`, '#7dffb8', 16);
+  if (hasMut('wanderRoot')) wander();
+  if (S.wave >= B.waves.length) return endRun(true);
+  const pool = MUTS.filter(m => !hasMut(m.id));
+  setTimeout(() => { if (pool.length) showMuts(pool); else toBuild(); }, 700);
+}
+function wander() { for (let k = 0; k < B.mutations.wanderRoot.tiles; k++) { let best = null;
+  for (let y = 0; y < B.grid.soilH; y++) for (let x = 0; x < B.grid.soilW; x++) { const t = S.soil[y][x]; if ((t.type === 'water' || t.type === 'mineral') && !t.root) { const p = findPath('soil', x, y); if (p && (!best || p.length < best.length)) best = p; } }
+  if (!best) return; const [x, y] = best[0]; addRoot(x, y, k * .15); S.roots--; recalcFlow(); } }
+function toBuild() {
+  phase = 'build'; S.hp += (B.trunk.maxHp - S.hp) * B.trunk.buildRegen; bgDirty = true; S.proj.length = 0; S.clouds.length = 0;
+  $('mut').style.display = 'none';
+}
+function showMuts(pool) {
+  phase = 'choose'; const box = $('cards'); box.innerHTML = '';
+  const picks = []; const p = pool.slice(); while (picks.length < 3 && p.length) picks.push(p.splice(Math.random() * p.length | 0, 1)[0]);
+  const myTags = new Set(S.muts.flatMap(id => MUTS.find(m => m.id === id).tag.split('+')));
+  picks.forEach((m, i) => { const el = document.createElement('div'); const fit = m.tag.split('+').some(t => myTags.has(t));
+    el.className = 'card' + (fit ? ' fit' : '');
+    el.innerHTML = `<canvas width="112" height="112"></canvas><b>${m.n}</b><span>${m.d()}</span><div>${m.tag.split('+').map(t => `<span class="chip" style="background:${TAGCOL[t]}">${t}</span>`).join(' ')}</div>${fit ? '<span class="cost" style="color:#b8861d">passt!</span>' : ''}`;
+    drawMutIcon(el.querySelector('canvas').getContext('2d'), m.icon);
+    el.onclick = () => { if (phase !== 'choose') return; phase = 'picked'; S.muts.push(m.id); el.classList.add('pick'); box.querySelectorAll('.card').forEach(c => c !== el && c.classList.add('out'));
+      sfx('mut'); shake(B.fx.shakeBig); mutFx = 1; ring(TX, TOPY, '#ffc93c'); for (let k = 0; k < 30; k++) part(TX, TOPY, (Math.random() - .5) * 300, (Math.random() - .5) * 300, .7, TAGCOL[m.tag.split('+')[0]], 3, 0);
+      recalcFlow(); renderMutBar(); setTimeout(toBuild, 450); };
+    box.appendChild(el); setTimeout(() => el.classList.add('in'), 80 + i * 60); });
+  $('mut').style.display = 'flex';
+}
+function renderMutBar() { const b = $('muts'); b.innerHTML = ''; for (const id of S.muts) { const m = MUTS.find(q => q.id === id), d = document.createElement('div');
+  d.style.background = TAGCOL[m.tag.split('+')[0]]; d.textContent = m.n[0]; d.onclick = () => { const tp = $('tip'); tp.textContent = m.n + ': ' + m.d(); tp.style.display = 'block'; clearTimeout(tp._t); tp._t = setTimeout(() => tp.style.display = 'none', 2600); }; b.appendChild(d); } }
+function endRun(win) {
+  phase = 'end'; const reached = win ? B.waves.length + 1 : S.wave; const best = store.get('ww_best', 0); if (reached > best) store.set('ww_best', reached);
+  $('endT').textContent = win ? 'Der Baum lebt!' : 'Der Baum fällt';
+  $('endP').innerHTML = `Erreichte Welle: <b>${win ? 'Sieg' : S.wave + '/' + B.waves.length}</b><br>Gegner besiegt: <b>${S.kills}</b><br>Max. Durchsatz: <b>${S.maxThru.toFixed(1)}/s</b><br><span style="opacity:.7">Bestwert: ${bestTxt(Math.max(best, reached))}</span>`;
+  setTimeout(() => $('end').style.display = 'flex', win ? 600 : 900);
+}
+const bestTxt = b => b > B.waves.length ? 'Sieg' : b ? 'Welle ' + b : '–';
+
+// ================= Kampf =================
+function damage(e, d, pierce, big) {
+  if (e.hp <= 0) return; const dd = pierce ? d : Math.max(1, d - e.armor); e.hp -= dd; if (!pierce || big) e.flash = .08;
+  if (e.type === 'boss' && (big || !pierce)) popup(e.x, e.y - T * .6, String(Math.round(dd)), big ? '#ffc93c' : '#fff', big ? 15 : 11);
+  if (e.hp <= 0) kill(e);
+}
+function kill(e) {
+  S.kills++; const col = { aphid: '#9ccf5a', beetle: '#6f87b5', crow: '#16141c', boss: '#d9b38c' }[e.type];
+  for (let i = 0; i < (e.type === 'boss' ? 40 : 12); i++) part(e.x, e.y, (Math.random() - .5) * 220, -Math.random() * 200, .5, col, 3, 400);
+  ring(e.x, e.y, col); sfx('kill');
+  if (e.type === 'beetle' || e.type === 'crow') hitStop = B.fx.hitStop;
+  if (e.type === 'boss') { shake(B.fx.shakeBig); hitStop = .15; }
+  if (hasMut('windfall') && S.fruits.some(f => f.type !== 'honey' && Math.hypot(f.px - e.x, f.py - e.y) <= fruitRange(f))) S.boomQ.push([e.x, e.y]);
+}
+function inRangeTarget(f, r) { let best = null, bd = 1e9;
+  for (const e of S.enemies) { if (e.hp <= 0) continue; const d = Math.hypot(e.x - f.px, e.y - f.py); const ok = d <= r || e.type === 'boss'; if (ok && d < bd) { bd = d; best = e; } } return best; }
+function updateFight(dt) {
+  // Ressourcen
+  S.w += S.rate.w * dt; S.m += S.rate.m * dt;
+  // Spawns
+  if (S.spawnQ.length) { S.spawnT -= dt; const alive = S.enemies.length; const nx = S.spawnQ[0];
+    if (S.spawnT <= 0 && alive + nx.n <= B.limits.maxEnemies) { S.spawnQ.shift(); for (let i = 0; i < nx.n; i++) spawn(nx.t, i, nx.n); S.spawnT = B.waves[S.wave - 1].spawn; } }
+  // Gegner
+  let atTrunk = 0;
+  for (const e of S.enemies) { if (e.hp <= 0) continue; e.flash -= dt; e.ph += dt;
+    if (e.type === 'crow') { const dx = e.tx - e.x, dy = e.ty - e.y, d = Math.hypot(dx, dy); if (d > 4) { e.x += dx / d * e.sp * dt; e.y += dy / d * e.sp * dt; e.dir = dx < 0 ? -1 : 1; e.atk = false; } else e.atk = true; }
+    else if (e.type === 'boss') {
+      const targetRow = 1, cy = sy(e.row - 1) ;
+      if (e.row > targetRow) { const nextRow = e.row - 1, t = S.soil[nextRow][4];
+        if (t.root && e.y <= sy(nextRow) + T * .55) { e.eat += dt; if (e.eat >= B.enemies.boss.eatRootEvery) { t.root = 0; e.eat = 0; S.roots = Math.max(1, S.roots - 1); recalcFlow(); burst(sx(4), sy(nextRow), '#a8825a', 14); shake(B.fx.shakeHit); sfx('trunk'); } }
+        else { e.y -= e.sp * dt; if (e.y <= cy) e.row = nextRow; } e.atk = false; }
+      else e.atk = true; }
+    else { const d = TX - e.x; if (Math.abs(d) > e.stop) { e.x += Math.sign(d) * e.sp * dt; e.atk = false; } else e.atk = true; }
+    if (e.atk) { atTrunk++; S.hp -= e.dps * dt; if (hasMut('thornBark')) damage(e, B.mutations.thornBark.dps * dt, true); } }
+  if (atTrunk) { trunkHitT -= dt; if (trunkHitT <= 0) { trunkHitT = .6; shake(B.fx.shakeHit); sfx('trunk'); trunkSq = 1; hitStop = Math.max(hitStop, B.fx.hitStop); } }
+  // Früchte
+  const echo = hasMut('echoRoot') ? Math.min(B.mutations.echoRoot.cap, 1 + B.mutations.echoRoot.perThroughput * S.rate.thru) : 1;
+  for (const f of S.fruits) { if (f.type === 'honey') continue; const F = B.fruits[f.type]; f.cd -= dt; if (f.cd > 0) continue;
+    const tg = inRangeTarget(f, fruitRange(f)); if (!tg) { f.cd = .1; continue; }
+    const fed = S.w >= F.use.w && S.m >= F.use.m; if (fed) { S.w -= F.use.w; S.m -= F.use.m; }
+    f.cd = 1 / (F.rate * echo * (fed ? 1 : B.fruits.starvedRateMult)); f.sq = .06; f.starved = !fed;
+    S.proj.push({ f: f.type, x: f.px, y: f.py, tg, tx: tg.x, ty: tg.y, sp: (f.type === 'thorn' ? F.projSpeed : 6) * T });
+    if (f.type === 'thorn') sfx('shot'); }
+  // Projektile
+  for (let i = S.proj.length - 1; i >= 0; i--) { const p = S.proj[i]; if (p.tg.hp > 0) { p.tx = p.tg.x; p.ty = p.tg.y; }
+    const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy), st = p.sp * dt;
+    if (d <= st + 2) { S.proj.splice(i, 1);
+      if (p.f === 'thorn') { if (p.tg.hp > 0) { damage(p.tg, B.fruits.thorn.dmg); sfx('hit'); for (let k = 0; k < 5; k++) part(p.tx, p.ty, -dx / (d || 1) * 120 + (Math.random() - .5) * 120, -dy / (d || 1) * 120 + (Math.random() - .5) * 120, .25, '#ffb3c0', 2, 0);
+          if (hasMut('chainFruit')) chain(p.tg); } }
+      else { S.clouds.push({ x: p.tx, y: p.ty, t: B.fruits.spore.duration }); } continue; }
+    p.x += dx / d * st; p.y += dy / d * st; if (p.f === 'spore') p.arc = Math.sin(Math.min(1, d / T) * 3) * 0; }
+  // Giftwolken
+  for (let i = S.clouds.length - 1; i >= 0; i--) { const c = S.clouds[i]; c.t -= dt; if (c.t <= 0) { S.clouds.splice(i, 1); continue; }
+    const R = B.fruits.spore.radius * T; for (const e of S.enemies) if (e.hp > 0 && Math.hypot(e.x - c.x, e.y - c.y) <= R + (e.type === 'boss' ? T * .4 : 0)) damage(e, B.fruits.spore.dps * dt, true); }
+  // Fallobst
+  while (S.boomQ.length) { const [x, y] = S.boomQ.shift(), M2 = B.mutations.windfall; ring(x, y, '#ffc93c'); burst(x, y, '#ffc93c', 8);
+    for (const e of S.enemies) if (e.hp > 0 && Math.hypot(e.x - x, e.y - y) <= M2.radius * T) damage(e, M2.dmg, true, true); }
+  S.enemies = S.enemies.filter(e => e.hp > 0);
+  for (let i = S.zaps.length - 1; i >= 0; i--) if ((S.zaps[i].t -= dt) <= 0) S.zaps.splice(i, 1);
+  if (S.hp <= 0) { S.hp = 0; return endRun(false); }
+  if (!S.spawnQ.length && !S.enemies.length) waveDone();
+}
+function chain(from) { const C = B.mutations.chainFruit, hit = new Set([from]); let cur = from, dmg = B.fruits.thorn.dmg;
+  for (let j = 0; j < C.jumps; j++) { dmg *= C.dmgMult; let nb = null, bd = C.jumpRange * T; for (const e of S.enemies) { if (e.hp <= 0 || hit.has(e)) continue; const d = Math.hypot(e.x - cur.x, e.y - cur.y); if (d <= bd) { bd = d; nb = e; } }
+    if (!nb) break; S.zaps.push({ x1: cur.x, y1: cur.y, x2: nb.x, y2: nb.y, t: .12 }); hit.add(nb); damage(nb, dmg, false, true); cur = nb; } }
+
+// ================= Partikel / Popups / Juice =================
+const P = []; for (let i = 0; i < B.fx.maxParticles; i++) P.push({ a: 0 });
+function part(x, y, vx, vy, life, col, s, g) { for (const p of P) if (p.a <= 0) { p.x = x; p.y = y; p.vx = vx; p.vy = vy; p.a = life; p.l = life; p.c = col; p.s = s; p.g = g; p.r = 0; return; } }
+function burst(x, y, col, n) { for (let i = 0; i < n; i++) part(x, y, (Math.random() - .5) * 140, -Math.random() * 120, .6, col, 3, 300); }
+const RINGS = []; function ring(x, y, col) { RINGS.push({ x, y, c: col, t: 0 }); if (RINGS.length > 20) RINGS.shift(); }
+const POP = []; function popup(x, y, s, c, size) { if (POP.length >= B.fx.maxPopups) POP.shift(); POP.push({ x, y, s, c, size, t: 0 }); }
+let shakeA = 0, shakeT = 0, hitStop = 0, trunkHitT = 0, trunkSq = 0, flashT = 0, mutFx = 0, noShake = store.get('ww_noshake', false);
+function shake(a) { if (noShake) return; shakeA = Math.max(shakeA * (shakeT / .15), a); shakeT = .15; }
+
+// ================= Onboarding =================
+let hintStep = hints.done ? 99 : 0, hintPulse = 0;
+function advHint() { hintStep++; if (hintStep >= 3) { hintStep = 99; hints.done = 1; store.set('ww_hints', hints); } }
+function hintTarget() {
+  if (phase !== 'build' && !(phase === 'fight' && hintStep === 98)) return null;
+  if (hintStep === 0) return [sx(3), sy(2), 'Tippe – Wurzel wächst'];
+  if (hintStep === 1) return [ax(4), ay(0), 'Knospe setzen'];
+  if (hintStep === 2) { const r = $('go').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2, 'Welle starten!']; }
+  return null;
+}
+
+// ================= Zeichnen =================
+function wind(h, depth, t) { return Math.sin(t * 1.3 + h * .7) * (depth + 1) * 1.2; }
+function render(t) {
+  cx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  let ox = 0, oy = 0; if (shakeT > 0) { const k = (shakeT / .15) ** 2 * shakeA; ox = (Math.random() - .5) * 2 * k; oy = (Math.random() - .5) * 2 * k; }
+  cx.translate(ox, oy);
+  const night = phase === 'fight' || phase === 'reward' || phase === 'choose' || phase === 'picked';
+  cx.drawImage(night ? bgNight : bgDay, -4, -4, W + 8, H + 8);
+  if (!S) return;
+  const G = B.grid, sl = S.soil;
+  // Quellen
+  for (let y = 0; y < G.soilH; y++) for (let x = 0; x < G.soilW; x++) { const tt = sl[y][x]; if (tt.type !== 'water' && tt.type !== 'mineral') continue;
+    const used = tt.root && tt.d < 99, s = T * (used ? 1.05 : .8) * (1 + Math.sin(t * 2 + x + y) * .05), px = sx(x), py = sy(y);
+    cx.globalAlpha = used ? 1 : .75; cx.drawImage(SPR[tt.type], px - s / 2, py - s / 2, s, s);
+    cx.fillStyle = tt.type === 'water' ? '#d6f4ff' : '#f1e4ff';
+    for (let i = 0; i < 3; i++) { const ph = (t * .6 + i / 3 + x * .13) % 1; cx.globalAlpha = (1 - ph) * .8; cx.fillRect(px - T * .2 + i * T * .18, py + T * .25 - ph * T * .5, 2.5, 2.5); }
+    cx.globalAlpha = 1; }
+  // Wurzeln: Kontur, dann Füllung pro Stufe
+  const segs = []; for (const [x, y] of flowOrder) { const tt = sl[y][x]; if (tt.type === 'trunk') continue; const g = tt.g < 0 ? 0 : easeOutBack(Math.min(1, tt.g));
+    const x0 = tt.px === 4 && tt.py === 0 ? TX : sx(tt.px), y0 = tt.px === 4 && tt.py === 0 ? GY + T * .25 : sy(tt.py);
+    segs.push([x0, y0, lerp(x0, sx(x), g), lerp(y0, sy(y), g), tt]); }
+  // abgeschnittene Wurzeln (nach Holzwurm) blass
+  cx.lineCap = 'round';
+  for (let pass = 0; pass < 2; pass++) for (let tier = 1; tier <= 3; tier++) { cx.beginPath(); let any = false;
+    for (const s of segs) if (s[4].root === tier) { cx.moveTo(s[0], s[1]); cx.lineTo(s[2], s[3]); any = true; }
+    if (!any) continue; const w = T * (.1 + tier * .07); cx.lineWidth = pass ? w : w + 2; cx.strokeStyle = pass ? (tier === 1 ? '#a8825a' : '#8a6440') : '#22150e'; cx.stroke(); }
+  for (let y = 0; y < G.soilH; y++) for (let x = 0; x < G.soilW; x++) { const tt = sl[y][x]; if (tt.root && tt.d >= 99 && tt.type !== 'trunk') { cx.fillStyle = '#8a644088'; cx.beginPath(); cx.arc(sx(x), sy(y), T * .12, 0, 6.283); cx.fill(); } }
+  // Knoten
+  cx.fillStyle = '#8a6440'; for (const s of segs) { const r = T * (.06 + s[4].root * .035); cx.fillRect(s[2] - r, s[3] - r, r * 2, r * 2); }
+  // Energiefluss
+  cx.globalCompositeOperation = 'lighter'; cx.setLineDash([3, 9]); cx.lineDashOffset = -t * 40; cx.lineWidth = 2.5;
+  for (const red of [false, true]) { cx.beginPath(); let any = false; for (const s of segs) { const tt = s[4]; if (tt.flow <= 0 || (tt.load > .9) !== red) continue; cx.moveTo(s[2], s[3]); cx.lineTo(s[0], s[1]); any = true; }
+    if (any) { cx.strokeStyle = red ? '#ff5d4a' : '#7dffb8'; cx.lineWidth = red ? 2.5 + Math.sin(t * 10) * 1.5 + 1.5 : 2.5; cx.stroke(); } }
+  cx.setLineDash([]);
+  for (const s of segs) if (s[4].load > 1) { const r = T * (.8 + Math.sin(t * 10) * .1); cx.drawImage(SPR.red, s[2] - r / 2, s[3] - r / 2, r, r); }
+  cx.globalCompositeOperation = 'source-over';
+  // Stamm
+  const sq = 1 - trunkSq * .05; cx.save(); cx.translate(TX, 0); cx.scale(sq, 1); cx.translate(-TX, 0); cx.drawImage(trunkSpr, trunkSpr.ox, trunkSpr.oy, trunkSpr.width / DPR, trunkSpr.height / DPR); cx.restore();
+  // Äste
+  const nodes = []; for (let h = 0; h < G.airH; h++) for (let x = 0; x < G.airW; x++) { const a = S.air[h][x]; if (!a.br) continue;
+    const g = easeOutBack(clamp(a.g, 0, 1)); const nx = ax(x) + wind(h, a.depth, t), ny = ay(h);
+    let px, py, pw; if (a.par) { const p = S.air[a.par[1]][a.par[0]]; px = ax(a.par[0]) + wind(a.par[1], p.depth, t); py = ay(a.par[1]); pw = T * .3 * Math.max(.35, 1 - p.depth * .18); }
+    else { px = TX; py = TOPY + 4; pw = T * .32; }
+    const ex = lerp(px, nx, g), ey = lerp(py, ny, g), ew = T * .3 * Math.max(.35, 1 - a.depth * .18);
+    nodes.push([px, py, ex, ey, pw, ew, a, g]); }
+  cx.fillStyle = '#6b4a2e';
+  for (const [x0, y0, x1, y1, w0, w1] of nodes) { const dx = x1 - x0, dy = y1 - y0, d = Math.hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d;
+    cx.beginPath(); cx.moveTo(x0 + nx * w0 / 2, y0 + ny * w0 / 2); cx.lineTo(x1 + nx * w1 / 2, y1 + ny * w1 / 2); cx.lineTo(x1 - nx * w1 / 2, y1 - ny * w1 / 2); cx.lineTo(x0 - nx * w0 / 2, y0 - ny * w0 / 2); cx.fill();
+    cx.beginPath(); cx.arc(x1, y1, w1 / 2, 0, 6.283); cx.fill(); }
+  // Blätter (3 Tonstufen, gebündelt)
+  const LP = [['#24572f', 0, 3, 1], ['#3f8f4a', 0, 0, 1], ['#5fb85a', -2, -2, .72], ['#a6e37a', -4, -5, .38]];
+  for (const [col, ddx, ddy, sc] of LP) { cx.fillStyle = col; cx.beginPath();
+    for (const n of nodes) { const a = n[6]; const gg = clamp(n[7], 0, 1); const lc = a.leaves; for (let i = 0; i < lc.length; i++) { if (sc < .5 && i > 1) break; const k = clamp(gg * 1.4 - i * .1, 0, 1); if (k <= 0) continue; const r = lc[i][2] * sc * k; const lx = n[2] + lc[i][0] * (sc < 1 ? .6 : 1) + ddx, ly = n[3] + lc[i][1] + ddy;
+      cx.moveTo(lx + r, ly); cx.arc(lx, ly, r, 0, 6.283); } }
+    cx.fill(); }
+  // Früchte
+  for (const f of S.fruits) { const F = FRUITS[f.type], a = S.air[f.h][f.x]; const fx = ax(f.x) + wind(f.h, a.depth, t), fy = f.py; f.g = Math.min(1, f.g + 1 / 60 * 3);
+    const sc = easeOutBack(f.g), sqx = f.sq > 0 ? 1.3 : 1, sqy = f.sq > 0 ? .8 : 1, r = T * .2 * sc;
+    if (f.type !== 'honey') { /* kleines Glow nur als Info */ const gs = T * .9; cx.globalAlpha = f.starved ? .25 : .55; cx.drawImage(f.type === 'thorn' ? SPR.red : SPR.spore, fx - gs / 2, fy - gs / 2, gs, gs); cx.globalAlpha = 1; }
+    else { const gs = T * (.9 + Math.sin(t * 3) * .1); cx.globalAlpha = .6; cx.drawImage(SPR.honey, fx - gs / 2, fy - gs / 2, gs, gs); cx.globalAlpha = 1; }
+    cx.save(); cx.translate(fx, fy); cx.scale(sqx, sqy);
+    if (f.type === 'thorn') { cx.fillStyle = F.col; cx.beginPath(); cx.arc(0, 0, r, 0, 6.283); cx.fill(); cx.fillStyle = '#7a1a2c'; for (let i = 0; i < 5; i++) { const an = i * 1.2566 - 1.57; cx.beginPath(); cx.moveTo(Math.cos(an) * r * 1.5, Math.sin(an) * r * 1.5); cx.lineTo(Math.cos(an - .35) * r * .9, Math.sin(an - .35) * r * .9); cx.lineTo(Math.cos(an + .35) * r * .9, Math.sin(an + .35) * r * .9); cx.fill(); } cx.fillStyle = F.hi; cx.fillRect(-r * .5, -r * .5, r * .35, r * .35); }
+    else if (f.type === 'spore') { cx.fillStyle = F.col; cx.beginPath(); cx.ellipse(0, 0, r * .8, r * 1.15, 0, 0, 6.283); cx.fill(); cx.fillStyle = '#d9c2ff'; for (let i = 0; i < 3; i++) cx.fillRect(-r * .3 + i * r * .25, -r * .4 + (i % 2) * r * .4, 2.5, 2.5); }
+    else { cx.fillStyle = F.hi; for (let i = 0; i < 5; i++) { const an = i * 1.2566 + t * .5; cx.beginPath(); cx.arc(Math.cos(an) * r * .7, Math.sin(an) * r * .7, r * .55, 0, 6.283); cx.fill(); } cx.fillStyle = F.col; cx.beginPath(); cx.arc(0, 0, r * .5, 0, 6.283); cx.fill(); }
+    cx.restore(); f.sq -= 1 / 60; }
+  // Reichweite
+  if (S.sel && S.rangeT > 0 && S.sel.fruit && S.sel.fruit.type !== 'honey') { const f = S.sel.fruit; cx.strokeStyle = '#f3f7e8aa'; cx.setLineDash([6, 6]); cx.lineWidth = 1.5; cx.beginPath(); cx.arc(f.px, f.py, fruitRange(f), 0, 6.283); cx.stroke(); cx.setLineDash([]); cx.fillStyle = '#f3f7e812'; cx.fill(); }
+  // Giftwolken
+  for (const c of S.clouds) { const k = Math.min(1, (B.fruits.spore.duration - c.t) * 3), r = B.fruits.spore.radius * T * 2.2 * (.7 + .3 * k); cx.globalAlpha = .45 * Math.min(1, c.t); cx.drawImage(SPR.spore, c.x - r / 2, c.y - r / 2, r, r); }
+  cx.globalAlpha = 1;
+  // Gegner
+  for (const e of S.enemies) drawEnemy(e, t);
+  // Projektile
+  for (const p of S.proj) { if (p.f === 'thorn') { cx.fillStyle = '#ffb3c0'; cx.fillRect(p.x - 2, p.y - 2, 4, 4); cx.fillStyle = '#e2405a'; cx.fillRect(p.x - 1, p.y - 1, 2, 2); } else { cx.fillStyle = '#9b6bff'; cx.beginPath(); cx.arc(p.x, p.y, 4, 0, 6.283); cx.fill(); } }
+  cx.strokeStyle = '#ffc93c'; cx.lineWidth = 2; cx.beginPath(); for (const z of S.zaps) { cx.moveTo(z.x1, z.y1); cx.lineTo((z.x1 + z.x2) / 2 + 4, (z.y1 + z.y2) / 2 - 4); cx.lineTo(z.x2, z.y2); } cx.stroke();
+  // Partikel
+  for (const p of P) if (p.a > 0) { cx.globalAlpha = p.a / p.l; cx.fillStyle = p.c; cx.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s * .7); }
+  cx.globalAlpha = 1; cx.lineWidth = 2;
+  for (const r of RINGS) { if (r.t >= .3) continue; cx.globalAlpha = 1 - r.t / .3; cx.strokeStyle = r.c; cx.beginPath(); cx.arc(r.x, r.y, r.t / .3 * 20, 0, 6.283); cx.stroke(); }
+  cx.globalAlpha = 1;
+  if (mutFx > 0) { cx.globalAlpha = mutFx * .6; cx.strokeStyle = '#ffc93c'; cx.lineWidth = 4; cx.beginPath(); cx.arc(TX, TOPY, (1 - mutFx) * H, 0, 6.283); cx.stroke(); cx.globalAlpha = 1; }
+  // Vorschau
+  if (S.preview) { const pv = S.preview, ok = afford(pv.c); cx.globalAlpha = .5 + Math.sin(t * 6) * .15; cx.strokeStyle = ok ? '#f3f7e8' : '#ff5d7a'; cx.lineWidth = T * .14; cx.lineCap = 'round'; cx.beginPath();
+    const P0 = pv.k === 'soil' ? [sx, sy] : [ax, ay];
+    for (const [x, y] of pv.path) { cx.moveTo(P0[0](x), P0[1](y)); cx.arc(P0[0](x), P0[1](y), T * .1, 0, 6.283); } cx.stroke(); cx.globalAlpha = 1;
+    const lx = P0[0](pv.x), ly = P0[1](pv.y) - T * .7; label(lx, ly, `${pv.c.w}W ${pv.c.m}M · nochmal tippen`, ok ? '#f3f7e8' : '#ff5d7a'); }
+  // Popups
+  cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  for (const p of POP) { const k = p.t / .9; if (k >= 1) continue; const s = p.size * (p.size > 12 ? lerp(1.4, 1, Math.min(1, p.t * 8)) : 1); cx.font = `800 ${s | 0}px system-ui`; cx.globalAlpha = 1 - k * k; cx.fillStyle = '#000a'; cx.fillText(p.s, p.x + 1, p.y - k * 20 + 1); cx.fillStyle = p.c; cx.fillText(p.s, p.x, p.y - k * 20); }
+  cx.globalAlpha = 1;
+  // Welle-Tönung
+  if (flashT > 0) { cx.globalAlpha = flashT * .35; cx.fillStyle = '#3b3a6b'; cx.fillRect(-10, -10, W + 20, H + 20); cx.globalAlpha = 1; }
+  // Hinweis-Hand
+  const ht = hintTarget(); const hel = $('hint');
+  if (ht) { const [hx, hy, txt] = ht, b = Math.sin(t * 5) * 6; cx.save(); cx.translate(hx + 10, hy + 14 + b); cx.fillStyle = '#f3ecd6'; cx.strokeStyle = '#2a1d12'; cx.lineWidth = 2;
+    cx.beginPath(); cx.moveTo(0, 0); cx.lineTo(-4, 6); cx.lineTo(-4, 22); cx.quadraticCurveTo(4, 30, 14, 26); cx.lineTo(16, 12); cx.lineTo(4, 10); cx.lineTo(4, 2); cx.closePath(); cx.fill(); cx.stroke(); cx.restore();
+    cx.strokeStyle = '#ffc93c'; cx.lineWidth = 2; cx.globalAlpha = .5 + Math.sin(t * 5) * .4; cx.beginPath(); cx.arc(hx, hy, T * .5, 0, 6.283); cx.stroke(); cx.globalAlpha = 1;
+    hel.textContent = txt; hel.style.top = Math.max(60, hy - T * 1.4) + 'px'; hel.style.display = 'block'; }
+  else if (phase === 'build' && S.overload && !hints.thick) { hel.textContent = 'Zu eng! Tippe auf die rote Wurzel zum Verdicken'; hel.style.top = (GY + T * .2) + 'px'; hel.style.display = 'block'; }
+  else hel.style.display = 'none';
+}
+function label(x, y, s, col) { cx.font = '700 12px system-ui'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; const w = cx.measureText(s).width + 14; x = clamp(x, w / 2 + 4, W - w / 2 - 4);
+  cx.fillStyle = '#14201acc'; cx.beginPath(); cx.roundRect ? cx.roundRect(x - w / 2, y - 11, w, 22, 11) : cx.rect(x - w / 2, y - 11, w, 22); cx.fill(); cx.fillStyle = col; cx.fillText(s, x, y); }
+function drawEnemy(e, t) {
+  const fl = e.flash > 0; cx.save(); cx.translate(e.x, e.y);
+  if (e.type === 'aphid') { const s = T * .16, hop = Math.abs(Math.sin(t * 12 + e.ph * 3)) * 3; cx.translate(0, -s - hop); cx.scale(e.dir, 1);
+    cx.fillStyle = fl ? '#fff' : '#2b3a1a'; cx.beginPath(); cx.ellipse(0, 0, s * 1.15, s * .9, 0, 0, 6.283); cx.fill();
+    cx.fillStyle = fl ? '#fff' : '#9ccf5a'; cx.beginPath(); cx.ellipse(-s * .1, -s * .05, s * .95, s * .7, 0, 0, 6.283); cx.fill(); cx.fillStyle = '#2b3a1a'; cx.fillRect(s * .5, -s * .3, 2, 2); }
+  else if (e.type === 'beetle') { const s = T * .32, sq = 1 + Math.sin(t * 8 + e.ph) * .05; cx.translate(0, -s * .55); cx.scale(e.dir * sq, 2 - sq);
+    cx.strokeStyle = '#2a2f3a'; cx.lineWidth = 2; cx.beginPath(); for (let i = 0; i < 3; i++) { const o = Math.sin(t * 10 + i * 2) * 3; cx.moveTo(-s * .5 + i * s * .5, 0); cx.lineTo(-s * .6 + i * s * .5 + o, s * .55); } cx.stroke();
+    cx.fillStyle = fl ? '#fff' : '#2a2f3a'; cx.beginPath(); cx.arc(0, 0, s, Math.PI, 0); cx.closePath(); cx.fill(); cx.beginPath(); cx.arc(s * .95, -s * .1, s * .32, 0, 6.283); cx.fill();
+    if (!fl) { cx.strokeStyle = '#6f87b5'; cx.lineWidth = 2; cx.beginPath(); cx.arc(0, 0, s * .75, Math.PI * 1.15, Math.PI * 1.5); cx.stroke(); cx.strokeStyle = '#11141a'; cx.beginPath(); cx.moveTo(0, -s); cx.lineTo(0, 0); cx.stroke(); cx.fillStyle = '#ffde59'; cx.fillRect(s * 1.05, -s * .25, 3, 3); } }
+  else if (e.type === 'crow') { const s = T * .3, fl2 = Math.sin(t * 14 + e.ph); cx.restore(); cx.save();
+    cx.globalAlpha = .2; cx.fillStyle = '#000'; cx.beginPath(); cx.ellipse(e.x, GY - 2, s * .8, 3, 0, 0, 6.283); cx.fill(); cx.globalAlpha = 1; cx.translate(e.x, e.y); cx.scale(e.dir, 1);
+    cx.fillStyle = fl ? '#fff' : '#16141c'; cx.beginPath(); cx.moveTo(s * 1.1, 0); cx.lineTo(-s, -s * .3); cx.lineTo(-s * .8, s * .35); cx.closePath(); cx.fill();
+    cx.beginPath(); cx.moveTo(-s * .2, -s * .1); cx.quadraticCurveTo(-s * .1, -s * 1.2 * fl2, s * .4, -s * .1); cx.fill();
+    cx.beginPath(); cx.moveTo(s * 1.1, -s * .05); cx.lineTo(s * 1.45, s * .08); cx.lineTo(s * 1.05, s * .15); cx.fill();
+    if (!fl) { cx.fillStyle = '#ff7b3a'; cx.fillRect(s * .75, -s * .15, 3, 3); } }
+  else { const s = T * .42, seg = 6; cx.rotate(e.atk ? 0 : 0);
+    for (let i = seg - 1; i >= 0; i--) { const yy = i * s * .55, xx = Math.sin(t * 3 + i * .8) * s * .25; cx.fillStyle = fl ? '#fff' : (i % 2 ? '#b58a64' : '#d9b38c'); cx.beginPath(); cx.arc(xx, yy, s * (i ? .5 - i * .03 : .58), 0, 6.283); cx.fill(); }
+    if (!fl) { cx.fillStyle = '#3d2817'; cx.beginPath(); cx.arc(0, -s * .2, s * .3, Math.PI, 0); cx.fill(); cx.fillStyle = '#ff5d4a'; cx.fillRect(-s * .3, -s * .15, 4, 4); cx.fillRect(s * .2, -s * .15, 4, 4); } }
+  cx.restore();
+  if (e.hp < e.max) { const w = e.type === 'boss' ? T * 1.6 : T * .5, yy = e.type === 'boss' ? e.y - T * .8 : e.type === 'beetle' ? e.y - T * .55 : e.y - T * .45; cx.fillStyle = '#0008'; cx.fillRect(e.x - w / 2, yy, w, e.type === 'boss' ? 4 : 2); cx.fillStyle = '#ff5d7a'; cx.fillRect(e.x - w / 2, yy, w * Math.max(0, e.hp / e.max), e.type === 'boss' ? 4 : 2); }
+}
+function drawFruitIcon(g, k) { g.scale(2, 2); g.translate(28, 28); const F = FRUITS[k]; g.fillStyle = '#5fb85a'; g.beginPath(); g.ellipse(-8, -16, 9, 4, -.4, 0, 6.283); g.fill();
+  g.fillStyle = F.col; if (k === 'spore') { g.beginPath(); g.ellipse(0, 2, 13, 18, 0, 0, 6.283); g.fill(); } else if (k === 'honey') { g.fillStyle = F.hi; for (let i = 0; i < 5; i++) { const a = i * 1.2566; g.beginPath(); g.arc(Math.cos(a) * 11, Math.sin(a) * 11 + 2, 9, 0, 6.283); g.fill(); } g.fillStyle = F.col; g.beginPath(); g.arc(0, 2, 8, 0, 6.283); g.fill(); } else { g.beginPath(); g.arc(0, 2, 15, 0, 6.283); g.fill(); }
+  g.fillStyle = '#ffffff99'; g.fillRect(-7, -6, 5, 5); }
+function drawMutIcon(g, k) { g.scale(2, 2); g.translate(28, 28); g.lineCap = 'round'; g.lineWidth = 4;
+  if (k === 'root') { g.strokeStyle = '#8a6440'; g.beginPath(); g.moveTo(0, -18); g.lineTo(0, 0); g.lineTo(-12, 14); g.moveTo(0, 0); g.lineTo(14, 10); g.stroke(); g.fillStyle = '#4fc3f7'; g.beginPath(); g.arc(16, 16, 6, 0, 6.283); g.fill(); }
+  else if (k === 'chain') { g.fillStyle = '#e2405a'; [[-14, 8], [0, -6], [14, 8]].forEach(([x, y]) => { g.beginPath(); g.arc(x, y, 6, 0, 6.283); g.fill(); }); g.strokeStyle = '#ffc93c'; g.lineWidth = 2; g.beginPath(); g.moveTo(-14, 8); g.lineTo(0, -6); g.lineTo(14, 8); g.stroke(); }
+  else if (k === 'shroom') { g.fillStyle = '#f3ecd6'; g.fillRect(-4, 0, 8, 16); g.fillStyle = '#8a6440'; g.beginPath(); g.arc(0, 2, 16, Math.PI, 0); g.fill(); g.fillStyle = '#f3ecd6'; g.fillRect(-8, -8, 4, 4); g.fillRect(5, -6, 3, 3); }
+  else if (k === 'boom') { g.fillStyle = '#ffc93c'; g.beginPath(); for (let i = 0; i < 16; i++) { const r = i % 2 ? 9 : 19, a = i / 16 * 6.283; g.lineTo(Math.cos(a) * r, Math.sin(a) * r); } g.fill(); g.fillStyle = '#e2405a'; g.beginPath(); g.arc(0, 0, 7, 0, 6.283); g.fill(); }
+  else if (k === 'echo') { g.strokeStyle = '#8a6440'; g.beginPath(); g.moveTo(0, 20); g.lineTo(0, 0); g.stroke(); g.strokeStyle = '#e2405a'; g.lineWidth = 2.5; for (let i = 1; i <= 3; i++) { g.beginPath(); g.arc(0, 0, i * 6, -2.4, -.7); g.stroke(); } }
+  else { g.fillStyle = '#6b4a2e'; g.fillRect(-9, -20, 18, 40); g.fillStyle = '#5fb85a'; for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(9, -14 + i * 10); g.lineTo(18, -10 + i * 10); g.lineTo(9, -6 + i * 10); g.fill(); g.beginPath(); g.moveTo(-9, -14 + i * 10); g.lineTo(-18, -10 + i * 10); g.lineTo(-9, -6 + i * 10); g.fill(); } } }
+
+// ================= HUD =================
+let hudT = 0, lastHp = -1;
+function hud() {
+  const hp = S ? S.hp / B.trunk.maxHp * 100 : 100;
+  if (Math.abs(hp - lastHp) > .2) { $('hpFill').style.width = hp + '%'; $('hpLag').style.width = hp + '%'; $('hpFill').style.background = hp < 30 ? '#ff5d7a' : '#5fb85a'; lastHp = hp; }
+  if (!S) return;
+  $('wave').textContent = `Welle ${Math.max(1, S.wave + (phase === 'build' ? 1 : 0))}/${B.waves.length}${phase === 'fight' ? ' · Nacht' : ''}`;
+  $('wv').textContent = Math.floor(S.w); $('mv').textContent = Math.floor(S.m);
+  $('wr').textContent = '+' + S.rate.w.toFixed(1) + '/s'; $('mr').textContent = '+' + S.rate.m.toFixed(1) + '/s';
+  $('go').classList.toggle('hide', phase !== 'build');
+  $('pause').style.visibility = phase === 'fight' ? 'visible' : 'hidden';
+}
+
+// ================= Loop =================
+let last = performance.now(), fpsAcc = 0, fpsN = 0, lowFps = 0;
+function frame(now) {
+  let dt = Math.min(.05, (now - last) / 1000); last = now; const t = now / 1000;
+  fpsAcc += dt; fpsN++; if (fpsAcc > 2) { const fps = fpsN / fpsAcc; if (fps < 50 && DPR > 1.5) { if (++lowFps >= 2) { DPR = 1.5; layout(); } } else lowFps = 0; fpsAcc = 0; fpsN = 0; }
+  if (S && !paused) {
+    // Animationen
+    for (const row of S.soil) for (const tt of row) if (tt.g < 1) tt.g += dt / .4;
+    for (const row of S.air) for (const a of row) if (a.br && a.g < 1) a.g += dt / .4;
+    if (S.overload && phase === 'fight') { S.tickT = (S.tickT || 0) - dt; if (S.tickT <= 0) { S.tickT = 1; sfx('tick'); } }
+    S.rangeT -= dt; flashT = Math.max(0, flashT - dt * 1.5); mutFx = Math.max(0, mutFx - dt * 1.6); trunkSq = Math.max(0, trunkSq - dt * 8); shakeT = Math.max(0, shakeT - dt);
+    if (hitStop > 0) hitStop -= dt; else if (phase === 'fight') updateFight(dt);
+    for (const p of P) if (p.a > 0) { p.a -= dt; p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; }
+    for (const r of RINGS) r.t += dt; for (const p of POP) p.t += dt;
+  }
+  render(t);
+  hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); }
+  requestAnimationFrame(frame);
+}
+// ================= Buttons =================
+$('go').onclick = () => { audioInit(); startWave(); };
+$('startBtn').onclick = () => { audioInit(); newRun(); $('title').style.display = 'none'; phase = 'build'; renderMutBar(); hud(); };
+$('again').onclick = () => { $('end').style.display = 'none'; newRun(); phase = 'build'; renderMutBar(); lastHp = -1; hud(); };
+$('pause').onclick = () => { if (phase !== 'fight') return; paused = true; $('paused').style.display = 'flex'; };
+$('resume').onclick = () => { paused = false; $('paused').style.display = 'none'; last = performance.now(); };
+$('noshake').checked = noShake; $('noshake').onchange = e => { noShake = e.target.checked; store.set('ww_noshake', noShake); };
+document.addEventListener('visibilitychange', () => { if (document.hidden && phase === 'fight') { paused = true; $('paused').style.display = 'flex'; } });
+addEventListener('resize', () => { layout(); if (S) for (const f of S.fruits) { f.px = ax(f.x); f.py = ay(f.h) + T * .15; } });
+$('best').textContent = 'Bestwert: ' + bestTxt(store.get('ww_best', 0));
+$('title').style.display = 'flex';
+layout(); requestAnimationFrame(frame);
+window.__ww = { sim(dt) { if (phase === "fight") updateFight(dt); }, get S() { return S; }, get phase() { return phase; }, startWave, B, showMuts, toBuild, onTap, sx, sy, ax, ay, plantFruit };
+</script>
+</body></html>
