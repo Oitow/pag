@@ -739,6 +739,123 @@ function makeSails(){const s=new THREE.Group();for(let k=0;k<4;k++){const a=new 
   g.add(mk(B(.5,.04,.15),WOOD,.12,.16,.18),mk(B(.5,.12,.03),WOOD,.12,.26,.25),mk(B(.04,.15,.12),TIMBER,-.1,.08,.18),mk(B(.04,.15,.12),TIMBER,.34,.08,.18));
   TEMPL.lantern=bake(g);
 }
+// ================= Wirtschaft: Eisen, Lehm/Ziegel, Wolle/Kleidung, Speicher =================
+Object.assign(DEF,{
+  mine:{name:'Erzmine',icon:'⛰️',cat:'handwerk',c:{wood:20,stone:8},lvl:1,work:'site',wk:'mine',wt:7,yield:{ore:2},workers:2,near:'rock',nearR:4,info:'Nahe Felsen bauen · 2 Arbeiter · Eisenerz'},
+  smithy:{name:'Schmiede',icon:'⚒️',cat:'handwerk',c:{planks:8,stone:10,bricks:6},lvl:1,work:'prod',in:{ore:2,wood:1},out:{tools:1},t:10,info:'Erz + Holz → Werkzeug (Arbeit 25 % schneller)'},
+  claypit:{name:'Lehmgrube',icon:'🕳️',cat:'handwerk',c:{wood:12},lvl:1,work:'site',wk:'clay',wt:5,yield:{clay:2},workers:2,near:'water',nearR:3,info:'Nahe Fluss, See oder Sumpf · 2 Arbeiter · Lehm'},
+  brickworks:{name:'Ziegelei',icon:'🔥',cat:'handwerk',c:{wood:20,stone:10},size:2,lvl:1,work:'prod',in:{clay:2,wood:1},out:{bricks:2},t:8,info:'Lehm + Holz → Ziegel'},
+  sheepfarm:{name:'Schäferei',icon:'🐑',cat:'handwerk',c:{wood:18,planks:4},size:2,lvl:1,work:'sheep',near:'meadow',nearR:4,nearN:20,info:'Auf Wiese bauen · 5 Schafe · Wolle'},
+  weaver:{name:'Weberei',icon:'🧵',cat:'handwerk',c:{planks:10,bricks:4},lvl:1,work:'prod',in:{wool:2},out:{cloth:1},t:9,info:'Wolle → Kleidung (Zufriedenheit)'},
+  granary:{name:'Speicher',icon:'🛖',cat:'wohnen',c:{planks:12,bricks:12,tools:2},size:2,lvl:1,info:'+300 Lagerplatz je Ware'},
+  house3:{name:'Ziegelhaus',icon:'🧱',cat:'wohnen',c:{bricks:16,planks:6,tools:2},cap:6,lvl:2,info:'Wohnraum für 6 Bewohner'},
+});
+DEF.store.info+=' · +150 Lagerplatz';
+Object.assign(RES_ICON,{ore:'🟤',tools:'🛠️',clay:'🟫',bricks:'🧱',wool:'🧶',cloth:'👕'});
+Object.assign(RES_NAME,{ore:'Eisenerz',tools:'Werkzeug',clay:'Lehm',bricks:'Ziegel',wool:'Wolle',cloth:'Kleidung'});
+const ECO_RES={ore:0,tools:0,clay:0,bricks:0,wool:0,cloth:0};Object.assign(RES0,ECO_RES);Object.assign(res,ECO_RES);
+CATS.push(['handwerk','⚒️','Handwerk']);
+const SITE_WK={mine:1,clay:1},SHEEP_PER=5,MAXSHEEP=60;
+const NEAR_TXT={rock:'Muss nah an Felsen oder Gebirge stehen',water:'Muss nah an Fluss, See oder Sumpf stehen',meadow:'Braucht viel freie Wiese in der Nähe'};
+{
+  const BRICK=0xa85a40;
+  // Erzmine: Felshügel mit Stollen, Schienen, Lore, Erzhaufen
+  let g=new THREE.Group();
+  [[-.15,.18,-.2,.32],[.2,.14,-.25,.26],[-.32,.1,.05,.2],[.05,.28,-.3,.24],[.34,.08,-.02,.15]].forEach(p=>g.add(mk(new THREE.DodecahedronGeometry(p[3],0),0x7d7a72,p[0],p[1],p[2])));
+  g.add(mk(B(.3,.32,.06),0x1a1612,0,.16,-.02),mk(B(.06,.38,.06),TIMBER,-.18,.19,.02),mk(B(.06,.38,.06),TIMBER,.18,.19,.02),mk(B(.46,.06,.08),TIMBER,0,.4,.02));
+  g.add(mk(B(.03,.02,.5),0x555555,-.07,.01,.28),mk(B(.03,.02,.5),0x555555,.07,.01,.28),mk(B(.2,.12,.16),0x6b4a2b,0,.1,.3),mk(new THREE.DodecahedronGeometry(.06,0),0x8a4a32,-.03,.18,.3),mk(new THREE.DodecahedronGeometry(.05,0),0x7a5040,.04,.18,.32));
+  g.add(mk(new THREE.DodecahedronGeometry(.1,0),0x8a4a32,.32,.06,.3),mk(new THREE.DodecahedronGeometry(.08,0),0x6e3a2a,.38,.06,.16),mk(B(.03,.32,.03),0x5a3e26,-.33,.15,.3,0,0,.3),mk(B(.12,.04,.03),0x8a8a8a,-.29,.3,.3));
+  TEMPL.mine=bake(g);
+  // Schmiede: Steinwerkstatt mit Vordach, Esse (glüht nachts), Amboss
+  g=new THREE.Group();g.add(mk(B(.86,.08,.76),STONE,0,.04,0),mk(B(.8,.4,.46),0x8a8378,0,.28,-.14));
+  g.add(mk(prism(.52,.92,.55),0x5a4a40,0,.48+.52*.5*.55,-.04),mk(B(.05,.42,.05),TIMBER,-.38,.29,.3),mk(B(.05,.42,.05),TIMBER,.38,.29,.3));
+  g.add(mk(B(.2,.75,.2),STONE,.25,.55,-.25),mk(B(.24,.05,.24),0x6a655c,.25,.95,-.25),mk(B(.3,.18,.22),0x7a7068,.2,.17,.1),mk(B(.18,.04,.12),'win',.2,.27,.1));
+  g.add(mk(B(.12,.12,.08),0x3a3a3a,-.15,.1,.2),mk(B(.2,.05,.09),0x2e2e2e,-.15,.18,.2),mk(CY(.08,.08,.2,8),0x7a5030,-.36,.1,.36),mk(B(.1,.02,.03),0xb0b4b8,-.32,.22,.38));
+  TEMPL.smithy=bake(g);CHIM.smithy=[.25,1.0,-.25];
+  // Lehmgrube: Grube mit Pfütze, Lehmhaufen, Trockengestell, Spaten
+  g=new THREE.Group();g.add(mk(CY(.36,.3,.04,8),0x5a3a22,-.08,.02,-.08),mk(CY(.24,.24,.02,8),0x6a7a6a,-.08,.04,-.08));
+  g.add(mk(new THREE.IcosahedronGeometry(.14,0).scale(1,.6,1),0xa8683e,.3,.06,.28),mk(new THREE.IcosahedronGeometry(.1,0).scale(1,.6,1),0x9a5a34,.38,.05,.1));
+  g.add(mk(B(.04,.32,.04),TIMBER,-.38,.16,.2),mk(B(.04,.32,.04),TIMBER,-.38,.16,.44),mk(B(.08,.02,.28),WOOD,-.38,.17,.32),mk(B(.08,.02,.28),WOOD,-.38,.29,.32));
+  for(let k=0;k<3;k++)g.add(mk(B(.06,.03,.06),0xb06a40,-.38,.195,.24+k*.08),mk(B(.06,.03,.06),0xb06a40,-.38,.315,.24+k*.08));
+  g.add(mk(B(.02,.36,.02),0x5a3e26,.12,.2,.38,0,0,.35),mk(B(.07,.09,.015),0x8a8a8a,.18,.04,.38),mk(B(.04,.4,.04),TIMBER,.32,.2,-.38),mk(B(.04,.4,.04),TIMBER,.32,.2,-.12),mk(B(.3,.03,.36),THATCH,.25,.4,-.25,0,0,.2));
+  TEMPL.claypit=bake(g);
+  // Ziegelei (2x2): Brennofen mit Schlot, Trockenschuppen, Ziegelstapel
+  g=new THREE.Group();g.add(mk(B(1.7,.05,1.5),0x8a6a4a,0,.025,0));
+  g.add(mk(CY(.42,.48,.5,10),0xa04a32,-.4,.25,-.3),mk(new THREE.SphereGeometry(.42,10,5,0,Math.PI*2,0,Math.PI/2),0x9a4430,-.4,.5,-.3),mk(B(.16,.14,.03),0x221a14,-.4,.14,.17),mk(B(.18,.55,.18),0x8a3a2a,-.15,.92,-.55),mk(B(.22,.05,.22),0x5a4a40,-.15,1.2,-.55));
+  for(const [x,z] of[[.2,-.65],[.8,-.65],[.2,.1],[.8,.1]])g.add(mk(B(.05,.5,.05),TIMBER,x,.25,z));
+  g.add(mk(B(.75,.04,.88),THATCH,.5,.52,-.27,0,.12));
+  for(let r=0;r<3;r++)for(let k=0;k<4;k++){g.add(mk(B(.1,.04,.05),0xc07a50,.3+k*.13,.06+r*.05,-.4),mk(B(.1,.04,.05),0xc07a50,.3+k*.13,.06+r*.05,-.15));}
+  for(let r=0;r<3;r++)for(let k=0;k<3;k++)g.add(mk(B(.12,.05,.06),0xa84a30,-.55+k*.14,.06+r*.055,.5));
+  g.add(mk(new THREE.IcosahedronGeometry(.18,0).scale(1,.55,1),0xa8683e,.55,.08,.55),mk(B(.2,.08,.3),WOOD,.2,.06,.6));
+  TEMPL.brickworks=bake(g);CHIM.brickworks=[-.15,1.24,-.55];
+  // Schäferei (2x2): Hütte, Pferch mit Zaun, Heu, Tränke, Wollballen
+  g=new THREE.Group();
+  g.add(mk(B(.7,.06,.6),0x6b5233,-.45,.03,-.45),mk(B(.62,.36,.52),0xc9b088,-.45,.24,-.45),mk(prism(.44,.78,.6),THATCH,-.45,.42+.44*.5*.6,-.45),mk(B(.14,.22,.03),0x4a3420,-.45,.15,-.18),mk(B(.08,.08,.03),'win',-.25,.28,-.18));
+  for(let k=0;k<=4;k++){const t=.05+k*.2;for(const [x,z] of[[t,.05],[t,.85],[.05,t],[.85,t]])g.add(mk(B(.04,.22,.04),0x7a5a33,x,.11,z));}
+  g.add(mk(B(.8,.025,.025),0x8b6a43,.45,.16,.05),mk(B(.8,.025,.025),0x8b6a43,.45,.16,.85),mk(B(.025,.025,.8),0x8b6a43,.05,.16,.45),mk(B(.025,.025,.8),0x8b6a43,.85,.16,.45));
+  g.add(mk(CY(.12,.12,.22,8),THATCH,.6,.12,.3,0,0,Math.PI/2),mk(B(.3,.07,.1),WOOD,.3,.05,.7),mk(B(.26,.02,.07),0x3d7fa0,.3,.09,.7));
+  g.add(mk(new THREE.IcosahedronGeometry(.1,0),0xf0ece0,-.7,.1,.1),mk(new THREE.IcosahedronGeometry(.09,0),0xe8e4d8,-.55,.09,.2),mk(B(.04,.6,.04),TIMBER,-.1,.3,-.75),mk(B(.16,.1,.01),0xf0ece0,-.03,.52,-.75));
+  TEMPL.sheepfarm=bake(g);
+  // Weberei: Fachwerkhaus, Webstuhl vor der Tür, Stoffe auf der Leine
+  g=new THREE.Group();g.add(mk(B(.8,.08,.56),STONE,0,.04,-.12),mk(B(.74,.4,.5),WALL,0,.28,-.12));timberFront(g,.74,.4,.08,.135,false);
+  g.add(mk(prism(.48,.86,.6),0x8a5a3a,0,.48+.48*.5*.6,-.12),mk(B(.14,.24,.03),0x5a3e26,-.18,.2,.14),mk(B(.12,.1,.03),'win',.2,.32,.14));
+  g.add(mk(B(.03,.32,.03),TIMBER,-.05,.16,.3),mk(B(.03,.32,.03),TIMBER,.25,.16,.3),mk(B(.33,.03,.03),TIMBER,.1,.31,.3),mk(B(.28,.2,.005),0xd8c8a8,.1,.2,.3),mk(CY(.035,.035,.3,6),0x3a6ab0,.1,.08,.32,0,0,Math.PI/2));
+  g.add(mk(B(.02,.42,.02),TIMBER,-.42,.21,.4),mk(B(.02,.42,.02),TIMBER,-.42,.21,-.05),mk(B(.01,.01,.46),0x333333,-.42,.4,.18),mk(B(.01,.18,.12),0xc84a3a,-.42,.3,.3),mk(B(.01,.16,.1),0xe0b030,-.42,.31,.08));
+  TEMPL.weaver=bake(g);
+  // Speicher (2x2): hoher Ziegelbau mit Fachwerk, Ladeluke mit Kranbalken, Säcke
+  g=new THREE.Group();g.add(mk(B(1.6,.1,1.3),STONE,0,.05,0),mk(B(1.5,.7,1.2),BRICK,0,.45,0));timberFront(g,1.5,.7,.1,.605,false);
+  g.add(mk(prism(.88,1.62,.75),0x6e3a28,0,.8+.88*.5*.75,0),mk(B(1.64,.05,.07),0x4e2a1c,0,.8+.88*1.5*.75-.03,0));
+  g.add(mk(B(.36,.44,.03),0x4a3420,-.3,.32,.61),mk(B(.2,.18,.03),0x4a3420,.35,.62,.61),mk(B(.05,.05,.32),TIMBER,.35,.85,.74),mk(B(.01,.25,.01),0x333333,.35,.72,.88),mk(B(.12,.1,.03),'win',-.6,.6,.61));
+  for(const p of[[.4,.1,.8],[.56,.1,.76],[.48,.25,.79]])g.add(mk(new THREE.IcosahedronGeometry(.1,0).scale(1,1.2,1),0xe8e0d0,p[0],p[1],p[2]));
+  g.add(mk(B(.2,.2,.2),WOOD,-.6,.1,.8),mk(B(.16,.16,.16),0x7a5a33,-.38,.08,.82));
+  TEMPL.granary=bake(g);
+  // Ziegelhaus: Ziegelwände, Gesims, rotes Dach, Schornstein
+  g=new THREE.Group();g.add(mk(B(.9,.08,.8),STONE,0,.04,0),mk(B(.84,.72,.74),BRICK,0,.44,0),mk(B(.88,.04,.78),0xd8c8a8,0,.44,0));
+  g.add(mk(prism(.6,1.06,.8),0x8a3a2a,0,.8+.6*.5*.8,0),mk(B(1.08,.05,.06),0x5e2a1c,0,.8+.6*1.5*.8-.03,0),mk(B(.14,.5,.14),0x8a3a2a,.26,1.15,-.12),mk(B(.18,.05,.18),0x6a655c,.26,1.42,-.12));
+  g.add(mk(B(.18,.3,.03),0x5a3e26,0,.23,.38),mk(B(.13,.11,.03),'win',-.26,.3,.38),mk(B(.13,.11,.03),'win',.26,.3,.38),mk(B(.13,.12,.03),'win',-.22,.64,.38),mk(B(.13,.12,.03),'win',.22,.64,.38),mk(B(.13,.12,.03),'win',0,.64,-.38));
+  g.add(mk(B(.15,.04,.06),0x7a4a2a,.26,.24,.41),mk(B(.04,.04,.04),0xd65a9a,.22,.27,.41),mk(B(.04,.04,.04),0xf2f2f2,.3,.27,.41));
+  TEMPL.house3=bake(g);CHIM.house3=[.26,1.46,-.12];
+}
+// Schafe (instanziert): Wollkörper (Farbe/Größe je nach Wolle) + Kopf/Beine
+const sheep=[];
+const sheepIM=inst(new THREE.IcosahedronGeometry(.17,0).scale(1,.85,1.35).translate(0,.27,0),lam(0xffffff),MAXSHEEP,true);
+const sheepHeadIM=inst(mergeGeos([B(.09,.1,.13).translate(0,.3,.24),B(.035,.16,.035).translate(-.06,.08,.11),B(.035,.16,.035).translate(.06,.08,.11),B(.035,.16,.035).translate(-.06,.08,-.11),B(.035,.16,.035).translate(.06,.08,-.11)]),lam(0x2e2622),MAXSHEEP,true);
+sheepIM.frustumCulled=sheepHeadIM.frustumCulled=false;sheepIM.count=sheepHeadIM.count=0;
+const cWool=new THREE.Color(0xf2efe6),cShorn=new THREE.Color(0xc8b8a8);
+function sheepTileOk(tx,tz){if(!W.inMap(tx,tz))return false;const i=tz*N+tx;return !W.tWater[i]&&W.occ[i]!==T_BUILD&&W.tH[i]>.15&&W.tSlope[i]<1.2;}
+function updateSheep(dt){
+  for(let i=0;i<sheep.length;i++){const a=sheep[i];let mv=false;
+    if(!a.res){const dx=a.gx-a.x,dz=a.gz-a.z,d=Math.hypot(dx,dz);
+      if(d>.05){const st=Math.min(d,.35*dt);a.x+=dx/d*st;a.z+=dz/d*st;let r=Math.atan2(dx,dz)-a.rot;r=Math.atan2(Math.sin(r),Math.cos(r));a.rot+=r*Math.min(1,dt*5);mv=true;}
+      else{a.t-=dt;if(a.t<=0){a.t=3+Math.random()*7;const b=a.b,tx=b.tx+Math.floor((Math.random()-.5)*10+b.s/2),tz=b.tz+Math.floor((Math.random()-.5)*10+b.s/2);if(sheepTileOk(tx,tz)){a.gx=tcen(tx)+(Math.random()-.5)*.6;a.gz=tcen(tz)+(Math.random()-.5)*.6;}}}}
+    a.ph+=dt*(mv?10:1);const y=heightAt(a.x,a.z)+(mv?Math.abs(Math.sin(a.ph))*.03:0),s=.8+.25*Math.min(1,a.wool);
+    setInstT(sheepIM,i,a.x,y,a.z,mv?0:Math.sin(a.ph*.4)*.06,a.rot,0,s,s,s);setInstT(sheepHeadIM,i,a.x,y,a.z,mv?0:Math.sin(a.ph*.4)*.06,a.rot,0,1,1,1);
+    tmpC.copy(cShorn).lerp(cWool,Math.min(1,a.wool));sheepIM.setColorAt(i,tmpC);}
+  sheepIM.count=sheepHeadIM.count=sheep.length;sheepIM.instanceMatrix.needsUpdate=sheepHeadIM.instanceMatrix.needsUpdate=true;if(sheepIM.instanceColor)sheepIM.instanceColor.needsUpdate=true;}
+// Lagerkapazität, Werkzeug, Kleidung
+let toolWear=0,clothAcc=0;
+function storeCap(){return 50+150*cnt('store')+300*cnt('granary');}
+function capAdd(k,c){const room=Math.max(0,storeCap()-res[k]);if(c>room)toast('📦 Lager voll – baue ein Lager oder einen Speicher 🛖');return Math.min(c,room);}
+function econOut(b){const d=DEF[b.type];if(d.work==='prod')return Object.keys(d.out)[0];if(d.yield)return Object.keys(d.yield)[0];return {tree:'wood',rock:'stone',bush:'berry',fish:'fish',hunt:'meat',sheep:'wool'}[d.work]||null;}
+function econFull(b){const k=econOut(b);return !!k&&res[k]>=storeCap();}
+function useTools(){if(res.tools<=0)return 1;toolWear+=1/30;if(toolWear>=1){toolWear-=1;res.tools--;}return .75;}
+function nearOk(t,tx,tz){const d=DEF[t],s=fsz(t),r=d.nearR||4;let c=0;
+  for(let dz=-r;dz<s+r;dz++)for(let dx=-r;dx<s+r;dx++){const x=tx+dx,z=tz+dz;if(x<0||z<0||x>=N||z>=N)continue;const i=z*N+x,bi=W.tBiome[i];
+    if(d.near==='rock'?(bi===B_ROCK||bi===B_SNOW||W.occ[i]===T_ROCK):d.near==='water'?((W.tWater[i]&&!W.tOcean[i])||bi===B_MARSH):((bi===B_MEADOW||bi===B_HEATH)&&!W.tWater[i]&&W.occ[i]<T_BUILD))c++;}
+  return c>=(d.nearN||1);}
+function econSlow(dt){
+  for(let i=sheep.length-1;i>=0;i--){const a=sheep[i];if(!buildings.includes(a.b)||!a.b.done){a.dead=true;if(a.res){const n=a.res;a.res=null;if(n.res===a)n.res=null;}sheep.splice(i,1);}}
+  for(const b of buildings){if(b.type!=='sheepfarm'||!b.done||sheep.some(a=>a.b===b))continue;const d=door(b);
+    for(let k=0;k<SHEEP_PER&&sheep.length<MAXSHEEP;k++){const x=d.x+(Math.random()-.5)*2,z=d.z+.5+Math.random()*1.5;sheep.push({b,x,z,gx:x,gz:z,rot:Math.random()*6.28,t:Math.random()*3,ph:Math.random()*6,wool:.4+Math.random()*.6,res:null,dead:false});}}
+  const wf=season()===3?.35:1;for(const a of sheep)if(a.wool<1)a.wool=Math.min(1,a.wool+dt*wf/55);
+  clothAcc+=npcs.length*dt/240;while(clothAcc>=1&&res.cloth>0){res.cloth--;clothAcc-=1;}if(res.cloth<=0)clothAcc=Math.min(clothAcc,1);}
+function econHapAdj(){hapF.cloth=res.cloth>0;hapF.tools=res.tools>0;if(hapF.cloth)hapT=Math.min(100,hapT+8);}
+function econInfo(b){const d=DEF[b.type];let t='';
+  if(d.work==='site'){const k=Object.keys(d.yield)[0];t+='<br>'+d.wt+' s Arbeit → '+d.yield[k]+' '+RES_ICON[k]+' '+RES_NAME[k];}
+  else if(d.work==='sheep'){const my=sheep.filter(a=>a.b===b);t+='<br>🐑 Schafe: '+my.length+' · bereit zur Schur: '+my.filter(a=>a.wool>=1).length;}
+  if(econFull(b))t+='<br>⚠️ Lager voll ('+storeCap()+')';return t;}
+function econStock(){return '<br><small>📦 Lagerplatz: '+storeCap()+' je Ware · 🛠️ Werkzeug: '+(res.tools>0?'✅ Arbeit 25 % schneller':'❌')+' · 👕 Kleidung: '+(res.cloth>0?'✅ +8 % Zufriedenheit':'❌')+'</small>';}
+// ================= Ende Wirtschaft (Block 1) =================
 const SITE=new THREE.Group();
 SITE.add(mk(B(.9,.05,.9),0xb8925a,0,.025,0));
 for(const [x,z] of[[-.4,-.4],[.4,-.4],[-.4,.4],[.4,.4]])SITE.add(mk(B(.05,.7,.05),0x7a5a33,x,.35,z));
@@ -799,6 +916,7 @@ function foodTotal(){let s=0;for(const k of FOODS)s+=res[k];return s;}
 function anchorFor(t,tx,tz){const o=(fsz(t)-1)>>1;return [tx-o,tz-o];}
 function canPlace(t,tx,tz){const s=fsz(t);for(let dz=0;dz<s;dz++)for(let dx=0;dx<s;dx++)if(!W.buildable(tx+dx,tz+dz))return false;
   if(DEF[t].water){let m=255;for(let dz=0;dz<s;dz++)for(let dx=0;dx<s;dx++)m=Math.min(m,W.tWD[(tz+dz)*N+tx+dx]);if(m>4||!fishSpots({tx,tz,x:tcen(tx),z:tcen(tz)}).length)return false;}
+  if(DEF[t].near&&!nearOk(t,tx,tz))return false;
   if(t==='farm'&&!cropFree.length)return false;return true;}
 function fpGround(tx,tz,s){let h=0;for(let dz=0;dz<s;dz++)for(let dx=0;dx<s;dx++)h+=W.tH[Math.min(N-1,tz+dz)*N+Math.min(N-1,tx+dx)];return h/(s*s);}
 function inFoot(b,tx,tz){return tx>=b.tx&&tz>=b.tz&&tx<b.tx+b.s&&tz<b.tz+b.s;}
@@ -863,7 +981,14 @@ const carryIM={wood:new THREE.InstancedMesh(mergeGeos([new THREE.CylinderGeometr
   sheaf:new THREE.InstancedMesh(mergeGeos([new THREE.CylinderGeometry(.06,.05,.34,6).rotateZ(Math.PI/2).translate(0,.06,0)]),lam(0xd8b850),MAXNPC),
   sack:new THREE.InstancedMesh(mergeGeos([new THREE.IcosahedronGeometry(.1,0).scale(1,1.2,1).translate(0,.1,0)]),lam(0xe8e0d0),MAXNPC),
   loaf:new THREE.InstancedMesh(mergeGeos([new THREE.IcosahedronGeometry(.08,0).scale(1.4,.7,.9).translate(0,.05,0),new THREE.IcosahedronGeometry(.07,0).scale(1.4,.7,.9).translate(.02,.11,0)]),lam(0xc08a48),MAXNPC)};
+// Wirtschaft: Traglasten
+Object.assign(carryIM,{ore:new THREE.InstancedMesh(mergeGeos([new THREE.DodecahedronGeometry(.07,0).translate(0,.05,0),new THREE.DodecahedronGeometry(.05,0).translate(.06,.1,0)]),lam(0x8a4a32),MAXNPC),
+  brick:new THREE.InstancedMesh(mergeGeos([0,1,2].map(k=>new THREE.BoxGeometry(.2,.05,.1).translate(0,.03+k*.055,0))),lam(0xb05a3a),MAXNPC),
+  wool:new THREE.InstancedMesh(mergeGeos([new THREE.IcosahedronGeometry(.11,0).translate(0,.08,0)]),lam(0xf2efe6),MAXNPC),
+  cloth:new THREE.InstancedMesh(mergeGeos([new THREE.BoxGeometry(.24,.05,.16).translate(0,.03,0),new THREE.BoxGeometry(.22,.05,.15).translate(0,.08,0)]),lam(0x3a6ab0),MAXNPC),
+  tools:new THREE.InstancedMesh(mergeGeos([new THREE.BoxGeometry(.3,.03,.03).translate(0,.04,0),new THREE.BoxGeometry(.06,.08,.04).translate(.15,.06,0)]),lam(0x8a8a8a),MAXNPC)});
 const CARRY_OF={wood:'wood',stone:'stone',planks:'planks',berry:'basket',fish:'fish',meat:'meat',wheat:'sheaf',flour:'sack',bread:'loaf'};
+Object.assign(CARRY_OF,{ore:'ore',clay:'basket',bricks:'brick',wool:'wool',cloth:'cloth',tools:'tools'});
 const BODY_IMS=[torsoIM,headIM,hairIM,legL,legR,armL,armR];
 const NPC_IMS=BODY_IMS.concat(Object.values(carryIM));
 const SHIRT=[0x3c6ea8,0x9c4b3b,0x5f7d3a,0x8a6aa0,0xc08a2e,0x3a8a8a];
@@ -907,6 +1032,7 @@ function fishSpots(b){const out=[],r=DEF.fisher.radius;
   out.sort((a,c)=>((a.x-b.x)**2+(a.z-b.z)**2)-((c.x-b.x)**2+(c.z-b.z)**2));return out.slice(0,30);}
 function doSeek(n){
   const b=n.job,d=DEF[b.type];n.wk=d.work;n.tgt=null;
+  if(econFull(b)){n.state='wait';n.timer=5;const dd=door(b);goTo(n,dd.x,dd.z);return;}
   if(d.work==='tree'||d.work==='rock'||d.work==='bush'){const r=nearestFree(RLIST[d.work],b.x,b.z,d.radius*d.radius);if(r){r.res=n;n.res=r;n.state='toRes';goTo(n,r.x+.3,r.z+.3);return;}}
   else if(d.work==='field'&&b.plots){let p=null;for(const q of b.plots)if(q.st===2&&!q.res){p=q;break;}
     if(!p&&growSeason())for(const q of b.plots)if(q.st===0&&!q.res){p=q;break;}
@@ -914,6 +1040,9 @@ function doSeek(n){
   else if(d.work==='fish'){if(!b.spots)b.spots=fishSpots(b);if(b.spots.length){const s=b.spots[(Math.random()*Math.min(10,b.spots.length))|0];n.tgt=s;n.state='toRes';goTo(n,s.x,s.z);return;}}
   else if(d.work==='hunt'){let best=null,bd=d.radius*d.radius;for(const a of deer){if(a.dead||a.res)continue;const dd=(a.x-b.x)**2+(a.z-b.z)**2;if(dd<bd){bd=dd;best=a;}}
     if(best){best.res=n;n.res=best;n.state='toRes';goTo(n,best.x-.5,best.z-.5);return;}}
+  else if(d.work==='site'){n.wk=d.wk;n.state='toRes';const dd=door(b);goTo(n,dd.x+(Math.random()-.5)*.4,dd.z+(Math.random()-.5)*.4);return;}
+  else if(d.work==='sheep'){let best=null,bd=1e9;for(const a of sheep){if(a.b!==b||a.dead||a.res||a.wool<1)continue;const q=(a.x-n.x)**2+(a.z-n.z)**2;if(q<bd){bd=q;best=a;}}
+    if(best){best.res=n;n.res=best;n.wk='sheep';n.state='toRes';goTo(n,best.x-.35,best.z-.35);return;}}
   else if(d.work==='prod'){if(has(d.in)){const s=nearestStore(n.x,n.z);if(s){n.state='toFetch';const dd=door(s);goTo(n,dd.x,dd.z);return;}}}
   n.state='wait';n.timer=4+Math.random()*2;const dd=door(b);goTo(n,dd.x,dd.z);
 }
@@ -965,13 +1094,14 @@ const WORK_T={tree:2.0,rock:3.0,bush:1.8,sow:1.4,harvest:2.0,hunt:1.2};
 function arrive(n){
   switch(n.state){
     case 'toRes':{
+      if(SITE_WK[n.wk]){if(!n.job){n.state='idle';break;}n.state='work';n.timer=(DEF[n.job.type].wt||5)*useTools();break;}
       if(n.wk==='fish'){n.state='work';n.timer=5+Math.random()*2;if(n.tgt&&(n.tgt.wx||n.tgt.wz))n.rot=Math.atan2(n.tgt.wx,n.tgt.wz);break;}
-      const r=n.res;if(!r){n.state='seek';break;}n.state='work';n.timer=WORK_T[n.wk]||2;n.rot=Math.atan2(r.x-n.x,r.z-n.z);break;}
+      const r=n.res;if(!r){n.state='seek';break;}n.state='work';n.timer=(WORK_T[n.wk]||2)*useTools();n.rot=Math.atan2(r.x-n.x,r.z-n.z);break;}
     case 'toFetch':{const d=n.job&&DEF[n.job.type];if(!d||!d.in){n.state='idle';break;}
       if(has(d.in)){addRes(d.in,-1);n.carryIn=Object.assign({},d.in);n.carry=sumC(d.in);n.carryType=Object.keys(d.in)[0];n.state='toShop';const dd=door(n.job);goTo(n,dd.x,dd.z);}
       else{n.state='wait';n.timer=4;}break;}
-    case 'toShop':{if(!n.job){sendToStore(n);break;}n.state='craft';n.timer=DEF[n.job.type].t;n.carry=0;n.carryIn=null;n.rot=Math.atan2(n.job.x-n.x,n.job.z-n.z);break;}
-    case 'toStore':{if(n.carry>0){if(n.carryIn){addRes(n.carryIn,1);n.carryIn=null;}else{res[n.carryType]+=n.carry;stats.got[n.carryType]=(stats.got[n.carryType]||0)+n.carry;}
+    case 'toShop':{if(!n.job){sendToStore(n);break;}n.state='craft';n.timer=DEF[n.job.type].t*useTools();n.carry=0;n.carryIn=null;n.rot=Math.atan2(n.job.x-n.x,n.job.z-n.z);break;}
+    case 'toStore':{if(n.carry>0){if(n.carryIn){addRes(n.carryIn,1);n.carryIn=null;}else{res[n.carryType]+=capAdd(n.carryType,n.carry);stats.got[n.carryType]=(stats.got[n.carryType]||0)+n.carry;}
         popText('+'+n.carry+' '+RES_ICON[n.carryType],n.x,n.z);n.carry=0;}n.state=n.job?'seek':'idle';break;}
     case 'toSite':if(n.site&&!n.site.done){n.state='build';n.rot=Math.atan2(n.site.x-n.x,n.site.z-n.z);}else{n.site=null;n.state='idle';}break;
     case 'toHome':n.state='sleep';n.hidden=true;break;
@@ -980,6 +1110,7 @@ function arrive(n){
 function finishWork(n){
   const wk=n.wk,r=n.res;n.res=null;if(r)r.res=null;
   if(wk==='fish'){n.carry=3;n.carryType='fish';sendToStore(n);return;}
+  if(SITE_WK[wk]){if(!n.job){n.state='idle';return;}const y=DEF[n.job.type].yield,k=Object.keys(y)[0];n.carry=y[k];n.carryType=k;sendToStore(n);return;}
   if(!r){n.state='seek';return;}
   if(wk==='tree'){const i=treeIdx.get(r);r.wood--;n.carry=3;n.carryType='wood';
     if(r.wood<=0){W.occ[r.tz*N+r.tx]=T_FREE;r.regrow=70+Math.random()*60;pathCache.clear();}else r.s*=.88;setTree(r,i);flushTrees();}
@@ -989,6 +1120,7 @@ function finishWork(n){
   else if(wk==='sow'){if(r.st===0&&r.slot>=0){r.st=1;r.g=0;setCrop(r);}n.state='seek';return;}
   else if(wk==='harvest'){if(r.st===2&&r.slot>=0){r.st=0;r.g=0;setCrop(r);n.carry=4;n.carryType='wheat';}else{n.state='seek';return;}}
   else if(wk==='hunt'){if(!r.dead){killDeer(r);n.carry=4;n.carryType='meat';}else{n.state='seek';return;}}
+  else if(wk==='sheep'){if(!r.dead&&r.wool>=1){r.wool=0;n.carry=2;n.carryType='wool';}else{n.state='seek';return;}}
   sendToStore(n);
 }
 function finishCraft(n){const d=DEF[n.job.type],k=Object.keys(d.out)[0];n.carry=d.out[k];n.carryType=k;n.carryIn=null;sendToStore(n);}
@@ -1092,6 +1224,13 @@ const TASKS=[
   {t:'Baue eine Bäckerei 🥖',ok:()=>cnt('bakery')>=1,r:{wood:10}},
   {t:'Backe 20 Brote 🍞',ok:()=>(stats.got.bread||0)>=20,r:{stone:20}},
 ];
+// ---- Wirtschaft: Aufgaben ----
+TASKS.push(
+  {t:'Baue eine Lehmgrube 🕳️',ok:()=>cnt('claypit')>=1,r:{wood:15}},
+  {t:'Brenne 20 Ziegel 🧱',ok:()=>(stats.got.bricks||0)>=20,r:{planks:10}},
+  {t:'Baue eine Erzmine ⛰️',ok:()=>cnt('mine')>=1,r:{stone:10}},
+  {t:'Schmiede 10 Werkzeuge 🛠️',ok:()=>(stats.got.tools||0)>=10,r:{bricks:10}},
+  {t:'Webe 10 Kleidung 👕',ok:()=>(stats.got.cloth||0)>=10,r:{wool:10,wood:10}});
 const taskDone=TASKS.map(()=>false);
 const rewTxt=r=>Object.keys(r).map(k=>'+'+r[k]+' '+RES_ICON[k]).join(' ');
 function checkTasks(){for(let i=0;i<TASKS.length;i++){if(taskDone[i])continue;let ok=false;try{ok=TASKS[i].ok();}catch(e){}if(ok){taskDone[i]=true;addRes(TASKS[i].r,1);toast('✅ '+TASKS[i].t+'  '+rewTxt(TASKS[i].r));}}}
@@ -1104,6 +1243,7 @@ function computeHap(){
   for(const n of npcs)if(!DEF[n.home.type].cap)homeless++;
   hapF={variety:FOODS.filter(k=>res[k]>0).length,well:w/tot,market:m/tot,deco:Math.min(1,d/tot),homeless:homeless/tot,bread:res.bread>0,noFood:foodTotal()<=0};
   hapT=happinessOf(hapF);
+  econHapAdj();
 }
 function checkLevel(){const nx=LEVELS[level+1];if(nx&&npcs.length>=nx.pop&&hap>=nx.hap){level++;toast('🎉 Eure Siedlung ist jetzt '+(level===1?'ein ':'eine ')+LEVELS[level].n+'! Neue Gebäude freigeschaltet');if(openCat)renderSheet();}}
 
@@ -1148,7 +1288,7 @@ function showGhost(tx,tz){
   ghostTile.scale.set(s,1,s);
   ghostRoot.position.set(tcen(ax)+(s-1)/2,(s>1?fpGround(ax,az,s):tileGround(ax,az))+.02,tcen(az)+(s-1)/2);ghostRoot.rotation.y=((hash(ax,az)*4)|0)*Math.PI/2;ghostRoot.visible=true;
   ghostMat.color.set(ok&&aff?0x44ff66:0xff4444);
-  const why=!ok?(DEF[mode].water?'Muss direkt am Wasser stehen (und frei sein)':mode==='farm'&&!cropFree.length?'Maximale Anzahl Äcker erreicht':'Hier geht nicht (Wasser, Hang oder belegt'+(s>1?' – braucht '+s+'×'+s+' Felder':'')+')'):!aff?'Zu wenig Rohstoffe: '+costTxt(mode):'Kosten: '+costTxt(mode);
+  const why=!ok?(DEF[mode].near&&!nearOk(mode,ax,az)?NEAR_TXT[DEF[mode].near]:DEF[mode].water?'Muss direkt am Wasser stehen (und frei sein)':mode==='farm'&&!cropFree.length?'Maximale Anzahl Äcker erreicht':'Hier geht nicht (Wasser, Hang oder belegt'+(s>1?' – braucht '+s+'×'+s+' Felder':'')+')'):!aff?'Zu wenig Rohstoffe: '+costTxt(mode):'Kosten: '+costTxt(mode);
   openPanel(DEF[mode].icon+' '+DEF[mode].name+' bauen?',why+'<br><small>'+DEF[mode].info+'</small>',[{t:'✓ Bauen',c:'go',dis:!(ok&&aff),f:confirmBuild},{t:'✕ Fertig',f:()=>setMode(null)}]);
 }
 function confirmBuild(){
@@ -1165,6 +1305,11 @@ function confirmBuild(){
 const JOBT={cutter:'Holzfäller',quarry:'Steinmetz',gather:'Sammler',fisher:'Fischer',hunter:'Jäger',farm:'Bauer',sawmill:'Säger',mill:'Müller',bakery:'Bäcker'};
 const WKT={tree:['geht zum Baum','fällt einen Baum 🪓'],rock:['geht zum Felsen','schlägt Stein ⛏️'],bush:['geht zum Beerenstrauch','pflückt Beeren 🫐'],sow:['geht säen','sät Weizen 🌱'],harvest:['geht ernten','erntet Weizen 🌾'],fish:['geht zum Ufer','angelt 🎣'],hunt:['pirscht sich an ein Reh','jagt 🏹']};
 const CRAFTT={sawmill:'sägt Bretter 🪚',mill:'mahlt Mehl 🥣',bakery:'backt Brot 🍞'};
+// ---- Wirtschaft: Texte ----
+Object.assign(JOBT,{mine:'Bergmann',claypit:'Lehmstecher',brickworks:'Ziegler',smithy:'Schmied',sheepfarm:'Schäfer',weaver:'Weber'});
+Object.assign(WKT,{mine:['geht in den Stollen','schürft Erz ⛏️'],clay:['geht zur Lehmgrube','sticht Lehm 🟫'],sheep:['geht zu einem Schaf','schert ein Schaf 🐑']});
+Object.assign(CRAFTT,{brickworks:'brennt Ziegel 🔥',smithy:'schmiedet Werkzeug ⚒️',weaver:'webt Stoff 🧵'});
+WORK_T.sheep=2.5;
 function taskText(n){switch(n.state){
   case 'toRes':return (WKT[n.wk]||['geht zur Arbeit'])[0];case 'work':return (WKT[n.wk]||[0,'arbeitet'])[1];
   case 'toStore':return 'bringt '+n.carry+' '+(RES_NAME[n.carryType]||'')+' zum Lager';case 'toFetch':return 'holt Rohstoffe aus dem Lager';case 'toShop':return 'trägt Rohstoffe zur Werkstatt';
@@ -1188,6 +1333,7 @@ function infoText(b){
     else if(d.work==='field'){let a=0,r=0,e=0;for(const p of b.plots){if(p.st===1)a++;else if(p.st===2)r++;else e++;}t+='<br>🌱 wächst: '+a+' · 🌾 reif: '+r+' · leer: '+e+(growSeason()?'':'<br>❄️ '+SEASONS[season()].n+': kein Wachstum');}
     else if(d.work==='fish'){if(!b.spots)b.spots=fishSpots(b);t+=b.spots.length?'<br>Angelplätze: '+b.spots.length:'<br>⚠️ Kein Ufer in Reichweite';}
     else if(d.work==='hunt'){let c=0;for(const a of deer)if(!a.dead&&(a.x-b.x)**2+(a.z-b.z)**2<d.radius*d.radius)c++;t+='<br>Rehe in der Nähe: '+c;}
+    else if(d.work==='site'||d.work==='sheep')t+=econInfo(b);
     else t+='<br>Radius: '+d.radius+' Felder';}
   else if(b.type==='store')t+='Hier werden Waren abgegeben.';
   else t+=d.info;
@@ -1196,7 +1342,7 @@ function infoText(b){
 }
 function openInfo(b){closePanel();infoB=b;infoKind='b';const d=DEF[b.type];openPanel(d.icon+' '+d.name,infoText(b),[{t:'🧨 Abreißen',c:'red',f:()=>demolish(b)},{t:'Schließen',f:closePanel}]);}
 function stockText(){let t='';for(const k in res)t+=RES_ICON[k]+' '+RES_NAME[k]+': <b>'+res[k]+'</b>'+(FOODS.includes(k)?' 🍽':'')+'<br>';
-  t+='<hr style="border:0;border-top:1px solid #c9b88f;margin:5px 0">'+hapIcon(hap)+' Zufriedenheit '+Math.round(hap)+' %<br><small>Nahrungsvielfalt '+hapF.variety+'/4 · Brunnen '+Math.round(hapF.well*100)+'% · Markt '+Math.round(hapF.market*100)+'% · Deko '+Math.round(hapF.deco*100)+'%'+(hapF.homeless>0?' · Obdachlos '+Math.round(hapF.homeless*100)+'%':'')+(hapF.noFood?' · ⚠️ Hunger!':'')+'<br>Mehr Zufriedenheit = schnellerer Zuzug.</small>';return t;}
+  t+='<hr style="border:0;border-top:1px solid #c9b88f;margin:5px 0">'+hapIcon(hap)+' Zufriedenheit '+Math.round(hap)+' %<br><small>Nahrungsvielfalt '+hapF.variety+'/4 · Brunnen '+Math.round(hapF.well*100)+'% · Markt '+Math.round(hapF.market*100)+'% · Deko '+Math.round(hapF.deco*100)+'%'+(hapF.homeless>0?' · Obdachlos '+Math.round(hapF.homeless*100)+'%':'')+(hapF.noFood?' · ⚠️ Hunger!':'')+'<br>Mehr Zufriedenheit = schnellerer Zuzug.</small>';return t+econStock();}
 function openStock(){closePanel();infoKind='stock';openPanel('📦 Vorräte',stockText(),[{t:'Schließen',f:closePanel}]);}
 function tasksText(){let t='<b>'+LEVELS[level].i+' '+LEVELS[level].n+'</b>';const nx=LEVELS[level+1];
   t+=nx?' → '+nx.i+' '+nx.n+': '+ok_(npcs.length>=nx.pop)+' '+npcs.length+'/'+nx.pop+' 👤 '+ok_(hap>=nx.hap)+' '+Math.round(hap)+'/'+nx.hap+' 😊':' (höchste Stufe)';
@@ -1375,6 +1521,7 @@ function slowTick(){
   if(tu)flushTrees();if(ru)flushRocks();if(bu)berryIM.instanceMatrix.needsUpdate=true;
   // Äcker wachsen (nur Frühling/Sommer)
   if(growSeason())for(const b of buildings){if(!b.plots||!b.done)continue;for(const p of b.plots)if(p.st===1){p.g+=.5/75;if(p.g>=1){p.g=1;p.st=2;}setCrop(p);}}
+  econSlow(.5);
   // Zufriedenheit, Stufe, Aufgaben
   computeHap();hap+=(hapT-hap)*.12;checkLevel();checkTasks();
   const s=season();if(s!==lastSeason){lastSeason=s;toast(SEASONS[s].i+' '+SEASONS[s].n+(s===0?' – die Felder können bestellt werden':s===2?' – letzte Ernte vor dem Winter':s===3?' – nichts wächst, Vorräte nutzen!':''));}
@@ -1404,6 +1551,7 @@ function step(dt){
   if(night!==wasNight){toast(night?'🌙 Die Nacht bricht an – alle gehen heim':'☀️ Ein neuer Tag beginnt');wasNight=night;}
   pathBudget=3;
   for(const n of npcs)updateNpc(n,dt);
+  updateSheep(dt);
   for(const b of buildings){if(b.done)continue;if(!b.builder&&!night)b.progress+=dt/(60*(b.s>1?1.5:1));
     if(b.progress>=1)finishBuilding(b);else{b.body.visible=b.progress>.05;b.body.scale.set(1,.04+.96*b.progress,1);}}
   // Zuzug (abhängig von Zufriedenheit)
