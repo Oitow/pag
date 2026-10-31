@@ -21,9 +21,14 @@ Aufbauspiel im Stil von Manor Lords, aber anders. Mobil im Hochformat, Single-Fi
 - 📊 Statistik: Bevölkerung, Zufriedenheit nach Faktoren, Vorräte mit Trend pro Minute + Sparklines; Trendpfeile in der Ressourcenleiste
 - Einsteiger-Tipps (abschaltbar), ☰ → ⚙️ Optionen: Grafikstufe, Tempo, Ton (Platzhalter), Tutorial neu, Spielstand zurücksetzen
 - Tiere, Wolken, Sternenhimmel, Wind in Pflanzen, Auto-Qualität
+- Wetter: Sonnig / Bewölkt / Regen / Gewitter (Blitze, Sturm in Pflanzen) / Schnee (nur Winter), weiche Übergänge, Symbol im HUD (antippen = Info), wird gespeichert
+  - Regen lässt Äcker ~35 % schneller wachsen, bei Gewitter pausieren die Fischer
+  - Regen/Schnee als Shader-Partikel um die Kamera, Menge nach Auto-Qualität
+- Jahreszeiten-Optik: Laubbäume färben sich im Herbst, Blüte im Frühling, Schneedecke auf Boden, Dächern und Bäumen im Winter, Blumen nur in der warmen Zeit
+- Leben: Vogelschwärme + Zugvögel (V-Formation), Schornsteinrauch, springende Fische, Glühwürmchen in Sommernächten
 
 ## Steuerung
 1 Finger verschieben · 2 Finger zoomen/drehen · Gebäude antippen für Info
 
 ## Tests
-`tests/` enthält einen Node-Testlauf mit Fake-THREE (`sh tests/mk.sh`, dann `node tests/drive2.mjs`; außerdem `drive_econ.mjs`, `drive_pop.mjs`, `drive_ui.mjs`).
+`tests/` enthält einen Node-Testlauf mit Fake-THREE (`sh tests/mk.sh`, dann `node tests/drive2.mjs`; außerdem `drive_econ.mjs`, `drive_pop.mjs`, `drive_ui.mjs`, `drive_weather.mjs`).

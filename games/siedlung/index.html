@@ -408,9 +408,9 @@ function setInstT(im,i,x,y,z,rx,ry,rz,sx,sy,sz){eu.set(rx,ry,rz,'YXZ');qt.setFro
 function lam(c,opt){return new THREE.MeshLambertMaterial(Object.assign({color:c,flatShading:true},opt||{}));}
 // Wind: günstige Vertex-Verschiebung (höhenabhängig) für Instanzen
 function windMat(c,amp,opt){const m=lam(c,opt);
-  m.onBeforeCompile=sh=>{sh.uniforms.uTime=uTime;
-    sh.vertexShader='uniform float uTime;\n'+sh.vertexShader.replace('#include <begin_vertex>',
-      '#include <begin_vertex>\n#ifdef USE_INSTANCING\nvec2 ip=vec2(instanceMatrix[3][0],instanceMatrix[3][2]);\n#else\nvec2 ip=vec2(0.);\n#endif\nfloat sw=sin(uTime*1.7+ip.x*.33+ip.y*.21)+.45*sin(uTime*2.9+ip.x*.8-ip.y*.5);float hh=max(transformed.y,0.);\ntransformed.x+=sw*'+amp.toFixed(4)+'*hh*hh;transformed.z+=sw*'+(amp*.5).toFixed(4)+'*hh*hh;');};
+  m.onBeforeCompile=sh=>{sh.uniforms.uTime=uTime;sh.uniforms.uWind=uWind;
+    sh.vertexShader='uniform float uTime;uniform float uWind;\n'+sh.vertexShader.replace('#include <begin_vertex>',
+      '#include <begin_vertex>\n#ifdef USE_INSTANCING\nvec2 ip=vec2(instanceMatrix[3][0],instanceMatrix[3][2]);\n#else\nvec2 ip=vec2(0.);\n#endif\nfloat sw=(sin(uTime*1.7+ip.x*.33+ip.y*.21)+.45*sin(uTime*2.9+ip.x*.8-ip.y*.5))*uWind+(uWind-1.)*(.4+.5*sin(uTime*6.1+ip.x*.5+ip.y*.4));float hh=max(transformed.y,0.);\ntransformed.x+=sw*'+amp.toFixed(4)+'*hh*hh;transformed.z+=sw*'+(amp*.5).toFixed(4)+'*hh*hh;');};
   m.customProgramCacheKey=()=>'wind'+amp;return m;}
 const IMS=[];// für Auto-Qualität
 function inst(geo,mat,n,shadow){const im=new THREE.InstancedMesh(geo,mat,Math.max(1,n));im.count=n;if(shadow){im.castShadow=true;im.receiveShadow=true;}scene.add(im);return im;}
@@ -453,9 +453,11 @@ const tcolAttr=new THREE.BufferAttribute(colArr,3);tcolAttr.setUsage(THREE.Dynam
 tgeo.setAttribute('color',tcolAttr);tgeo.computeVertexNormals();
 const terrainMat=new THREE.MeshLambertMaterial({vertexColors:true,flatShading:true});
 // Wolkenschatten (wandernd, sehr günstig)
-terrainMat.onBeforeCompile=sh=>{sh.uniforms.uTime=uTime;sh.uniforms.uDay=uDay;
-  sh.vertexShader='varying vec2 vWXZ;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvWXZ=position.xz;');
-  sh.fragmentShader='uniform float uTime;uniform float uDay;varying vec2 vWXZ;\n'+sh.fragmentShader.replace('#include <fog_fragment>',
+terrainMat.onBeforeCompile=sh=>{sh.uniforms.uTime=uTime;sh.uniforms.uDay=uDay;sh.uniforms.uSnow=uSnow;sh.uniforms.uWet=uWet;
+  sh.vertexShader='varying vec2 vWXZ;varying float vTH;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvWXZ=position.xz;vTH=position.y;');
+  sh.fragmentShader='uniform float uTime;uniform float uDay;uniform float uSnow;uniform float uWet;varying vec2 vWXZ;varying float vTH;\n'+sh.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\n'+
+    'float wxN=sin(vWXZ.x*.37+1.7)*sin(vWXZ.y*.41)+.5*sin((vWXZ.x-vWXZ.y)*.93)+.25*sin(vWXZ.x*2.1+vWXZ.y*1.7);float wxS=clamp(uSnow*1.7-.45+wxN*.3,0.,1.)*smoothstep(.06,.4,vTH);\n'+
+    'diffuseColor.rgb*=1.-uWet*.22*smoothstep(0.,.3,vTH);diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.9,.93,.97),wxS*.92);').replace('#include <fog_fragment>',
     'vec2 cp=vWXZ+vec2(uTime*1.1,uTime*.35);float cl=sin(cp.x*.045)*sin(cp.y*.052+1.3)+.55*sin((cp.x+cp.y)*.031+2.)+.3*sin(cp.x*.11-cp.y*.07);\ngl_FragColor.rgb*=1.-.2*uDay*smoothstep(.45,1.1,cl);\n#include <fog_fragment>');};
 terrainMat.customProgramCacheKey=()=>'terrain';
 const terrain=new THREE.Mesh(tgeo,terrainMat);
@@ -1127,7 +1129,7 @@ function doSeek(n){
   else if(d.work==='field'&&b.plots){let p=null;for(const q of b.plots)if(q.st===2&&!q.res){p=q;break;}
     if(!p&&growSeason())for(const q of b.plots)if(q.st===0&&!q.res){p=q;break;}
     if(p){p.res=n;n.res=p;n.wk=p.st===2?'harvest':'sow';n.state='toRes';goTo(n,p.x+.2,p.z+.2);return;}}
-  else if(d.work==='fish'){if(!b.spots)b.spots=fishSpots(b);if(b.spots.length){const s=b.spots[(Math.random()*Math.min(10,b.spots.length))|0];n.tgt=s;n.state='toRes';goTo(n,s.x,s.z);return;}}
+  else if(d.work==='fish'&&!wxStorm()){if(!b.spots)b.spots=fishSpots(b);if(b.spots.length){const s=b.spots[(Math.random()*Math.min(10,b.spots.length))|0];n.tgt=s;n.state='toRes';goTo(n,s.x,s.z);return;}}
   else if(d.work==='hunt'){let best=null,bd=d.radius*d.radius;for(const a of deer){if(a.dead||a.res)continue;const dd=(a.x-b.x)**2+(a.z-b.z)**2;if(dd<bd){bd=dd;best=a;}}
     if(best){best.res=n;n.res=best;n.state='toRes';goTo(n,best.x-.5,best.z-.5);return;}}
   else if(d.work==='site'){n.wk=d.wk;n.state='toRes';const dd=door(b);goTo(n,dd.x+(Math.random()-.5)*.4,dd.z+(Math.random()-.5)*.4);return;}
@@ -1525,6 +1527,137 @@ function clockStr(){const h=tod<0.7?6+14*tod/0.7:(20+10*(tod-0.7)/0.3)%24;const 
 const hapIcon=h=>h>=70?'😄':h>=45?'🙂':h>=25?'😐':'☹️';
 const growF=()=>hap<20?0:.3+hap/80;
 
+// ================= WETTER, ATMOSPHÄRE & LEBEN (Wetter, Partikel, Jahreszeiten-Optik, Glühwürmchen, Zugvögel) =================
+const uWind={value:1},uSnow={value:0},uWet={value:0};
+const WX=[{n:'Sonnig',i:'☀️',cov:.12,rain:0,snow:0,storm:0},{n:'Bewölkt',i:'☁️',cov:.68,rain:0,snow:0,storm:0},{n:'Regen',i:'🌧️',cov:.92,rain:1,snow:0,storm:0},
+  {n:'Gewitter',i:'⛈️',cov:1,rain:1,snow:0,storm:1},{n:'Schnee',i:'🌨️',cov:.85,rain:0,snow:1,storm:0}];
+const WX_P=[[.36,.3,.25,.09,0],[.5,.22,.13,.15,0],[.22,.36,.28,.14,0],[.32,.33,0,0,.35]];// Wahrscheinlichkeit je Jahreszeit
+const WX_FX=['☀️ Die Sonne kommt heraus','','🌧️ Regen – die Äcker wachsen schneller','⛈️ Gewitter! Die Fischer bleiben an Land','🌨️ Es schneit'];
+const wx={c:0,t:80},wv={cov:.12,rain:0,snow:0,storm:0};let snowCov=0,wxFlash=0,wxFlashT=6,wxFlash2=-1;
+const wxFix=i=>{const w=season()===3;return w&&(i===2||i===3)?4:!w&&i===4?2:i;};
+function wxPick(){const p=WX_P[season()];let r=Math.random(),i=0;for(;i<4;i++){r-=p[i];if(r<0)break;}return wxFix(Math.min(4,i));}
+function wxSet(i,quiet){i=wxFix(i|0);if(i===wx.c)return;wx.c=i;if(!quiet&&WX_FX[i])toast(WX_FX[i]);}
+const wxGrowF=()=>1+.35*wv.rain,wxStorm=()=>wx.c===3;
+function wxSave(){return {c:wx.c,t:Math.round(wx.t),sc:+snowCov.toFixed(2)};}
+function wxLoad(o){if(!o||typeof o!=='object')return;const c=numOr(o.c,0)|0;wx.c=wxFix(c>=0&&c<WX.length?c:0);wx.t=Math.max(5,Math.min(400,numOr(o.t,80)));
+  snowCov=Math.max(0,Math.min(1,numOr(o.sc,0)));const g=WX[wx.c];for(const k in wv)wv[k]=g[k];}
+const cWxDay=new THREE.Color(0x8c96a2),cWxNight=new THREE.Color(0x10141c),cWxCl=new THREE.Color(0x5c6470),cWxClN=new THREE.Color(0x1a1e26),cBlk=new THREE.Color(0),wxC=new THREE.Color(),wxC2=new THREE.Color();
+function updateWeather(dt){
+  wx.t-=dt;if(wx.t<=0){wxSet(wxPick());wx.t=70+Math.random()*110;}
+  if(wxFix(wx.c)!==wx.c)wxSet(wxFix(wx.c),true);
+  const g=WX[wx.c],k=Math.min(1,dt/10);for(const key in wv){wv[key]+=(g[key]-wv[key])*k;if(!Number.isFinite(wv[key]))wv[key]=g[key];}
+  const st=season()===3?.5+.5*wv.snow:0;snowCov+=Math.max(-dt/35,Math.min(dt/35,st-snowCov));
+  uWet.value+=(wv.rain-uWet.value)*Math.min(1,dt/25);uSnow.value=snowCov;uWind.value=1+wv.storm*1.6+wv.rain*.4+wv.cov*.1;
+  // Himmel abdunkeln (läuft direkt nach updateSky, daher idempotent)
+  const d=Math.min(.75,wv.cov*.3+wv.rain*.28+wv.storm*.17+wv.snow*.12);
+  wxC.copy(cWxNight).lerp(cWxDay,light);skyCol.lerp(wxC,d);skyU.uTop.value.lerp(wxC,d*.85);skyU.uSunCol.value.lerp(cBlk,Math.min(1,d*1.3));
+  sun.intensity*=1-d*.8;hemi.intensity*=1-d*.25;uDay.value*=1-wv.cov*.6;
+  wxC2.copy(cWxClN).lerp(cWxCl,light);cloudMat.color.lerp(wxC2,Math.min(1,wv.rain*.65+wv.cov*.2));
+  const fk=Math.max(wv.rain*.8,wv.snow*.9,wv.cov*.2);scene.fog.near=60-32*fk;scene.fog.far=185-70*fk;
+  // Blitze (Doppelblitz)
+  wxFlashT-=dt;if(wv.storm>.6&&wxFlashT<=0){wxFlashT=4+Math.random()*12;wxFlash=1;wxFlash2=.18;}
+  if(wxFlash2>0){wxFlash2-=dt;if(wxFlash2<=0)wxFlash=Math.max(wxFlash,.8);}
+  if(wxFlash>0){wxFlash=Math.max(0,wxFlash-dt*4);hemi.intensity+=wxFlash*2.5;skyCol.lerp(cWhite,wxFlash*.5);skyU.uTop.value.lerp(cWhite,wxFlash*.35);}
+  scene.fog.color.copy(skyCol);
+}
+// ---- Partikel: Regen (Linien), Schnee (Punkte) – Bewegung komplett im Shader, folgen der Kamera ----
+const RAINMAX=1400,SNOWMAX=1600,FFMAX=420;
+function rndGeo(n,rep){const p=new Float32Array(n*rep*3),e=new Float32Array(n*rep);for(let i=0;i<n;i++){const x=Math.random(),y=Math.random(),z=Math.random();for(let r=0;r<rep;r++){const j=i*rep+r;p[j*3]=x;p[j*3+1]=y;p[j*3+2]=z;e[j]=r;}}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(p,3));g.setAttribute('aE',new THREE.BufferAttribute(e,1));return g;}
+const WRAP='vec3 wxW(vec3 p,vec3 c,float R,float y){float R2=R*2.;return vec3(c.x-R+mod(p.x*R2-(c.x-R),R2),c.y-3.+y,c.z-R+mod(p.z*R2-(c.z-R),R2));}\n';
+const rainU={uTime,uC:{value:new THREE.Vector3()},uR:{value:20},uH:{value:24},uA:{value:.5},uSl:{value:.15},uCol:{value:new THREE.Color(0xb8c4d4)}};
+const rainGeo=rndGeo(RAINMAX,2);
+const rain=new THREE.LineSegments(rainGeo,new THREE.ShaderMaterial({uniforms:rainU,transparent:true,depthWrite:false,fog:false,
+  vertexShader:'uniform float uTime;uniform float uR;uniform float uH;uniform float uSl;uniform vec3 uC;attribute float aE;varying float vA;\n'+WRAP+
+  'void main(){float y=mod(position.y*uH-uTime*15.,uH);vec3 w=wxW(position,uC,uR,y);w.x+=y*uSl+aE*.6*uSl;w.y+=aE*.6;vA=1.-aE*.7;gl_Position=projectionMatrix*viewMatrix*vec4(w,1.);}',
+  fragmentShader:'uniform float uA;uniform vec3 uCol;varying float vA;void main(){gl_FragColor=vec4(uCol,uA*vA);}'}));
+rain.frustumCulled=false;rain.visible=false;rain.renderOrder=2;scene.add(rain);
+const snowU={uTime,uC:rainU.uC,uR:rainU.uR,uH:rainU.uH,uA:{value:.9},uS:{value:60}};
+const snowGeo=rndGeo(SNOWMAX,1);
+const snow=new THREE.Points(snowGeo,new THREE.ShaderMaterial({uniforms:snowU,transparent:true,depthWrite:false,fog:false,
+  vertexShader:'uniform float uTime;uniform float uR;uniform float uH;uniform float uS;uniform vec3 uC;\n'+WRAP+
+  'void main(){float ph=fract(position.x*91.7+position.z*13.3)*6.283;float y=mod(position.y*uH-uTime*(1.1+fract(ph*1.7)*.8),uH);vec3 w=wxW(position,uC,uR,y);\n'+
+  'w.x+=sin(uTime*.8+ph)*.5;w.z+=cos(uTime*.6+ph*1.3)*.5;vec4 mv=viewMatrix*vec4(w,1.);gl_Position=projectionMatrix*mv;gl_PointSize=uS*(.6+.6*fract(ph*3.1))/max(.5,-mv.z);}',
+  fragmentShader:'uniform float uA;void main(){vec2 c=gl_PointCoord-.5;float d=dot(c,c);if(d>.25)discard;gl_FragColor=vec4(1.,1.,1.,uA*(1.-d*3.));}'}));
+snow.frustumCulled=false;snow.visible=false;snow.renderOrder=2;scene.add(snow);
+// ---- Glühwürmchen (Sommernacht, feste Orte auf Wiesen/Wald/Sumpf) ----
+const ffU={uTime,uOn:{value:0},uS:{value:60}};
+const ffGeo=new THREE.BufferGeometry();let ffN=0;
+{const p=new Float32Array(FFMAX*3),r=mulberry(W.seed+313);
+  for(let k=0;k<20000&&ffN<FFMAX;k++){const x=(r()-.5)*N*.9,z=(r()-.5)*N*.9,h=heightAt(x,z);if(h<.3||h>4)continue;
+    const ti=Math.max(0,Math.min(N-1,Math.floor(z+HALF)))*N+Math.max(0,Math.min(N-1,Math.floor(x+HALF))),bb=W.tBiome[ti];if(!(bb===B_MEADOW||bb===B_FOREST||bb===B_BIRCH||bb===B_MARSH))continue;
+    p[ffN*3]=x;p[ffN*3+1]=h+.3+r()*.9;p[ffN*3+2]=z;ffN++;}
+  ffGeo.setAttribute('position',new THREE.BufferAttribute(p,3));}
+const ffly=new THREE.Points(ffGeo,new THREE.ShaderMaterial({uniforms:ffU,transparent:true,depthWrite:false,fog:false,blending:THREE.AdditiveBlending,
+  vertexShader:'uniform float uTime;uniform float uOn;uniform float uS;varying float vA;void main(){vec3 p=position;float ph=fract(sin(dot(p.xz,vec2(12.9898,78.233)))*43758.5)*6.283;\n'+
+  'p.x+=sin(uTime*.5+ph)*.6;p.z+=cos(uTime*.43+ph*1.7)*.6;p.y+=sin(uTime*.9+ph*2.)*.25;vA=uOn*pow(max(0.,sin(uTime*1.3+ph*3.)),4.);vec4 mv=modelViewMatrix*vec4(p,1.);gl_Position=projectionMatrix*mv;gl_PointSize=uS*(.5+vA*.5)/max(.5,-mv.z);}',
+  fragmentShader:'varying float vA;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;gl_FragColor=vec4(.85,1.,.35,vA*(1.-d*2.));}'}));
+ffly.frustumCulled=false;ffly.visible=false;scene.add(ffly);
+// ---- Regenwolken (zusätzlich, dunkler) ----
+const WXCN=18,wxClouds=[],wxCloudMat=lam(0xffffff,{emissive:0x9aa4b0,emissiveIntensity:.15});
+const wxCloudIM=inst(cloudGeo,wxCloudMat,WXCN,false);wxCloudIM.frustumCulled=false;wxCloudIM.count=0;
+{const r=mulberry(W.seed+71);for(let i=0;i<WXCN;i++)wxClouds.push({x:(r()-.5)*220,z:(r()-.5)*200,y:22+r()*7,s:1.2+r()*1.3,v:.9+r()*.6});}
+// ---- Zugvögel (V-Formation im Frühling/Herbst) ----
+const MIGN=9,migIM=inst(birdIM.geometry,birdIM.material,MIGN,false);migIM.frustumCulled=false;for(let i=0;i<MIGN;i++)migIM.setMatrixAt(i,ZERO);
+const mig={on:false,t:25+Math.random()*40,x:0,z:0,dx:1,dz:0,d:0};
+// ---- Jahreszeiten-Optik: Baumkronen je Instanz (Laubbäume färben sich, Blüte, Schnee), Dächer, Gras, Blumen ----
+const crownBase=new Float32Array(trees.length*3),crownAut=new Float32Array(trees.length*3);
+trees.forEach((t,i)=>{const d=SP[t.sp],h1=hash(t.tx,t.tz),h2=hash(t.tz,t.tx);tmpC.setHSL(d.h[0]+h1*.06,d.h[1]+h2*.1,d.h[2]+h2*d.h[3]);crownBase[i*3]=tmpC.r;crownBase[i*3+1]=tmpC.g;crownBase[i*3+2]=tmpC.b;
+  if(t.sp===2)tmpC.setHSL(.11+h1*.04,.75,.5+h2*.08);else if(t.sp===1)tmpC.setHSL(.02+h1*.08,.62+h2*.15,.34+h2*.1);crownAut[i*3]=tmpC.r;crownAut[i*3+1]=tmpC.g;crownAut[i*3+2]=tmpC.b;});
+const roofM=[ROOF,THATCH,0x7a3a2a,0x6e6a5c,0x6e3a28,0x4f5a3a,0x6e5a48,0xb0904a,0x6e2f20,0x5e2a1c,0x55524a].filter(c=>MC[c]).map(c=>({m:MC[c],c:new THREE.Color(c)}));
+const cSnowR=new THREE.Color(0xeaeef4);let seasKey=-1,roofK=-1;
+const sw4=[0,0,0,0];
+function seasonWeights(){const s=season(),ps=(yearT%SEASON_LEN)/SEASON_LEN,f=sstep(.85,1,ps);sw4.fill(0);sw4[s]=1-f;sw4[(s+1)%4]+=f;
+  return sw4[0]*(s===0?1-sstep(.35,.65,ps):1);}// Rückgabe: Blüten-Anteil (Frühlingsanfang)
+function seasonVisuals(){
+  const w=sw4,bl=seasonWeights(),sn=snowCov;
+  const key=Math.round(w[0]*20)+Math.round(w[1]*20)*21+Math.round(w[2]*20)*441+Math.round(bl*10)*9261+Math.round(sn*20)*101871;
+  if(key!==seasKey){seasKey=key;const used=new Set();
+    for(let i=0;i<trees.length;i++){const t=trees[i],d=SP[t.sp],k=i*3,dec=t.sp===1||t.sp===2;const br=crownBase[k],bg=crownBase[k+1],bb=crownBase[k+2],sp=w[1]+w[0]*.85;
+      let r=br*sp+.55*.15*w[0],g=bg*sp+.8*.15*w[0],b=bb*sp+.35*.15*w[0];
+      if(dec){r+=crownAut[k]*w[2]+.33*w[3];g+=crownAut[k+1]*w[2]+.27*w[3];b+=crownAut[k+2]*w[2]+.22*w[3];
+        if(bl>0&&hash(t.tx+3,t.tz+11)<.3){const pk=hash(t.tz,t.tx+5)<.5;r+=((pk?1:.97)-r)*bl;g+=((pk?.8:.97)-g)*bl;b+=((pk?.88:.92)-b)*bl;}}
+      else{r+=br*(w[2]+w[3]);g+=bg*(w[2]+w[3]);b+=bb*(w[2]+w[3]);}
+      const sk=sn*(dec?.55:.42);r+=(.85-r)*sk;g+=(.88-g)*sk;b+=(.93-b)*sk;
+      tmpC.setRGB(r,g,b);d.cIM.setColorAt(t.ci,tmpC);used.add(d.cIM);}
+    for(const im of used)if(im.instanceColor)im.instanceColor.needsUpdate=true;}
+  // überschreibt die alte globale Kronen-/Gras-Tönung aus applySeasonTint (sonst doppelt)
+  for(const m of crownMats)m.color.setRGB(1,1,1);
+  const gr=1.05*w[0]+1.02*w[1]+1.2*w[2]+w[3],gg=1.08*w[0]+w[1]+w[2]+w[3],gb=.95*w[0]+.88*w[1]+.62*w[2]+w[3];
+  gTuft.im.material.color.setRGB(gr+(1.7-gr)*sn*.7,gg+(1.75-gg)*sn*.7,gb+(1.85-gb)*sn*.7);
+  bushIM.material.color.setRGB(gr+.08*w[2]+(1.6-gr)*sn*.6,gg-.15*w[2]+(1.65-gg)*sn*.6,gb+(1.75-gb)*sn*.6);
+  const bloom=Math.max(0,w[0]+.85*w[1]+.25*w[2]-sn);gFlower.im.count=Math.floor(gFlower.full*(qLevel>=1?.6:1)*Math.min(1,bloom));gFlower.im.visible=gFlower.im.count>0;
+  gFlower.im.material.color.setRGB(1+.15*w[0],1+.1*w[0],1-.2*w[2]);
+  const rk=Math.round(sn*40);if(rk!==roofK){roofK=rk;for(const o of roofM)o.m.color.copy(o.c).lerp(cSnowR,sn*.8);}
+}
+let wxIcon='';
+const uWx=document.createElement('button');uWx.className='pill btn';uWx.id='uWx';{const ut=document.getElementById('uTime');if(ut&&ut.after)ut.after(uWx);}
+uWx.addEventListener('click',()=>{const g=WX[wx.c];toast(g.i+' '+g.n+(wx.c===2?' – Äcker wachsen schneller':wx.c===3?' – Fischer pausieren, Äcker wachsen schneller':wx.c===4?' – Schneedecke':''));});
+function updateAtmos(dt){
+  const qf=qLevel>=3?.3:qLevel>=2?.5:qLevel>=1?.75:1,R=Math.max(14,Math.min(46,dist*.65));
+  rainU.uC.value.set(target.x,target.y,target.z);rainU.uR.value=R;rainU.uH.value=R*1.1;rainU.uSl.value=.08+.3*wv.storm;
+  const pxs=innerHeight*Math.min(DPR,1.75)*.5/.445;snowU.uS.value=.13*pxs;ffU.uS.value=.22*pxs;
+  const nr=Math.floor(RAINMAX*qf*Math.min(1,wv.rain*(.65+.35*wv.storm)));rainGeo.setDrawRange(0,nr*2);rain.visible=nr>8;rainU.uA.value=.18+.35*Math.min(1,light+.3)+wxFlash*.3;
+  const ns=Math.floor(SNOWMAX*qf*Math.min(1,wv.snow));snowGeo.setDrawRange(0,ns);snow.visible=ns>8;snowU.uA.value=.55+.4*Math.min(1,light+.4);
+  seasonWeights();const on=(sw4[1]+sw4[0]*.4)*(1-sstep(0,.25,light))*(1-wv.rain)*(1-wv.snow);ffU.uOn.value=on;ffly.visible=on>.02;ffGeo.setDrawRange(0,Math.floor(ffN*qf));
+  // Regenwolken
+  const nc=Math.round(WXCN*sstep(.35,.95,wv.cov));wxCloudIM.count=nc;
+  if(nc){for(let i=0;i<nc;i++){const c=wxClouds[i];c.x+=c.v*(1+wv.storm)*dt;c.z+=c.v*.3*dt;if(c.x>115)c.x-=230;if(c.z>105)c.z-=210;setInst(wxCloudIM,i,c.x,c.y,c.z,0,c.s*1.5,c.s*.5,c.s*1.1);}
+    wxCloudIM.instanceMatrix.needsUpdate=true;wxCloudMat.color.copy(cloudMat.color).lerp(cBlk,.25);wxCloudMat.emissiveIntensity=cloudMat.emissiveIntensity*.5;}
+  // Tiere/Rauch reagieren aufs Wetter
+  birdIM.visible=wv.rain<.45&&wv.snow<.6;fishIM.visible=wv.storm<.5&&snowCov<.6;smokeIM.material.opacity=.45+.2*sw4[3]+.1*wv.cov;
+  // Zugvögel
+  const tt=uTime.value;
+  if(!mig.on){mig.t-=dt;if(mig.t<=0){mig.t=60+Math.random()*90;const s=season();if((s===0||s===2)&&!night&&wv.rain<.3){const a=Math.random()*6.283;mig.dx=Math.cos(a);mig.dz=Math.sin(a);mig.x=target.x-mig.dx*70+mig.dz*(Math.random()-.5)*30;mig.z=target.z-mig.dz*70-mig.dx*(Math.random()-.5)*30;mig.d=0;mig.on=true;}}}
+  if(mig.on){mig.d+=dt*6;const cx=mig.x+mig.dx*mig.d,cz=mig.z+mig.dz*mig.d,ry=Math.atan2(mig.dx,mig.dz);
+    for(let k=0;k<MIGN;k++){const o=k-4,bk=Math.abs(o)*1.1,sd=o*.9,fl=Math.cos(tt*9+k*.7);setInst(migIM,k,cx-mig.dx*bk+mig.dz*sd,19+Math.sin(tt*.6+k)*.3,cz-mig.dz*bk-mig.dx*sd,ry,1.4,fl*1.4,1.4);}
+    if(mig.d>140){mig.on=false;for(let k=0;k<MIGN;k++)migIM.setMatrixAt(k,ZERO);}migIM.instanceMatrix.needsUpdate=true;}
+  seasonVisuals();
+  const ic=WX[wx.c].i;if(ic!==wxIcon){wxIcon=ic;uWx.textContent=ic;}
+}
+globalThis.__siedlungWx={wx,wv,set:i=>{wxSet(i,true);wx.t=200;},get snow(){return snowCov;}};
+// ================= /WETTER =================
+
 // ================= Speichern / Laden =================
 let noSave=false,saveT=0;
 function serialize(){
@@ -1535,6 +1668,7 @@ function serialize(){
   const wear=W.wear;for(let i=0;i<wear.length;i++)if(wear[i]>.06)w.push(i,Math.round(wear[i]*100));
   return {v:SAVE_V,seed:W.seed,time:Date.now(),res:Object.assign({},res),simT,tod,yearT,level,hap,stats,tasks:taskDone.map(x=>x?1:0),
     b:buildings.map(b=>[b.type,b.tx,b.tz,b.done?1:0,+b.progress.toFixed(3),b.plots?b.plots.map(p=>[p.st,+p.g.toFixed(3)]):0]),
+    wx:wxSave(),
     n:npcs.map(n=>[n.name,buildings.indexOf(n.home),+n.x.toFixed(2),+n.z.toFixed(2),+n.age.toFixed(2),Math.round(n.hp),n.fam,n.par||'']),pop:popSave(),r:paveList.slice(),t,rk,bu,w,pg:serializePg()};
 }
 function saveGame(){if(noSave)return false;try{localStorage.setItem(SAVE_KEY,JSON.stringify(serialize()));return true;}catch(e){console.warn('Speichern fehlgeschlagen',e);return false;}}
@@ -1544,6 +1678,7 @@ function applySave(s){
   simT=Math.max(0,numOr(s.simT,0));tod=((numOr(s.tod,.06)%1)+1)%1;yearT=Math.max(0,numOr(s.yearT,0));level=Math.max(0,Math.min(LEVELS.length-1,numOr(s.level,0)|0));hap=hapT=Math.max(0,Math.min(100,numOr(s.hap,50)));
   if(s.stats&&typeof s.stats==='object'){stats.paved=numOr(s.stats.paved,0);if(s.stats.got&&typeof s.stats.got==='object')for(const k in s.stats.got)if(k in res)stats.got[k]=numOr(s.stats.got[k],0);}
   if(Array.isArray(s.tasks))s.tasks.forEach((v,i)=>{if(i<taskDone.length)taskDone[i]=!!v;});
+  wxLoad(s.wx);
   for(const e of s.t||[]){const o=trees[e[0]];if(!o)continue;o.wood=Math.max(0,Math.min(3,e[1]|0));o.regrow=numOr(e[2],-1);o.g=Math.max(.1,Math.min(1,numOr(e[3],1)));o.s=numOr(e[4],o.s);W.occ[o.tz*N+o.tx]=o.wood>0?T_TREE:T_FREE;setTree(o,e[0]);}
   for(const e of s.rk||[]){const o=rocks[e[0]];if(!o)continue;o.stone=Math.max(0,Math.min(6,e[1]|0));o.regrow=numOr(e[2],-1);W.occ[o.tz*N+o.tx]=o.stone>0?T_ROCK:T_FREE;setRock(o);}
   for(const e of s.bu||[]){const o=bushes[e[0]];if(!o)continue;o.food=Math.max(0,Math.min(3,e[1]|0));o.regrow=numOr(e[2],-1);setBush(o,e[0]);}
@@ -1738,7 +1873,7 @@ function slowTick(){
   for(let i=0;i<bushes.length;i++){const b=bushes[i];if(b.regrow>0){b.regrow-=BERRY_F[season()];if(b.regrow<=0){b.food=3;setBush(b,i);bu=true;}}}
   if(tu)flushTrees();if(ru)flushRocks();if(bu)berryIM.instanceMatrix.needsUpdate=true;
   // Äcker wachsen (nur Frühling/Sommer)
-  {const cf=cropF();if(cf>0)for(const b of buildings){if(!b.plots||!b.done)continue;for(const p of b.plots)if(p.st===1){p.g+=.5/75*cf;if(p.g>=1){p.g=1;p.st=2;}setCrop(p);}}}
+  {const cf=cropF();if(cf>0)for(const b of buildings){if(!b.plots||!b.done)continue;for(const p of b.plots)if(p.st===1){p.g+=.5/75*cf*wxGrowF();if(p.g>=1){p.g=1;p.st=2;}setCrop(p);}}}
   econSlow(.5);
   // Zufriedenheit, Stufe, Aufgaben
   popTick(.5);
@@ -1768,6 +1903,7 @@ function wearTick(){
 }
 function step(dt){
   simT+=dt;yearT+=dt;tod=(tod+dt/DAY_LEN)%1;updateSky();
+  updateWeather(dt);
   if(night!==wasNight){toast(night?'🌙 Die Nacht bricht an – alle gehen heim':'☀️ Ein neuer Tag beginnt');wasNight=night;}
   pathBudget=3;
   for(const n of npcs)updateNpc(n,dt);
@@ -1802,6 +1938,7 @@ function loop(now){
     drawNpcs();updateWild(sdt,uTime.value);
     for(const b of buildings)if(b.sail&&b.done)b.sail.rotation.z+=sdt*(b.workers.some(n=>n.state==='craft')?2.2:.5);
     uTime.value+=dt;updateClouds(dt);updateSmoke(uTime.value);
+    updateAtmos(dt);
     if(ghostRoot.visible)ghostMat.opacity=.35+Math.sin(now*.006)*.15;
     for(let i=floats.length-1;i>=0;i--){const f=floats[i];f.t-=dt;f.y+=dt*.6;tmpV.set(f.x,f.y,f.z).project(camera);f.d.style.left=((tmpV.x+1)/2*innerWidth-15)+'px';f.d.style.top=((1-tmpV.y)/2*innerHeight)+'px';f.d.style.opacity=Math.min(1,f.t*2);if(f.t<=0){f.d.remove();floats.splice(i,1);}}
     if(follow){if(!npcs.includes(follow))follow=null;else if(!follow.hidden){target.x+=(follow.x-target.x)*Math.min(1,dt*3);target.z+=(follow.z-target.z)*Math.min(1,dt*3);}}
