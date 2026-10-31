@@ -16,6 +16,10 @@ Alle Spiele: Single-File HTML/JS/CSS, mobil-tauglich, keine Build-Steps.
 | `patches/` | Optimierungen und Changelogs |
 | `dashboard/` | Später: Übersicht im Matrix-/3D-Stil |
 
+## Spiele
+
+- [Siedlung](games/siedlung/) – Aufbauspiel à la Manor Lords mit prozeduraler Welt und Trampelpfaden
+
 ## Ideen
 
 - [Wurzelwerk](ideas/wurzelwerk.md) – Baum-Roguelite mit Auto-Kampf und Logistik
