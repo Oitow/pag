@@ -41,12 +41,29 @@ canvas{display:block}
 #pbtns button.red{background:#e58a6e;border-color:#7a2e1a}
 #pbtns button:disabled{opacity:.45}
 .fl{position:fixed;color:#ffe9a8;font-weight:800;font-size:14px;text-shadow:0 1px 2px #000;pointer-events:none;z-index:4}
+/* ---- Fortschritt & UI-Erweiterungen (Tutorial, Statistik, Einstellungen) ---- */
+#pbtns{flex-wrap:wrap}#pbtns button{min-width:54px}
+#tut{position:fixed;left:calc(env(safe-area-inset-left) + 10px);right:calc(env(safe-area-inset-right) + 10px);bottom:calc(env(safe-area-inset-bottom) + 72px);max-width:440px;margin:0 auto;background:rgba(30,25,20,.92);color:#f3e6c8;border:2px solid #f6c54a;border-radius:12px;padding:8px 10px;font-size:13px;line-height:1.4;z-index:6;display:none;gap:7px;align-items:center}
+#tut .tt{flex:1}#tut small{opacity:.7}
+#tut button{border:0;border-radius:9px;padding:7px 10px;font-weight:700;font-family:inherit;background:#f6c54a;color:#3a2e1c}
+#tut button.sk{background:#5a4a36;color:#f3e6c8}
+#bar button.hint{animation:hint .9s ease-in-out infinite alternate}
+@keyframes hint{to{box-shadow:0 0 0 4px #f6c54a;transform:translateY(-3px)}}
+#resRow .pill{font-size:13px}
+.pill[data-tr]::after{content:attr(data-tr);font-size:9px;margin-left:2px;vertical-align:1px}
+.pill[data-tr="▲"]::after{color:#9fe07a}.pill[data-tr="▼"]::after{color:#ff8a70}
+.stt{width:100%;border-collapse:collapse;font-size:12.5px}.stt td{padding:1px 3px;white-space:nowrap}.stt td.n{text-align:right;font-variant-numeric:tabular-nums}
+.up{color:#3d7a1f}.dn{color:#a83a22}
+.hb{display:flex;align-items:center;gap:6px;font-size:12px;margin:1px 0}.hb span{flex:0 0 118px}.hb i{display:block;height:8px;border-radius:4px}.hb b{flex:0 0 32px;text-align:right}
+.srow{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:6px 0}.srow>span{flex:0 0 70px;font-weight:700;font-size:12.5px}
+.chip{border:2px solid #6b5636;border-radius:9px;padding:6px 8px;font-size:12.5px;font-weight:700;background:#efe2c3;color:#3a2e1c;font-family:inherit}.chip.on{background:#f6c54a;border-color:#3a2e1c}.chip.red{background:#e58a6e;border-color:#7a2e1a}
 </style>
 </head>
 <body>
 <div id="top"><div class="row" id="resRow"><span class="pill" id="uWood">🪵 0</span><span class="pill" id="uStone">🪨 0</span><span class="pill" id="uPlanks">🪚 0</span><span class="pill" id="uFood">🍞 0</span><span class="pill" id="uPop">👤 0</span><span class="pill" id="uHap">🙂 50%</span></div>
-<div class="row"><span class="pill" id="uTime">🌸 06:00</span><span class="pill" id="uLvl">⛺ Weiler</span><button class="pill btn" id="bPause">⏸</button><button class="pill btn" id="bSpeed">1×</button><button class="pill btn" id="bTasks">📜</button><button class="pill btn" id="bMenu">☰</button></div></div>
+<div class="row"><span class="pill" id="uTime">🌸 06:00</span><span class="pill" id="uLvl">⛺ Weiler</span><button class="pill btn" id="bPause">⏸</button><button class="pill btn" id="bSpeed">1×</button><button class="pill btn" id="bTasks">📜</button><button class="pill btn" id="bStats">📊</button><button class="pill btn" id="bMenu">☰</button></div></div>
 <div id="toasts"></div>
+<div id="tut"></div>
 <div id="panel"><h3 id="ptitle"></h3><div id="ptext"></div><div id="pbtns"></div></div>
 <div id="sheet"></div>
 <div id="bar"></div>
@@ -739,6 +756,63 @@ function makeSails(){const s=new THREE.Group();for(let k=0;k<4;k++){const a=new 
   g.add(mk(B(.5,.04,.15),WOOD,.12,.16,.18),mk(B(.5,.12,.03),WOOD,.12,.26,.25),mk(B(.04,.15,.12),TIMBER,-.1,.08,.18),mk(B(.04,.15,.12),TIMBER,.34,.08,.18));
   TEMPL.lantern=bake(g);
 }
+// ---------- Fortschritt: Ausbau-Modelle, neue Stufen-Gebäude, weitere Siedlungsstufen ----------
+{
+  let g=new THREE.Group();
+  // Fachwerkhaus (Ausbau vom Haus): zweigeschossig, Obergeschoss kragt aus
+  g.add(mk(B(.88,.1,.78),STONE,0,.05,0),mk(B(.8,.38,.7),WALL,0,.29,0));
+  timberFront(g,.8,.38,.1,.355,false);timberFront(g,.8,.38,.1,-.355,true);
+  g.add(mk(B(.88,.04,.78),TIMBER,0,.5,0),mk(B(.86,.34,.76),WALL,0,.69,0));
+  timberFront(g,.86,.34,.52,.385,true);timberFront(g,.86,.34,.52,-.385,false);
+  for(const x of[-.43,.43])g.add(mk(B(.03,.34,.78),TIMBER,x,.69,0));
+  g.add(mk(prism(.58,1.04,.8),ROOF,0,.86+.58*.5*.8,0),mk(B(1.06,.05,.06),0x6e2f20,0,.86+.58*1.5*.8-.03,0));
+  g.add(mk(B(.13,.5,.13),STONE,.24,1.2,-.14),mk(B(.17,.05,.17),0x6a655c,.24,1.46,-.14));
+  g.add(mk(B(.17,.27,.03),0x5a3e26,0,.24,.36),mk(B(.13,.11,.03),'win',-.24,.33,.36),mk(B(.13,.11,.03),'win',.24,.33,.36));
+  for(const x of[-.26,0,.26])g.add(mk(B(.12,.12,.03),'win',x,.7,.39),mk(B(.12,.12,.03),'win',x,.7,-.39));
+  g.add(mk(B(.15,.04,.06),0x7a4a2a,-.26,.63,.42),mk(B(.15,.04,.06),0x7a4a2a,.26,.63,.42),mk(B(.04,.04,.04),0xd65a9a,-.29,.66,.42),mk(B(.04,.04,.04),0xf4e04d,.23,.66,.42));
+  TEMPL.house_fw=bake(g);CHIM.house_fw=[.24,1.5,-.14];
+  // Patrizierhaus (Ausbau vom Bürgerhaus): Steinsockel + zwei Fachwerkgeschosse
+  g=new THREE.Group();
+  g.add(mk(B(.92,.08,.84),STONE,0,.04,0),mk(B(.86,.36,.78),STONE,0,.26,0));
+  g.add(mk(B(.9,.3,.82),WALL,0,.59,0),mk(B(.94,.3,.86),WALL,0,.9,0),mk(B(.96,.04,.88),TIMBER,0,.745,0));
+  timberFront(g,.9,.3,.44,.415,false);timberFront(g,.9,.3,.44,-.415,true);timberFront(g,.94,.3,.75,.435,true);timberFront(g,.94,.3,.75,-.435,false);
+  g.add(mk(prism(.62,1.12,.85),0x5e3a5a,0,1.05+.62*.5*.85,0),mk(B(1.14,.05,.06),0x3e2a3a,0,1.05+.62*1.5*.85-.03,0));
+  g.add(mk(B(.14,.5,.14),STONE,-.28,1.45,.14),mk(B(.18,.05,.18),0x6a655c,-.28,1.72,.14));
+  g.add(mk(B(.2,.3,.03),0x5a3e26,0,.23,.4),mk(B(.13,.11,.03),'win',-.27,.3,.4),mk(B(.13,.11,.03),'win',.27,.3,.4));
+  for(const x of[-.27,0,.27])g.add(mk(B(.12,.12,.03),'win',x,.6,.425),mk(B(.12,.12,.03),'win',x,.9,.445),mk(B(.12,.12,.03),'win',x,.9,-.445));
+  g.add(mk(B(.03,.4,.03),TIMBER,.4,1.25,.4),mk(B(.16,.1,.01),0xe0b030,.48,1.4,.4));
+  TEMPL.house2_up=bake(g);CHIM.house2_up=[-.28,1.76,.14];
+  // Kirche (2x2): Schiff + Turm mit Spitzhelm
+  g=new THREE.Group();
+  g.add(mk(B(1.9,.05,1.9),0xb8ae98,0,.025,0),mk(B(1.0,.75,1.25),0xd8d0bc,0,.42,-.25));
+  g.add(mk(prism(.62,1.27,.75),0x6e3a28,0,.8+.62*.5*.75,-.25,Math.PI/2));
+  g.add(mk(B(.5,1.5,.5),0xcfc6b0,0,.8,.6),mk(new THREE.ConeGeometry(.4,.9,4),0x4e6a5a,0,2.0,.6,Math.PI/4),mk(B(.03,.25,.03),0xe0b030,0,2.55,.6),mk(B(.14,.03,.03),0xe0b030,0,2.6,.6));
+  g.add(mk(B(.2,.34,.03),0x4a3420,0,.2,.86),mk(new THREE.CylinderGeometry(.09,.09,.02,10).rotateX(Math.PI/2),0xf0e8d0,0,1.3,.86),mk(B(.08,.16,.03),'win',0,.95,.86));
+  for(const z of[-.7,-.3,.1])g.add(mk(B(.03,.26,.12),'win',.51,.5,z),mk(B(.03,.26,.12),'win',-.51,.5,z));
+  for(const x of[-.75,.75])g.add(mk(new THREE.IcosahedronGeometry(.16,0).scale(1,1.4,1),0x4f7a35,x,.2,.75));
+  TEMPL.church=bake(g);
+  // Denkmal: Stufensockel, Säule, Bronzefigur, Blumen
+  g=new THREE.Group();
+  g.add(mk(B(.8,.08,.8),STONE,0,.04,0),mk(B(.6,.1,.6),0xa8a296,0,.13,0),mk(B(.26,.5,.26),0xbab3a4,0,.43,0));
+  g.add(mk(CY(.07,.1,.32,6),0x4f7a6a,0,.84,0),mk(new THREE.IcosahedronGeometry(.07,0),0x4f7a6a,0,1.06,0),mk(B(.24,.04,.04),0x4f7a6a,.04,.92,0,0,0,.5));
+  {const fc=[0xd65a9a,0xf4e04d,0xf2f2f2,0xe85a3a];for(let k=0;k<8;k++){const a=k/8*Math.PI*2;g.add(mk(new THREE.IcosahedronGeometry(.045,0),fc[k%4],Math.cos(a)*.34,.22,Math.sin(a)*.34));}}
+  TEMPL.statue=bake(g);
+}
+// Ausbau-Markierung für Werkstätten (Anbau mit Kisten + Wimpel)
+const UPMARK=new THREE.Group();
+UPMARK.add(mk(B(.3,.22,.24),WOOD,0,.11,0),mk(B(.34,.04,.28),0x5a4128,0,.24,0,0,.15),mk(B(.12,.12,.12),0x7a5a33,.2,.06,.1),mk(B(.03,.75,.03),TIMBER,-.14,.37,-.1),mk(B(.2,.12,.01),0xc84a3a,-.03,.66,-.1));
+UPMARK.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+Object.assign(DEF,{
+  house_fw:{name:'Fachwerkhaus',icon:'🏘️',cat:'wohnen',c:{wood:10,stone:2},cap:5,base:'house',fancy:1,noBuild:1,info:'Ausgebautes Haus · Wohnraum für 5'},
+  house2_up:{name:'Patrizierhaus',icon:'🏛️',cat:'wohnen',c:{planks:10,stone:8},cap:8,base:'house2',fancy:1,noBuild:1,info:'Ausgebautes Bürgerhaus · Wohnraum für 8'},
+  church:{name:'Kirche',icon:'⛪',cat:'deko',c:{wood:10,stone:30,planks:20},size:2,lvl:3,deco:16,info:'Große Zufriedenheit (Umkreis 16)'},
+  statue:{name:'Denkmal',icon:'🗿',cat:'deko',c:{stone:24,planks:6},lvl:4,deco:12,info:'Stolz der Stadt · Zufriedenheit (Umkreis 12)'},
+});
+// Ausbau-Tabelle: Typwechsel (to) oder generischer Werkstatt-Ausbau (+1 Arbeitsplatz, Produktion 25 % schneller)
+const UPG={house:{to:'house_fw',c:{planks:6,stone:4},lvl:1},house2:{to:'house2_up',c:{planks:12,stone:12},lvl:3}};
+const UPG_WORK={c:{planks:8,stone:6},lvl:2};
+for(const k in UPG){const u=UPG[k],d=DEF[u.to],c=Object.assign({},DEF[k].c);for(const r in u.c)c[r]=(c[r]||0)+u.c[r];d.c=c;}
+LEVELS.push({n:'Marktflecken',i:'⚖️',art:'ein ',pop:32,hap:60,need:{market:1,bakery:1,house_fw:3}},{n:'Stadt',i:'🏙️',art:'eine ',pop:55,hap:65,need:{church:1,house2_up:2}});
 const SITE=new THREE.Group();
 SITE.add(mk(B(.9,.05,.9),0xb8925a,0,.025,0));
 for(const [x,z] of[[-.4,-.4],[.4,-.4],[-.4,.4],[.4,.4]])SITE.add(mk(B(.05,.7,.05),0x7a5a33,x,.35,z));
@@ -970,7 +1044,7 @@ function arrive(n){
     case 'toFetch':{const d=n.job&&DEF[n.job.type];if(!d||!d.in){n.state='idle';break;}
       if(has(d.in)){addRes(d.in,-1);n.carryIn=Object.assign({},d.in);n.carry=sumC(d.in);n.carryType=Object.keys(d.in)[0];n.state='toShop';const dd=door(n.job);goTo(n,dd.x,dd.z);}
       else{n.state='wait';n.timer=4;}break;}
-    case 'toShop':{if(!n.job){sendToStore(n);break;}n.state='craft';n.timer=DEF[n.job.type].t;n.carry=0;n.carryIn=null;n.rot=Math.atan2(n.job.x-n.x,n.job.z-n.z);break;}
+    case 'toShop':{if(!n.job){sendToStore(n);break;}n.state='craft';n.timer=DEF[n.job.type].t*(n.job.up?.75:1);n.carry=0;n.carryIn=null;n.rot=Math.atan2(n.job.x-n.x,n.job.z-n.z);break;}
     case 'toStore':{if(n.carry>0){if(n.carryIn){addRes(n.carryIn,1);n.carryIn=null;}else{res[n.carryType]+=n.carry;stats.got[n.carryType]=(stats.got[n.carryType]||0)+n.carry;}
         popText('+'+n.carry+' '+RES_ICON[n.carryType],n.x,n.z);n.carry=0;}n.state=n.job?'seek':'idle';break;}
     case 'toSite':if(n.site&&!n.site.done){n.state='build';n.rot=Math.atan2(n.site.x-n.x,n.site.z-n.z);}else{n.site=null;n.state='idle';}break;
@@ -1071,7 +1145,7 @@ function updateSmoke(t){let k=0;
 // ================= Zustand: Statistik, Zufriedenheit, Stufe, Aufgaben =================
 const stats={got:{},paved:0};
 let level=0,hap=50,hapT=50,hapF={variety:0,well:0,market:0,deco:0,homeless:0,bread:false,noFood:false};
-const cnt=t=>{let c=0;for(const b of buildings)if(b.type===t&&b.done)c++;return c;};
+const cnt=t=>{let c=0;for(const b of buildings)if((b.type===t||DEF[b.type].base===t)&&b.done)c++;return c;};
 const TASKS=[
   {t:'Baue einen Holzfäller 🪓',ok:()=>cnt('cutter')>=1,r:{wood:10}},
   {t:'Baue einen Beerensammler 🫐',ok:()=>cnt('gather')>=1,r:{wood:10}},
@@ -1097,15 +1171,15 @@ const rewTxt=r=>Object.keys(r).map(k=>'+'+r[k]+' '+RES_ICON[k]).join(' ');
 function checkTasks(){for(let i=0;i<TASKS.length;i++){if(taskDone[i])continue;let ok=false;try{ok=TASKS[i].ok();}catch(e){}if(ok){taskDone[i]=true;addRes(TASKS[i].r,1);toast('✅ '+TASKS[i].t+'  '+rewTxt(TASKS[i].r));}}}
 function nearAny(list,b,r){for(const o of list)if((o.x-b.x)**2+(o.z-b.z)**2<=r*r)return true;return false;}
 function computeHap(){
-  const wells=[],mkts=[],decs=[];for(const b of buildings){if(!b.done)continue;if(b.type==='well')wells.push(b);else if(b.type==='market'){mkts.push(b);decs.push(b);}else if(b.type==='beet'||b.type==='lantern')decs.push(b);}
+  const wells=[],mkts=[],decs=[];for(const b of buildings){if(!b.done)continue;if(b.type==='well')wells.push(b);else if(b.type==='market'){mkts.push(b);decs.push(b);}else if(b.type==='beet'||b.type==='lantern'||DEF[b.type].deco)decs.push(b);}
   let w=0,m=0,d=0,homeless=0;const tot=Math.max(1,npcs.length);
   for(const b of buildings){if(!b.done||!DEF[b.type].cap)continue;const r=b.residents.length;if(!r)continue;
-    if(nearAny(wells,b,DEF.well.area))w+=r;if(nearAny(mkts,b,DEF.market.area))m+=r;if(nearAny(decs,b,7)||b.type==='house2')d+=r;}
+    if(nearAny(wells,b,DEF.well.area))w+=r;if(nearAny(mkts,b,DEF.market.area))m+=r;if(nearDeco(decs,b)||b.type==='house2'||DEF[b.type].fancy)d+=r;}
   for(const n of npcs)if(!DEF[n.home.type].cap)homeless++;
   hapF={variety:FOODS.filter(k=>res[k]>0).length,well:w/tot,market:m/tot,deco:Math.min(1,d/tot),homeless:homeless/tot,bread:res.bread>0,noFood:foodTotal()<=0};
   hapT=happinessOf(hapF);
 }
-function checkLevel(){const nx=LEVELS[level+1];if(nx&&npcs.length>=nx.pop&&hap>=nx.hap){level++;toast('🎉 Eure Siedlung ist jetzt '+(level===1?'ein ':'eine ')+LEVELS[level].n+'! Neue Gebäude freigeschaltet');if(openCat)renderSheet();}}
+function checkLevel(){const nx=LEVELS[level+1];if(nx&&lvlReady(nx)){level++;toast('🎉 Eure Siedlung ist jetzt '+(LEVELS[level].art||(level===1?'ein ':'eine '))+LEVELS[level].n+'!'+unlockTxt(level));if(openCat)renderSheet();}}
 
 // ================= Kamera & Input =================
 let store0=null;
@@ -1128,10 +1202,10 @@ function renderSheet(){
   sheet.innerHTML='';sheetSig=sheetSignature();const cat=CATS.find(c=>c[0]===openCat);if(!cat)return;
   const h=document.createElement('div');h.className='sh';h.innerHTML='<b>'+cat[1]+' '+cat[2]+'</b>';const x=document.createElement('button');x.className='x';x.textContent='✕';x.addEventListener('click',closeSheet);h.appendChild(x);sheet.appendChild(h);
   const grid=document.createElement('div');grid.className='grid';sheet.appendChild(grid);
-  for(const t in DEF){const d=DEF[t];if(d.cat!==openCat)continue;const c=document.createElement('button');const lock=!unlocked(t);
+  for(const t in DEF){const d=DEF[t];if(d.cat!==openCat||d.noBuild)continue;const c=document.createElement('button');const lock=!unlocked(t);
     c.className='card'+(lock?' lock':!canAfford(t)?' poor':'');
-    c.innerHTML='<span class="ic">'+d.icon+'</span>'+d.name+(d.size>1?' <i>'+d.size+'×'+d.size+'</i>':'')+'<small>'+(lock?'🔒 ab '+LEVELS[d.lvl].n:costTxt(t))+'</small><small class="inf">'+d.info+'</small>';
-    c.addEventListener('click',()=>{if(lock){toast('🔒 '+d.name+' wird ab „'+LEVELS[d.lvl].n+'“ freigeschaltet');return;}closeSheet();setMode(t);});grid.appendChild(c);}
+    c.innerHTML='<span class="ic">'+d.icon+'</span>'+d.name+(d.size>1?' <i>'+d.size+'×'+d.size+'</i>':'')+'<small>'+(lock?lockTxt(d.lvl):costTxt(t))+'</small><small class="inf">'+d.info+'</small>';
+    c.addEventListener('click',()=>{if(lock){toast('🔒 '+d.name+' wird ab „'+lvlAt(d.lvl).n+'“ freigeschaltet ('+lvlShort(lvlAt(d.lvl))+')');return;}closeSheet();setMode(t);});grid.appendChild(c);}
 }
 function setMode(m){mode=m;pending=null;ghostRoot.visible=false;closePanel();if(openCat){sheet.style.display='none';openCat=null;}markCats();
   if(mode==='path')openPanel('🛤 Weg legen','Mit einem Finger über den Boden ziehen: gepflasterter Weg (1 🪨 pro Feld, Bewohner laufen doppelt so schnell).<br>Auf einem Weg starten = Weg entfernen. Zwei Finger: Kamera.',[{t:'✓ Fertig',c:'go',f:()=>setMode(null)}]);
@@ -1180,10 +1254,10 @@ function infoText(b){
   if(!b.done)t+='🔨 Baustelle: '+Math.floor(b.progress*100)+'%<br>'+(b.builder?b.builder.name+' baut gerade.':'Wartet auf freien Bewohner…');
   else if(d.cap){const cap=d.cap;t+='Bewohner: '+b.residents.length+' / '+cap+(b.residents.length?' ('+b.residents.map(n=>n.name).join(', ')+')':'');
     if(b.residents.length<cap)t+=foodTotal()>0?(hap>=20?'<br>Neuer Bewohner in ca. '+Math.max(0,Math.ceil((GROW_T-b.growT)/growF()))+' s':'<br>⚠️ Zu unglücklich für Zuzug'):'<br>⚠️ Kein Zuzug ohne Nahrung';
-    const wells=buildings.filter(o=>o.done&&o.type==='well'),mk=buildings.filter(o=>o.done&&o.type==='market'),dc=buildings.filter(o=>o.done&&(o.type==='beet'||o.type==='lantern'||o.type==='market'));
-    t+='<br>'+ok_(nearAny(wells,b,DEF.well.area))+' Brunnen '+ok_(nearAny(mk,b,DEF.market.area))+' Markt '+ok_(nearAny(dc,b,7)||b.type==='house2')+' Deko';}
+    const wells=buildings.filter(o=>o.done&&o.type==='well'),mk=buildings.filter(o=>o.done&&o.type==='market'),dc=buildings.filter(o=>o.done&&(o.type==='beet'||o.type==='lantern'||o.type==='market'||DEF[o.type].deco));
+    t+='<br>'+ok_(nearAny(wells,b,DEF.well.area))+' Brunnen '+ok_(nearAny(mk,b,DEF.market.area))+' Markt '+ok_(nearDeco(dc,b)||b.type==='house2'||DEF[b.type].fancy)+' Deko';}
   else if(d.work){
-    const slots=d.workers||1;t+='Arbeiter: '+(b.workers.length?b.workers.map(n=>'✅ '+n.name+' – '+taskText(n)).join('<br>'):'❌ keiner frei')+(b.workers.length<slots&&b.workers.length?'<br>❌ '+(slots-b.workers.length)+' Platz frei':'');
+    const slots=wantOf(b);t+='Arbeiter '+b.workers.length+'/'+slots+(slots<slotsOf(b)?' <small>(max '+slotsOf(b)+')</small>':'')+(b.up?' ⭐':'')+': '+(b.workers.length?b.workers.map(n=>'✅ '+n.name+' – '+taskText(n)).join('<br>'):slots?'❌ keiner frei':'⏸ stillgelegt')+(b.workers.length<slots&&b.workers.length?'<br>❌ '+(slots-b.workers.length)+' Platz frei':'');
     if(d.work==='prod')t+='<br>'+Object.keys(d.in).map(k=>d.in[k]+' '+RES_ICON[k]).join(' + ')+' → '+Object.keys(d.out).map(k=>d.out[k]+' '+RES_ICON[k]).join('')+(has(d.in)?'':'<br>⚠️ Rohstoffe fehlen im Lager');
     else if(d.work==='field'){let a=0,r=0,e=0;for(const p of b.plots){if(p.st===1)a++;else if(p.st===2)r++;else e++;}t+='<br>🌱 wächst: '+a+' · 🌾 reif: '+r+' · leer: '+e+(growSeason()?'':'<br>❄️ '+SEASONS[season()].n+': kein Wachstum');}
     else if(d.work==='fish'){if(!b.spots)b.spots=fishSpots(b);t+=b.spots.length?'<br>Angelplätze: '+b.spots.length:'<br>⚠️ Kein Ufer in Reichweite';}
@@ -1191,15 +1265,16 @@ function infoText(b){
     else t+='<br>Radius: '+d.radius+' Felder';}
   else if(b.type==='store')t+='Hier werden Waren abgegeben.';
   else t+=d.info;
+  t+=upgText(b);
   t+='<br><small>Abriss erstattet '+(b.done?'50 %':'100 %')+' der Kosten.</small>';
   return t;
 }
-function openInfo(b){closePanel();infoB=b;infoKind='b';const d=DEF[b.type];openPanel(d.icon+' '+d.name,infoText(b),[{t:'🧨 Abreißen',c:'red',f:()=>demolish(b)},{t:'Schließen',f:closePanel}]);}
+function openInfo(b){closePanel();infoB=b;infoKind='b';const d=DEF[b.type];openPanel(d.icon+' '+d.name,infoText(b),infoBtns(b));}
 function stockText(){let t='';for(const k in res)t+=RES_ICON[k]+' '+RES_NAME[k]+': <b>'+res[k]+'</b>'+(FOODS.includes(k)?' 🍽':'')+'<br>';
   t+='<hr style="border:0;border-top:1px solid #c9b88f;margin:5px 0">'+hapIcon(hap)+' Zufriedenheit '+Math.round(hap)+' %<br><small>Nahrungsvielfalt '+hapF.variety+'/4 · Brunnen '+Math.round(hapF.well*100)+'% · Markt '+Math.round(hapF.market*100)+'% · Deko '+Math.round(hapF.deco*100)+'%'+(hapF.homeless>0?' · Obdachlos '+Math.round(hapF.homeless*100)+'%':'')+(hapF.noFood?' · ⚠️ Hunger!':'')+'<br>Mehr Zufriedenheit = schnellerer Zuzug.</small>';return t;}
 function openStock(){closePanel();infoKind='stock';openPanel('📦 Vorräte',stockText(),[{t:'Schließen',f:closePanel}]);}
 function tasksText(){let t='<b>'+LEVELS[level].i+' '+LEVELS[level].n+'</b>';const nx=LEVELS[level+1];
-  t+=nx?' → '+nx.i+' '+nx.n+': '+ok_(npcs.length>=nx.pop)+' '+npcs.length+'/'+nx.pop+' 👤 '+ok_(hap>=nx.hap)+' '+Math.round(hap)+'/'+nx.hap+' 😊':' (höchste Stufe)';
+  t+=nx?' → '+nx.i+' '+nx.n+':<br>'+lvlReqs(nx).map(q=>ok_(q.ok)+' '+q.t).join(' · ')+(unlockTxt(level+1)?'<br><small>'+unlockTxt(level+1).trim()+'</small>':''):' (höchste Stufe)';
   t+='<br><br>';let shown=0;for(let i=0;i<TASKS.length&&shown<4;i++){if(taskDone[i])continue;t+='⬜ '+TASKS[i].t+' <small>('+rewTxt(TASKS[i].r)+')</small><br>';shown++;}
   if(!shown)t+='🏆 Alle Aufgaben erledigt!<br>';t+='<small>Erledigt: '+taskDone.filter(x=>x).length+' / '+TASKS.length+'</small>';return t;}
 function openTasks(){closePanel();infoKind='tasks';openPanel('📜 Aufgaben',tasksText(),[{t:'Schließen',f:closePanel}]);}
@@ -1298,13 +1373,13 @@ function serialize(){
   const wear=W.wear;for(let i=0;i<wear.length;i++)if(wear[i]>.06)w.push(i,Math.round(wear[i]*100));
   return {v:SAVE_V,seed:W.seed,time:Date.now(),res:Object.assign({},res),simT,tod,yearT,level,hap,stats,tasks:taskDone.map(x=>x?1:0),
     b:buildings.map(b=>[b.type,b.tx,b.tz,b.done?1:0,+b.progress.toFixed(3),b.plots?b.plots.map(p=>[p.st,+p.g.toFixed(3)]):0]),
-    n:npcs.map(n=>[n.name,buildings.indexOf(n.home),+n.x.toFixed(2),+n.z.toFixed(2)]),r:paveList.slice(),t,rk,bu,w};
+    n:npcs.map(n=>[n.name,buildings.indexOf(n.home),+n.x.toFixed(2),+n.z.toFixed(2)]),r:paveList.slice(),t,rk,bu,w,pg:serializePg()};
 }
 function saveGame(){if(noSave)return false;try{localStorage.setItem(SAVE_KEY,JSON.stringify(serialize()));return true;}catch(e){console.warn('Speichern fehlgeschlagen',e);return false;}}
 function applySave(s){
   if(!s||s.v!==SAVE_V||s.seed!==W.seed)throw new Error('Spielstand passt nicht zur Welt');
   for(const k in res)res[k]=Math.max(0,Math.floor(numOr(s.res&&s.res[k],0)));
-  simT=Math.max(0,numOr(s.simT,0));tod=((numOr(s.tod,.06)%1)+1)%1;yearT=Math.max(0,numOr(s.yearT,0));level=Math.max(0,Math.min(2,numOr(s.level,0)|0));hap=hapT=Math.max(0,Math.min(100,numOr(s.hap,50)));
+  simT=Math.max(0,numOr(s.simT,0));tod=((numOr(s.tod,.06)%1)+1)%1;yearT=Math.max(0,numOr(s.yearT,0));level=Math.max(0,Math.min(LEVELS.length-1,numOr(s.level,0)|0));hap=hapT=Math.max(0,Math.min(100,numOr(s.hap,50)));
   if(s.stats&&typeof s.stats==='object'){stats.paved=numOr(s.stats.paved,0);if(s.stats.got&&typeof s.stats.got==='object')for(const k in s.stats.got)if(k in res)stats.got[k]=numOr(s.stats.got[k],0);}
   if(Array.isArray(s.tasks))s.tasks.forEach((v,i)=>{if(i<taskDone.length)taskDone[i]=!!v;});
   for(const e of s.t||[]){const o=trees[e[0]];if(!o)continue;o.wood=Math.max(0,Math.min(3,e[1]|0));o.regrow=numOr(e[2],-1);o.g=Math.max(.1,Math.min(1,numOr(e[3],1)));o.s=numOr(e[4],o.s);W.occ[o.tz*N+o.tx]=o.wood>0?T_TREE:T_FREE;setTree(o,e[0]);}
@@ -1317,6 +1392,7 @@ function applySave(s){
   for(const e of s.b||[]){if(!Array.isArray(e)||!DEF[e[0]]){map.push(null);continue;}const b=placeBuilding(e[0],e[1]|0,e[2]|0,!!e[3],true);map.push(b);if(!b)continue;
     if(!e[3]){b.progress=Math.max(0,Math.min(.99,numOr(e[4],0)));}
     if(b.plots&&Array.isArray(e[5]))e[5].forEach((q,k)=>{const p=b.plots[k];if(!p||!Array.isArray(q))return;p.st=Math.max(0,Math.min(2,q[0]|0));p.g=Math.max(0,Math.min(1,numOr(q[1],0)));setCrop(p);});}
+  applyPg(s.pg,map);
   store0=nearestStore(0,0);if(!store0)throw new Error('Kein Lager im Spielstand');
   for(const e of s.n||[]){if(!Array.isArray(e))continue;const h=map[e[1]]||store0;const n=spawnNpc(h,typeof e[0]==='string'?e[0].slice(0,24):null);if(!n)break;const x=numOr(e[2],n.x),z=numOr(e[3],n.z);if(Math.abs(x)<HALF&&Math.abs(z)<HALF){n.x=x;n.z=z;}}
   if(!npcs.length)throw new Error('Keine Bewohner im Spielstand');
@@ -1350,7 +1426,7 @@ bSpeed.addEventListener('click',()=>{speed=speed%3+1;bSpeed.textContent=speed+'�
 bTasks.addEventListener('click',()=>{if(infoKind==='tasks')closePanel();else openTasks();});
 document.getElementById('resRow').addEventListener('click',()=>{if(infoKind==='stock')closePanel();else openStock();});
 bMenu.addEventListener('click',()=>{setMode(null);infoKind='menu';openPanel('☰ Menü','Welt-Seed: <b>'+W.seed+'</b>'+(qLevel?' · Grafikstufe −'+qLevel:'')+'<br>Automatisch gespeichert alle 30 s und beim Verlassen.<br><small>„Neues Spiel“ löscht den Spielstand und erzeugt eine neue Insel.</small>',
-  [{t:'💾 Speichern',c:'go',f:()=>{toast(saveGame()?'💾 Gespeichert':'⚠️ Speichern nicht möglich');}},{t:'🌍 Neues Spiel',c:'red',f:()=>{openPanel('🌍 Neues Spiel?','Der aktuelle Fortschritt geht verloren.',[{t:'Ja, neu starten',c:'red',f:newGame},{t:'Abbrechen',f:closePanel}]);}},{t:'Schließen',f:closePanel}]);});
+  [{t:'💾 Speichern',c:'go',f:()=>{toast(saveGame()?'💾 Gespeichert':'⚠️ Speichern nicht möglich');}},{t:'⚙️ Optionen',f:openSettings},{t:'🌍 Neues Spiel',c:'red',f:()=>{openPanel('🌍 Neues Spiel?','Der aktuelle Fortschritt geht verloren.',[{t:'Ja, neu starten',c:'red',f:newGame},{t:'Abbrechen',f:closePanel}]);}},{t:'Schließen',f:closePanel}]);});
 
 // ================= Simulation =================
 const U={wood:document.getElementById('uWood'),stone:document.getElementById('uStone'),planks:document.getElementById('uPlanks'),food:document.getElementById('uFood'),pop:document.getElementById('uPop'),hap:document.getElementById('uHap'),time:document.getElementById('uTime'),lvl:document.getElementById('uLvl')};
@@ -1359,7 +1435,7 @@ let simT=0,slowT=0,wearT=0,foodAcc=0,hungerT=0,wasNight=false,lastSeason=0;
 function slowTick(){
   // Jobs verteilen
   for(const b of buildings){
-    if(!b.done||!DEF[b.type].work)continue;const slots=DEF[b.type].workers||1;
+    if(!b.done||!DEF[b.type].work)continue;const slots=wantOf(b);
     while(b.workers.length<slots){let best=null,bd=1e9;for(const n of npcs){if(n.job||n.site)continue;const d=(n.x-b.x)**2+(n.z-b.z)**2;if(d<bd){bd=d;best=n;}}
       if(!best)break;best.job=b;b.workers.push(best);if(best.state==='idle'){best.state='seek';best.goal=null;}}
   }
@@ -1390,6 +1466,7 @@ function slowTick(){
   if(infoKind==='b'){if(infoB&&buildings.includes(infoB))ptext.innerHTML=infoText(infoB);else closePanel();}
   else if(infoKind==='npc'){if(infoN&&npcs.includes(infoN))ptext.innerHTML=npcText(infoN);else closePanel();}
   else if(infoKind==='stock')ptext.innerHTML=stockText();else if(infoKind==='tasks')ptext.innerHTML=tasksText();
+  pgTick();
 }
 function wearTick(){
   const wear=W.wear;let dirty=false;
@@ -1427,7 +1504,7 @@ function applyQuality(){
 function loop(now){
   requestAnimationFrame(loop);
   const raw=(now-last)/1000,dt=Math.min(.05,Math.max(0,raw));last=now;
-  if(raw>0&&raw<.25){fpsT+=raw;fpsN++;if(fpsT>=4){const fps=fpsN/fpsT;fpsT=0;fpsN=0;if(simT>6&&fps<30&&qLevel<3){qLevel++;applyQuality();}}}
+  if(raw>0&&raw<.25){fpsT+=raw;fpsN++;if(fpsT>=4){const fps=fpsN/fpsT;fpsT=0;fpsN=0;if(qAuto&&simT>6&&fps<30&&qLevel<3){qLevel++;applyQuality();}}}
   try{
     if(!paused)for(let k=0;k<speed;k++)step(dt);
     const sdt=paused?0:dt*speed;
@@ -1442,6 +1519,122 @@ function loop(now){
   }catch(e){if(!errShown){errShown=true;showErr(e&&e.stack||e);}}
   renderer.render(scene,camera);
 }
+
+// ================= Fortschritt & UI-Erweiterungen: Stufen, Ausbau, Arbeiter, Statistik, Tutorial, Einstellungen =================
+const lvlAt=i=>LEVELS[Math.min(i|0,LEVELS.length-1)];
+const cTxt=c=>Object.keys(c).map(k=>c[k]+' '+RES_ICON[k]).join(' · ');
+function lvlReqs(L){const q=[];if(L.pop)q.push({t:npcs.length+'/'+L.pop+' 👤',ok:npcs.length>=L.pop});if(L.hap)q.push({t:Math.round(hap)+'/'+L.hap+' 😊',ok:hap>=L.hap});
+  for(const k in L.need||{}){const c=cnt(k);q.push({t:DEF[k].icon+' '+DEF[k].name+' '+Math.min(c,L.need[k])+'/'+L.need[k],ok:c>=L.need[k]});}return q;}
+function lvlReady(L){return lvlReqs(L).every(q=>q.ok);}
+function lvlShort(L){let t=(L.pop?L.pop+'👤 ':'')+(L.hap?L.hap+'%😊':'');for(const k in L.need||{})t+=' '+DEF[k].icon+(L.need[k]>1?'×'+L.need[k]:'');return t.trim();}
+function lockTxt(l){const L=lvlAt(l);return '🔒 '+L.i+' '+L.n+'<br><span style="font-weight:400;font-size:9.5px">'+lvlShort(L)+'</span>';}
+function unlockTxt(l){const a=[];for(const t in DEF){const d=DEF[t];if(!d.noBuild&&(d.lvl||0)===l)a.push(d.icon+' '+d.name);}
+  for(const k in UPG)if(UPG[k].lvl===l)a.push('⬆ '+DEF[UPG[k].to].name);if(UPG_WORK.lvl===l)a.push('⬆ Werkstatt-Ausbau');return a.length?' Neu: '+a.join(', '):'';}
+function nearDeco(list,b){for(const o of list){const r=DEF[o.type].deco||7;if((o.x-b.x)**2+(o.z-b.z)**2<=r*r)return true;}return false;}
+// Arbeiter: Plätze (inkl. Ausbau) und gewünschte Anzahl (b.wmax)
+function slotsOf(b){return (DEF[b.type].workers||1)+(b.up?1:0);}
+function wantOf(b){const s=slotsOf(b);return b.wmax==null?s:Math.max(0,Math.min(s,b.wmax));}
+function fireWorker(n){releaseRes(n);n.job=null;if(n.state!=='sleep'&&n.state!=='toHome'){n.state='idle';n.goal=null;}if(n.carry>0&&n.state!=='sleep')sendToStore(n);}
+function setWant(b,v){const s=slotsOf(b);v=Math.max(0,Math.min(s,v|0));b.wmax=v===s?null:v;while(b.workers.length>v)fireWorker(b.workers.pop());}
+// Ausbau
+function upgOf(b){if(!b.done)return null;const u=UPG[b.type];if(u)return {to:u.to,c:u.c,lvl:u.lvl,name:DEF[u.to].name};
+  if(DEF[b.type].work&&!b.up){const k=b.s>1?1.5:1,c={};for(const r in UPG_WORK.c)c[r]=Math.ceil(UPG_WORK.c[r]*k);return {c,lvl:UPG_WORK.lvl,name:'Werkstatt-Ausbau'};}return null;}
+function upgEffect(b,u){const d=DEF[b.type];if(u.to)return 'Wohnraum '+d.cap+' → '+DEF[u.to].cap;return '+1 Arbeitsplatz'+(d.work==='prod'?' · 25 % schneller':'');}
+function upgText(b){const u=upgOf(b);if(!u)return b.up?'<br>⭐ Ausgebaut':'';return '<br>⬆ <b>'+u.name+'</b>: '+upgEffect(b,u)+'<br><small>Kosten: '+cTxt(u.c)+(level<u.lvl?' · 🔒 ab '+lvlAt(u.lvl).n:'')+'</small>';}
+function addUpMark(b){if(b.upMesh)return;const m=UPMARK.clone(),o=b.s/2-.18;m.position.set(o,0,-o);b.mesh.add(m);b.upMesh=m;}
+function doUpgrade(b){const u=upgOf(b);if(!u||!buildings.includes(b))return false;
+  if(level<u.lvl){toast('🔒 Ausbau ab „'+lvlAt(u.lvl).n+'“');return false;}if(!has(u.c)){toast('Zu wenig Rohstoffe: '+cTxt(u.c));return false;}
+  addRes(u.c,-1);
+  if(u.to){b.type=u.to;b.mesh.remove(b.body);b.body=TEMPL[u.to].clone();b.mesh.add(b.body);}else{b.up=1;addUpMark(b);}
+  popText('⬆',b.x,b.z);toast('⬆ '+DEF[b.type].icon+' '+(u.to?DEF[u.to].name+' fertig!':DEF[b.type].name+' ausgebaut!'));return true;}
+function infoBtns(b){const d=DEF[b.type],out=[];
+  if(b.done&&d.work){const w=wantOf(b),s=slotsOf(b);out.push({t:'− 👷',dis:w<=0,f:()=>{setWant(b,w-1);openInfo(b);}},{t:'👷 +',dis:w>=s,f:()=>{setWant(b,w+1);openInfo(b);}});}
+  const u=upgOf(b);if(u)out.push({t:'⬆ Ausbau',c:'go',dis:!(level>=u.lvl&&has(u.c)),f:()=>{doUpgrade(b);openInfo(b);}});
+  out.push({t:'🧨 Abriss',c:'red',f:()=>demolish(b)},{t:'✕',f:closePanel});return out;}
+function serializePg(){const b=[];buildings.forEach((o,i)=>{if(o.up||o.wmax!=null)b.push([i,o.up?1:0,o.wmax==null?-1:o.wmax]);});return {b};}
+function applyPg(pg,map){if(!pg||!Array.isArray(pg.b))return;for(const e of pg.b){if(!Array.isArray(e))continue;const b=map[e[0]|0];if(!b)continue;
+  if(e[1]&&DEF[b.type].work){b.up=1;addUpMark(b);}const w=numOr(e[2],-1);if(w>=0)b.wmax=Math.min(slotsOf(b),w|0);}}
+// Zusätzliche Aufgaben (angehängt)
+for(const x of[
+  {t:'Baue ein Haus zum Fachwerkhaus aus 🏘️',ok:()=>cnt('house_fw')>=1,r:{wood:15}},
+  {t:'Baue eine Werkstatt aus ⭐',ok:()=>buildings.some(b=>b.up),r:{planks:8}},
+  {t:'Werde ein Marktflecken ⚖️',ok:()=>level>=3,r:{stone:20,planks:10}},
+  {t:'Baue eine Kirche ⛪',ok:()=>cnt('church')>=1,r:{wood:20}},
+  {t:'Werde eine Stadt 🏙️',ok:()=>level>=4,r:{planks:20,stone:20}},
+]){TASKS.push(x);taskDone.push(false);}
+// Statistik: Verlauf (alle 5 s Spielzeit, 6 min), Trends, Zufriedenheits-Aufschlüsselung
+const HIST=[],HIST_N=72;let histT=-99;
+const HAP_LBL={variety:'🍽 Nahrungsvielfalt',well:'⛲ Brunnen',market:'🎪 Markt',deco:'🌷 Deko/schöne Häuser',homeless:'⚠️ Obdachlosigkeit',bread:'🍞 Brot',noFood:'⚠️ Hunger'};
+function histSample(){HIST.push({t:simT,r:Object.assign({},res),p:npcs.length,f:foodTotal(),h:hap});if(HIST.length>HIST_N)HIST.shift();}
+function histVal(e,k){return k==='food'?e.f:k==='pop'?e.p:k==='hap'?e.h:(e.r[k]||0);}
+function rateOf(k){if(HIST.length<2)return 0;const a=HIST[HIST.length-1];let o=HIST[0];for(const e of HIST)if(a.t-e.t<=60){o=e;break;}const dt=a.t-o.t;return dt>=10?(histVal(a,k)-histVal(o,k))*60/dt:0;}
+function spark(k,w,h){w=w||64;h=h||16;if(HIST.length<2)return '';const v=HIST.map(e=>histVal(e,k));let mn=Math.min(...v),mx=Math.max(...v);if(mx-mn<1){mx+=.5;mn-=.5;}
+  const pts=v.map((y,i)=>(i*w/(HIST_N-1)).toFixed(1)+','+(h-1-(y-mn)/(mx-mn)*(h-2)).toFixed(1)).join(' ');
+  return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 '+w+' '+h+'" style="vertical-align:middle"><polyline points="'+pts+'" fill="none" stroke="#6b5636" stroke-width="1.5"/></svg>';}
+function hapParts(){const neutral=f=>{const o={};for(const k in f)o[k]=typeof f[k]==='boolean'?false:0;return o;};
+  const base=happinessOf(neutral(hapF)),cur=happinessOf(hapF),out=[];
+  for(const k in hapF){const f=Object.assign({},hapF);f[k]=typeof f[k]==='boolean'?false:0;const c=cur-happinessOf(f);if(c)out.push({k,c});}
+  out.sort((a,b)=>Math.abs(b.c)-Math.abs(a.c));return {base,cur,out};}
+function rateTxt(r){if(Math.abs(r)<.5)return '<span>±0</span>';return '<span class="'+(r>0?'up':'dn')+'">'+(r>0?'+':'')+Math.round(r)+'</span>';}
+function statsText(){
+  let cap=0,wk=0,bd=0,idle=0,hl=0;for(const b of buildings)if(b.done&&DEF[b.type].cap)cap+=DEF[b.type].cap;
+  for(const n of npcs){if(n.job)wk++;else if(n.site)bd++;else idle++;if(!DEF[n.home.type].cap)hl++;}
+  let t='<b>👤 Bevölkerung: '+npcs.length+'</b> '+rateTxt(rateOf('pop'))+'<small>/min</small> '+spark('pop')+'<br><small>Wohnraum '+cap+' · Arbeiter '+wk+' · Bauarbeiter '+bd+' · ohne Arbeit '+idle+(hl?' · ⚠️ obdachlos '+hl:'')+'</small>';
+  const hp=hapParts();t+='<hr style="border:0;border-top:1px solid #c9b88f;margin:5px 0"><b>'+hapIcon(hap)+' Zufriedenheit '+Math.round(hap)+' %</b> <small>(Ziel '+Math.round(hapT)+' %)</small> '+spark('hap')+'<br>';
+  const bar=(l,c)=>'<div class="hb"><span>'+l+'</span><b class="'+(c>=0?'up':'dn')+'">'+(c>0?'+':'')+c+'</b><i style="width:'+Math.min(140,Math.abs(c)*2.5)+'px;background:'+(c>=0?'#8cc456':'#e58a6e')+'"></i></div>';
+  t+=bar('Grundwert',hp.base);for(const p of hp.out)t+=bar(HAP_LBL[p.k]||p.k,p.c);
+  if(!hp.out.some(p=>p.k==='well'))t+='<small>💡 Brunnen nahe Häusern bringen viel Zufriedenheit.</small><br>';
+  t+='<hr style="border:0;border-top:1px solid #c9b88f;margin:5px 0"><b>📦 Vorräte</b> <small>(Änderung pro Minute)</small><table class="stt">';
+  const keys=Object.keys(res).filter(k=>res[k]>0||HIST.some(e=>e.r[k]>0));
+  for(const k of keys)t+='<tr><td>'+(RES_ICON[k]||'')+' '+(RES_NAME[k]||k)+'</td><td class="n"><b>'+res[k]+'</b></td><td class="n">'+rateTxt(rateOf(k))+'</td><td>'+spark(k)+'</td></tr>';
+  t+='<tr><td>🍽 Nahrung gesamt</td><td class="n"><b>'+foodTotal()+'</b></td><td class="n">'+rateTxt(rateOf('food'))+'</td><td>'+spark('food')+'</td></tr></table>';
+  return t;}
+function openStats(){closePanel();infoKind='stats';openPanel('📊 Statistik',statsText(),[{t:'📦 Vorräte',f:openStock},{t:'Schließen',f:closePanel}]);}
+document.getElementById('bStats').addEventListener('click',()=>{if(infoKind==='stats')closePanel();else openStats();});
+// Tutorial (einmalig, abschaltbar, in localStorage)
+const TUT_KEY='siedlungTut',tutEl=document.getElementById('tut');
+const TUT=[
+  {t:'Deine Siedler brauchen Holz. Öffne <b>🪵 Rohstoffe</b> und baue einen <b>Holzfäller 🪓</b> nahe am Wald.',ok:()=>buildings.some(b=>b.type==='cutter'),c:'roh'},
+  {t:'Ohne Nahrung kein Zuzug: baue unter <b>🍞 Nahrung</b> einen <b>Beerensammler 🫐</b> bei Beerensträuchern.',ok:()=>buildings.some(b=>b.type==='gather'),c:'nahrung'},
+  {t:'Mehr Wohnraum = mehr Bewohner. Baue unter <b>🏠 Wohnen</b> ein weiteres <b>Haus</b>.',ok:()=>buildings.filter(b=>b.type==='house'||DEF[b.type].base==='house').length>=2,c:'wohnen'},
+  {t:'Tippe <b>🛤 Weg</b> und ziehe mit einem Finger Wege (1 🪨 pro Feld) – darauf laufen Bewohner doppelt so schnell.',ok:()=>paveList.length>=3,c:'path'},
+  {t:'Super! <b>📜</b> zeigt Aufgaben &amp; nächste Stufe, <b>📊</b> die Statistik. Tippe Gebäude an, um Arbeiter (±) zu ändern oder sie auszubauen ⬆.',c:null},
+];
+let tutI=0,tutShown=-2;try{const v=localStorage.getItem(TUT_KEY);if(v!==null)tutI=numOr(v,0)|0;}catch(e){}
+function tutSet(i){tutI=i;try{localStorage.setItem(TUT_KEY,String(i));}catch(e){}tutShown=-2;tutTick();}
+function tutTick(){
+  while(tutI<TUT.length&&TUT[tutI].ok&&TUT[tutI].ok()){tutI++;try{localStorage.setItem(TUT_KEY,String(tutI));}catch(e){}}
+  const st=TUT[tutI],vis=!!st&&panel.style.display!=='block'&&!openCat;
+  catBtns.forEach(x=>x.classList.toggle('hint',!!(vis&&st.c&&x.dataset.c===st.c)));
+  if(!vis){tutEl.style.display='none';return;}
+  if(tutShown!==tutI){tutShown=tutI;tutEl.innerHTML='<div class="tt">💡 '+st.t+' <small>('+(tutI+1)+'/'+TUT.length+')</small></div>';
+    const b=document.createElement('button');if(st.ok){b.className='sk';b.textContent='✕';b.addEventListener('click',()=>{tutSet(99);toast('Tipps aus – in ☰ ⚙️ Optionen wieder einschaltbar');});}else{b.textContent='✓ Los';b.addEventListener('click',()=>tutSet(99));}tutEl.appendChild(b);}
+  tutEl.style.display='flex';}
+// Einstellungen: Grafik, Tempo, Ton (Platzhalter), Tutorial, Spielstand
+const CFG_KEY='siedlungCfg';let cfg={q:-1,snd:1};try{Object.assign(cfg,JSON.parse(localStorage.getItem(CFG_KEY)||'{}'));}catch(e){}
+let qAuto=!(cfg.q>=0);
+function saveCfg(){try{localStorage.setItem(CFG_KEY,JSON.stringify(cfg));}catch(e){}}
+function setQuality(q){cfg.q=q;saveCfg();qAuto=q<0;
+  sun.shadow.mapSize.set(2048,2048);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null;}renderer.setPixelRatio(Math.min(DPR,1.75));sun.castShadow=true;
+  qLevel=q<0?0:Math.min(3,q|0);applyQuality();resize();}
+function setGameSpeed(v){paused=v===0;if(v>0)speed=v;bPause.textContent=paused?'▶️':'⏸';bPause.classList.toggle('on',paused);bSpeed.textContent=speed+'×';bSpeed.classList.toggle('on',speed>1);}
+function srow(label,opts){const r=document.createElement('div');r.className='srow';const l=document.createElement('span');l.textContent=label;r.appendChild(l);
+  for(const o of opts){const b=document.createElement('button');b.className='chip'+(o.on?' on':'')+(o.c?' '+o.c:'');b.textContent=o.t;b.addEventListener('click',o.f);r.appendChild(b);}ptext.appendChild(r);}
+function openSettings(){closePanel();infoKind='settings';openPanel('⚙️ Optionen','<small>Welt-Seed '+W.seed+' · Einstellungen werden auf diesem Gerät gespeichert.</small>',[{t:'Schließen',f:closePanel}]);
+  const re=f=>()=>{f();openSettings();};
+  srow('Grafik',[['Auto',-1],['Hoch',0],['Mittel',1],['Niedrig',2],['Minimal',3]].map(([t,q])=>({t,on:q<0?qAuto:!qAuto&&qLevel===q,f:re(()=>setQuality(q))})));
+  srow('Tempo',[['⏸',0],['1×',1],['2×',2],['3×',3]].map(([t,v])=>({t,on:v===0?paused:!paused&&speed===v,f:re(()=>setGameSpeed(v))})));
+  srow('Ton',[{t:'🔊 An',on:!!cfg.snd,f:re(()=>{cfg.snd=1;saveCfg();})},{t:'🔇 Aus',on:!cfg.snd,f:re(()=>{cfg.snd=0;saveCfg();})}]);
+  srow('Tipps',[{t:'💡 Tutorial neu starten',f:()=>{tutSet(0);closePanel();}}]);
+  srow('Spielstand',[{t:'🗑 Zurücksetzen',c:'red',f:()=>openPanel('🗑 Spielstand zurücksetzen?','Alle Gebäude, Bewohner und Vorräte gehen verloren. Die Insel bleibt gleich.',[{t:'Ja, zurücksetzen',c:'red',f:resetSave},{t:'Abbrechen',f:openSettings}])}]);}
+function resetSave(){noSave=true;try{localStorage.setItem('siedlungSeed',String(W.seed));localStorage.removeItem(SAVE_KEY);}catch(e){}try{location.reload();}catch(e){}}
+if(cfg.q>=0)setQuality(cfg.q);
+// Fortschritts-Tick (aus slowTick)
+function pgTick(){
+  if(simT-histT>=5||simT<histT){histT=simT;histSample();}
+  for(const k in U){if(k!=='food'&&!(k in res))continue;const r=rateOf(k);U[k].dataset.tr=r>=1?'▲':r<=-1?'▼':'';}
+  if(infoKind==='stats')ptext.innerHTML=statsText();
+  tutTick();}
 
 // ================= Start: Spielstand laden oder neue Siedlung =================
 let loadedSave=false;
