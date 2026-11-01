@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Voxel-Tier: Faultier</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:linear-gradient(#f2f0dc,#dcefe4);font-family:system-ui,sans-serif}
+  canvas{display:block;touch-action:none}
+  .label{position:absolute;transform:translate(-50%,0);padding:4px 10px;border-radius:12px;background:#fffc;color:#6a5a7a;font-size:14px;font-weight:600;pointer-events:none;white-space:nowrap;box-shadow:0 2px 6px #0001}
+  #hint{position:absolute;top:10px;width:100%;text-align:center;color:#8a7a9a;font-size:13px;pointer-events:none}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="hint">Ziehen zum Drehen &middot; Tippen zum H&uuml;pfen</div>
+<div class="label" id="lab">Faultier</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const V = 0.1; // voxel size
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+camera.position.set(0, 2.2, 5.5);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.enablePan = false;
+controls.minDistance = 3; controls.maxDistance = 9;
+controls.maxPolarAngle = Math.PI * 0.48;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0xd8c8ff, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+sun.position.set(3, 6, 4);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.radius = 4;
+Object.assign(sun.shadow.camera, { left: -3, right: 3, top: 4, bottom: -3 });
+scene.add(sun);
+
+const boxGeo = new THREE.BoxGeometry(V, V, V);
+const mat = new THREE.MeshLambertMaterial();
+
+function voxels(list, m = mat) {
+  const im = new THREE.InstancedMesh(boxGeo, m, list.length);
+  const o = new THREE.Object3D(), c = new THREE.Color();
+  list.forEach(([x, y, z, col], i) => {
+    o.position.set(x * V, y * V, z * V); o.updateMatrix();
+    im.setMatrixAt(i, o.matrix); im.setColorAt(i, c.set(col));
+  });
+  im.castShadow = im.receiveShadow = true;
+  return im;
+}
+function fill(out, x0, x1, y0, y1, z0, z1, col, test) {
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++)
+    if (!test || test(x, y, z)) out.push([x, y, z, typeof col === 'function' ? col(x, y, z) : col]);
+}
+const part = (list, px = 0, py = 0, pz = 0, m = mat) => {
+  const g = new THREE.Group(); g.add(voxels(list, m)); g.position.set(px * V, py * V, pz * V); return g;
+};
+function makeEyes(gap, ey, z) {
+  const eyes = [], blush = [];
+  for (const s of [-1, 1]) {
+    const cx = s * gap;
+    fill(eyes, cx - 1, cx, ey - 1, ey, z, z, '#2a2238');
+    eyes.push([cx - 1, ey, z + 0.6, '#ffffff']);
+    blush.push([s * (gap + 1), ey - 3, z, '#ff9fb8'], [s * gap, ey - 3, z, '#ff9fb8']);
+  }
+  const g = new THREE.Group(), em = voxels(eyes); g.add(em);
+  g.position.y = ey * V; em.position.y = -ey * V;
+  return { eyes: g, blush: voxels(blush) };
+}
+// tile config (animal code may change these)
+let TOP = ['#a8e6a1', '#9edb98', '#b4eeab'], SIDE = ['#d9b48f', '#c79f7a'], TOPFN = null;
+const DECOR = [];
+function flower(x, z, h, p, c) {
+  for (let y = 1; y <= h; y++) DECOR.push([x, y, z, '#7cc86e']);
+  for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) DECOR.push([x + dx, h + 1, z + dz, p]);
+  DECOR.push([x, h + 1, z, c || '#ffe066']);
+}
+
+// ---------- Faultier ----------
+function make() {
+  const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const B = '#b38b6d', C = '#efdcbc', M = '#7a5644', K = '#5a5050';
+  const torso = []; fill(torso, -3, 3, -17, -8, -3, 2, (x, y, z) => (z === 2 && Math.abs(x) <= 1 && y > -16 && y < -9 ? C : B),
+    (x, y, z) => x * x + (y + 12.5) * (y + 12.5) * 0.35 + z * z * 1.2 <= 13);
+  body.add(part(torso));
+  const head = []; fill(head, -4, 4, 0, 6, -3, 3, (x, y, z) => {
+    if (z === 3 && y >= 2 && y <= 5 && ((x >= -4 && x <= -1) || (x >= 1 && x <= 3))) return M;
+    return z >= 2 && Math.abs(x) <= 3 && y <= 5 ? C : B;
+  }, (x, y, z) => !(Math.abs(x) === 4 && (y === 0 || y === 6)) && !(y === 6 && Math.abs(z) === 3));
+  head.push([0, 2, 4, '#4a3a30'], [-1, 1, 4, '#4a3a30'], [1, 1, 4, '#4a3a30']);
+  const headG = part(head, 0, -7, 1); body.add(headG);
+  const f = makeEyes(2, 4, 4); headG.add(f.eyes, f.blush);
+  for (const s of [-1, 1]) {
+    const arm = []; fill(arm, 0, 0, -11, 0, 0, 0, B); arm.push([0, 1, 0, K], [0, 1, -1, K], [0, 0, -2, K]);
+    body.add(part(arm, s * 5, 0, 1));
+  }
+  const legs = [];
+  for (const s of [-1, 1]) {
+    const l = []; fill(l, 0, 1, -4, 0, -1, 0, B); l.push([0, -5, 0, K], [1, -5, 0, K]);
+    const g = part(l, s > 0 ? 1 : -2, -16, 0); legs.push(g); body.add(g);
+  }
+  return { root, body, head: headG, eyes: f.eyes, rootY: 23, target: 1.4, blinkMin: 4, idle(t) {
+    body.rotation.z = Math.sin(t * 0.5) * 0.12;
+    body.rotation.x = Math.sin(t * 0.35) * 0.05;
+    headG.rotation.y = Math.sin(t * 0.3) * 0.45;
+    headG.rotation.z = Math.sin(t * 0.25) * 0.1;
+    legs.forEach((l, i) => { l.rotation.x = Math.sin(t * 0.6 + i * 2) * 0.2; });
+  } };
+}
+for (let y = 1; y <= 24; y++) DECOR.push([-8, y, 0, '#a77b5a'], [8, y, 0, '#a77b5a']);
+for (let x = -7; x <= 7; x++) DECOR.push([x, 24, 0, x % 3 ? '#a77b5a' : '#8d6448']);
+for (const sx of [-8, 8]) fill(DECOR, sx - 2, sx + 2, 25, 27, -2, 2, (x, y, z) => ((x + y + z) % 2 ? '#7cc86e' : '#96d888'), (x, y, z) => Math.abs(x - sx) + Math.abs(z) + Math.abs(y - 26) <= 3);
+DECOR.push([3, 25, 0, '#7cc86e'], [-4, 25, 0, '#96d888']);
+DECOR.push([-5, 1, 5, '#ffb3c8'], [6, 1, -5, '#fff1a8'], [5, 1, 5, '#c9b6ff']);
+
+// ---------- Tile ----------
+const tile = [];
+fill(tile, -9, 9, -2, 0, -7, 7, (x, y, z) => {
+  if (y === 0) return (TOPFN && TOPFN(x, z)) || TOP[(x * 7 + z * 13) & 1 ? 0 : (x + z) % 3 === 0 ? 2 : 1];
+  return y === -1 ? SIDE[0] : SIDE[1];
+});
+tile.push(...DECOR);
+const ground = voxels(tile); ground.position.y = -V * 0.5; scene.add(ground);
+
+const a = make();
+a.hop = -1; a.blink = 2 + Math.random() * 2; a.blinkMin = a.blinkMin || 2;
+a.root.position.y = (a.rootY || 0) * V + V * 0.5;
+scene.add(a.root);
+controls.target.set(0, a.target || 0.6, 0);
+
+// ---------- Interaction ----------
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+let down = null;
+renderer.domElement.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 8) return;
+  ptr.set(e.clientX / innerWidth * 2 - 1, -e.clientY / innerHeight * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  if (ray.intersectObject(a.root, true).length && a.hop < 0) a.hop = 0;
+});
+
+function resize() {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.position.setLength(innerWidth < innerHeight ? 7 : 5.5);
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+const label = document.getElementById('lab');
+const tmp = new THREE.Vector3(), clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+  const s = t * 2.4;
+  let y = 0, sq = 1 + Math.sin(s * 2) * 0.03;
+  if (a.hop >= 0) {
+    a.hop += dt * 2.2;
+    const h = Math.min(a.hop, 1);
+    y = Math.sin(h * Math.PI) * 0.6; sq = 1 + Math.sin(h * Math.PI) * 0.12;
+    if (a.hop >= 1) a.hop = -1;
+  }
+  a.body.position.y = y + Math.abs(Math.sin(s)) * 0.02;
+  a.body.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq));
+  a.blink -= dt;
+  a.eyes.scale.y = a.blink < 0.12 ? 0.15 : 1;
+  if (a.blink < 0) a.blink = a.blinkMin + Math.random() * 3;
+  a.idle(t, dt);
+  tmp.set(0, -0.15, 0.85).project(camera);
+  label.style.left = (tmp.x * 0.5 + 0.5) * innerWidth + 'px';
+  label.style.top = (-tmp.y * 0.5 + 0.5) * innerHeight + 'px';
+  controls.update();
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>

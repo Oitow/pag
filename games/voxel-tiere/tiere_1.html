@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Voxel-Tiere</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:linear-gradient(#ffe9f3,#dff3ff);font-family:system-ui,sans-serif}
+  canvas{display:block;touch-action:none}
+  .label{position:absolute;transform:translate(-50%,0);padding:4px 10px;border-radius:12px;background:#fffc;color:#6a5a7a;font-size:14px;font-weight:600;pointer-events:none;white-space:nowrap;box-shadow:0 2px 6px #0001}
+  #hint{position:absolute;top:10px;width:100%;text-align:center;color:#8a7a9a;font-size:13px;pointer-events:none}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="hint">Ziehen zum Drehen · Tippen zum Hüpfen</div>
+<div class="label" id="lab0">Schildkröte</div>
+<div class="label" id="lab1">Äffchen</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const V = 0.1; // voxel size
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+camera.position.set(0, 2.2, 5.5);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.6, 0);
+controls.enableDamping = true;
+controls.enablePan = false;
+controls.minDistance = 3; controls.maxDistance = 9;
+controls.maxPolarAngle = Math.PI * 0.48;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0xd8c8ff, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+sun.position.set(3, 6, 4);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.radius = 4;
+Object.assign(sun.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3 });
+scene.add(sun);
+
+const boxGeo = new THREE.BoxGeometry(V, V, V);
+const mat = new THREE.MeshLambertMaterial();
+
+// Build an InstancedMesh from a list of [x,y,z,color] in voxel units
+function voxels(list) {
+  const m = new THREE.InstancedMesh(boxGeo, mat, list.length);
+  const o = new THREE.Object3D(), c = new THREE.Color();
+  list.forEach(([x, y, z, col], i) => {
+    o.position.set(x * V, y * V, z * V); o.updateMatrix();
+    m.setMatrixAt(i, o.matrix); m.setColorAt(i, c.set(col));
+  });
+  m.castShadow = m.receiveShadow = true;
+  return m;
+}
+// Filled box region helper
+function fill(out, x0, x1, y0, y1, z0, z1, col, test) {
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++)
+    if (!test || test(x, y, z)) out.push([x, y, z, typeof col === 'function' ? col(x, y, z) : col]);
+}
+const part = (list, px = 0, py = 0, pz = 0) => {
+  const g = new THREE.Group(); g.add(voxels(list)); g.position.set(px * V, py * V, pz * V); return g;
+};
+// Eyes: black 2x2 with white highlight, plus blush
+function face(out, ex, ey, z, gap, blush) {
+  for (const s of [-1, 1]) {
+    const cx = s * gap;
+    fill(out, cx - 1, cx, ey - 1, ey, z, z, '#2a2238');
+    out.push([cx - (s > 0 ? 1 : 1), ey, z + 0.6, '#ffffff']);
+    out.push([s * (gap + 1), ey - 3, z, blush]);
+    out.push([s * (gap + 1) - s, ey - 3, z, blush]);
+  }
+}
+function makeEyes(gap, ey, z) {
+  const l = []; face(l, 0, ey, z, gap, '#ff9fb8');
+  const eyes = l.filter(v => v[3] !== '#ff9fb8'), blush = l.filter(v => v[3] === '#ff9fb8');
+  // shrink highlight cube
+  const g = new THREE.Group();
+  const em = voxels(eyes); g.add(em);
+  g.position.y = ey * V; em.position.y = -ey * V;
+  return { eyes: g, blush: voxels(blush) };
+}
+
+// ---------- Turtle ----------
+function makeTurtle() {
+  const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const shell = [];
+  fill(shell, -4, 4, 1, 5, -4, 4, (x, y, z) => ((x + z + y) % 3 === 0 ? '#7cc49a' : (y === 1 ? '#f4e3a4' : '#9edbb2')),
+    (x, y, z) => x * x + z * z + (y - 1) * (y - 1) * 1.6 <= 22);
+  body.add(part(shell, 0, 0, -1));
+  const head = []; fill(head, -3, 3, 0, 5, -2, 3, '#b6ecc4', (x, y, z) => !(Math.abs(x) === 3 && (y === 0 || y === 5)));
+  const headG = part(head, 0, 3, 5); body.add(headG);
+  const f = makeEyes(2, 4, 4); headG.add(f.eyes, f.blush);
+  const legs = [];
+  for (const [x, z] of [[-3, -3], [3, -3], [-3, 2], [3, 2]]) {
+    const l = []; fill(l, -1, 1, -1, 0, -1, 1, '#b6ecc4'); const g = part(l, x, 0, z - 1); legs.push(g); body.add(g);
+  }
+  const tail = part([[0, 0, 0, '#b6ecc4'], [0, 0, -1, '#b6ecc4']], 0, 1, -6); body.add(tail);
+  return { root, body, head: headG, eyes: f.eyes, limbs: legs, tail, phase: 0 };
+}
+
+// ---------- Monkey ----------
+function makeMonkey() {
+  const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const BR = '#c99a74', CR = '#ffe0c4';
+  const torso = []; fill(torso, -2, 2, 0, 4, -2, 2, (x, y, z) => (z === 2 && Math.abs(x) <= 1 && y <= 3 ? CR : BR));
+  body.add(part(torso, 0, 2, 0));
+  const head = [];
+  fill(head, -4, 4, 0, 7, -3, 3, (x, y, z) => (z >= 2 && ((Math.abs(x) <= 3 && y <= 3) || (Math.abs(x) <= 1 && y <= 6)) ? CR : BR),
+    (x, y, z) => !((Math.abs(x) === 4) && (y === 0 || y === 7)));
+  fill(head, -6, -5, 3, 4, 0, 0, (x) => (x === -5 ? CR : BR));
+  fill(head, 5, 6, 3, 4, 0, 0, (x) => (x === 5 ? CR : BR));
+  head.push([0, 1, 4, BR], [-1, 2, 4, CR], [1, 2, 4, CR], [0, 2, 4, CR]);
+  const headG = part(head, 0, 7, 0); body.add(headG);
+  const f = makeEyes(2, 5, 4); headG.add(f.eyes, f.blush);
+  const limbs = [];
+  for (const s of [-1, 1]) {
+    const arm = []; fill(arm, 0, 0, -3, 0, 0, 0, BR); arm.push([0, -4, 0, CR]);
+    const a = part(arm, s * 3, 5, 0); limbs.push(a); body.add(a);
+    const leg = []; fill(leg, 0, 1, 0, 1, 0, 1, BR); leg.push([0, 0, 2, CR], [1, 0, 2, CR]);
+    body.add(part(leg, s > 0 ? 1 : -2, 0, -1));
+  }
+  const t = []; for (let i = 0; i < 7; i++) t.push([0, Math.round(Math.sin(i * 0.7) * 2) + i * 0.6, -i, BR]);
+  const tail = part(t, 0, 2, -3); body.add(tail);
+  return { root, body, head: headG, eyes: f.eyes, limbs, tail, phase: 1.7 };
+}
+
+// ---------- Grass tile ----------
+const tile = [];
+fill(tile, -14, 14, -2, 0, -7, 7, (x, y, z) => {
+  if (y === 0) return ['#a8e6a1', '#9edb98', '#b4eeab'][(x * 7 + z * 13) & 1 ? 0 : (x + z) % 3 === 0 ? 2 : 1];
+  return y === -1 ? '#d9b48f' : '#c79f7a';
+});
+for (const [x, z, c] of [[-12, 5, '#ffb3c8'], [11, -5, '#fff1a8'], [9, 6, '#c9b6ff'], [-10, -5, '#ffffff']]) tile.push([x, 1, z, c]);
+const ground = voxels(tile); ground.position.y = -V * 0.5; scene.add(ground);
+
+const animals = [makeTurtle(), makeMonkey()];
+animals[0].root.position.set(-0.75, V * 0.5 + V, 0.05);
+animals[1].root.position.set(0.75, V * 0.5, 0);
+animals.forEach(a => { a.root.rotation.y = a === animals[0] ? 0.25 : -0.25; a.hop = -1; a.blink = 2 + Math.random() * 2; scene.add(a.root); });
+
+// ---------- Interaction ----------
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+let down = null;
+renderer.domElement.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 8) return;
+  ptr.set(e.clientX / innerWidth * 2 - 1, -e.clientY / innerHeight * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  for (const a of animals) if (ray.intersectObject(a.root, true).length && a.hop < 0) a.hop = 0;
+});
+
+function resize() {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.position.setLength(innerWidth < innerHeight ? 7 : 5.5);
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+const labels = [document.getElementById('lab0'), document.getElementById('lab1')];
+const tmp = new THREE.Vector3(), clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+  animals.forEach((a, i) => {
+    const s = t * 2.4 + a.phase;
+    let y = 0, sq = 1 + Math.sin(s * 2) * 0.03;
+    if (a.hop >= 0) {
+      a.hop += dt * 2.2;
+      const h = Math.min(a.hop, 1);
+      y = Math.sin(h * Math.PI) * 0.6; sq = 1 + Math.sin(h * Math.PI) * 0.12;
+      if (a.hop >= 1) a.hop = -1;
+    }
+    a.body.position.y = y + Math.abs(Math.sin(s)) * 0.02;
+    a.body.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq));
+    a.head.rotation.z = Math.sin(s * 0.5) * 0.08;
+    a.limbs.forEach((l, k) => { l.rotation.x = Math.sin(s * 1.5 + k * Math.PI) * 0.25; });
+    a.tail.rotation.y = Math.sin(s * 2) * 0.4;
+    a.blink -= dt;
+    a.eyes.scale.y = a.blink < 0.12 ? 0.15 : 1;
+    if (a.blink < 0) a.blink = 2 + Math.random() * 3;
+    tmp.setFromMatrixPosition(a.root.matrixWorld); tmp.y -= 0.25; tmp.project(camera);
+    labels[i].style.left = (tmp.x * 0.5 + 0.5) * innerWidth + 'px';
+    labels[i].style.top = (-tmp.y * 0.5 + 0.5) * innerHeight + 'px';
+  });
+  controls.update();
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>

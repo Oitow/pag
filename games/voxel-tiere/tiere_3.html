@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Tiere 3 – Fuchs & Frosch</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:linear-gradient(#ffe9f2,#e3f4ff);font-family:system-ui,sans-serif;touch-action:none}
+canvas{display:block}
+.lbl{position:absolute;transform:translate(-50%,0);background:#fff;color:#7a5a6a;padding:4px 12px;border-radius:12px;font-weight:700;font-size:15px;box-shadow:0 2px 6px #0002;pointer-events:none;white-space:nowrap}
+#hint{position:absolute;top:12px;width:100%;text-align:center;color:#a07890;font-size:13px;pointer-events:none}
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+</head><body>
+<div id="hint">Ziehen zum Drehen · Tippe ein Tier an</div>
+<div class="lbl" id="l0">Fuchs Fini</div><div class="lbl" id="l1">Frosch Quaki</div>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(40,1,0.1,200);
+cam.position.set(0,9,30);
+const ctl=new OrbitControls(cam,renderer.domElement);
+ctl.target.set(0,4,0);ctl.enableDamping=true;ctl.enablePan=false;ctl.minDistance=14;ctl.maxDistance=50;ctl.maxPolarAngle=1.45;
+
+scene.add(new THREE.HemisphereLight(0xfff6fb,0xcfe8ff,1.6));
+const sun=new THREE.DirectionalLight(0xffffff,1.6);
+sun.position.set(8,18,12);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);
+Object.assign(sun.shadow.camera,{left:-15,right:15,top:15,bottom:-15});sun.shadow.radius=4;
+scene.add(sun);
+
+const grad=new THREE.DataTexture(new Uint8Array([120,120,120,255,200,200,200,255,255,255,255,255]),3,1);
+grad.minFilter=grad.magFilter=THREE.NearestFilter;grad.needsUpdate=true;
+const box=new THREE.BoxGeometry(1,1,1);
+
+// build an InstancedMesh from a list of [x,y,z,color]
+function vox(list){
+  const m=new THREE.InstancedMesh(box,new THREE.MeshToonMaterial({gradientMap:grad}),list.length);
+  const o=new THREE.Object3D(),c=new THREE.Color();
+  list.forEach((v,i)=>{o.position.set(v[0],v[1],v[2]);o.updateMatrix();m.setMatrixAt(i,o.matrix);m.setColorAt(i,c.set(v[3]));});
+  m.castShadow=m.receiveShadow=true;return m;
+}
+function fill(L,x0,x1,y0,y1,z0,z1,col){for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++)for(let z=z0;z<=z1;z++)L.push([x,y,z,typeof col=='function'?col(x,y,z):col]);}
+function eye(L,x,y,z){fill(L,x,x+1,y,y+1,z,z,'#3a2a3a');L.push([x+1,y+1,z+.05,'#ffffff']);}
+
+const animals=[];
+function makeAnimal(o){
+  const root=new THREE.Group();root.position.x=o.x;scene.add(root);
+  const tile=vox(o.tile);root.add(tile);
+  const body=new THREE.Group();body.position.y=1;root.add(body);
+  body.add(vox(o.body));
+  const eyes=vox(o.eyes);body.add(eyes);
+  const extra=o.extra?vox(o.extra):null;
+  if(extra){const g=new THREE.Group();g.position.copy(o.extraPivot);extra.position.copy(o.extraPivot).negate();g.add(extra);body.add(g);o.extraG=g;}
+  body.scale.setScalar(.45);
+  root.traverse(m=>m.userData.animal=animals.length);
+  animals.push({...o,root,body,eyes,hop:-1,blink:2+Math.random()*3});
+}
+
+// FOX
+{
+  const B=[],E=[],T=[],tile=[];
+  const O='#ffb37a',W='#fff5ec',D='#e98a5a';
+  fill(tile,-6,6,-1,-1,-6,6,(x,y,z)=>(x+z)&1?'#bfe8b0':'#aee0a0');
+  for(let i=0;i<tile.length;i++){tile[i][0]*=.45;tile[i][2]*=.45;}
+  // legs
+  fill(B,-3,-2,0,2,-1,0,D);fill(B,2,3,0,2,-1,0,D);
+  // body
+  fill(B,-4,4,3,8,-3,2,(x,y,z)=>z==2&&Math.abs(x)<3&&y<8?W:O);
+  // head
+  fill(B,-6,6,9,18,-5,4,(x,y,z)=>z==4&&y<13&&Math.abs(x)<4?W:O);
+  fill(B,-1,1,10,11,5,5,W);B.push([0,12,5,'#4a3040']);// snout + nose
+  // ears
+  fill(B,-6,-3,19,20,-1,1,O);fill(B,-5,-4,21,22,-1,1,O);B.push([-5,21,2,'#ffd6e0'],[-4,19,2,'#ffd6e0']);
+  fill(B,3,6,19,20,-1,1,O);fill(B,4,5,21,22,-1,1,O);B.push([5,21,2,'#ffd6e0'],[4,19,2,'#ffd6e0']);
+  // blush
+  fill(B,-6,-5,12,12,5,5,'#ff9fb5');fill(B,5,6,12,12,5,5,'#ff9fb5');
+  eye(E,-4,14,5);eye(E,2,14,5);
+  // tail
+  for(let i=0;i<8;i++){const r=i<6?1+(i>2?1:0):1;fill(T,-r,r,4+i,4+i+0,-4-i,-4-i,i>5?W:O);fill(T,-r,r,5+i,5+i,-4-i,-4-i,i>5?W:O);}
+  makeAnimal({kind:'fox',x:-3.4,tile,body:B,eyes:E,extra:T,extraPivot:new THREE.Vector3(0,5,-3),label:'l0'});
+}
+// FROG
+{
+  const B=[],E=[],P=[],tile=[];
+  const G='#9fe0a0',L='#e9ffd9',DG='#78c885';
+  // water tile + lily pad
+  fill(tile,-6,6,-2,-2,-6,6,'#a8dcff');
+  for(let x=-6;x<=6;x++)for(let z=-6;z<=6;z++){const d=Math.hypot(x,z);if(d<5.6&&!(z>0&&Math.abs(x)<=(z>3?1:0)))tile.push([x,-1,z,d>4.5?'#7cc77a':'#8fd68a']);}
+  tile.push([3,0,-2,'#ffc6e0'],[3,1,-2,'#fff']);
+  for(const t of tile){t[0]*=.45;t[2]*=.45;t[1]*=.45;}
+  // feet
+  fill(B,-6,-3,0,0,0,3,DG);fill(B,3,6,0,0,0,3,DG);
+  // body (squat)
+  fill(B,-5,5,1,6,-4,3,(x,y,z)=>z==3&&Math.abs(x)<4?L:G);
+  // head
+  fill(B,-7,7,7,13,-4,4,(x,y,z)=>z==4&&y<9?L:G);
+  fill(B,-4,4,8,8,5,5,'#d9708a');// smile line
+  // eye bumps
+  fill(B,-7,-3,14,16,-1,3,G);fill(B,3,7,14,16,-1,3,G);
+  fill(B,-7,-6,10,10,5,5,'#ffa0b8');fill(B,6,7,10,10,5,5,'#ffa0b8');
+  eye(E,-6,14,4);eye(E,4,14,4);
+  // throat puff
+  fill(P,-2,2,5,7,4,5,'#fff4c8');
+  makeAnimal({kind:'frog',x:3.4,tile,body:B,eyes:E,extra:P,extraPivot:new THREE.Vector3(0,6,4.5),label:'l1'});
+}
+
+// tap to hop
+const ray=new THREE.Raycaster(),pt=new THREE.Vector2();let down=null;
+renderer.domElement.addEventListener('pointerdown',e=>down=[e.clientX,e.clientY]);
+renderer.domElement.addEventListener('pointerup',e=>{
+  if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>8)return;
+  pt.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(pt,cam);
+  const h=ray.intersectObjects(animals.map(a=>a.root),true)[0];
+  if(h){const a=animals[h.object.userData.animal];if(a.hop<0)a.hop=0;}
+});
+
+function resize(){renderer.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;
+  cam.position.setLength(innerWidth<innerHeight?36:28);cam.updateProjectionMatrix();}
+addEventListener('resize',resize);resize();
+
+const clk=new THREE.Clock(),v=new THREE.Vector3();
+renderer.setAnimationLoop(()=>{
+  const dt=Math.min(clk.getDelta(),.05),t=clk.elapsedTime;
+  animals.forEach((a,i)=>{
+    let sy=1+Math.sin(t*3+i)*.04,y=1+Math.abs(Math.sin(t*1.5+i))*.08;
+    if(a.hop>=0){a.hop+=dt*2.2;const p=a.hop;
+      if(p<.15)sy=1-p*2.5;else if(p<.85){y+=Math.sin((p-.15)/.7*Math.PI)*2.5;sy=1.12;}
+      else if(p<1)sy=.85;else a.hop=-1;}
+    a.body.position.y=y;a.body.scale.set(.45/Math.sqrt(sy),.45*sy,.45/Math.sqrt(sy));
+    a.blink-=dt;a.eyes.scale.y=a.blink<.12?.1:1;a.eyes.position.y=a.blink<.12?14.5*.9:0;
+    if(a.blink<0)a.blink=2+Math.random()*3;
+    if(a.kind=='fox')a.extraG.rotation.y=Math.sin(t*2.5)*.45;
+    else{const s=1+Math.max(0,Math.sin(t*2.2))*.5;a.extraG.scale.set(s,s,s);}
+    v.set(a.root.position.x,-.6,0).project(cam);
+    const el=document.getElementById(a.label);
+    el.style.left=(v.x*.5+.5)*innerWidth+'px';el.style.top=(-v.y*.5+.5)*innerHeight+'px';
+  });
+  ctl.update();renderer.render(scene,cam);
+});
+</script></body></html>

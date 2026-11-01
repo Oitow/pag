@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Tiere 2 – Katze & Pinguin</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:linear-gradient(#fde7f0,#e3f1ff);font-family:system-ui,sans-serif;touch-action:none}
+canvas{display:block}
+.lbl{position:fixed;transform:translate(-50%,0);background:#fff;color:#7a5a7a;padding:4px 12px;border-radius:12px;font-weight:700;font-size:15px;box-shadow:0 2px 6px #0002;pointer-events:none;white-space:nowrap}
+#hint{position:fixed;top:12px;width:100%;text-align:center;color:#a07fa0;font-size:13px;pointer-events:none}
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+</head><body>
+<div id="hint">Ziehen zum Drehen · Tippe ein Tier an</div>
+<div class="lbl" id="l0">Katze Mimi</div><div class="lbl" id="l1">Pinguin Pino</div>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const S=0.1;
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(40,1,0.1,100);cam.position.set(0,2.2,6);
+const ctr=new OrbitControls(cam,renderer.domElement);ctr.target.set(0,0.9,0);ctr.enableDamping=true;ctr.enablePan=false;ctr.minDistance=3;ctr.maxDistance=10;ctr.maxPolarAngle=1.45;
+scene.add(new THREE.HemisphereLight(0xffffff,0xffd6e8,1.6));
+const sun=new THREE.DirectionalLight(0xffffff,1.6);sun.position.set(3,6,4);sun.castShadow=true;
+sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-4,right:4,top:4,bottom:-4});sun.shadow.radius=4;scene.add(sun);
+const grad=new THREE.DataTexture(new Uint8Array([120,190,255]),3,1,THREE.RedFormat);grad.needsUpdate=true;
+const geo=new THREE.BoxGeometry(S,S,S);
+// build part: list of [x,y,z,color] in voxel units
+function part(vox){
+  const m=new THREE.InstancedMesh(geo,new THREE.MeshToonMaterial({gradientMap:grad}),vox.length);
+  const o=new THREE.Object3D(),c=new THREE.Color();
+  vox.forEach((v,i)=>{o.position.set(v[0]*S,v[1]*S,v[2]*S);o.updateMatrix();m.setMatrixAt(i,o.matrix);m.setColorAt(i,c.set(v[3]));});
+  m.castShadow=m.receiveShadow=true;const g=new THREE.Group();g.add(m);return g;
+}
+function box(a,x0,x1,y0,y1,z0,z1,col,f){for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++)for(let z=z0;z<=z1;z++){const cc=f?f(x,y,z):col;if(cc)a.push([x,y,z,cc]);}}
+// rounded block helper: skip corners
+const round=(x0,x1,y0,y1,z0,z1,col,face)=>(x,y,z)=>{const ex=x==x0||x==x1,ey=y==y0||y==y1,ez=z==z0||z==z1;if(ex+ey+ez>=2)return null;return face&&z==z1?face(x,y)||col:col;};
+function eyes(a,z,ex,ey,col='#2b2240'){ // 2x3 eyes with highlight
+  for(const sx of[-1,1]){const cx=sx*ex;for(let x=0;x<2;x++)for(let y=0;y<3;y++){const hl=(x==(sx<0?0:0)&&y==2);a.push([cx+x-(sx<0?1:0),ey+y,z,hl?'#ffffff':col]);}}
+}
+function animal(kind){
+  const root=new THREE.Group(),body=new THREE.Group();root.add(body);
+  const P={};
+  if(kind==='cat'){
+    const W='#ffd9b0',D='#f5b880',Pk='#ffb3c8';
+    const b=[];box(b,-3,3,0,6,-3,3,0,round(-3,3,0,6,-3,3,W,(x,y)=>Math.abs(x)<=1&&y<5?'#fff3e4':null));
+    box(b,-3,-2,-1,-1,0,2,D);box(b,2,3,-1,-1,0,2,D);P.body=part(b);P.body.position.y=0.15;body.add(P.body);
+    const h=[];box(h,-6,6,0,9,-5,5,0,round(-6,6,0,9,-5,5,W));
+    box(h,-6,-4,10,11,-1,1,W);h.push([-5,12,0,W]);box(h,4,6,10,11,-1,1,W);h.push([5,12,0,W]);
+    h.push([-5,10,2,Pk],[5,10,2,Pk]);box(h,-1,1,8,9,-1,1,D);
+    for(const s of[-1,1])box(h,s*4-1,s*4+1,2,2,6,6,Pk);h.push([0,3,6,'#ff8fab'],[-1,2,6,'#7a4a4a'],[1,2,6,'#7a4a4a']);
+    P.head=part(h);P.head.position.y=0.85;body.add(P.head);
+    const e=[];eyes(e,6,3,4);P.eyes=part(e);P.eyes.position.y=0.85;body.add(P.eyes);
+    const t=[];for(let i=0;i<9;i++)t.push([0,i,-Math.min(i,3),i>6?'#fff3e4':D]);P.tail=part(t);P.tail.position.set(0,0.25,-0.35);body.add(P.tail);
+  }else{
+    const N='#5b6b9a',Wh='#ffffff',O='#ffb347';
+    const b=[];box(b,-4,4,0,8,-3,3,0,round(-4,4,0,8,-3,3,N,(x,y)=>Math.abs(x)<=2&&y<8?Wh:null));
+    box(b,-3,-1,-1,-1,0,4,O);box(b,1,3,-1,-1,0,4,O);P.body=part(b);P.body.position.y=0.15;body.add(P.body);
+    const h=[];box(h,-6,6,0,9,-5,5,0,round(-6,6,0,9,-5,5,N,(x,y)=>(y<7&&(Math.abs(x)<=4))?Wh:null));
+    for(const s of[-1,1])box(h,s*4-1,s*4+1,2,2,6,6,'#ffb3c8');box(h,-1,1,2,3,6,7,O);h.push([0,9,-1,N],[0,10,0,'#7d8cc0']);
+    P.head=part(h);P.head.position.y=1.05;body.add(P.head);
+    const e=[];eyes(e,6,3,4);P.eyes=part(e);P.eyes.position.y=1.05;body.add(P.eyes);
+    for(const s of[-1,1]){const f=[];box(f,0,0,-6,0,-1,1,N);const g=part(f);g.position.set(s*0.5,0.95,0);body.add(g);P['f'+s]=g;}
+  }
+  root.userData={kind,P,body,hop:0,blink:2+Math.random()*2};
+  return root;
+}
+// tile
+function tile(x,top){const t=[];box(t,-7,7,0,2,-7,7,0,(i,y,k)=>{if(y<2)return '#c9a27e';const n=(i*7+k*13)&3;return top[n];});const g=part(t);g.position.set(x,-0.2,0);scene.add(g);}
+tile(-1.1,['#a8e6a1','#9ddc96','#b5ef9e','#a8e6a1']);tile(1.1,['#ffffff','#eef6ff','#f4f9ff','#ffffff']);
+const cat=animal('cat');cat.position.set(-1.1,0.1,0);const peng=animal('peng');peng.position.set(1.1,0.1,0);scene.add(cat,peng);
+const animals=[cat,peng];
+// tap to hop
+const ray=new THREE.Raycaster(),pv=new THREE.Vector2();let down=null;
+renderer.domElement.addEventListener('pointerdown',e=>down=[e.clientX,e.clientY]);
+renderer.domElement.addEventListener('pointerup',e=>{if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>8)return;
+  pv.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(pv,cam);
+  for(const a of animals){if(ray.intersectObject(a,true).length&&a.userData.hop<=0){a.userData.hop=1;break;}}});
+function resize(){renderer.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.position.z=cam.aspect<0.8?8:6;cam.updateProjectionMatrix();}
+addEventListener('resize',resize);resize();
+const clock=new THREE.Clock(),tmp=new THREE.Vector3(),lbls=[l0,l1];
+renderer.setAnimationLoop(()=>{
+  const dt=Math.min(clock.getDelta(),0.05),t=clock.elapsedTime;
+  animals.forEach((a,i)=>{const u=a.userData,P=u.P,ph=t*3+i*1.5;
+    let y=0,sq=1+Math.sin(ph)*0.04;
+    if(u.hop>0){u.hop-=dt*1.8;const k=1-Math.max(u.hop,0);y=Math.sin(k*Math.PI)*0.6;sq=k<0.15?0.85:1+Math.sin(k*Math.PI)*0.1;a.rotation.y=Math.sin(k*Math.PI*2)*0.3;}
+    u.body.position.y=y;u.body.scale.set(1/Math.sqrt(sq),sq,1/Math.sqrt(sq));
+    u.blink-=dt;const bl=u.blink<0.12&&u.blink>0?0.1:1;if(u.blink<0)u.blink=2+Math.random()*3;
+    P.eyes.scale.y=bl;P.head.rotation.z=P.eyes.rotation.z=Math.sin(ph*0.5)*0.05;
+    if(u.kind==='cat')P.tail.rotation.z=Math.sin(t*2.5)*0.5;
+    else{const f=Math.sin(t*6)*0.35+(u.hop>0?0.8:0.15);P['f-1'].rotation.z=-f;P['f1'].rotation.z=f;a.rotation.z=Math.sin(t*3)*0.06;}
+    tmp.set(a.position.x,-0.3,0.8).project(cam);lbls[i].style.left=(tmp.x+1)/2*innerWidth+'px';lbls[i].style.top=(1-tmp.y)/2*innerHeight+'px';
+  });
+  ctr.update();renderer.render(scene,cam);
+});
+</script></body></html>
