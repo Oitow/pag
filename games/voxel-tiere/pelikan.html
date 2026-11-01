@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Voxel-Tier: Pelikan</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:linear-gradient(#fff0dc,#dff3ff);font-family:system-ui,sans-serif}
+  canvas{display:block;touch-action:none}
+  .label{position:absolute;transform:translate(-50%,0);padding:4px 10px;border-radius:12px;background:#fffc;color:#6a5a7a;font-size:15px;font-weight:600;pointer-events:none;white-space:nowrap;box-shadow:0 2px 6px #0001}
+  #hint{position:absolute;top:10px;width:100%;text-align:center;color:#8a7a9a;font-size:13px;pointer-events:none}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="hint">Ziehen zum Drehen · Tippen zum Flattern</div>
+<div class="label" id="lab">Pelikan</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const V = 0.1;
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+camera.position.set(0, 2.0, 5);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.85, 0);
+controls.enableDamping = true;
+controls.enablePan = false;
+controls.minDistance = 2.5; controls.maxDistance = 8;
+controls.maxPolarAngle = Math.PI * 0.48;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0xd8c8ff, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+sun.position.set(3, 6, 4);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.radius = 4;
+Object.assign(sun.shadow.camera, { left: -2.5, right: 2.5, top: 2.5, bottom: -2.5 });
+scene.add(sun);
+
+const boxGeo = new THREE.BoxGeometry(V, V, V);
+// Toon shading with a soft 3-step gradient
+const grad = new THREE.DataTexture(new Uint8Array([140, 200, 255]), 3, 1, THREE.RedFormat);
+grad.minFilter = grad.magFilter = THREE.NearestFilter; grad.needsUpdate = true;
+const mat = new THREE.MeshToonMaterial({ gradientMap: grad });
+
+function voxels(list) {
+  const m = new THREE.InstancedMesh(boxGeo, mat, Math.max(list.length, 1));
+  const o = new THREE.Object3D(), c = new THREE.Color();
+  list.forEach(([x, y, z, col], i) => {
+    o.position.set(x * V, y * V, z * V); o.updateMatrix();
+    m.setMatrixAt(i, o.matrix); m.setColorAt(i, c.set(col));
+  });
+  m.count = list.length;
+  m.castShadow = m.receiveShadow = true;
+  return m;
+}
+function fill(out, x0, x1, y0, y1, z0, z1, col, test) {
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++)
+    if (!test || test(x, y, z)) out.push([x, y, z, typeof col === 'function' ? col(x, y, z) : col]);
+}
+const part = (list, px = 0, py = 0, pz = 0) => {
+  const g = new THREE.Group(); g.add(voxels(list)); g.position.set(px * V, py * V, pz * V); return g;
+};
+// Big shiny eyes (2x3 black with white sparkle) + blush, pivoting at eye height for blinking
+function makeEyes(gap, ey, z, blushCol = '#ff9fb8', eyeCol = '#2a2238') {
+  const eyes = [], blush = [];
+  for (const s of [-1, 1]) {
+    const cx = s * gap;
+    fill(eyes, cx - 1, cx, ey - 1, ey + 1, z, z, eyeCol);
+    eyes.push([cx - 1, ey + 1, z + 0.6, '#ffffff']);
+    eyes.push([cx, ey - 1, z + 0.6, '#ffffff']);
+    blush.push([s * (gap + 1), ey - 3, z, blushCol], [s * (gap + 1) - s, ey - 3, z, blushCol]);
+  }
+  const g = new THREE.Group(), em = voxels(eyes);
+  g.add(em); g.position.y = ey * V; em.position.y = -ey * V;
+  return { eyes: g, blush: voxels(blush) };
+}
+const ell = (cx, cy, cz, rx, ry, rz) => (x, y, z) =>
+  ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 + ((z - cz) / rz) ** 2 <= 1;
+const noise = (x, y, z) => ((x * 73856093) ^ (y * 19349663) ^ (z * 83492791)) >>> 0;
+
+const TILE = { r: 9, top: (x,z,n)=>(z<-3?['#8fd3f4','#7cc7ee','#a6def8'][n%3]:(z<-2?'#ffffff':['#f5dfa8','#efd598','#f9e7b8'][n%3])), side: ["#e0c48f","#cfae78"], deco: [[5,1,4,"#ff9fb8"],[6,1,4,"#ff9fb8"],[5,1,5,"#ff9fb8"],[-6,1,3,"#fff6ea"],[-5,1,3,"#f0e2d0"],[-6,1,-6,"#ffffff"]] };
+
+function bird(o){
+  const root=new THREE.Group(), body=new THREE.Group(); root.add(body);
+  const R=o.r, lh=o.lh||0, B=o.B, C=o.C||o.B;
+  const torso=[]; fill(torso,-R,R,0,2*R,-R-2,R,(x,y,z)=>o.pat?o.pat(x,y,z,B,C):(z>=R-2&&Math.abs(x)<=R-2&&y<=R+1?C:B), ell(0,R,-1,R+0.4,R*0.9,R+1.4));
+  body.add(part(torso,0,lh,0));
+  const nl=o.neckLen||0, nz=o.nz||(()=>0), base=lh+Math.round(R*1.6);
+  const nk=[]; for(let i=0;i<nl;i++) fill(nk,-1,1,i,i,nz(i)-1,nz(i)+1,o.N?o.N(i):B);
+  const neck=part(nk,0,base,R-1+(o.neckOff||0)); body.add(neck);
+  const hs=o.hs||3, hh=o.hh||2*hs, H=o.H||B;
+  const hd=[]; fill(hd,-hs,hs,0,hh,-hs,hs,(x,y,z)=>o.hcol?o.hcol(x,y,z,H,hs,hh):H,(x,y,z)=>!(Math.abs(x)===hs&&(y===0||y===hh))&&!(Math.abs(z)===hs&&Math.abs(x)===hs)&&!(Math.abs(z)===hs&&y===hh));
+  const head=part(hd,0,nl,nz(nl)+(o.headZ||0)); neck.add(head);
+  const ey=o.ey||hs+1;
+  const f=makeEyes(o.gap||2,ey,hs+1,o.blush||'#ff9fb8',o.eyeCol||'#2a2238'); head.add(f.eyes,f.blush);
+  const bl=o.bl||2, bw=o.bw||0, K=o.K||'#ffb340', up=[], lo=[];
+  for(let i=0;i<bl;i++){ const w=i<bl*0.5?bw:0; fill(up,-w,w,0,0,i,i,K); if(!(o.hook&&i===bl-1)) fill(lo,-w,w,-1,-1,i,i,o.KL?o.KL(i,bl):K); }
+  if(o.hook) up.push([0,-1,bl-1,K]);
+  if(o.pouch) fill(lo,-1,1,-3,-2,1,bl-2,o.pouch,(x,y,z)=>!(y===-3&&(z===1||z===bl-2)));
+  const beak=part(up,0,ey-2,hs+1); head.add(beak);
+  const lower=part(lo); beak.add(lower);
+  const wings=[], wl=o.wl||R+3, wh=o.wh||R+1, Wg=o.Wg||B, WT=o.WT||Wg;
+  for(const sx of [-1,1]){ const w=[]; fill(w,0,0,-wh,0,-wl,2,(x,y,z)=>o.wcol?o.wcol(y,z,wl,wh,Wg,WT):(z<-wl+3?WT:Wg),(x,y,z)=>!(y<=-wh+1&&z>=0)&&!(y===0&&z===2));
+    const g=part(w,sx*(R+1),lh+Math.round(R*1.5),0); body.add(g); wings.push(g); }
+  const tw=o.tw??1, tl=o.tl||3, tv=[]; fill(tv,-tw,tw,0,0,-tl,0,(x,y,z)=>o.tcol?o.tcol(x,z,tl):(o.TC||B));
+  const tail=part(tv,0,lh+R,-R-1); tail.rotation.x=o.tup??0.3; body.add(tail);
+  const legs=[]; if(lh>0) for(const sx of [-1,1]){ const l=[]; fill(l,0,0,-lh,-1,0,0,o.L); fill(l,-1,1,-lh,-lh,0,0,o.L); fill(l,0,0,-lh,-lh,1,2,o.L);
+    const g=part(l,sx*(o.lx||2),lh,0); body.add(g); legs.push(g); }
+  return {root,body,neck,head,eyes:f.eyes,beak,lower,wings,legs,tail,n0:neck.position.clone(),tail0:tail.rotation.x};
+}
+const open=(a,v)=>a.wings.forEach((w,k)=>w.rotation.z=(k?1:-1)*v);
+
+function makeAnimal() {
+  const a = bird({r:5,B:'#f4f1ea',C:'#fbf9f4',H:'#ffffff',K:'#ffb347',bl:7,bw:1,hook:true,pouch:'#ff9a3c',L:'#ff9a3c',lh:2,lx:2,Wg:'#e8e4da',WT:'#2b2a30',wl:9,TC:'#e8e4da',tw:2,tl:3,
+  hcol:(x,y,z,H,hs,hh)=>(y===hh&&Math.abs(x)<=1?'#ffe08a':H)});
+  
+  return a;
+}
+function idle(a, s, t, hopping) {
+  const g=(t%5)>4; a.lower.scale.y=1+Math.sin(t*3)*0.08+(g?0.25:0); a.lower.rotation.x=g?Math.abs(Math.sin(t*8))*0.35:0;
+  a.head.rotation.x=g?-0.35:Math.sin(t*0.9)*0.06; a.head.rotation.y=Math.sin(t*0.4)*0.25; if(!hopping) open(a,0.05);
+  if (hopping) open(a, 0.9 + Math.sin(t * 40) * 0.8);
+}
+
+// ---------- Tile ----------
+const tileV = [];
+fill(tileV, -TILE.r, TILE.r, -2, 0, -TILE.r, TILE.r, (x, y, z) => {
+  if (y === 0) return TILE.top(x, z, noise(x, 1, z));
+  return y === -1 ? TILE.side[0] : TILE.side[1];
+}, (x, y, z) => x * x + z * z <= TILE.r * TILE.r + 2);
+TILE.deco.forEach(d => tileV.push(d));
+const ground = voxels(tileV); ground.position.y = -V * 0.5; scene.add(ground);
+
+const a = makeAnimal();
+a.root.position.set(0, V * 0.5 + 0, 0);
+a.root.rotation.y = 0.3;
+a.hop = -1; a.blink = 2 + Math.random() * 2;
+scene.add(a.root);
+
+// ---------- Interaction ----------
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+let down = null;
+renderer.domElement.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 8) return;
+  ptr.set(e.clientX / innerWidth * 2 - 1, -e.clientY / innerHeight * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  if (ray.intersectObject(a.root, true).length && a.hop < 0) a.hop = 0;
+});
+
+function resize() {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.position.setLength(innerWidth < innerHeight ? 6 : 4.6);
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+const label = document.getElementById('lab');
+const tmp = new THREE.Vector3(), clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+  const s = t * 2.4;
+  let y = 0, sq = 1 + Math.sin(s * 2) * 0.03;
+  if (a.hop >= 0) {
+    a.hop += dt * 2.2;
+    const h = Math.min(a.hop, 1);
+    y = Math.sin(h * Math.PI) * 0.6; sq = 1 + Math.sin(h * Math.PI) * 0.12;
+    if (a.hop >= 1) a.hop = -1;
+  }
+  a.body.position.y = y + Math.abs(Math.sin(s)) * 0.02;
+  a.body.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq));
+  a.blink -= dt;
+  a.eyes.scale.y = a.blink < 0.12 ? 0.15 : 1;
+  if (a.blink < 0) a.blink = 2 + Math.random() * 3;
+  idle(a, s, t, a.hop >= 0);
+  tmp.setFromMatrixPosition(a.root.matrixWorld); tmp.y -= 0.3; tmp.project(camera);
+  label.style.left = (tmp.x * 0.5 + 0.5) * innerWidth + 'px';
+  label.style.top = (-tmp.y * 0.5 + 0.5) * innerHeight + 'px';
+  controls.update();
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>

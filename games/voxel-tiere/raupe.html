@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Voxel-Tier: Raupe</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:linear-gradient(#f2ffe2,#fff4e0);font-family:system-ui,sans-serif}
+  canvas{display:block;touch-action:none}
+  .label{position:absolute;transform:translate(-50%,0);padding:4px 10px;border-radius:12px;background:#fffc;color:#6a5a7a;font-size:15px;font-weight:600;pointer-events:none;white-space:nowrap;box-shadow:0 2px 6px #0001}
+  #hint{position:absolute;top:10px;width:100%;text-align:center;color:#8a7a9a;font-size:13px;pointer-events:none}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="hint">Ziehen zum Drehen · Tippen zum Hüpfen</div>
+<div class="label" id="lab">Raupe</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const V = 0.1;
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+camera.position.set(0, 2.0, 5);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.55, 0);
+controls.enableDamping = true;
+controls.enablePan = false;
+controls.minDistance = 2.5; controls.maxDistance = 8;
+controls.maxPolarAngle = Math.PI * 0.48;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0xd8c8ff, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+sun.position.set(3, 6, 4);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.radius = 4;
+Object.assign(sun.shadow.camera, { left: -2.5, right: 2.5, top: 2.5, bottom: -2.5 });
+scene.add(sun);
+
+const boxGeo = new THREE.BoxGeometry(V, V, V);
+// Toon shading with a soft 3-step gradient
+const grad = new THREE.DataTexture(new Uint8Array([140, 200, 255]), 3, 1, THREE.RedFormat);
+grad.minFilter = grad.magFilter = THREE.NearestFilter; grad.needsUpdate = true;
+const mat = new THREE.MeshToonMaterial({ gradientMap: grad });
+
+function voxels(list) {
+  const m = new THREE.InstancedMesh(boxGeo, mat, Math.max(list.length, 1));
+  const o = new THREE.Object3D(), c = new THREE.Color();
+  list.forEach(([x, y, z, col], i) => {
+    o.position.set(x * V, y * V, z * V); o.updateMatrix();
+    m.setMatrixAt(i, o.matrix); m.setColorAt(i, c.set(col));
+  });
+  m.count = list.length;
+  m.castShadow = m.receiveShadow = true;
+  return m;
+}
+function fill(out, x0, x1, y0, y1, z0, z1, col, test) {
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++)
+    if (!test || test(x, y, z)) out.push([x, y, z, typeof col === 'function' ? col(x, y, z) : col]);
+}
+const part = (list, px = 0, py = 0, pz = 0) => {
+  const g = new THREE.Group(); g.add(voxels(list)); g.position.set(px * V, py * V, pz * V); return g;
+};
+// Big shiny eyes (2x3 black with white sparkle) + blush, pivoting at eye height for blinking
+function makeEyes(gap, ey, z, blushCol = '#ff9fb8', eyeCol = '#2a2238') {
+  const eyes = [], blush = [];
+  for (const s of [-1, 1]) {
+    const cx = s * gap;
+    fill(eyes, cx - 1, cx, ey - 1, ey + 1, z, z, eyeCol);
+    eyes.push([cx - 1, ey + 1, z + 0.6, '#ffffff']);
+    eyes.push([cx, ey - 1, z + 0.6, '#ffffff']);
+    blush.push([s * (gap + 1), ey - 3, z, blushCol], [s * (gap + 1) - s, ey - 3, z, blushCol]);
+  }
+  const g = new THREE.Group(), em = voxels(eyes);
+  g.add(em); g.position.y = ey * V; em.position.y = -ey * V;
+  return { eyes: g, blush: voxels(blush) };
+}
+const ell = (cx, cy, cz, rx, ry, rz) => (x, y, z) =>
+  ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 + ((z - cz) / rz) ** 2 <= 1;
+const noise = (x, y, z) => ((x * 73856093) ^ (y * 19349663) ^ (z * 83492791)) >>> 0;
+
+function rbox(rx,ry,rz,col){const o=[];fill(o,-rx,rx,-ry,ry,-rz,rz,col,(x,y,z)=>(Math.abs(x)===rx)+(Math.abs(y)===ry)+(Math.abs(z)===rz)<2);return o;}
+function stick(o,x0,y0,z0,x1,y1,z1,col){const n=Math.max(Math.abs(x1-x0),Math.abs(y1-y0),Math.abs(z1-z0),1);for(let i=0;i<=n;i++)o.push([Math.round(x0+(x1-x0)*i/n),Math.round(y0+(y1-y0)*i/n),Math.round(z0+(z1-z0)*i/n),col]);return o;}
+function leg(sx,hx,hy,hz,col,out=3,up=1,dz=0){const o=[];stick(o,0,0,0,sx*out,up,dz,col);stick(o,sx*out,up,dz,sx*(out+1),-hy,dz*2,col);return part(o,sx*hx,hy,hz);}
+function antenna(sx,pts,col,px,py,pz){const o=[];let p=[0,0,0];for(const q of pts){stick(o,p[0],p[1],p[2],sx*q[0],q[1],q[2],col);p=[sx*q[0],q[1],q[2]];}o.push([p[0],p[1]+1,p[2],col]);return part(o,sx*px,py,pz);}
+
+const TILE={r:11,top:['#7ccf5a','#70c34e','#88da66'],side:['#5aa040','#4a8834'],deco:[[0,1,-10,'#4a8834'],[0,1,-9,'#4a8834'],[0,1,-8,'#5aa040'],[7,1,-5,'#e04a4a'],[7,2,-5,'#e04a4a'],[8,1,-5,'#e04a4a'],[8,2,-5,'#e04a4a'],[7,3,-5,'#7a5030'],[-7,1,5,'#fff1a8'],[-6,1,-7,'#ffffff']]};
+function makeAnimal(){
+ const root=new THREE.Group(),body=new THREE.Group();root.add(body);
+ const segs=[];
+ for(let i=0;i<6;i++){const c=i%2?'#9fe06c':'#86d258';const o=[];fill(o,-3,3,-3,3,-2,2,(x,y,z)=>Math.abs(x)===3&&y===0?'#ffe066':c,ell(0,0,0,2.8-i*0.08,2.8-i*0.08,2.3));o.push([-1,-3,0,'#4a8834'],[1,-3,0,'#4a8834']);const g=part(o,0,3,-10+i*2.6);g.userData.y=3*V;body.add(g);segs.push(g);}
+ const hd=part(rbox(3,3,3,'#a8e874'),0,4,6);hd.userData.y=4*V;body.add(hd);
+ const f=makeEyes(2,1,4);hd.add(f.eyes,f.blush);
+ const ants=[];for(const sx of[-1,1]){const o=[[0,0,0,'#5a9a3a'],[0,1,0,'#5a9a3a'],[0,2,0,'#ff9a5a']];const g=part(o,sx*2,4,1);hd.add(g);ants.push(g);}
+ return{root,body,head:hd,eyes:f.eyes,segs,ants};
+}
+function idle(a,s,t){const all=[...a.segs,a.head];all.forEach((g,k)=>{g.position.y=g.userData.y+Math.max(0,Math.sin(s*1.4-k*0.9))*0.18;g.rotation.y=Math.sin(s*0.5-k*0.4)*0.08;});
+ a.head.rotation.z=Math.sin(s*0.6)*0.1;a.ants.forEach((g,k)=>{g.rotation.z=Math.sin(t*3+k*2)*0.3;});}
+
+
+// ---------- Tile ----------
+const tileV = [];
+fill(tileV, -TILE.r, TILE.r, -2, 0, -TILE.r, TILE.r, (x, y, z) => {
+  if (y === 0) return TILE.top[noise(x, 1, z) % TILE.top.length];
+  return y === -1 ? TILE.side[0] : TILE.side[1];
+}, (x, y, z) => x * x + z * z <= TILE.r * TILE.r + 2);
+TILE.deco.forEach(d => tileV.push(d));
+const ground = voxels(tileV); ground.position.y = -V * 0.5; scene.add(ground);
+
+const a = makeAnimal();
+a.root.position.set(0, V * 0.5, 0);
+a.root.rotation.y = 0.3;
+a.hop = -1; a.blink = 2 + Math.random() * 2;
+scene.add(a.root);
+
+// ---------- Interaction ----------
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+let down = null;
+renderer.domElement.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 8) return;
+  ptr.set(e.clientX / innerWidth * 2 - 1, -e.clientY / innerHeight * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  if (ray.intersectObject(a.root, true).length && a.hop < 0) a.hop = 0;
+});
+
+function resize() {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.position.setLength(innerWidth < innerHeight ? 6 : 4.6);
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+const label = document.getElementById('lab');
+const tmp = new THREE.Vector3(), clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+  const s = t * 2.4;
+  let y = 0, sq = 1 + Math.sin(s * 2) * 0.03;
+  if (a.hop >= 0) {
+    a.hop += dt * 2.2;
+    const h = Math.min(a.hop, 1);
+    y = Math.sin(h * Math.PI) * 0.6; sq = 1 + Math.sin(h * Math.PI) * 0.12;
+    if (a.hop >= 1) a.hop = -1;
+  }
+  a.body.position.y = y + Math.abs(Math.sin(s)) * 0.02;
+  a.body.scale.set(1 / Math.sqrt(sq), sq, 1 / Math.sqrt(sq));
+  a.blink -= dt;
+  a.eyes.scale.y = a.blink < 0.12 ? 0.15 : 1;
+  if (a.blink < 0) a.blink = 2 + Math.random() * 3;
+  idle(a, s, t, a.hop >= 0);
+  tmp.setFromMatrixPosition(a.root.matrixWorld); tmp.y -= 0.3; tmp.project(camera);
+  label.style.left = (tmp.x * 0.5 + 0.5) * innerWidth + 'px';
+  label.style.top = (-tmp.y * 0.5 + 0.5) * innerHeight + 'px';
+  controls.update();
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>
