@@ -1,0 +1,112 @@
+<!DOCTYPE html><html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Voxel-Tiere – Testwelt</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:linear-gradient(#ffe9f3,#dff3ff);font-family:system-ui,sans-serif}
+canvas{display:block;touch-action:none}
+#top{position:absolute;top:8px;left:0;right:0;text-align:center;color:#6a5a7a;font-size:13px;pointer-events:none}
+#name{position:absolute;bottom:70px;left:0;right:0;text-align:center;pointer-events:none}
+#name span{background:#fffd;padding:6px 16px;border-radius:14px;font-weight:700;color:#5a4a6a;font-size:18px;box-shadow:0 2px 8px #0002}
+#bar{position:absolute;bottom:12px;left:0;right:0;display:flex;justify-content:center;gap:10px}
+button{border:0;border-radius:14px;padding:12px 18px;font-size:16px;font-weight:700;background:#fff;color:#5a4a6a;box-shadow:0 2px 8px #0002}
+#list{position:absolute;inset:40px 12px 70px;background:#fffe;border-radius:16px;overflow:auto;display:none;padding:8px;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px}
+#list a{padding:10px 4px;text-align:center;background:#f3ecf8;border-radius:10px;color:#5a4a6a;text-transform:capitalize;font-weight:600;font-size:14px}
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+</head><body>
+<div id="top">Lade Tiere… </div>
+<div id="name"></div>
+<div id="list"></div>
+<div id="bar"><button id="prev">◀</button><button id="btnList">🐾 Liste</button><button id="next">▶</button></div>
+<script type="module">
+import * as THREE from 'three';
+import { MapControls } from 'three/addons/controls/MapControls.js';
+const NAMES=["adler","alpaka","ameise","axolotl","baer","beutelteufel","biber","biene","bison","chamaeleon","clownfisch","dachs","delfin","dingo","eichhoernchen","eisbaer","elch","elefant","emu","ente","erdmaennchen","esel","eule","falke","faultier","flamingo","fledermaus","gans","gecko","gepard","gibbon","giraffe","gluehwuermchen","gnu","goldfisch","gorilla","gottesanbeterin","guerteltier","hahn","hai","hamster","hase","heuschrecke","hirschkaefer","huhn","hummel","hummer","hund","hyaene","igel","kaenguru","kakadu","kamel","kiwi","koala","kolibri","kookaburra","krabbe","kranich","kroete","krokodil","kueken","kugelfisch","kuh","lama","leguan","lemming","lemur","leopard","libelle","loewe","luchs","mandrill","marienkaefer","maulwurf","maus","meerschweinchen","moewe","moschusochse","narwal","nasenbaer","nashorn","nilpferd","oktopus","orangutan","orca","otter","ozelot","panda","papagei","pelikan","pfau","pfeilgiftfrosch","pferd","polarfuchs","pony","puma","qualle","rabe","raupe","reh","rentier","robbe","rochen","rotkehlchen","rotpanda","salamander","schaf","schimpanse","schlange","schmetterling","schnabeltier","schnecke","schneeeule","schneehase","schneeleopard","schwan","schwein","seeloewe","seepferdchen","seestern","skorpion","spatz","specht","spinne","storch","strauss","tapir","taube","tiger","truthahn","tukan","wal","wallaby","walross","waran","waschbaer","wasserschwein","wellensittich","wildschwein","wolf","wombat","yak","zebra","ziege"];
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+const scene=new THREE.Scene();
+scene.fog=new THREE.Fog(0xe8eefc,14,32);
+const camera=new THREE.PerspectiveCamera(45,1,0.1,80);
+const controls=new MapControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.maxPolarAngle=Math.PI*0.45;controls.minDistance=2;controls.maxDistance=18;
+scene.add(new THREE.HemisphereLight(0xffffff,0xd8c8ff,1.6));
+const sun=new THREE.DirectionalLight(0xffffff,1.5);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera,{left:-8,right:8,top:8,bottom:-8,far:40});
+scene.add(sun,sun.target);
+// big ground
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(200,200),new THREE.MeshLambertMaterial({color:0xbfe8b4}));
+ground.rotation.x=-Math.PI/2;ground.position.y=-0.32;ground.receiveShadow=true;scene.add(ground);
+
+// fake environment so each animal file runs inside our world
+class FakeRenderer{constructor(){this.domElement=new EventTarget();this.domElement.style={};this.shadowMap={};}
+ setPixelRatio(){}setSize(){}render(){}setAnimationLoop(f){FakeRenderer.loop=f;}}
+class FakeControls{constructor(){this.target=new THREE.Vector3();}update(){}addEventListener(){}}
+const fakeEl=()=>({style:{},textContent:'',innerHTML:'',classList:{add(){},remove(){}},appendChild(){}});
+const fakeDoc={body:{appendChild(){}},getElementById:fakeEl,createElement:fakeEl};
+const FT={...THREE,Scene:THREE.Group,WebGLRenderer:FakeRenderer};
+const COLS=12,SP=3.2;
+const animals=[];
+async function load(name,i){
+ const html=await (await fetch(name+'.html')).text();
+ let code=html.split('<script type="module">')[1].split('</'+'script>')[0];
+ code=code.replace(/^import[^;]*;/gm,'');
+ FakeRenderer.loop=null;
+ const g=new THREE.Group();
+ const f=new Function('THREE','OrbitControls','document','addEventListener','window',code);
+ f(FT,FakeControls,fakeDoc,()=>{},{addEventListener(){}});
+ // grab the animal's scene group (first Group created via FT.Scene)
+ return {g,loop:FakeRenderer.loop};
+}
+// capture created scenes
+const created=[];const OrigGroup=THREE.Group;
+FT.Scene=class extends OrigGroup{constructor(){super();created.push(this);}};
+let done=0,failed=0;const top=document.getElementById('top');
+for(let i=0;i<NAMES.length;i++){
+ created.length=0;
+ try{
+  const {loop}=await load(NAMES[i],i);
+  const sg=created[0];
+  const rm=[];sg.traverse(o=>{if(o.isLight)rm.push(o);});rm.forEach(o=>o.parent.remove(o));
+  sg.background=null;
+  const x=(i%COLS)*SP,z=Math.floor(i/COLS)*SP;
+  sg.position.set(x,0,z);sg.scale.setScalar(0.9);
+  scene.add(sg);
+  animals.push({name:NAMES[i],g:sg,loop,pos:new THREE.Vector3(x,0,z)});
+  done++;
+ }catch(e){failed++;console.warn(NAMES[i],e);}
+ top.textContent='Lade Tiere… '+done+' / '+NAMES.length;
+}
+top.textContent=done+' Tiere · 1 Finger: schieben · 2 Finger: drehen/zoomen · Tippen: Tier ansehen';
+// list
+const list=document.getElementById('list');
+animals.forEach((a,i)=>{const el=document.createElement('a');el.textContent=a.name;el.onclick=()=>{go(i);list.style.display='none';};list.appendChild(el);});
+document.getElementById('btnList').onclick=()=>{list.style.display=list.style.display==='grid'?'none':'grid';};
+let cur=0,fly=null;
+const nameEl=document.getElementById('name');
+function go(i){cur=(i+animals.length)%animals.length;const a=animals[cur];
+ fly={t:a.pos.clone().add(new THREE.Vector3(0,0.5,0)),c:a.pos.clone().add(new THREE.Vector3(1.8,3.2,5.6))};
+ nameEl.innerHTML='<span>'+a.name[0].toUpperCase()+a.name.slice(1)+'</span>';}
+document.getElementById('prev').onclick=()=>go(cur-1);
+document.getElementById('next').onclick=()=>go(cur+1);
+// tap to focus
+const ray=new THREE.Raycaster(),ptr=new THREE.Vector2();let down=null;
+renderer.domElement.addEventListener('pointerdown',e=>{down=[e.clientX,e.clientY];});
+renderer.domElement.addEventListener('pointerup',e=>{if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>8)return;
+ ptr.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(ptr,camera);
+ const hit=ray.intersectObjects(animals.map(a=>a.g),true)[0];if(!hit)return;
+ let o=hit.object;while(o.parent&&o.parent!==scene)o=o.parent;const i=animals.findIndex(a=>a.g===o);if(i>=0)go(i);});
+controls.addEventListener('start',()=>{fly=null;});
+function resize(){renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}
+addEventListener('resize',resize);resize();
+go(0);camera.position.copy(fly.c);controls.target.copy(fly.t);
+const tmp=new THREE.Vector3();
+renderer.setAnimationLoop(()=>{
+ if(fly){camera.position.lerp(fly.c,0.12);controls.target.lerp(fly.t,0.12);if(camera.position.distanceTo(fly.c)<0.02)fly=null;}
+ controls.update();
+ sun.position.copy(controls.target).add(new THREE.Vector3(4,8,5));sun.target.position.copy(controls.target);
+ for(const a of animals){const near=a.pos.distanceTo(controls.target)<14;a.g.visible=near;if(near&&a.loop){try{a.loop();}catch(e){a.loop=null;}}}
+ renderer.render(scene,camera);
+});
+</script></body></html>
