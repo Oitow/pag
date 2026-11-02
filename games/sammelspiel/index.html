@@ -1,0 +1,282 @@
+<!DOCTYPE html><html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Tier-Sammelspiel</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#8fc7e8;font-family:system-ui,sans-serif;color:#222;user-select:none;touch-action:none}
+canvas{display:block}
+#hud{position:fixed;top:0;left:0;right:0;display:flex;gap:6px;justify-content:center;padding:8px;z-index:5;pointer-events:none}
+.res{background:#fffe;border-radius:14px;padding:6px 10px;font-weight:700;box-shadow:0 2px 6px #0003;font-size:15px}
+#bar{position:fixed;bottom:0;left:0;right:0;display:flex;gap:8px;padding:10px;z-index:5}
+#bar button{flex:1}
+button{font:inherit;font-weight:700;border:0;border-radius:14px;padding:12px;background:#fff;box-shadow:0 2px 6px #0004;color:#222}
+button:disabled{opacity:.45}
+.pan{position:fixed;left:8px;right:8px;bottom:70px;max-height:62%;overflow:auto;background:#fffffff2;border-radius:18px;padding:12px;z-index:6;display:none;box-shadow:0 4px 18px #0005}
+.pan.on{display:block}
+.pan h2{margin:0 0 8px;font-size:18px;display:flex;justify-content:space-between;align-items:center}
+.pan h2 button{padding:6px 12px}
+.it{display:flex;align-items:center;gap:10px;padding:8px;border-radius:12px;background:#f1f4ee;margin-bottom:6px}
+.it .e{font-size:26px;width:34px;text-align:center}
+.it .t{flex:1;font-size:13px}.it .t b{font-size:15px;display:block}
+.it.no{opacity:.5}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.card{background:#f1f4ee;border-radius:12px;padding:6px;font-size:11px;text-align:center;min-height:70px}
+.card b{display:block;font-size:13px;margin:2px 0}
+.card.unk{background:#ddd;color:#666}
+.card .q{font-size:22px}
+#toast{position:fixed;top:52px;left:50%;transform:translateX(-50%);background:#222d;color:#fff;padding:8px 14px;border-radius:12px;font-size:14px;z-index:7;opacity:0;transition:opacity .3s;pointer-events:none;text-align:center;max-width:90%}
+#mode{position:fixed;top:92px;left:50%;transform:translateX(-50%);background:#ffe9a8;padding:6px 12px;border-radius:12px;z-index:5;display:none;font-size:13px;font-weight:700}
+.fl{position:fixed;z-index:4;font-weight:800;pointer-events:none;color:#fff;text-shadow:0 1px 3px #000;animation:up 1.1s forwards;font-size:15px}
+@keyframes up{to{transform:translateY(-40px);opacity:0}}
+#loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;z-index:9;background:#8fc7e8}
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+<script src="../autobattler/tiere-daten.js"></script>
+</head><body>
+<div id="loading">Lade Welt…</div>
+<div id="hud"><span class="res">🪵 <span id="rH">0</span></span><span class="res">🪨 <span id="rS">0</span></span><span class="res">🌾 <span id="rF">0</span></span><span class="res">🐾 <span id="rA">0</span></span></div>
+<div id="mode"></div>
+<div id="toast"></div>
+<div id="bar"><button id="bBuild">🏗️ Bauen</button><button id="bBook">📖 Sammelbuch</button></div>
+<div id="pBuild" class="pan"><h2>Lebensraum bauen <button data-close>✕</button></h2><div id="buildList"></div></div>
+<div id="pBook" class="pan"><h2><span>Sammelbuch <small id="bookCnt"></small></span><button data-close>✕</button></h2><div id="bookList" class="grid"></div></div>
+<div id="pReg" class="pan"><h2><span id="regT"></span><button data-close>✕</button></h2><div id="regB"></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+const $=id=>document.getElementById(id);
+const TIERE=window.TIERE||{};
+// ---------- Daten ----------
+const RES={H:'🪵 Holz',S:'🪨 Stein',F:'🌾 Futter'};
+const REGIONS={
+ start:{name:'Heimattal',col:0x8fd36a,cost:null},
+ gebirge:{name:'Gebirge',col:0xa7a59b,cost:{H:25,S:15,F:15}},
+ kueste:{name:'Küste',col:0xe9d9a0,cost:{H:40,S:25,F:35}},
+ savanne:{name:'Savanne',col:0xd9c26a,cost:{H:70,S:50,F:80}},
+ dschungel:{name:'Dschungel',col:0x3f9c4a,cost:{H:110,S:70,F:110}},
+ wueste:{name:'Wüste',col:0xf0cf86,cost:{H:110,S:140,F:90}},
+ polar:{name:'Polarland',col:0xe8f2f8,cost:{H:180,S:180,F:180}},
+};
+const W=10,Hh=16;
+function regionAt(x,z){if(z<=2)return'polar';if(z<=5)return x<=4?'wueste':'dschungel';if(z<=10)return x<=6?'start':'gebirge';if(z<=12)return'savanne';return'kueste';}
+const HAB={
+ stall:{name:'Stall',e:'🛖',cost:{H:5},reg:null,col:0xb5651d},
+ hain:{name:'Waldhain',e:'🌲',cost:{H:6,S:2},reg:null,col:0x2f7d32},
+ teich:{name:'Teich',e:'💧',cost:{S:6,F:2},reg:null,col:0x3b8fd6},
+ wiese:{name:'Blumenwiese',e:'🌼',cost:{F:6,H:2},reg:null,col:0xf3c6e8},
+ nest:{name:'Nistfelsen',e:'🪺',cost:{S:12,H:6},reg:'gebirge',col:0x7d7468},
+ riff:{name:'Riff',e:'🪸',cost:{S:15,F:10},reg:'kueste',col:0xff8f8f},
+ steppe:{name:'Grassteppe',e:'🌾',cost:{F:20,H:10},reg:'savanne',col:0xc9a640},
+ lianen:{name:'Lianenhain',e:'🌴',cost:{H:25,F:15},reg:'dschungel',col:0x1d6b2a},
+ duene:{name:'Dünenbau',e:'🏜️',cost:{S:25,F:10},reg:'wueste',col:0xe0a85a},
+ eis:{name:'Eisscholle',e:'🧊',cost:{S:30,H:20},reg:'polar',col:0xbfe6ff},
+};
+// Gruppe -> Lebensraum, Region, Kombi-Partner, Produkt
+const GRP={
+ bauernhof:{hab:'stall',reg:'start',combo:'wiese',p:'F'},
+ wald:{hab:'hain',reg:'start',combo:'teich',p:'H'},
+ insekt:{hab:'wiese',reg:'start',combo:'hain',p:'F'},
+ wasser:{hab:'teich',reg:'start',combo:'hain',p:'F',hab2:'riff',reg2:'kueste',combo2:'teich'},
+ luft:{hab:'nest',reg:'gebirge',combo:'hain',p:'S'},
+ savanne:{hab:'steppe',reg:'savanne',combo:'teich',p:'F'},
+ dschungel:{hab:'lianen',reg:'dschungel',combo:'teich',p:'H'},
+ wueste:{hab:'duene',reg:'wueste',combo:'teich',p:'S'},
+ polar:{hab:'eis',reg:'polar',combo:'riff',p:'S'},
+};
+const EARLY=['huhn','kueken','schaf','eichhoernchen','biene','ziege','hase','ente','biber','esel','marienkaefer','goldfisch','kuh','igel'];
+const PROD={ziege:'S',esel:'S',biber:'H',huhn:'F',maulwurf:'S',specht:'H'};
+// Anforderungen generieren
+const REQ={};
+{const byG={};for(const id in TIERE){const g=TIERE[id].gruppe;if(!GRP[g])continue;(byG[g]=byG[g]||[]).push(id);}
+ for(const g in byG){const L=byG[g].sort((a,b)=>{const ia=EARLY.indexOf(a),ib=EARLY.indexOf(b);return(ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b);});
+  const G=GRP[g];L.forEach((id,i)=>{let hab=G.hab,reg=G.reg,combo=G.combo,r=i;
+   if(G.hab2&&i>=5){hab=G.hab2;reg=G.reg2;combo=G.combo2;r=i-5;}
+   const n=1+Math.floor(r/4);const c=(r%3===2)||id==='biber';REQ[id]={hab,reg,n,combo:c?(id==='biber'?'teich':combo):null,p:PROD[id]||G.p,rank:r};});}
+ // Biber: Waldhain + Teich
+ if(REQ.biber){REQ.biber.hab='hain';REQ.biber.combo='teich';}
+}
+const ALL=Object.keys(REQ);
+// ---------- Zustand ----------
+const KEY='sammelspiel_v1';
+let S={res:{H:12,S:6,F:6},regions:['start'],habs:[],animals:[],found:[],t:0};
+try{const j=JSON.parse(localStorage.getItem(KEY));if(j&&j.res)S=Object.assign(S,j);}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+setInterval(save,5000);addEventListener('visibilitychange',save);
+// ---------- Szene ----------
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+document.body.prepend(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x8fc7e8);
+const camera=new THREE.PerspectiveCamera(45,1,0.1,200);
+scene.add(new THREE.HemisphereLight(0xffffff,0x88aa77,1.7));
+const sun=new THREE.DirectionalLight(0xffffff,1.3);sun.position.set(5,12,4);scene.add(sun);
+let camX=3.5,camZ=8.5,camD=12;
+function placeCam(){camera.position.set(camX,camD,camZ+camD*0.55);camera.lookAt(camX,0,camZ);}
+function resize(){renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();}
+addEventListener('resize',resize);resize();
+// RNG für feste Weltgenerierung
+let seed=1337;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+const tileGeo=new THREE.BoxGeometry(0.96,0.3,0.96);
+const tiles=[];const tileMeshes=[];
+const fogGeo=new THREE.BoxGeometry(1.02,0.5,1.02);const fogMat=new THREE.MeshLambertMaterial({color:0xdde3ea,transparent:true,opacity:.93});
+const geoTree=new THREE.ConeGeometry(0.28,0.7,6),geoTrunk=new THREE.CylinderGeometry(0.06,0.08,0.25),geoRock=new THREE.DodecahedronGeometry(0.25),geoBush=new THREE.SphereGeometry(0.22,8,6),geoBerry=new THREE.SphereGeometry(0.05,5,4);
+const M=c=>new THREE.MeshLambertMaterial({color:c});
+const mTree=M(0x2e8b3a),mJung=M(0x167a2a),mSnowT=M(0xd8ecf4),mTrunk=M(0x7a4a22),mRock=M(0x8a8a8a),mBush=M(0x4f9e3a),mBerry=M(0xd23a4a);
+for(let z=0;z<Hh;z++)for(let x=0;x<W;x++){
+ const reg=regionAt(x,z),r=rnd();
+ const mat=M(REGIONS[reg].col);mat.color.offsetHSL(0,0,(rnd()-.5)*0.05);
+ const m=new THREE.Mesh(tileGeo,mat);m.position.set(x,-0.15,z);scene.add(m);
+ const t={x,z,reg,mesh:m,node:null,hab:null,fog:null,deco:null};
+ m.userData.t=t;tiles.push(t);tileMeshes.push(m);
+ let type=null;if(r<0.36){const k=rnd();type=reg==='gebirge'||reg==='wueste'||reg==='polar'?(k<0.6?'S':k<0.85?'H':'F'):reg==='dschungel'?(k<0.6?'H':k<0.85?'F':'S'):(k<0.45?'H':k<0.72?'S':'F');}
+ if(x===3&&z===8)type=null;
+ if(type){const g=new THREE.Group();g.position.set(x,0,z);
+  if(type==='H'){const tr=new THREE.Mesh(geoTrunk,mTrunk);tr.position.y=0.12;const c=new THREE.Mesh(geoTree,reg==='polar'?mSnowT:reg==='dschungel'?mJung:mTree);c.position.y=0.55;g.add(tr,c);}
+  else if(type==='S'){const a=new THREE.Mesh(geoRock,mRock);a.position.y=0.15;a.rotation.set(rnd()*3,rnd()*3,0);const b=a.clone();b.scale.setScalar(.6);b.position.set(.2,.1,.15);g.add(a,b);}
+  else{const b=new THREE.Mesh(geoBush,mBush);b.position.y=0.2;g.add(b);for(let i=0;i<5;i++){const e=new THREE.Mesh(geoBerry,mBerry);const a=i*1.3;e.position.set(Math.cos(a)*.19,.22+Math.sin(i)*.08,Math.sin(a)*.19);g.add(e);}}
+  scene.add(g);t.node={type,ch:5,g,regen:0};}
+}
+const T=(x,z)=>(x>=0&&z>=0&&x<W&&z<Hh)?tiles[z*W+x]:null;
+function applyFog(){for(const t of tiles){const open=S.regions.includes(t.reg);
+ if(!open&&!t.fog){t.fog=new THREE.Mesh(fogGeo,fogMat);t.fog.position.set(t.x,0.25+Math.sin(t.x*1.7+t.z)*0.08,t.z);scene.add(t.fog);}
+ if(open&&t.fog){scene.remove(t.fog);t.fog=null;}}}
+// Region-Labels als Sprites
+function label(txt){const c=document.createElement('canvas');c.width=256;c.height=64;const g=c.getContext('2d');g.fillStyle='#0008';g.beginPath();g.roundRect(4,4,248,56,18);g.fill();g.fillStyle='#fff';g.font='bold 26px sans-serif';g.textAlign='center';g.fillText(txt,128,42);
+ const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));s.scale.set(2.4,0.6,1);s.renderOrder=9;return s;}
+const regLabels={};
+function updLabels(){for(const k in REGIONS){if(k==='start')continue;const ts=tiles.filter(t=>t.reg===k);const cx=ts.reduce((a,t)=>a+t.x,0)/ts.length,cz=ts.reduce((a,t)=>a+t.z,0)/ts.length;
+ if(!S.regions.includes(k)){if(!regLabels[k]){regLabels[k]=label('🔒 '+REGIONS[k].name);regLabels[k].position.set(cx,1.3,cz);scene.add(regLabels[k]);}}
+ else if(regLabels[k]){scene.remove(regLabels[k]);delete regLabels[k];}}}
+// ---------- Lebensräume ----------
+function habMesh(type){const h=HAB[type],g=new THREE.Group();
+ const base=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.06,0.9),M(h.col));base.position.y=0.03;g.add(base);
+ const add=(geo,col,x,y,z,s=1)=>{const m=new THREE.Mesh(geo,M(col));m.position.set(x,y,z);m.scale.setScalar(s);g.add(m);return m;};
+ if(type==='stall'){add(new THREE.BoxGeometry(.5,.35,.4),0xc0392b,0,.24,-.15);const r=add(new THREE.ConeGeometry(.42,.25,4),0x6d3b1c,0,.53,-.15);r.rotation.y=Math.PI/4;}
+ else if(type==='hain'){for(const[x,z]of[[-.2,-.2],[.22,-.1],[0,.22]]){add(geoTrunk,0x7a4a22,x,.15,z);add(geoTree,0x1f6e2a,x,.5,z,.8);}}
+ else if(type==='teich'){const w=add(new THREE.CylinderGeometry(.38,.38,.04,16),0x2f86d8,0,.08,0);add(geoRock,0x999999,.35,.08,.3,.4);}
+ else if(type==='wiese'){for(let i=0;i<8;i++)add(geoBerry,[0xffd23f,0xff6fb5,0xffffff,0xa070ff][i%4],Math.cos(i*2.4)*.3,.1,Math.sin(i*2.4)*.3,1.3);}
+ else if(type==='nest'){add(geoRock,0x6d655c,0,.25,0,1.4);add(new THREE.TorusGeometry(.12,.04,5,10),0x9b7a45,0,.55,0).rotation.x=Math.PI/2;}
+ else if(type==='riff'){for(let i=0;i<5;i++)add(new THREE.ConeGeometry(.07,.3,5),[0xff7070,0xffa040,0xd060ff][i%3],Math.cos(i*1.3)*.25,.18,Math.sin(i*1.3)*.25);}
+ else if(type==='steppe'){for(let i=0;i<7;i++)add(new THREE.ConeGeometry(.05,.3,4),0xb38a2a,Math.cos(i*2)*.3,.15,Math.sin(i*2)*.3);add(new THREE.CylinderGeometry(.03,.04,.4),0x6b4a22,.2,.2,.2);add(new THREE.CylinderGeometry(.25,.25,.06,8),0x3f7a2a,.2,.42,.2);}
+ else if(type==='lianen'){for(const[x,z]of[[-.2,-.15],[.2,.15]]){add(new THREE.CylinderGeometry(.05,.07,.6),0x6b4a22,x,.3,z);add(new THREE.SphereGeometry(.25,7,5),0x0f6a22,x,.65,z);}}
+ else if(type==='duene'){add(new THREE.SphereGeometry(.35,8,5,0,6.3,0,1.3),0xd99a4a,0,.02,0);add(new THREE.CylinderGeometry(.08,.08,.05,8),0x3a2a1a,.15,.2,.25);}
+ else if(type==='eis'){add(new THREE.BoxGeometry(.6,.15,.5),0xe8f8ff,0,.1,0);add(new THREE.ConeGeometry(.12,.35,5),0xbfe6ff,.2,.3,-.1);}
+ return g;}
+function placeHab(h){const t=T(h.x,h.z);if(t.node){scene.remove(t.node.g);t.node=null;}t.hab=h;const hg=habMesh(h.type);Object.defineProperty(h,'g',{value:hg,enumerable:false,writable:true});hg.position.set(h.x,0,h.z);scene.add(hg);if(h.next==null)h.next=S.t+ (S.habs.length<=1?7:15+Math.random()*10);}
+// ---------- Modelle (Loader wie autobattler) ----------
+class FakeRenderer{constructor(){this.domElement=new EventTarget();this.domElement.style={};this.shadowMap={};}setPixelRatio(){}setSize(){}render(){}setAnimationLoop(f){}}
+class FakeControls{constructor(){this.target=new THREE.Vector3();}update(){}addEventListener(){}}
+const fakeEl=()=>({style:{},textContent:'',innerHTML:'',classList:{add(){},remove(){}},appendChild(){}});
+const fakeDoc={body:{appendChild(){}},getElementById:fakeEl,createElement:fakeEl};
+const created=[];
+const FT={...THREE,WebGLRenderer:FakeRenderer,Scene:class extends THREE.Group{constructor(){super();created.push(this);}}};
+const fnCache={},protoCache={};
+function getFn(id){if(!fnCache[id])fnCache[id]=fetch('../voxel-tiere/'+id+'.html').then(r=>{if(!r.ok)throw 0;return r.text();}).then(html=>{
+ let code=html.split('<script type="module">')[1].split('</'+'script>')[0];code=code.replace(/^import[^;]*;/gm,'');
+ return new Function('THREE','OrbitControls','MapControls','document','addEventListener','window',code);}).catch(()=>null);return fnCache[id];}
+function getProto(id){if(!protoCache[id])protoCache[id]=getFn(id).then(f=>{
+ if(f){try{created.length=0;f(FT,FakeControls,FakeControls,fakeDoc,()=>{},{addEventListener(){},innerWidth:400,innerHeight:400,devicePixelRatio:1});
+  const sg=created[0];const g=new THREE.Group();sg.children.slice().forEach(o=>{if(o.isGroup)g.add(o);});
+  const rm=[];g.traverse(o=>{if(o.isLight)rm.push(o);});rm.forEach(o=>o.parent.remove(o));
+  const b=new THREE.Box3().setFromObject(g),sz=b.getSize(new THREE.Vector3());const s=0.55/Math.max(sz.x,sz.y,sz.z,0.01);
+  const w=new THREE.Group();g.scale.setScalar(s);g.position.set(-(b.min.x+b.max.x)/2*s,-b.min.y*s,-(b.min.z+b.max.z)/2*s);w.add(g);if(g.children.length)return w;}catch(e){console.warn('Modell',id,e);}}
+ const w=new THREE.Group();const m=new THREE.Mesh(new THREE.BoxGeometry(.35,.35,.45),M(0xaa88cc));m.position.y=.18;w.add(m);return w;});return protoCache[id];}
+// ---------- Tiere ----------
+const live=[];
+function spawnAnimal(a){const h=S.habs[a.h];if(!h)return;const o={a,g:new THREE.Group(),x:h.x+(Math.random()-.5)*.6,z:h.z+(Math.random()-.5)*.6,tx:h.x,tz:h.z,wait:0,ph:Math.random()*6,pt:a.pt??Math.random()*8};
+ o.g.position.set(o.x,0,o.z);scene.add(o.g);live.push(o);getProto(a.id).then(p=>o.g.add(p.clone()));}
+function capOf(h){return 2;}
+function eligible(h,idx){const out=[];const t=T(h.x,h.z);
+ for(const id of ALL){const r=REQ[id];if(r.hab!==h.type||r.reg!==t.reg||!S.regions.includes(r.reg))continue;
+  const cnt=S.habs.filter(o=>o.type===r.hab&&T(o.x,o.z).reg===r.reg).length;if(cnt<r.n)continue;
+  if(r.combo&&!S.habs.some(o=>o.type===r.combo&&Math.abs(o.x-h.x)<=2&&Math.abs(o.z-h.z)<=2))continue;
+  if(S.animals.filter(a=>a.id===id).length>=2)continue;out.push(id);}return out;}
+function attract(h,idx){const here=S.animals.filter(a=>a.h===idx).length;if(here>=capOf(h))return;
+ const el=eligible(h,idx);if(!el.length)return;const neu=el.filter(id=>!S.found.includes(id));
+ const pool=neu.length&&Math.random()<0.8?neu:el;neu.sort((a,b)=>REQ[a].rank-REQ[b].rank);
+ const id=pool===neu?neu[0]:pool[Math.floor(Math.random()*pool.length)];
+ const a={id,h:idx};S.animals.push(a);spawnAnimal(a);
+ if(!S.found.includes(id)){S.found.push(id);toast('✨ Neues Tier entdeckt: '+TIERE[id].name+'!',3000);}else toast(TIERE[id].name+' ist eingezogen.');
+ save();hud();}
+// ---------- UI ----------
+let toastT;function toast(s,ms=2000){const e=$('toast');e.textContent=s;e.style.opacity=1;clearTimeout(toastT);toastT=setTimeout(()=>e.style.opacity=0,ms);}
+function hud(){$('rH').textContent=S.res.H|0;$('rS').textContent=S.res.S|0;$('rF').textContent=S.res.F|0;$('rA').textContent=S.found.length+'/'+ALL.length;}
+const v3=new THREE.Vector3();
+function floatAt(x,y,z,txt){v3.set(x,y,z).project(camera);if(v3.z>1)return;const e=document.createElement('div');e.className='fl';e.textContent=txt;
+ e.style.left=((v3.x+1)/2*innerWidth-14)+'px';e.style.top=((1-v3.y)/2*innerHeight-10)+'px';document.body.appendChild(e);setTimeout(()=>e.remove(),1100);}
+const costTxt=c=>Object.entries(c).map(([k,v])=>RES[k].split(' ')[0]+v).join(' ');
+const canPay=c=>Object.entries(c).every(([k,v])=>S.res[k]>=v);
+const pay=c=>{for(const k in c)S.res[k]-=c[k];};
+let buildSel=null;
+function closeAll(){document.querySelectorAll('.pan').forEach(p=>p.classList.remove('on'));}
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeAll);
+function openBuild(){closeAll();const L=$('buildList');L.innerHTML='';
+ for(const k in HAB){const h=HAB[k];const ok=!h.reg||S.regions.includes(h.reg);const d=document.createElement('div');d.className='it'+(ok?'':' no');
+  d.innerHTML=`<span class="e">${h.e}</span><span class="t"><b>${h.name}</b>${costTxt(h.cost)} · ${h.reg?'nur '+REGIONS[h.reg].name:'überall'}${ok?'':' (gesperrt)'}</span>`;
+  const b=document.createElement('button');b.textContent='Wählen';b.disabled=!ok||!canPay(h.cost);b.onclick=()=>{buildSel=k;closeAll();setMode();};d.appendChild(b);L.appendChild(d);}
+ $('pBuild').classList.add('on');}
+function setMode(){const m=$('mode');if(buildSel){m.style.display='block';m.innerHTML=HAB[buildSel].e+' Tippe ein freies Feld · <u id="cx">Abbrechen</u>';$('cx').onclick=e=>{e.stopPropagation();buildSel=null;setMode();};}else m.style.display='none';}
+function hint(id){const r=REQ[id];let s=`${HAB[r.hab].e} ${r.n>1?r.n+'× ':''}${HAB[r.hab].name} in ${REGIONS[r.reg].name}`;if(r.combo)s+=` + ${HAB[r.combo].e} ${HAB[r.combo].name} in der Nähe`;return s;}
+function openBook(){closeAll();const L=$('bookList');L.innerHTML='';$('bookCnt').textContent=S.found.length+'/'+ALL.length;
+ const order=ALL.slice().sort((a,b)=>{const fa=S.found.includes(a),fb=S.found.includes(b);if(fa!==fb)return fa?-1:1;const ra=S.regions.includes(REQ[a].reg),rb=S.regions.includes(REQ[b].reg);if(ra!==rb)return ra?-1:1;return REQ[a].rank-REQ[b].rank;});
+ for(const id of order){const f=S.found.includes(id),r=REQ[id],open=S.regions.includes(r.reg);const d=document.createElement('div');d.className='card'+(f?'':' unk');
+  if(f)d.innerHTML=`<div class="q">${HAB[r.hab].e}</div><b>${TIERE[id].name}</b>liefert ${RES[r.p]}`;
+  else d.innerHTML=`<div class="q">❓</div><b>???</b>${open?hint(id):'🔒 '+REGIONS[r.reg].name+' freischalten'}`;
+  L.appendChild(d);}
+ $('pBook').classList.add('on');}
+function openRegion(k){closeAll();const R=REGIONS[k];$('regT').textContent='🔒 '+R.name;
+ const n=ALL.filter(id=>REQ[id].reg===k).length;$('regB').innerHTML=`<p>Hier leben ${n} neue Tierarten.<br>Kosten: <b>${costTxt(R.cost)}</b></p>`;
+ const b=document.createElement('button');b.textContent='Freischalten';b.disabled=!canPay(R.cost);b.style.width='100%';
+ b.onclick=()=>{if(!canPay(R.cost))return;pay(R.cost);S.regions.push(k);applyFog();updLabels();hud();save();closeAll();toast('🗺️ '+R.name+' freigeschaltet!',2500);};
+ $('regB').appendChild(b);$('pReg').classList.add('on');}
+$('bBuild').onclick=openBuild;$('bBook').onclick=openBook;
+// ---------- Eingabe ----------
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();const ptrs=new Map();let drag=null,pinch=null;
+const cv=renderer.domElement;
+cv.addEventListener('pointerdown',e=>{ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});if(ptrs.size===1)drag={x:e.clientX,y:e.clientY,moved:0};
+ if(ptrs.size===2){const[a,b]=[...ptrs.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),cd:camD};drag=null;}});
+cv.addEventListener('pointermove',e=>{const p=ptrs.get(e.pointerId);if(!p)return;const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
+ if(pinch&&ptrs.size===2){const[a,b]=[...ptrs.values()];camD=Math.max(6,Math.min(22,pinch.cd*pinch.d/Math.max(20,Math.hypot(a.x-b.x,a.y-b.y))));}
+ else if(drag){drag.moved+=Math.abs(dx)+Math.abs(dy);const k=camD/innerHeight*1.1;camX=Math.max(0,Math.min(W-1,camX-dx*k));camZ=Math.max(0,Math.min(Hh-1,camZ-dy*k));}});
+const up=e=>{ptrs.delete(e.pointerId);if(drag&&drag.moved<12&&!pinch)tap(e.clientX,e.clientY);if(ptrs.size<2)pinch=null;if(!ptrs.size)drag=null;};
+cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId);drag=null;pinch=null;});
+cv.addEventListener('wheel',e=>{camD=Math.max(6,Math.min(22,camD*(1+e.deltaY*0.001)));},{passive:true});
+function tap(cx,cy){ndc.set(cx/innerWidth*2-1,-(cy/innerHeight)*2+1);ray.setFromCamera(ndc,camera);
+ // Fog-Kacheln zuerst prüfen
+ const fogs=tiles.filter(t=>t.fog).map(t=>t.fog);const hf=ray.intersectObjects(fogs)[0];
+ const hits=ray.intersectObjects(tileMeshes);let t=hits[0]?.object.userData.t;
+ if(hf){t=tiles.find(q=>q.fog===hf.object);}
+ if(!t)return;
+ if(!S.regions.includes(t.reg)){openRegion(t.reg);return;}
+ closeAll();
+ if(buildSel){const h=HAB[buildSel];
+  if(t.hab){toast('Hier steht schon etwas.');return;}
+  if(h.reg&&h.reg!==t.reg){toast(h.name+' nur in '+REGIONS[h.reg].name+'!');return;}
+  if(!canPay(h.cost)){toast('Nicht genug Ressourcen.');buildSel=null;setMode();return;}
+  pay(h.cost);const hb={type:buildSel,x:t.x,z:t.z};S.habs.push(hb);placeHab(hb);toast(h.e+' '+h.name+' gebaut – Tiere werden angelockt…');
+  if(!canPay(h.cost))buildSel=null;setMode();hud();save();return;}
+ if(t.node){const n=t.node;if(n.ch<1){toast('Wächst nach…');return;}n.ch--;const g=1+(Math.random()<0.25?1:0);S.res[n.type]+=g;
+  floatAt(t.x,0.8,t.z,'+'+g+' '+RES[n.type].split(' ')[0]);n.g.scale.setScalar(0.55+0.09*n.ch);hud();return;}
+ if(t.hab){const i=S.habs.indexOf(t.hab);const an=S.animals.filter(a=>a.h===i).map(a=>TIERE[a.id].name);
+  const el=eligible(t.hab,i).filter(id=>!S.found.includes(id));
+  toast(HAB[t.hab.type].e+' '+(an.length?an.join(', '):'noch leer')+(an.length<2?(el.length?' · lockt gerade Tiere an':' · keine neuen Tiere möglich – siehe Sammelbuch'):' · voll'),3000);return;}
+ if(!buildSel)toast('Tippe 🏗️ Bauen, um einen Lebensraum zu setzen.');}
+// ---------- Schleife ----------
+let last=performance.now(),hudT=0;
+function frame(now){const dt=Math.min(0.1,(now-last)/1000);last=now;S.t+=dt;
+ for(const t of tiles){const n=t.node;if(n&&n.ch<5){n.regen+=dt;if(n.regen>6){n.regen=0;n.ch++;n.g.scale.setScalar(0.55+0.09*n.ch);}}}
+ S.habs.forEach((h,i)=>{if(S.t>=h.next){h.next=S.t+18+Math.random()*12;attract(h,i);}});
+ for(const o of live){const h=S.habs[o.a.h];o.ph+=dt;
+  if(o.wait>0)o.wait-=dt;else{const dx=o.tx-o.x,dz=o.tz-o.z,d=Math.hypot(dx,dz);
+   if(d<0.05){o.wait=1+Math.random()*3;o.tx=h.x+(Math.random()-.5)*1.6;o.tz=h.z+(Math.random()-.5)*1.6;}
+   else{const s=Math.min(d,0.45*dt);o.x+=dx/d*s;o.z+=dz/d*s;o.g.rotation.y=Math.atan2(dx,dz);}}
+  o.g.position.set(o.x,o.wait>0?0:Math.abs(Math.sin(o.ph*9))*0.04,o.z);
+  o.pt+=dt;if(o.pt>9){o.pt=0;const p=REQ[o.a.id].p;S.res[p]+=1;floatAt(o.x,0.7,o.z,'+1 '+RES[p].split(' ')[0]);}}
+ hudT+=dt;if(hudT>0.25){hudT=0;hud();}
+ placeCam();renderer.render(scene,camera);requestAnimationFrame(frame);}
+// ---------- Start ----------
+applyFog();updLabels();S.habs.forEach(placeHab);S.animals.forEach(spawnAnimal);hud();
+$('loading').remove();requestAnimationFrame(frame);
+if(!S.habs.length)setTimeout(()=>toast('Sammle 🪵 Holz durch Antippen von Bäumen und baue einen 🛖 Stall!',4500),400);
+window.__SS={S,REQ,attract,eligible};
+</script>
+</body></html>
