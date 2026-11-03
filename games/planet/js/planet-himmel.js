@@ -72,22 +72,17 @@ export function createHimmel(ctx, R) {
         float t = -dot(cameraPosition, v);
         vec3 cp = cameraPosition + v * t;          // nächster Punkt des Strahls zur Mitte
         float dmin = length(cp);
-        float licht, a;
-        if (gl_FrontFacing && dmin < uR) {
-          // Dunst über der Planetenscheibe, zum Rand hin stärker
-          vec3 n = normalize(vW);
-          float rim = 1.0 - max(dot(-v, n), 0.0);
-          a = pow(rim, 3.0) * 0.55 + 0.03;
-          licht = smoothstep(-0.25, 0.35, dot(n, uSun));
+        // Vorder- und Rückseite tragen je die Hälfte bei → keine Kante über Bergen am Rand
+        float a;
+        if (dmin < uR) {
+          if (!gl_FrontFacing) discard;
+          a = 0.45 * pow(dmin / uR, 10.0);           // Dunst über der Scheibe, zum Rand hin stärker
         } else {
-          if (gl_FrontFacing) discard;
-          float hgt = max(dmin - uR, 0.0);
-          a = exp(-hgt / 16.0) * 0.9;
-          licht = smoothstep(-0.3, 0.3, dot(normalize(cp), uSun));
+          a = 0.45 * exp(-(dmin - uR) / 16.0);       // Saum
         }
+        float licht = smoothstep(-0.3, 0.3, dot(normalize(cp), uSun));
         vec3 blau = vec3(0.28, 0.55, 1.0);
         vec3 rot = vec3(1.0, 0.45, 0.2);
-        float term = 1.0 - smoothstep(0.0, 0.5, licht) * smoothstep(1.0, 0.5, licht) * 0.0;
         vec3 col = mix(rot, blau, smoothstep(0.15, 0.6, licht)) * licht * a * uStaerke;
         gl_FragColor = vec4(col, 1.0);
         #include <colorspace_fragment>
@@ -112,7 +107,7 @@ export function createHimmel(ctx, R) {
   const zenitNacht = C(0.004, 0.007, 0.022), horiNacht = C(0.012, 0.02, 0.045);
   const glutC = C(1.0, 0.36, 0.10), sonneC = C(1.0, 0.92, 0.75);
   const lichtAbend = C(1.0, 0.55, 0.3), lichtTag = C(1.0, 0.97, 0.9);
-  const wasserTief = C(0.012, 0.07, 0.13);
+  const wasserTief = C(0.012, 0.07, 0.13), wasserHell = C(0.04, 0.24, 0.32);
   const tmpC = new THREE.Color(), v1 = new THREE.Vector3(), up = new THREE.Vector3();
 
   const info = { tag: 1, horizont: new THREE.Color(), zenit: new THREE.Color(), orbit: 0, sonnenFarbe: new THREE.Color(), unterWasser: false };
@@ -180,7 +175,7 @@ export function createHimmel(ctx, R) {
     info.unterWasser = camD < R - 0.2 && (ctx.planet?.heightAt ? ctx.planet.heightAt(up) < -0.2 + (camD - R) : true);
     kuppelU.uWasser.value = info.unterWasser ? 1 : 0;
     if (info.unterWasser) {
-      fog.color.copy(wasserTief).multiplyScalar(0.3 + 0.7 * tag);
+      fog.color.copy(wasserHell).lerp(wasserTief, smooth(R - camD, 0, 25)).multiplyScalar(0.25 + 0.75 * tag);
       kuppelU.uWasserFarbe.value.copy(fog.color);
       sterne.visible = false; mond.visible = false;
       fog.near = 0; fog.far = 45;

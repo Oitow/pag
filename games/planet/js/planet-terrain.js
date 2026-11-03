@@ -208,7 +208,7 @@ export function createTerrain(seed, DATA) {
         lerp3(o, tmp2, fw);
       }
       // Schnee auf Gipfeln (flachere Stellen) und auf Eisbergen
-      const schneeH = 66 + 8 * v - 30 * ew;
+      const schneeH = 60 + 8 * v - 30 * ew;
       if (h > schneeH - 3) { const sn = smooth(schneeH - 3, schneeH + 3, h) * (1 - smooth(0.45, 0.65, slope)); lerp3(o, PAL.schnee, sn); }
       // leichte Höhenaufhellung
       const hl = 1 + 0.12 * smooth(10, 80, h);

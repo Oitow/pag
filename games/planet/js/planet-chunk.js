@@ -14,7 +14,7 @@ export const FACES = [
   [0, 0, -1, -1, 0, 0, 0, 1, 0],
 ];
 const NV = (N + 1) * (N + 1), NS = 4 * (N + 1);
-export const VERTS = NV + NS;
+export const VERTS = NV + 2 * NS;   // Oberfläche + je Rand: obere Kopie + untere Skirt-Reihe
 
 // Gemeinsamer Indexpuffer: Oberfläche (Diagonale 00–11) + Skirts (beidseitig)
 export function terrainIndex() {
@@ -23,11 +23,10 @@ export function terrainIndex() {
     const v00 = b * (N + 1) + a, v10 = v00 + 1, v01 = v00 + N + 1, v11 = v01 + 1;
     idx.push(v00, v10, v11, v00, v11, v01);
   }
-  const edge = [i => i, i => N * (N + 1) + i, i => i * (N + 1), i => i * (N + 1) + N];
   for (let e = 0; e < 4; e++) {
-    const base = NV + e * (N + 1);
+    const top = NV + e * 2 * (N + 1), base = top + N + 1;
     for (let i = 1; i <= N; i++) {
-      const t0 = edge[e](i - 1), t1 = edge[e](i), s0 = base + i - 1, s1 = base + i;
+      const t0 = top + i - 1, t1 = top + i, s0 = base + i - 1, s1 = base + i;
       idx.push(t0, s0, t1, t1, s0, s1, t0, t1, s0, t1, s1, s0);
     }
   }
@@ -99,6 +98,7 @@ export function createChunkBauer(T, R) {
       if (a >= 0 && a <= N && b >= 0 && b <= N) { if (h < minH) minH = h; if (h > maxH) maxH = h; }
     }
     const pos = new Float32Array(VERTS * 3), cols = new Uint8Array(VERTS * 3), hh = new Float32Array(NV);
+    const kn = new Int8Array(VERTS * 3), nrm = new Float32Array(NV * 3);
     const tiefe = minH < 0.3 ? new Float32Array(NV) : null;
     for (let b = 0; b <= N; b++) for (let a = 0; a <= N; a++) {
       const k = (b + 1) * W + (a + 1), v = b * (N + 1) + a;
@@ -110,6 +110,7 @@ export function createChunkBauer(T, R) {
       const dx = DD[k * 3], dy = DD[k * 3 + 1], dz = DD[k * 3 + 2], h = HH[k];
       const slope = 1 - (nx * dx + ny * dy + nz * dz);
       pos[v * 3] = P[k * 3] - ox; pos[v * 3 + 1] = P[k * 3 + 1] - oy; pos[v * 3 + 2] = P[k * 3 + 2] - oz;
+      nrm[v * 3] = nx; nrm[v * 3 + 1] = ny; nrm[v * 3 + 2] = nz;
       T.color(dx, dy, dz, h, slope * 2.2, col);
       cols[v * 3] = col[0] * 255; cols[v * 3 + 1] = col[1] * 255; cols[v * 3 + 2] = col[2] * 255;
       hh[v] = h;
@@ -132,14 +133,18 @@ export function createChunkBauer(T, R) {
           }
         }
       }
-      const base = NV + e * (N + 1);
+      const top = NV + e * 2 * (N + 1), base = top + N + 1;
       for (let i = 0; i <= N; i++) {
-        const v = vi(i), sv = base + i;
+        const v = vi(i), tv = top + i, sv = base + i;
         const skirt = 0.25 + dev[i] * 1.3 + (i > 0 ? dev[i - 1] * 0.3 : 0) + (i < N ? dev[i + 1] * 0.3 : 0);
         const px = pos[v * 3] + ox, py = pos[v * 3 + 1] + oy, pz = pos[v * 3 + 2] + oz;
         const l = Math.sqrt(px * px + py * py + pz * pz), k = (l - skirt) / l;
+        pos[tv * 3] = pos[v * 3]; pos[tv * 3 + 1] = pos[v * 3 + 1]; pos[tv * 3 + 2] = pos[v * 3 + 2];
         pos[sv * 3] = px * k - ox; pos[sv * 3 + 1] = py * k - oy; pos[sv * 3 + 2] = pz * k - oz;
-        cols[sv * 3] = cols[v * 3]; cols[sv * 3 + 1] = cols[v * 3 + 1]; cols[sv * 3 + 2] = cols[v * 3 + 2];
+        for (let c = 0; c < 3; c++) {
+          cols[tv * 3 + c] = cols[sv * 3 + c] = cols[v * 3 + c];
+          kn[tv * 3 + c] = kn[sv * 3 + c] = Math.round(nrm[v * 3 + c] * 127);
+        }
       }
     }
     // Hüllkugel (relativ zum Ursprung)
@@ -148,7 +153,7 @@ export function createChunkBauer(T, R) {
     cx /= NV; cy /= NV; cz /= NV;
     let r2 = 0;
     for (let v = 0; v < VERTS; v++) { const dx = pos[v * 3] - cx, dy = pos[v * 3 + 1] - cy, dz = pos[v * 3 + 2] - cz; const d = dx * dx + dy * dy + dz * dz; if (d > r2) r2 = d; }
-    const out = { f, L, x, y, ox, oy, oz, minH, maxH, pos, cols, hh, bs: [cx, cy, cz, Math.sqrt(r2)], wpos: null, tiefe: null, widx: null };
+    const out = { f, L, x, y, ox, oy, oz, minH, maxH, pos, cols, hh, kn, bs: [cx, cy, cz, Math.sqrt(r2)], wpos: null, tiefe: null, widx: null };
     if (tiefe) {
       const wi = [];
       for (let b = 0; b < N; b++) for (let a = 0; a < N; a++) {
@@ -166,6 +171,6 @@ export function createChunkBauer(T, R) {
     }
     return out;
   }
-  const transfer = d => [d.pos.buffer, d.cols.buffer, d.hh.buffer].concat(d.wpos ? [d.wpos.buffer, d.tiefe.buffer, d.widx.buffer] : []);
+  const transfer = d => [d.pos.buffer, d.cols.buffer, d.hh.buffer, d.kn.buffer].concat(d.wpos ? [d.wpos.buffer, d.tiefe.buffer, d.widx.buffer] : []);
   return { cache, gridDir, gridH, heightAt, fuelleCache, bau, transfer };
 }

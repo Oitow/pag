@@ -45,7 +45,16 @@ export async function init(ctx) {
   function feuchteAt(dir) { _b.copy(dir).normalize(); return T.feuchte(_b.x, _b.y, _b.z, heightAt(_b)); }
 
   // ---------- Materialien ----------
+  // Low-Poly (flat shading); Skirts nutzen die glatte Randnormale (Attribut kn), damit LOD-Fugen nicht dunkel auffallen
   const terrainMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+  terrainMat.onBeforeCompile = sh => {
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute vec3 kn;\nvarying vec3 vKn;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvKn = (viewMatrix * vec4(kn, 0.0)).xyz;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vKn;')
+      .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nif (dot(vKn, vKn) > 0.25) normal = normalize(vKn);');
+  };
   const wasserU = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {
     uZeit: { value: 0 }, uSun: { value: new THREE.Vector3(0, 1, 0) }, uSonne: { value: new THREE.Color(1, 1, 1) },
     uHimmel: { value: new THREE.Color(0.5, 0.7, 0.9) }, uOrbit: { value: 0 }, uAmb: { value: new THREE.Color(0.3, 0.35, 0.4) },
@@ -84,7 +93,7 @@ export async function init(ctx) {
         float fres = pow(1.0 - max(dot(n, v), 0.0), 4.0);
         if (!unten) col = mix(col, uHimmel * (0.3 + 0.7 * tagL), fres * 0.65 * (1.0 - uOrbit));
         vec3 h = normalize(uSun + v);
-        float spec = pow(max(dot(n, h), 0.0), 160.0) * 2.5 * step(0.0, dot(up, uSun));
+        float spec = pow(max(dot(n, h), 0.0), mix(160.0, 900.0, smoothstep(60.0, 500.0, dist))) * mix(2.5, 1.2, smoothstep(60.0, 500.0, dist)) * step(0.0, dot(up, uSun));
         float schaum = 1.0 - smoothstep(0.0, 0.55 + 0.25 * sin(uZeit * 1.7 + dot(p, vec3(0.9, 0.7, 0.4)) * 0.8), vT);
         schaum *= 0.6 + 0.4 * sin(dot(p, vec3(2.1, 1.7, -1.3)) + uZeit * 2.0);
         col = mix(col, licht * 0.85, clamp(schaum, 0.0, 1.0) * 0.75);
@@ -127,6 +136,7 @@ export async function init(ctx) {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(d.pos, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(d.cols, 3, true));
+    geo.setAttribute('kn', new THREE.BufferAttribute(d.kn, 3, true));
     geo.setIndex(idxAttr);
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(d.bs[0], d.bs[1], d.bs[2]), d.bs[3]);
     const mesh = new THREE.Mesh(geo, terrainMat);
@@ -319,7 +329,7 @@ export async function init(ctx) {
       const ort = ctx.spieler?.pos || camera.position;
       const info = himmel.update(sunDir, ort, moonDir);
       api.licht = info.tag;
-      wasserU.uZeit.value = jetzt;
+      wasserU.uZeit.value = jetzt % (Math.PI * 200); // alle Wellen-Frequenzen haben eine Nachkommastelle → nahtlos
       wasserU.uSun.value.copy(sunDir);
       wasserU.uSonne.value.copy(info.sonnenFarbe).multiplyScalar(0.9);
       wasserU.uHimmel.value.copy(info.horizont);
