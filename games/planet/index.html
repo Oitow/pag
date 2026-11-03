@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Planet – Tierfänger</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<!-- Bereiche (wem gehört was, siehe API.md):
+     #welt       Canvas (main.js)
+     #hud        Lebensleiste, Biom, Toasts, Menü-Knöpfe oben (spiel.js)
+     #steuerung  Joystick + Aktionsknöpfe unten (spieler.js)
+     #menues     Overlays: Inventar, Craften, Stall, Sammelbuch (spiel.js) -->
+<div id="welt"></div>
+<div id="hud"></div>
+<div id="steuerung"></div>
+<div id="menues"></div>
+<div id="laden">Lade Planet…</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

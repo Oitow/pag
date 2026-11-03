@@ -1,0 +1,15 @@
+/* Basis-Stile. Module dürfen eigene Abschnitte ergänzen – jeweils mit
+   Kommentar-Kopf "/* === modulname === *\/" und nur mit eigenem Präfix
+   (.sp- für spieler, .ui- für spiel, .kr- für kreaturen, .fl- für flora). */
+:root {
+  --bg: #12151c; --panel: #1d222dee; --text: #f1eee6; --muted: #a9a7a0;
+  --akzent: #f2b84b; --gut: #6fcf73; --schlecht: #e2574c; --radius: 14px;
+}
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, sans-serif; -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent; touch-action: none; }
+#welt, #welt canvas { position: fixed; inset: 0; display: block; }
+#hud, #steuerung, #menues { position: fixed; inset: 0; pointer-events: none; }
+#hud > *, #steuerung > *, #menues > * { pointer-events: auto; }
+#laden { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); font-size: 20px; z-index: 99; }
+button { font: inherit; color: inherit; }
