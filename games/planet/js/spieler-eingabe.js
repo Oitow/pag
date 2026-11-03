@@ -56,6 +56,7 @@ export function erstelleEingabe(ctx, cb) {
   const imEingabefeld = e => /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName) || e.target?.isContentEditable;
   addEventListener('keydown', e => {
     if (imEingabefeld(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (ctx.spiel?.menuOffen) { tasten.clear(); return; } // Menü hat die Tastatur
     const k = e.code;
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(k)) e.preventDefault();
     if (e.repeat) return;

@@ -203,7 +203,7 @@ export async function init(ctx) {
   const sichtbar = new Set(), neuSichtbar = new Set();
   let anfragen = [];
   const camP = new THREE.Vector3(), camN = new THREE.Vector3();
-  let camD = 0, horCam = 0;
+  let camD = 0, horCam = 0, nebelWeite = 1e9;
   function hinterHorizont(node) {
     if (camD <= R * 0.99 || api.dbgKeinHorizont) return false;
     const ang = Math.acos(Math.max(-1, Math.min(1, camN.dot(node.dir))));
@@ -216,6 +216,7 @@ export async function init(ctx) {
     if (hinterHorizont(node)) return;
     const d = Math.max(0, node.center.distanceTo(camP) - node.size * 0.72);
     node.dist = d;
+    if (d > nebelWeite) return;                 // komplett im Nebel
     const want = node.L < MAXL && d < node.size * SPLIT * (node.split ? 1.15 : 1);
     if (want) {
       if (!node.children) node.children = kinder(node);
@@ -241,6 +242,7 @@ export async function init(ctx) {
     frame++;
     camP.copy(camera.position); camD = camP.length(); camN.copy(camP).normalize();
     horCam = camD > R * 0.99 ? Math.acos(Math.min(1, R * 0.99 / camD)) : Math.PI;
+    nebelWeite = scene.fog && scene.fog.far < 3000 ? scene.fog.far + 20 : 1e9;
     anfragen = [];
     neuSichtbar.clear();
     for (const r of roots) select(r);

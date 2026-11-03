@@ -70,6 +70,7 @@ export function erzeugeUI(I) {
     H.leben.style.width = l + '%'; H.lebenT.textContent = '❤️ ' + Math.ceil(l);
     H.aus.style.width = a + '%'; H.ausT.textContent = '⚡ ' + Math.floor(a);
     top.classList.toggle('ui-kritisch', l < 25);
+    if (performance.now() - letzterTreffer > 1000) vignette.style.opacity = l < 25 ? String(0.22 + 0.12 * Math.sin(performance.now() / 300)) : '0';
     const b = T.biom, B = DATA.BIOME[b];
     if (B) {
       const g = B.gefahr ? (SD.GEFAHREN[B.gefahr]?.icon || '⚠️') : '';
@@ -141,8 +142,9 @@ export function erzeugeUI(I) {
     warnEl.className = 'ui-warnung' + (info.leicht ? ' ui-warnung-leicht' : '');
     warnEl.innerHTML = `<b>${info.icon} ${esc(info.titel)}</b>${info.teilweise ? ' <em>(Schutz zu schwach)</em>' : ''}<span>${esc(info.hilfe)}</span>`;
   }
-  let vigT = null;
+  let vigT = null, letzterTreffer = 0;
   function treffer(staerke, quelle) {
+    letzterTreffer = performance.now();
     const leicht = String(quelle || '').startsWith('gefahr:');
     vignette.style.transition = 'none';
     vignette.style.opacity = String(leicht ? Math.min(0.55, staerke) : Math.min(1, staerke + 0.2));
@@ -253,7 +255,7 @@ export function erzeugeUI(I) {
   }
   function kugelText(k) {
     const biome = Object.entries(DATA.BIOME).filter(([, b]) => b.stufe === k.stufe).map(([id, b]) => (SD.BIOM_ICON[id] || '') + ' ' + b.name);
-    return `Stufe ${k.stufe}${k.bonus ? ` · +${Math.round(k.bonus * 100)} % Fangchance` : ''}` + (biome.length ? ` · für ${biome.join(', ')}` : '') + ' und leichter';
+    return `Stufe ${k.stufe}${k.bonus ? ` · +${Math.round(k.bonus * 100)} % Fangchance` : ''}` + (biome.length ? ` · für ${biome.join(', ')}` : '');
   }
   function sortSchluessel(id) {
     if (id.startsWith('kugel_')) return '0' + (DATA.KUGELN.findIndex(k => k.id === id) + 10);
@@ -307,7 +309,7 @@ export function erzeugeUI(I) {
         return `<span class="ui-zutat${c >= n ? ' ui-hat' : ' ui-fehlt'}" title="${esc(I.itemName(id))}">${I.itemIcon(id)} ${esc(I.itemName(id))} <b>${Math.min(c, 999)}/${n}</b></span>`;
       }).join('');
       const station = r.station === 'feuer' ? `<span class="ui-zutat ${amFeuer ? 'ui-hat' : 'ui-fehlt'}">🔥 am Lagerfeuer</span>` : '';
-      const fehltTxt = Object.keys(fehlt).length ? 'Fehlt: ' + Object.entries(fehlt).map(([id, n]) => n + '× ' + I.itemName(id)).join(', ') : (r.station === 'feuer' && !amFeuer ? 'Stell dich an ein Lagerfeuer' : '');
+      const fehltTxt = r.station === 'feuer' && !amFeuer ? 'Stell dich an ein Lagerfeuer' : '';
       return `<div class="ui-rezept${ok ? ' ui-ok' : ''}">
         <span class="ui-rezept-ic">${I.itemIcon(r.id)}</span>
         <div class="ui-rezept-t"><b>${esc(I.itemName(r.id))}${r.n > 1 ? ' ×' + r.n : ''}</b><small>${esc(itemText(r.id))}</small>

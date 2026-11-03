@@ -180,7 +180,7 @@ export function createHimmel(ctx, R) {
     info.unterWasser = camD < R - 0.2 && (ctx.planet?.heightAt ? ctx.planet.heightAt(up) < -0.2 + (camD - R) : true);
     kuppelU.uWasser.value = info.unterWasser ? 1 : 0;
     if (info.unterWasser) {
-      fog.color.copy(wasserTiefe).multiplyScalar(0.3 + 0.7 * tag);
+      fog.color.copy(wasserTief).multiplyScalar(0.3 + 0.7 * tag);
       kuppelU.uWasserFarbe.value.copy(fog.color);
       sterne.visible = false; mond.visible = false;
       fog.near = 0; fog.far = 45;
