@@ -13,3 +13,250 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); c
 #hud > *, #steuerung > *, #menues > * { pointer-events: auto; }
 #laden { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); font-size: 20px; z-index: 99; }
 button { font: inherit; color: inherit; }
+
+/* === spieler === */
+.sp-ui { position: fixed; inset: 0; pointer-events: none; --sl: env(safe-area-inset-left, 0px); --sr: env(safe-area-inset-right, 0px); --sb: env(safe-area-inset-bottom, 0px); }
+.sp-ui > * { pointer-events: auto; }
+.sp-ui [hidden] { display: none !important; }
+.sp-knopf, .sp-inter, .sp-zurueck { position: absolute; border: 2px solid #ffffff55; background: #1d222dcc; color: var(--text, #fff);
+  border-radius: 50%; display: grid; place-items: center; padding: 0; cursor: pointer; touch-action: none;
+  box-shadow: 0 3px 0 #0006, inset 0 -3px 0 #0004; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); --cd: 0; }
+.sp-knopf .sp-icon { font-size: 28px; line-height: 1; }
+.sp-knopf::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(#000a calc(var(--cd) * 360deg), transparent 0); }
+.sp-knopf.sp-aktiv, .sp-inter.sp-aktiv, .sp-zurueck.sp-aktiv { transform: scale(.92); background: #f2b84bcc; }
+.sp-taste { position: absolute; right: -2px; bottom: -4px; font-size: 11px; font-weight: 700; background: #000b; color: #fff;
+  border-radius: 6px; padding: 1px 5px; display: none; }
+.sp-ui:not(.sp-touch) .sp-taste { display: block; }
+.sp-angriff { width: 78px; height: 78px; right: calc(14px + var(--sr)); bottom: calc(18px + var(--sb)); background: #5a2a2acc; }
+.sp-angriff .sp-icon { font-size: 34px; }
+.sp-sprung  { width: 62px; height: 62px; right: calc(104px + var(--sr)); bottom: calc(14px + var(--sb)); }
+.sp-wurf    { width: 62px; height: 62px; right: calc(22px + var(--sr)); bottom: calc(108px + var(--sb)); background: #23402bcc; }
+.sp-reiten  { width: 50px; height: 50px; right: calc(98px + var(--sr)); bottom: calc(94px + var(--sb)); }
+.sp-reiten .sp-icon, .sp-karte .sp-icon { font-size: 24px; }
+.sp-reiten.sp-an { background: #f2b84bcc; border-color: #fff; }
+.sp-karte   { width: 50px; height: 50px; right: calc(28px + var(--sr)); bottom: calc(182px + var(--sb)); }
+.sp-inter { border-radius: 26px; height: 50px; right: calc(88px + var(--sr)); bottom: calc(166px + var(--sb)); max-width: min(230px, 60vw);
+  display: flex; align-items: center; gap: 6px; padding: 0 16px 0 10px; background: #2b3a55e6; border-color: #f2b84b; animation: sp-auf .18s ease-out; }
+.sp-inter .sp-icon { font-size: 24px; }
+.sp-inter .sp-label { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-inter .sp-taste { position: static; }
+@keyframes sp-auf { from { transform: scale(.6); opacity: 0; } }
+/* Desktop: Knöpfe etwas kleiner */
+.sp-ui:not(.sp-touch) .sp-knopf { transform: scale(.82); transform-origin: bottom right; opacity: .9; }
+.sp-ui:not(.sp-touch) .sp-knopf.sp-aktiv { transform: scale(.76); }
+/* Joystick */
+.sp-stick { display: none; position: absolute; left: calc(22px + var(--sl)); bottom: calc(22px + var(--sb)); width: 130px; height: 130px;
+  border-radius: 50%; background: radial-gradient(circle, #ffffff10 0 40%, #ffffff22 41% 62%, #ffffff10 63%); border: 2px solid #ffffff44;
+  pointer-events: none !important; opacity: .55; transition: opacity .2s; }
+.sp-touch .sp-stick { display: block; }
+.sp-stick.sp-frei { opacity: 1; transition: none; }
+.sp-knauf { position: absolute; left: 37px; top: 37px; width: 56px; height: 56px; border-radius: 50%; background: #f1eee6dd;
+  box-shadow: 0 3px 8px #0006; }
+/* Fadenkreuz */
+.sp-fadenkreuz { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%;
+  border: 2px solid #ffffffaa; box-shadow: 0 0 0 1px #0005; pointer-events: none !important; }
+.sp-fadenkreuz::after { content: ''; position: absolute; left: 4px; top: 4px; width: 2px; height: 2px; background: #fff; border-radius: 50%; }
+.sp-fadenkreuz.sp-puls { animation: sp-puls .45s ease-out; }
+@keyframes sp-puls { 50% { transform: scale(1.8); border-color: #6fcf73; } }
+/* Kartenmodus */
+.sp-zurueck { display: none; border-radius: 26px; height: 52px; padding: 0 22px; font-size: 18px; font-weight: 700;
+  right: calc(16px + var(--sr)); bottom: calc(20px + var(--sb)); background: #2b3a55e6; border-color: #f2b84b; }
+.sp-kartenhinweis { display: none; position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(26px + var(--sb));
+  font-size: 13px; color: #fffc; background: #0007; padding: 6px 12px; border-radius: 12px; pointer-events: none !important; white-space: nowrap; }
+.sp-kartenmodus .sp-zurueck { display: block; }
+.sp-kartenmodus .sp-kartenhinweis { display: block; }
+.sp-kartenmodus .sp-knopf, .sp-kartenmodus .sp-inter, .sp-kartenmodus .sp-stick, .sp-kartenmodus .sp-fadenkreuz { display: none !important; }
+@media (max-width: 420px) { .sp-kartenmodus .sp-kartenhinweis { bottom: calc(86px + var(--sb)); } }
+@media (max-height: 420px) and (orientation: landscape) {
+  .sp-stick { bottom: calc(14px + var(--sb)); }
+}
+
+.sp-stick.sp-sprint .sp-knauf { background: #f2b84b; box-shadow: 0 0 14px #f2b84b; }
+/* === ende spieler === */
+
+/* === spiel (ui) === */
+#hud > .ui-top, #hud > .ui-mitte, #hud > .ui-banner, #hud > .ui-vignette { pointer-events: none; }
+.ui-top { position: fixed; top: 0; left: 0; right: 0; padding: calc(6px + env(safe-area-inset-top)) calc(8px + env(safe-area-inset-right)) 0 calc(8px + env(safe-area-inset-left));
+  display: flex; flex-direction: column; gap: 4px; font-size: 14px; z-index: 5; }
+.ui-top button { pointer-events: auto; cursor: pointer; border: 0; }
+.ui-reihe { display: flex; gap: 6px; align-items: stretch; min-width: 0; }
+.ui-balken, .ui-biom, .ui-kugel, .ui-menuknopf, .ui-tk, .ui-quest {
+  background: #141821cc; border-radius: 12px; box-shadow: 0 2px 8px #0005; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.ui-balken { width: 128px; flex: none; padding: 5px 6px; display: flex; flex-direction: column; gap: 4px; justify-content: center; }
+.ui-bar { position: relative; height: 16px; border-radius: 8px; background: #0008; overflow: hidden; }
+.ui-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 8px; transition: width .25s; }
+.ui-bar-leben i { background: linear-gradient(#ff6b5e, #c23a30); }
+.ui-bar-ausdauer i { background: linear-gradient(#ffd66b, #d39a1e); }
+.ui-bar span { position: relative; display: block; font-size: 12px; line-height: 16px; font-weight: 700; padding-left: 6px; text-shadow: 0 1px 2px #000; }
+.ui-kritisch .ui-bar-leben { animation: ui-blink 0.8s infinite alternate; }
+@keyframes ui-blink { to { box-shadow: 0 0 0 2px #ff4a3d; } }
+.ui-biom { flex: 1; max-width: 320px; margin-right: auto; min-width: 0; padding: 3px 10px; text-align: left; display: flex; flex-direction: column; justify-content: center; }
+.ui-biom-name { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui-biom-info { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.ui-stern { color: var(--akzent); font-weight: 700; }
+.ui-gefahr-an { display: inline-block; animation: ui-wackel .6s infinite alternate; }
+@keyframes ui-wackel { to { transform: scale(1.25); } }
+.ui-kugel { width: 58px; flex: none; position: relative; display: grid; place-items: center; padding: 2px; min-height: 44px; }
+.ui-kugel-icon { font-size: 22px; line-height: 1; }
+.ui-kugel-n { position: absolute; right: 5px; bottom: 2px; font-size: 13px; text-shadow: 0 1px 2px #000; }
+.ui-kugel-st { position: absolute; left: 5px; top: 2px; font-size: 10px; color: var(--muted); }
+.ui-kugel.ui-leer { opacity: .6; }
+.ui-kugel.ui-zuschwach { box-shadow: 0 0 0 2px var(--schlecht) inset; }
+.ui-menuknopf { width: 46px; flex: none; font-size: 22px; min-height: 44px; }
+.ui-reihe2 { height: 30px; }
+.ui-team { display: flex; gap: 4px; flex: none; max-width: 60%; overflow: hidden; }
+.ui-tk { display: flex; align-items: center; gap: 2px; padding: 0 8px; font-size: 13px; white-space: nowrap; }
+.ui-tk-n { margin-right: 3px; font-weight: 600; }
+.ui-tk-leer { color: var(--muted); }
+.ui-fi { font-size: 14px; }
+.ui-fi sub { font-size: 10px; font-weight: 700; color: var(--akzent); }
+.ui-quest { flex: 1; max-width: 460px; min-width: 0; display: flex; align-items: center; gap: 6px; padding: 0 10px; font-size: 13px; text-align: left; }
+.ui-quest-t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui-quest-n { color: var(--akzent); }
+@media (max-width: 520px) { .ui-tk-n { display: none; } .ui-balken { width: 108px; } .ui-team { max-width: 50%; } }
+
+.ui-mitte { position: fixed; left: 50%; transform: translateX(-50%); top: calc(84px + env(safe-area-inset-top)); width: min(92vw, 480px);
+  display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 6; }
+.ui-warnung { pointer-events: none; background: #8e1f1ae6; border: 1px solid #ff7a6c; border-radius: 12px; padding: 7px 12px; text-align: center;
+  font-size: 14px; box-shadow: 0 0 18px #e2574c88; animation: ui-warnpuls 1.2s infinite alternate; }
+.ui-warnung b { display: block; font-size: 16px; }
+.ui-warnung em { font-style: normal; color: #ffd0c8; font-size: 13px; }
+.ui-warnung span { display: block; color: #ffe4df; }
+.ui-warnung-leicht { background: #6c5410e6; border-color: #f2b84b; box-shadow: 0 0 14px #f2b84b66; }
+@keyframes ui-warnpuls { to { box-shadow: 0 0 4px #e2574c44; } }
+.ui-toasts { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.ui-toast { background: #141821e6; border-radius: 999px; padding: 7px 14px; font-size: 14px; box-shadow: 0 2px 10px #0006;
+  opacity: 0; transform: translateY(-8px) scale(.96); transition: opacity .25s, transform .25s; text-align: center; max-width: 92vw; }
+.ui-toast.ui-an { opacity: 1; transform: none; }
+.ui-toast.ui-weg { opacity: 0; transform: translateY(-6px); }
+.ui-toast-gut { border: 1px solid #6fcf7388; }
+.ui-toast-schlecht { border: 1px solid #e2574c; background: #3a1714e6; }
+.ui-toast-item { padding: 5px 12px; font-weight: 600; }
+.ui-toast-quest { border: 1px solid var(--akzent); background: #3a2d10e6; border-radius: 14px; }
+.ui-toast-feier { font-size: 18px; font-weight: 700; padding: 10px 18px; border-radius: 16px; background: linear-gradient(135deg, #3d2a6be8, #1d5a4ee8);
+  border: 1px solid #f2b84b; box-shadow: 0 0 24px #f2b84b66; }
+.ui-puls { animation: ui-puls .3s; }
+@keyframes ui-puls { 50% { transform: scale(1.12); } }
+
+.ui-banner { position: fixed; left: 0; right: 0; top: 26%; text-align: center; opacity: 0; transform: scale(.94); transition: opacity .8s, transform 1.2s; z-index: 4; }
+.ui-banner.ui-an { opacity: 1; transform: none; }
+.ui-banner-name { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(34px, 9vw, 64px); letter-spacing: .12em; text-transform: uppercase;
+  color: #fff6e0; text-shadow: 0 2px 4px #000, 0 0 30px #000c; }
+.ui-banner-sub { margin-top: 4px; font-size: 16px; color: #f2dfb0; text-shadow: 0 1px 3px #000; letter-spacing: .05em; }
+.ui-vignette { position: fixed; inset: 0; opacity: 0; box-shadow: inset 0 0 90px 30px #d01d12; z-index: 3; }
+
+/* --- Menüs --- */
+.ui-overlay { position: fixed; inset: 0; background: #05070bb0; display: flex; align-items: center; justify-content: center; z-index: 20;
+  padding: calc(8px + env(safe-area-inset-top)) 8px calc(8px + env(safe-area-inset-bottom)); box-sizing: border-box; }
+.ui-overlay[hidden], .ui-haupt[hidden], .ui-tod[hidden] { display: none; }
+.ui-panel { width: min(100%, 760px); height: min(100%, 760px); background: #1a1f2af2; border: 1px solid #ffffff1c; border-radius: 18px;
+  display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px #000a; font-size: 15px; }
+.ui-kopf { display: flex; align-items: center; gap: 4px; padding: 6px; background: #0f131bcc; border-bottom: 1px solid #ffffff14; }
+.ui-tabs { flex: 1; display: flex; gap: 3px; overflow-x: auto; scrollbar-width: none; }
+.ui-tabs::-webkit-scrollbar { display: none; }
+.ui-tab, .ui-zu { min-width: 44px; height: 44px; border: 0; border-radius: 11px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 0 8px; flex: none; }
+.ui-tab-ic { font-size: 20px; }
+.ui-tab-n { font-size: 14px; }
+.ui-tab.ui-aktiv { background: #f2b84b2e; box-shadow: inset 0 -3px 0 var(--akzent); }
+.ui-zu { font-size: 20px; background: #ffffff10; }
+.ui-titel { display: none; padding: 10px 14px 0; font-size: 18px; font-weight: 700; }
+@media (max-width: 800px) { .ui-tab-n { display: none; } .ui-titel { display: block; } }
+.ui-inhalt { flex: 1; overflow-y: auto; padding: 10px 14px 16px; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+.ui-fuss { border-top: 1px solid #ffffff1c; background: #11151ef2; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); }
+.ui-fuss[hidden] { display: none; }
+.ui-h { font-size: 15px; margin: 14px 0 8px; color: var(--akzent); display: flex; justify-content: space-between; }
+.ui-zahl { color: var(--muted); font-weight: 400; }
+.ui-zeile { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.ui-hinweis { color: var(--muted); font-size: 14px; line-height: 1.4; margin: 6px 0; }
+.ui-gut-t { color: var(--gut); }
+.ui-leertext { color: var(--muted); font-size: 14px; }
+.ui-knopf { min-height: 44px; min-width: 44px; padding: 0 14px; border: 1px solid #ffffff22; border-radius: 12px; background: #2a3140; cursor: pointer; font-size: 15px; font-weight: 600; }
+.ui-knopf:disabled { opacity: .45; cursor: default; }
+.ui-knopf.ui-gut { background: linear-gradient(#4d9d52, #357a3a); border-color: #6fcf73; }
+.ui-knopf.ui-grau { opacity: .55; }
+.ui-knopf.ui-klein { padding: 0 10px; }
+.ui-knopf.ui-gross { min-height: 54px; font-size: 17px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ui-knopf small { font-size: 13px; font-weight: 400; opacity: .8; }
+.ui-knoepfe { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.ui-spalte { flex-direction: column; align-items: stretch; }
+.ui-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.ui-chip { min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid #ffffff22; background: #232a37; cursor: pointer; font-size: 14px; }
+.ui-chip.ui-aktiv { background: var(--akzent); color: #1d1a12; font-weight: 700; }
+
+.ui-slots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 10px; }
+.ui-slot { position: relative; min-height: 58px; border-radius: 12px; border: 1px solid #f2b84b55; background: #2a2618; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2px; }
+.ui-slot-leer { border-style: dashed; border-color: #ffffff22; background: #ffffff06; cursor: default; }
+.ui-slot-ic { font-size: 22px; }
+.ui-slot small { font-size: 11px; color: var(--muted); }
+.ui-haltbar { position: absolute; left: 6px; right: 6px; bottom: 3px; height: 3px; background: #0008; border-radius: 2px; }
+.ui-haltbar i { display: block; height: 100%; background: var(--gut); border-radius: 2px; }
+.ui-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 6px; }
+.ui-item { position: relative; aspect-ratio: 1; min-height: 64px; border-radius: 12px; border: 1px solid #ffffff18; background: #252c3a; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2px; overflow: hidden; }
+.ui-item.ui-sel { border-color: var(--akzent); box-shadow: 0 0 0 2px var(--akzent) inset; background: #3a3424; }
+.ui-item-ic { font-size: 28px; line-height: 1.1; }
+.ui-item b { position: absolute; top: 3px; right: 6px; font-size: 13px; }
+.ui-item small { font-size: 11px; color: var(--muted); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui-marke { position: absolute; top: 2px; left: 4px; font-style: normal; font-size: 12px; color: var(--gut); }
+.ui-detail { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+.ui-detail-ic { font-size: 34px; }
+.ui-detail-t { display: flex; flex-direction: column; gap: 2px; }
+.ui-detail-t small { color: var(--muted); font-size: 14px; }
+
+.ui-rezepte, .ui-tiere { display: flex; flex-direction: column; gap: 8px; }
+.ui-rezept, .ui-tier { display: flex; gap: 10px; align-items: center; padding: 10px; border-radius: 14px; background: #232a37; border: 1px solid #ffffff12; }
+.ui-rezept.ui-ok { border-color: #6fcf7366; background: #233327; }
+.ui-rezept-ic { font-size: 30px; flex: none; width: 40px; text-align: center; }
+.ui-rezept-t, .ui-tier-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ui-rezept-t small, .ui-tier-t small { color: var(--muted); font-size: 13px; }
+.ui-zutaten { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.ui-zutat { font-size: 13px; padding: 2px 8px; border-radius: 999px; background: #0004; white-space: nowrap; }
+.ui-zutat.ui-hat { color: #a8f0aa; }
+.ui-zutat.ui-fehlt { color: #ffb0a8; background: #e2574c22; }
+.ui-fehlt-t { color: #ffb0a8 !important; }
+@media (max-width: 420px) { .ui-knopf-n { display: none; } .ui-rezept { padding: 8px; gap: 8px; } }
+.ui-tier.ui-aktiv { border-color: #6fcf73aa; background: #22331f; }
+.ui-faeh { display: flex; flex-wrap: wrap; gap: 6px; }
+.ui-fchip { font-size: 14px; padding: 4px 10px; border-radius: 999px; background: #f2b84b22; border: 1px solid #f2b84b55; white-space: nowrap; }
+.ui-fchip.ui-aus { opacity: .4; background: #ffffff08; border-color: #ffffff18; }
+.ui-fchip.ui-klein { font-size: 13px; padding: 2px 8px; background: #ffffff10; border-color: #ffffff22; }
+
+.ui-fortschritt { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.ui-fbar { height: 12px; border-radius: 6px; background: #0007; overflow: hidden; }
+.ui-fbar i { display: block; height: 100%; background: linear-gradient(90deg, #f2b84b, #6fcf73); }
+.ui-buch { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; }
+.ui-karte { border-radius: 12px; padding: 8px 6px; min-height: 76px; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; background: #252c3a; }
+.ui-karte b { font-size: 14px; } .ui-karte small { font-size: 12px; color: var(--muted); }
+.ui-karte-bi { font-size: 22px; }
+.ui-gefangen { border: 1px solid #6fcf7377; }
+.ui-gesehen { background: #1c212b; } .ui-gesehen .ui-karte-bi { filter: brightness(0) opacity(.6); }
+.ui-unbekannt { background: #161a22; opacity: .6; }
+.ui-questkarte { background: linear-gradient(135deg, #3a2d10, #24202a); border: 1px solid #f2b84b77; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+.ui-questkarte small { color: var(--akzent); font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
+.ui-questkarte b { font-size: 18px; } .ui-questkarte p { margin: 0; color: #e0dccf; line-height: 1.4; }
+.ui-qliste { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.ui-qliste li { padding: 6px 10px; border-radius: 10px; background: #ffffff08; font-size: 14px; }
+.ui-spaeter { color: var(--muted); }
+.ui-tipps { padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.ui-tipps li { line-height: 1.4; font-size: 14px; }
+.ui-tasten { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ui-tasten td { padding: 5px 4px; border-bottom: 1px solid #ffffff10; vertical-align: top; }
+.ui-tasten td:first-child { width: 44%; }
+kbd { background: #2f3747; border-radius: 6px; padding: 2px 7px; font-family: inherit; font-size: 13px; border-bottom: 2px solid #0007; }
+.ui-seedbox { display: flex; gap: 6px; }
+.ui-seed { flex: 1; min-width: 0; min-height: 44px; border-radius: 12px; border: 1px solid #ffffff33; background: #0d1017; color: var(--text); font-size: 17px; padding: 0 12px; user-select: text; -webkit-user-select: text; }
+
+.ui-haupt, .ui-tod { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;
+  background: radial-gradient(ellipse at 50% 30%, #1b2a4a99, #05070bdd 70%); }
+.ui-haupt-box, .ui-tod-box { width: min(100%, 400px); text-align: center; background: #151a24e6; border: 1px solid #ffffff1c; border-radius: 22px; padding: 22px 18px; box-shadow: 0 10px 50px #000b; }
+.ui-logo { font-size: 56px; line-height: 1; }
+.ui-haupt h1 { margin: 6px 0 0; font-family: Georgia, serif; font-size: 42px; letter-spacing: .14em; text-transform: uppercase; color: #fff3d6; }
+.ui-unter { margin: 0 0 18px; color: var(--akzent); letter-spacing: .3em; text-transform: uppercase; font-size: 14px; }
+.ui-neu { text-align: left; } .ui-neu[hidden] { display: none; }
+.ui-tod { background: radial-gradient(ellipse at center, #4a0d0899, #0a0303e6 75%); }
+.ui-tod h2 { margin: 8px 0; font-family: Georgia, serif; font-size: 28px; color: #ffd6cf; }
+.ui-tod p { color: #e8d8d4; line-height: 1.4; }
+.ui-tod-box .ui-knopf { width: 100%; }
+.ui-mitte-z { justify-content: center; margin: 10px 0 16px; }
+/* === ende spiel (ui) === */
