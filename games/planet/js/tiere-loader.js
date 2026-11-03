@@ -46,7 +46,9 @@ function ausfuehren(f) {
   f(FT, FakeControls, FakeControls, fakeDoc, () => {}, fakeWin, () => 0);
   const sg = erzeugt[0];
   const g = new THREE.Group();
-  sg.children.slice().forEach(o => { if (o.isGroup || o.isMesh) g.add(o); });
+  // Nur das Tier behalten (Gruppe); Bodenkachel/Deko sind lose Meshes der Vorschauseite.
+  const gruppen = sg.children.filter(o => o.isGroup);
+  (gruppen.length ? gruppen : sg.children.filter(o => o.isMesh)).forEach(o => g.add(o));
   const weg = []; g.traverse(o => { if (o.isLight || (o.isMesh && o.geometry?.type === 'PlaneGeometry')) weg.push(o); });
   weg.forEach(o => o.parent && o.parent.remove(o));
   const b = new THREE.Box3().setFromObject(g), sz = b.getSize(new THREE.Vector3());

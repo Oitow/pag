@@ -17,7 +17,7 @@ const PAL = {
   asche: hex(0x5b4b45), asche2: hex(0x6e4636),
   eis: hex(0xe9f1fa), eis2: hex(0xcfe0f2),
   sand: hex(0xe4d39a), sandNass: hex(0xb8a67a),
-  fels: hex(0x7c7a78), fels2: hex(0x5f5d60),
+  fels: hex(0x8f8b86), fels2: hex(0x75726f),
   felsRot: hex(0x9a5a3a), felsDunkel: hex(0x3d3537),
   schnee: hex(0xf4f7fb),
   grund: hex(0x8f8a6a), grundTief: hex(0x3b4a52),

@@ -10,12 +10,13 @@ export function createHimmel(ctx, R) {
     uSun: { value: new THREE.Vector3(0, 1, 0) }, uUp: { value: new THREE.Vector3(0, 1, 0) },
     uZenit: { value: new THREE.Color() }, uHorizont: { value: new THREE.Color() }, uGlut: { value: new THREE.Color() },
     uSonne: { value: new THREE.Color() }, uOrbit: { value: 0 }, uDip: { value: 0 },
+    uWasser: { value: 0 }, uWasserFarbe: { value: new THREE.Color() },
   };
   const kuppel = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), new THREE.ShaderMaterial({
     uniforms: kuppelU, side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false,
     vertexShader: `varying vec3 vDir;
       void main(){ vDir = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }`,
-    fragmentShader: `uniform vec3 uSun, uUp, uZenit, uHorizont, uGlut, uSonne; uniform float uOrbit, uDip;
+    fragmentShader: `uniform vec3 uSun, uUp, uZenit, uHorizont, uGlut, uSonne, uWasserFarbe; uniform float uOrbit, uDip, uWasser;
       varying vec3 vDir;
       void main(){
         vec3 d = normalize(vDir);
@@ -29,6 +30,7 @@ export function createHimmel(ctx, R) {
         col = mix(col, vec3(0.0), uOrbit);
         float disc = smoothstep(0.99955, 0.9998, sd);
         col += uSonne * (disc * 6.0 + pow(max(sd, 0.0), 900.0) * 0.6 + pow(max(sd, 0.0), 40.0) * 0.1 * (1.0 - uOrbit * 0.6));
+        col = mix(col, uWasserFarbe * (0.6 + 0.6 * smoothstep(-0.5, 0.8, dot(d, uUp))), uWasser);
         gl_FragColor = vec4(col, 1.0);
         #include <colorspace_fragment>
       }`,
@@ -154,7 +156,7 @@ export function createHimmel(ctx, R) {
     const md = camera.far * 0.8;
     mond.position.copy(camP).addScaledVector(moonDir, md);
     mond.scale.setScalar(md * 0.016);
-    mond.material.opacity = Math.max(orbit, 1 - tag * 0.75);
+    mond.material.opacity = Math.max(orbit, 1 - tag * 0.75); mond.visible = true;
 
     // Atmosphäre aus dem All
     atmoU.uSun.value.copy(sunDir);
@@ -171,13 +173,16 @@ export function createHimmel(ctx, R) {
     hemi.position.copy(ortUp).lerp(sunDir, orbit).normalize();
     hemi.color.copy(info.zenit).lerp(tmpC.setRGB(0.8, 0.88, 1), 0.45).multiplyScalar(1);
     hemi.groundColor.setRGB(0.28, 0.26, 0.2).multiplyScalar(0.2 + 0.8 * tag);
-    hemi.intensity = THREE.MathUtils.lerp(0.45 + 1.25 * tag, 0.3 + 0.2 * tag, orbit);
+    hemi.intensity = THREE.MathUtils.lerp(0.5 + 1.5 * tag, 0.3 + 0.2 * tag, orbit);
 
     // Nebel: am Boden Dunst in Horizontfarbe, im All praktisch aus
     const fog = scene.fog;
     info.unterWasser = camD < R - 0.2 && (ctx.planet?.heightAt ? ctx.planet.heightAt(up) < -0.2 + (camD - R) : true);
+    kuppelU.uWasser.value = info.unterWasser ? 1 : 0;
     if (info.unterWasser) {
       fog.color.copy(wasserTiefe).multiplyScalar(0.3 + 0.7 * tag);
+      kuppelU.uWasserFarbe.value.copy(fog.color);
+      sterne.visible = false; mond.visible = false;
       fog.near = 0; fog.far = 45;
     } else {
       fog.color.copy(info.horizont);

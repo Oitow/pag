@@ -93,7 +93,7 @@ export async function init(ctx) {
         float vu = abs(dot(v, up));
         a = max(a, 1.0 - smoothstep(0.03, 0.35, vu) * (1.0 - smoothstep(25.0, 140.0, dist)));
         a = max(a, max(fres * 0.9 * (1.0 - uOrbit), schaum * 0.8));
-        if (unten) a = 0.55;
+        if (unten) { a = 0.85; col = mix(col, uTief * licht * 2.0, 0.5); }
         gl_FragColor = vec4(col, a);
         #include <colorspace_fragment>
         #include <fog_fragment>

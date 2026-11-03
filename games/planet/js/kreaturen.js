@@ -74,7 +74,7 @@ export async function init(ctx) {
   const kugeln = [];        // fliegende / liegende Fangkugeln
   const begleiter = new Map();
   let zaehler = 0, spawnTimer = 0, langsamTimer = 0, kampfZiel = null, kampfZielZeit = 0;
-  let besteKugel = 7, startGespawnt = false, laufzeit = 0;
+  let spuernase = 0, besteKugel = 7, startGespawnt = false, laufzeit = 0;
 
   const kugelDef = id => DATA.KUGELN.find(q => q.id === id);
   const kugelFuerStufe = s => DATA.KUGELN.find(q => q.stufe >= s) || DATA.KUGELN[DATA.KUGELN.length - 1];
@@ -608,7 +608,9 @@ export async function init(ctx) {
   }
 
   function schildUpdate(t, dSp) {
-    const zeigen = !ctx.spieler?.karteOffen && t.tot < 0 && !t.fang && (dSp < 14 || laufzeit - t.getroffen < 8 || kampfZiel === t) && dSp < 40;
+    // Spürnase: seltene Tiere und Alphas schon von Weitem markieren
+    const selten = spuernase > 0 && (t.alpha || t.k.seltenheit >= 2) && dSp < 35 + 25 * spuernase;
+    const zeigen = !ctx.spieler?.karteOffen && t.tot < 0 && !t.fang && (selten || ((dSp < 14 || laufzeit - t.getroffen < 8 || kampfZiel === t) && dSp < 40));
     if (!zeigen) { if (t.schild) t.schild.sprite.visible = false; return; }
     if (!t.schild) { t.schild = new Schild(); scene.add(t.schild.sprite); }
     const s = t.schild;
@@ -804,6 +806,7 @@ export async function init(ctx) {
     laufzeit += dt;
     if (!startGespawnt && laufzeit > 0.2) spawnStart();
     const sp = spielerPos(_sp);
+    spuernase = faehigkeit('spuernase');
     // seltener: beste Kugel, gesehen, Despawn
     langsamTimer -= dt;
     const langsam = langsamTimer <= 0;
