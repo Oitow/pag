@@ -3,23 +3,11 @@
 // LOD-Gitter (≈2,4 m) exakt so interpoliert, wie die Dreiecke liegen.
 import { createTerrain } from './planet-terrain.js';
 import { createHimmel } from './planet-himmel.js';
+import { N, MAXL, FACES, createChunkBauer, terrainIndex } from './planet-chunk.js';
 
-const N = 32;                 // Zellen pro Chunk-Kante
-const MAXL = 3;               // feinste Quadtree-Stufe
-const G = N << MAXL;          // Zellen pro Würfelseite auf feinster Stufe (256)
-const G1 = G + 1;
 const SPLIT = 1.45;           // Teilen, wenn Abstand < Chunkgröße·SPLIT
-const BUDGET_MS = 5;          // Chunk-Bau pro Frame
-const Q = Math.PI / 4;
-// Würfelseiten: Normale n, Tangente t, Bitangente b (t × b = n → Dreiecke zeigen nach außen)
-const FACES = [
-  [1, 0, 0, 0, 0, -1, 0, 1, 0],
-  [-1, 0, 0, 0, 0, 1, 0, 1, 0],
-  [0, 1, 0, 1, 0, 0, 0, 0, -1],
-  [0, -1, 0, 1, 0, 0, 0, 0, 1],
-  [0, 0, 1, 1, 0, 0, 0, 1, 0],
-  [0, 0, -1, -1, 0, 0, 0, 1, 0],
-];
+const BUDGET_MS = 4;          // Chunk-Bau im Hauptthread pro Frame (nur ohne Worker)
+const MAX_AUFTRAEGE = 3;      // gleichzeitige Aufträge je Worker
 
 export async function init(ctx) {
   const { THREE, scene, camera, DATA } = ctx;
@@ -27,43 +15,13 @@ export async function init(ctx) {
   const T = createTerrain(ctx.seed, DATA);
   const spawnDir = new THREE.Vector3(...T.spawn).normalize();
 
-  // ---------- Höhen-Cache auf dem feinsten Gitter ----------
-  const cache = new Float32Array(6 * G1 * G1).fill(NaN);
+  // ---------- Höhen-Cache auf dem feinsten Gitter (siehe planet-chunk.js) ----------
+  const bauer = createChunkBauer(T, R);
   const gd = [0, 0, 0];
-  function gridDir(f, gi, gj, out) {
-    const F = FACES[f];
-    const a = Math.tan((gi * 2 / G - 1) * Q), b = Math.tan((gj * 2 / G - 1) * Q);
-    const x = F[0] + a * F[3] + b * F[6], y = F[1] + a * F[4] + b * F[7], z = F[2] + a * F[5] + b * F[8];
-    const l = 1 / Math.sqrt(x * x + y * y + z * z);
-    out[0] = x * l; out[1] = y * l; out[2] = z * l;
-    return out;
-  }
-  function gridH(f, gi, gj) {
-    const k = (f * G1 + gj) * G1 + gi;
-    let h = cache[k];
-    if (h !== h) { gridDir(f, gi, gj, gd); h = cache[k] = T.rawHeight(gd[0], gd[1], gd[2]); }
-    return h;
-  }
-
-  // Mesh-genaue Höhe (feinste Stufe, gleiche Dreiecksteilung wie im Mesh)
-  function heightAt(d) {
-    let x = d.x, y = d.y, z = d.z;
-    const ax = Math.abs(x), ay = Math.abs(y), az = Math.abs(z);
-    let f;
-    if (ax >= ay && ax >= az) f = x > 0 ? 0 : 1; else if (ay >= az) f = y > 0 ? 2 : 3; else f = z > 0 ? 4 : 5;
-    const F = FACES[f];
-    const dn = x * F[0] + y * F[1] + z * F[2];
-    if (!(dn > 0)) return 0;
-    const a = (x * F[3] + y * F[4] + z * F[5]) / dn, b = (x * F[6] + y * F[7] + z * F[8]) / dn;
-    let gu = (Math.atan(a) / Q + 1) * G / 2, gv = (Math.atan(b) / Q + 1) * G / 2;
-    let i = Math.floor(gu), j = Math.floor(gv);
-    if (i < 0) i = 0; else if (i > G - 1) i = G - 1;
-    if (j < 0) j = 0; else if (j > G - 1) j = G - 1;
-    const fx = gu - i, fy = gv - j;
-    const h00 = gridH(f, i, j), h11 = gridH(f, i + 1, j + 1);
-    if (fx >= fy) { const h10 = gridH(f, i + 1, j); return h00 + fx * (h10 - h00) + fy * (h11 - h10); }
-    const h01 = gridH(f, i, j + 1); return h00 + fy * (h01 - h00) + fx * (h11 - h01);
-  }
+  const heightAt = d => {
+    const l = Math.sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
+    return l > 0 ? bauer.heightAt(d.x / l, d.y / l, d.z / l) : 0;
+  };
   const heightRaw = d => { const l = Math.hypot(d.x, d.y, d.z) || 1; return T.rawHeight(d.x / l, d.y / l, d.z / l); };
 
   const _n = new THREE.Vector3(), _e1 = new THREE.Vector3(), _e2 = new THREE.Vector3(), _q = new THREE.Vector3();
@@ -150,145 +108,88 @@ export async function init(ctx) {
   class Node {
     constructor(f, L, x, y) {
       this.f = f; this.L = L; this.x = x; this.y = y;
-      this.s = 1 << (MAXL - L);
+      const st = 1 << (MAXL - L);
       this.size = (Math.PI / 2 * R) / (1 << L);
-      gridDir(f, (x + 0.5) * N * this.s, (y + 0.5) * N * this.s, gd);
+      bauer.gridDir(f, (x + 0.5) * N * st, (y + 0.5) * N * st, gd);
       this.dir = new THREE.Vector3(gd[0], gd[1], gd[2]);
       this.center = this.dir.clone().multiplyScalar(R + Math.max(0, T.rawHeight(gd[0], gd[1], gd[2])));
       this.maxH = DATA.MAX_HOEHE; this.minH = -DATA.MAX_TIEFE;
       this.children = null; this.mesh = null; this.wasser = null;
       this.split = false; this.lastSplit = 0; this.req = -1; this.dist = 0;
+      this.auftrag = false; this.tot = false;
     }
   }
   const roots = FACES.map((_, f) => new Node(f, 0, 0, 0));
 
-  const W = N + 3;
-  const P = new Float32Array(W * W * 3), HH = new Float32Array(W * W), DD = new Float32Array(W * W * 3);
-  const col = [0, 0, 0];
-  function build(node) {
-    const { f, s } = node;
-    const gx0 = node.x * N * s, gy0 = node.y * N * s;
-    const ox = node.dir.x * R, oy = node.dir.y * R, oz = node.dir.z * R;
-    let minH = 1e9, maxH = -1e9;
-    for (let b = -1; b <= N + 1; b++) for (let a = -1; a <= N + 1; a++) {
-      const gi = gx0 + a * s, gj = gy0 + b * s, k = (b + 1) * W + (a + 1);
-      gridDir(f, gi, gj, gd);
-      const h = (gi >= 0 && gi <= G && gj >= 0 && gj <= G) ? gridH(f, gi, gj) : T.rawHeight(gd[0], gd[1], gd[2]);
-      HH[k] = h; DD[k * 3] = gd[0]; DD[k * 3 + 1] = gd[1]; DD[k * 3 + 2] = gd[2];
-      const r = R + h;
-      P[k * 3] = gd[0] * r; P[k * 3 + 1] = gd[1] * r; P[k * 3 + 2] = gd[2] * r;
-      if (a >= 0 && a <= N && b >= 0 && b <= N) { if (h < minH) minH = h; if (h > maxH) maxH = h; }
-    }
-    const NV = (N + 1) * (N + 1), NS = 4 * (N + 1);
-    const pos = new Float32Array((NV + NS) * 3), nor = new Float32Array((NV + NS) * 3), cols = new Uint8Array((NV + NS) * 3);
-    let hatWasser = minH < 0.3;
-    const tiefe = hatWasser ? new Float32Array(NV) : null;
-    for (let b = 0; b <= N; b++) for (let a = 0; a <= N; a++) {
-      const k = (b + 1) * W + (a + 1), v = b * (N + 1) + a;
-      const kx1 = k + 1, kx0 = k - 1, ky1 = k + W, ky0 = k - W;
-      const ux = P[kx1 * 3] - P[kx0 * 3], uy = P[kx1 * 3 + 1] - P[kx0 * 3 + 1], uz = P[kx1 * 3 + 2] - P[kx0 * 3 + 2];
-      const vx = P[ky1 * 3] - P[ky0 * 3], vy = P[ky1 * 3 + 1] - P[ky0 * 3 + 1], vz = P[ky1 * 3 + 2] - P[ky0 * 3 + 2];
-      let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-      const nl = 1 / Math.sqrt(nx * nx + ny * ny + nz * nz); nx *= nl; ny *= nl; nz *= nl;
-      const dx = DD[k * 3], dy = DD[k * 3 + 1], dz = DD[k * 3 + 2], h = HH[k];
-      const slope = 1 - (nx * dx + ny * dy + nz * dz);
-      pos[v * 3] = P[k * 3] - ox; pos[v * 3 + 1] = P[k * 3 + 1] - oy; pos[v * 3 + 2] = P[k * 3 + 2] - oz;
-      nor[v * 3] = nx; nor[v * 3 + 1] = ny; nor[v * 3 + 2] = nz;
-      T.color(dx, dy, dz, h, slope * 2.2, col);
-      cols[v * 3] = col[0] * 255; cols[v * 3 + 1] = col[1] * 255; cols[v * 3 + 2] = col[2] * 255;
-      if (tiefe) tiefe[v] = -h;
-    }
-    // Skirts: Tiefe je Randvertex = Abweichung zu feineren/gröberen Nachbarstufen (+Reserve)
-    const edges = [
-      [i => i, i => [i, 0]],                         // unten  (b=0)
-      [i => N * (N + 1) + i, i => [i, N]],           // oben   (b=N)
-      [i => i * (N + 1), i => [0, i]],               // links  (a=0)
-      [i => i * (N + 1) + N, i => [N, i]],           // rechts (a=N)
-    ];
-    const eh = new Float32Array(N + 1), dev = new Float32Array(N + 1);
-    let sv = NV;
-    const idx = [];
-    for (let e = 0; e < 4; e++) {
-      const [vi, ab] = edges[e];
-      for (let i = 0; i <= N; i++) { const [a, b] = ab(i); eh[i] = HH[(b + 1) * W + (a + 1)]; dev[i] = 0; }
-      for (let i = 0; i <= N; i++) {
-        // gröbere Nachbarn (Faktor 2 und 4)
-        for (const m of [2, 4, 8]) {
-          const i0 = Math.floor(i / m) * m, i1 = Math.min(N, i0 + m);
-          if (i0 !== i) { const t = (i - i0) / m; dev[i] = Math.max(dev[i], Math.abs(eh[i] - (eh[i0] + (eh[i1] - eh[i0]) * t))); }
-        }
-        // feinere Nachbarn (Mittelpunkte)
-        if (i < N && s > 1) {
-          const [a, b] = ab(i), [a2, b2] = ab(i + 1);
-          const gi = gx0 + (a + a2) * s / 2, gj = gy0 + (b + b2) * s / 2;
-          if (gi >= 0 && gi <= G && gj >= 0 && gj <= G) {
-            const dm = Math.abs(gridH(f, gi, gj) - (eh[i] + eh[i + 1]) / 2) * 1.5;
-            if (dm > dev[i]) dev[i] = dm; if (dm > dev[i + 1]) dev[i + 1] = dm;
-          }
-        }
-      }
-      const base = sv;
-      for (let i = 0; i <= N; i++, sv++) {
-        const v = vi(i);
-        const skirt = 0.25 + dev[i] * 1.3 + (i > 0 ? dev[i - 1] * 0.3 : 0) + (i < N ? dev[i + 1] * 0.3 : 0);
-        const px = pos[v * 3] + ox, py = pos[v * 3 + 1] + oy, pz = pos[v * 3 + 2] + oz;
-        const l = Math.sqrt(px * px + py * py + pz * pz), k = (l - skirt) / l;
-        pos[sv * 3] = px * k - ox; pos[sv * 3 + 1] = py * k - oy; pos[sv * 3 + 2] = pz * k - oz;
-        nor[sv * 3] = nor[v * 3]; nor[sv * 3 + 1] = nor[v * 3 + 1]; nor[sv * 3 + 2] = nor[v * 3 + 2];
-        cols[sv * 3] = cols[v * 3]; cols[sv * 3 + 1] = cols[v * 3 + 1]; cols[sv * 3 + 2] = cols[v * 3 + 2];
-        if (i > 0) {
-          const t0 = vi(i - 1), t1 = v, s0 = base + i - 1, s1 = base + i;
-          // beide Windungen (Skirt von beiden Seiten sichtbar)
-          idx.push(t0, s0, t1, t1, s0, s1, t0, t1, s0, t1, s1, s0);
-        }
-      }
-    }
-    for (let b = 0; b < N; b++) for (let a = 0; a < N; a++) {
-      const v00 = b * (N + 1) + a, v10 = v00 + 1, v01 = v00 + N + 1, v11 = v01 + 1;
-      idx.push(v00, v10, v11, v00, v11, v01);
-    }
+  const idxAttr = new THREE.BufferAttribute(terrainIndex(), 1);
+  function meshAusDaten(node, d) {
+    if (node.tot || node.mesh) return;
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(cols, 3, true));
-    geo.setIndex(idx);
-    geo.computeBoundingSphere();
+    geo.setAttribute('position', new THREE.BufferAttribute(d.pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(d.cols, 3, true));
+    geo.setIndex(idxAttr);
+    geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(d.bs[0], d.bs[1], d.bs[2]), d.bs[3]);
     const mesh = new THREE.Mesh(geo, terrainMat);
-    mesh.position.set(ox, oy, oz);
+    mesh.position.set(d.ox, d.oy, d.oz);
     mesh.matrixAutoUpdate = false; mesh.updateMatrix();
     mesh.visible = false;
     terrainGruppe.add(mesh);
-    node.mesh = mesh; node.minH = minH; node.maxH = maxH;
-
-    if (tiefe) {
-      const wi = [];
-      for (let b = 0; b < N; b++) for (let a = 0; a < N; a++) {
-        const v00 = b * (N + 1) + a, v10 = v00 + 1, v01 = v00 + N + 1, v11 = v01 + 1;
-        if (Math.max(tiefe[v00], tiefe[v10], tiefe[v01], tiefe[v11]) > -0.4) wi.push(v00, v10, v11, v00, v11, v01);
-      }
-      if (wi.length) {
-        const wp = new Float32Array(NV * 3);
-        for (let b = 0; b <= N; b++) for (let a = 0; a <= N; a++) {
-          const k = (b + 1) * W + (a + 1), v = b * (N + 1) + a;
-          wp[v * 3] = DD[k * 3] * R - ox; wp[v * 3 + 1] = DD[k * 3 + 1] * R - oy; wp[v * 3 + 2] = DD[k * 3 + 2] * R - oz;
-        }
-        const wg = new THREE.BufferGeometry();
-        wg.setAttribute('position', new THREE.BufferAttribute(wp, 3));
-        wg.setAttribute('tiefe', new THREE.BufferAttribute(tiefe, 1));
-        wg.setIndex(wi);
-        wg.computeBoundingSphere();
-        const wm = new THREE.Mesh(wg, wasserMat);
-        wm.position.set(ox, oy, oz); wm.matrixAutoUpdate = false; wm.updateMatrix();
-        wm.visible = false; wm.renderOrder = 1;
-        terrainGruppe.add(wm);
-        node.wasser = wm;
-      }
+    node.mesh = mesh; node.minH = d.minH; node.maxH = d.maxH;
+    if (d.wpos) {
+      const wg = new THREE.BufferGeometry();
+      wg.setAttribute('position', new THREE.BufferAttribute(d.wpos, 3));
+      wg.setAttribute('tiefe', new THREE.BufferAttribute(d.tiefe, 1));
+      wg.setIndex(new THREE.BufferAttribute(d.widx, 1));
+      wg.computeBoundingSphere();
+      const wm = new THREE.Mesh(wg, wasserMat);
+      wm.position.set(d.ox, d.oy, d.oz); wm.matrixAutoUpdate = false; wm.updateMatrix();
+      wm.visible = false; wm.renderOrder = 1;
+      terrainGruppe.add(wm);
+      node.wasser = wm;
     }
     statChunks++;
   }
+  function build(node) { meshAusDaten(node, bauer.bau(node.f, node.L, node.x, node.y)); }
+
+  // ---------- Worker (Chunks im Hintergrund bauen) ----------
+  const worker = [];
+  const auftraege = new Map();
+  let auftragId = 0;
+  try {
+    const anzahl = Math.max(1, Math.min(2, (navigator.hardwareConcurrency || 2) - 1));
+    for (let i = 0; i < anzahl; i++) {
+      const w = new Worker(new URL('./planet-worker.js', import.meta.url), { type: 'module' });
+      const wk = { w, offen: 0, bereit: false };
+      w.onmessage = e => {
+        const m = e.data;
+        if (m.typ === 'bereit') { wk.bereit = true; return; }
+        if (m.typ !== 'chunk') return;
+        wk.offen--;
+        const node = auftraege.get(m.id); auftraege.delete(m.id);
+        if (!node) return;
+        node.auftrag = false;
+        bauer.fuelleCache(m.f, m.L, m.x, m.y, m.hh);
+        meshAusDaten(node, m);
+      };
+      w.onerror = e => { console.warn('planet: Worker-Fehler, baue im Hauptthread', e.message || e); wk.kaputt = true; };
+      w.postMessage({ typ: 'init', seed: ctx.seed });
+      worker.push(wk);
+    }
+  } catch (e) { console.warn('planet: kein Worker', e); }
+  function freierWorker() {
+    let best = null;
+    for (const wk of worker) if (wk.bereit && !wk.kaputt && wk.offen < MAX_AUFTRAEGE && (!best || wk.offen < best.offen)) best = wk;
+    return best;
+  }
+
   function dispose(node) {
+    node.tot = true;
     if (node.children) { for (const c of node.children) dispose(c); node.children = null; }
-    for (const m of [node.mesh, node.wasser]) if (m) { terrainGruppe.remove(m); m.geometry.dispose(); m.visible = false; }
+    for (const m of [node.mesh, node.wasser]) if (m) {
+      terrainGruppe.remove(m); m.visible = false;
+      if (m === node.mesh) m.geometry.setIndex(null); // gemeinsamen Indexpuffer behalten
+      m.geometry.dispose();
+    }
     if (node.mesh) statChunks--;
     node.mesh = node.wasser = null; node.split = false;
   }
@@ -333,10 +234,10 @@ export async function init(ctx) {
   }
   function gc(node) {
     if (!node.children) return;
-    if (!node.split && jetzt - node.lastSplit > 6) { dispose({ children: node.children }); node.children = null; return; }
+    if (!node.split && jetzt - node.lastSplit > 6) { for (const c of node.children) dispose(c); node.children = null; return; }
     for (const c of node.children) gc(c);
   }
-  function lodUpdate(budgetMs) {
+  function lodUpdate(budgetMs, sync = false) {
     frame++;
     camP.copy(camera.position); camD = camP.length(); camN.copy(camP).normalize();
     horCam = camD > R * 0.99 ? Math.acos(Math.min(1, R * 0.99 / camD)) : Math.PI;
@@ -346,12 +247,22 @@ export async function init(ctx) {
     for (const m of sichtbar) if (!neuSichtbar.has(m)) m.visible = false;
     for (const m of neuSichtbar) m.visible = true;
     sichtbar.clear(); for (const m of neuSichtbar) sichtbar.add(m);
-    // bauen
+    // bauen: per Worker oder (Start/Teleport/ohne Worker) direkt
     anfragen.sort((a, b) => a.dist - b.dist);
     const t0 = performance.now();
     let n = 0;
     for (const node of anfragen) {
       if (node.mesh) continue;
+      if (!sync) {
+        if (node.auftrag) continue;
+        const wk = freierWorker();
+        if (wk) {
+          const id = ++auftragId; node.auftrag = true; auftraege.set(id, node); wk.offen++;
+          wk.w.postMessage({ typ: 'bau', id, f: node.f, L: node.L, x: node.x, y: node.y });
+          continue;
+        }
+        if (worker.some(w => w.bereit && !w.kaputt) || performance.now() - t0 > budgetMs) continue;
+      }
       const tb = performance.now(); build(node); n++; statBau.n++; statBau.ms += performance.now() - tb;
       if (performance.now() - t0 > budgetMs) break;
     }
@@ -375,7 +286,7 @@ export async function init(ctx) {
   const letzteCam = new THREE.Vector3().copy(camera.position);
   function vorladen(maxMs = 1500) {
     const t0 = performance.now();
-    for (let i = 0; i < 60; i++) { if (lodUpdate(1e9) <= 0 && i > 0) break; if (performance.now() - t0 > maxMs) break; }
+    for (let i = 0; i < 60; i++) { if (lodUpdate(1e9, true) <= 0 && i > 0) break; if (performance.now() - t0 > maxMs) break; }
     return performance.now() - t0;
   }
   const api = {
@@ -392,8 +303,8 @@ export async function init(ctx) {
     himmel: himmel.info,
     stats() {
       let tris = 0, calls = 0;
-      for (const m of sichtbar) { calls++; tris += m.geometry.index.count / 3; }
-      return { chunks: statChunks, sichtbar: calls, dreiecke: tris, gebaut: statBau.n, msProChunk: +(statBau.ms / Math.max(1, statBau.n)).toFixed(2) };
+      for (const m of sichtbar) { calls++; tris += (m.geometry.index ? m.geometry.index.count : 0) / 3; }
+      return { worker: worker.filter(w => w.bereit && !w.kaputt).length, chunks: statChunks, sichtbar: calls, dreiecke: tris, gebaut: statBau.n, msProChunk: +(statBau.ms / Math.max(1, statBau.n)).toFixed(2) };
     },
     update(dt) {
       jetzt += dt;

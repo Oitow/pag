@@ -9,6 +9,7 @@ import { backe, instanz, blitz, lebendig, kugelModell, KUGEL_RADIUS, Partikel, S
 const MAX_AKTIV = 3;
 const SPAWN_MIN = 40, SPAWN_MAX = 105, DESPAWN = 125;
 const GRAV = 9.81;
+const WURF = { tempo: 18, g: GRAV, hoch: 1.2 };  // hoch = zusätzliche Aufwärts-Geschwindigkeit (m/s)
 const REIT_HOEHE = 1.55;   // Modellhöhe des Reittiers (Rücken ≈ 1,25 m = Hüfte des Spieler-Modells beim Reiten)
 
 export async function init(ctx) {
@@ -333,7 +334,7 @@ export async function init(ctx) {
       const cos = v.dot(dir) / d;
       if (cos > best) { best = cos; ziel = t; }
     }
-    const vel = dir.multiplyScalar(18).addScaledVector(up, 1.2);
+    const vel = dir.multiplyScalar(WURF.tempo).addScaledVector(up, WURF.hoch);
     mesh.position.copy(pos);
     scene.add(mesh);
     kugeln.push({ mesh, pos, vel, q, zustand: 'flug', zeit: 0, spin: V3().randomDirection(), fangbar: true, ziel });
@@ -607,7 +608,7 @@ export async function init(ctx) {
   }
 
   function schildUpdate(t, dSp) {
-    const zeigen = t.tot < 0 && !t.fang && (dSp < 14 || laufzeit - t.getroffen < 8 || kampfZiel === t) && dSp < 40;
+    const zeigen = !ctx.spieler?.karteOffen && t.tot < 0 && !t.fang && (dSp < 14 || laufzeit - t.getroffen < 8 || kampfZiel === t) && dSp < 40;
     if (!zeigen) { if (t.schild) t.schild.sprite.visible = false; return; }
     if (!t.schild) { t.schild = new Schild(); scene.add(t.schild.sprite); }
     const s = t.schild;
@@ -850,7 +851,7 @@ export async function init(ctx) {
 
   const api = {
     update, save, load, faehigkeit, setAktiv, reittier, lexikon, freilassen,
-    gefangen, maxAktiv: MAX_AKTIV,
+    gefangen, maxAktiv: MAX_AKTIV, wurf: WURF,
     get begleiter() { return gefangen.filter(e => e.aktiv); },
     kreaturen: K, info: id => K[id] || null,
     // Debug/Tests
