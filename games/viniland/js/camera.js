@@ -12,6 +12,8 @@ export const CAM_TUNING = {
   shake: 1,
 };
 
+const _lk = new THREE.Vector3();
+
 export class FollowCamera {
   constructor(aspect) {
     this.cam = new THREE.PerspectiveCamera(CAM_TUNING.fov, aspect, 0.1, 1100);
@@ -22,20 +24,34 @@ export class FollowCamera {
     this.shakeT = 0; this.shakeAmp = 0;
     this.lookIdle = 0;
     this.inited = false;
+    this.lock = null;          // Vector3 (Weltpunkt des Lock-On-Ziels) oder null
+    this.lockW = 0;
+    this._look = new THREE.Vector3(); this._lastLock = new THREE.Vector3();
   }
 
   kick(amount) { this.shakeAmp = Math.max(this.shakeAmp, amount * CAM_TUNING.shake); this.shakeT = 0; }
 
   update(dt, ctrl, intent, world) {
     const C = CAM_TUNING;
-    this.yaw -= intent.lookX * dt;
-    this.pitch = clamp(this.pitch + intent.lookY * dt, -0.35, 1.25);
+    this.lockW = damp(this.lockW, this.lock ? 1 : 0, 6, dt);
+    if (this.lock) {
+      // Kamera hinter den Spieler, mit Blick zum Ziel; manuelles Drehen ist im Lock-On aus
+      const want = Math.atan2(ctrl.pos.x - this.lock.x, ctrl.pos.z - this.lock.z);
+      let dyaw = want - this.yaw; dyaw = Math.atan2(Math.sin(dyaw), Math.cos(dyaw));
+      this.yaw += dyaw * (1 - Math.exp(-7 * dt));
+      const dist = Math.hypot(ctrl.pos.x - this.lock.x, ctrl.pos.z - this.lock.z);
+      const pw = clamp(0.2 + (this.lock.y - ctrl.pos.y - 1.2) * 0.04 + (dist < 4 ? (4 - dist) * 0.06 : 0), 0.12, 0.6);
+      this.pitch = damp(this.pitch, pw, 4, dt);
+    } else {
+      this.yaw -= intent.lookX * dt;
+      this.pitch = clamp(this.pitch + intent.lookY * dt, -0.35, 1.25);
+    }
     this.dist = clamp(this.dist + intent.zoom, C.minDist, C.maxDist);
     const looking = Math.abs(intent.lookX) + Math.abs(intent.lookY) > 0.01;
     this.lookIdle = looking ? 0 : this.lookIdle + dt;
 
     // Auto-Ausrichtung nur bei Bewegung und wenn der Spieler die Kamera eine Weile nicht anfasst
-    if (C.autoAlign > 0 && this.lookIdle > 1.2 && ctrl.speed > 1.5 && ctrl.grounded) {
+    if (!this.lock && C.autoAlign > 0 && this.lookIdle > 1.2 && ctrl.speed > 1.5 && ctrl.grounded) {
       const behind = ctrl.yaw + Math.PI;
       let d = behind - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
       // seitliches Laufen nicht "jagen": nur wenn nicht fast rückwärts
@@ -76,7 +92,13 @@ export class FollowCamera {
       cam.position.y += Math.sin(this.shakeT * 73 + 1) * a * 0.18;
       if (a < 0.002) this.shakeAmp = 0;
     }
-    cam.lookAt(this.target.x, this.target.y + 0.15, this.target.z);
+    const L = this._look.set(this.target.x, this.target.y + 0.15, this.target.z);
+    if (this.lock) this._lastLock.copy(this.lock);
+    if (this.lockW > 0.01) {
+      _lk.copy(this._lastLock); _lk.y = Math.min(_lk.y, L.y + 3);
+      L.lerp(_lk, 0.32 * this.lockW);
+    }
+    cam.lookAt(L);
     const fov = ctrl.sprint && ctrl.speed > 6 ? C.sprintFov : C.fov;
     cam.fov = damp(cam.fov, fov, 4, dt);
     cam.updateProjectionMatrix();
