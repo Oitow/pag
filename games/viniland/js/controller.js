@@ -44,6 +44,12 @@ export class CharacterController {
     this.sprint = false;
     this.airTime = 0;
     this.lastGroundY = this.pos.y;
+    // Kampf-Integration (setzt der Fighter jeden Frame):
+    this.override = null;      // { x, z } m/s – erzwungene Horizontalgeschwindigkeit (Rolle, Ausfallschritt), übersteuert Eingabe
+    this.faceYaw = null;       // Zielblickrichtung (Lock-On / Angriff), statt in Laufrichtung zu drehen
+    this.faceRate = 0;         // 0 = TUNING.turnRate
+    this.push = new THREE.Vector3(); // Rückstoß (klingt exponentiell ab)
+    this.frozen = false;       // keine Eigenbewegung (Tod)
   }
 
   groundNormal(x, z, out) {
@@ -76,14 +82,17 @@ export class CharacterController {
       if (uphill > 0) maxSpeed *= 1 - clamp(uphill * 1.1, 0, 0.45);
     }
 
-    const target = _wish.multiplyScalar(maxSpeed * mag);
+    const target = _wish.multiplyScalar(this.frozen ? 0 : maxSpeed * mag);
     const onGround = this.grounded || this.swimming;
     const accel = onGround ? (mag > 0.01 ? T.accelGround : T.decelGround) : T.accelAir * T.airControl;
+    if (this.override) { this.vel.x = this.override.x; this.vel.z = this.override.z; }
+    else {
     // Beschleunigung als Vektor-Annäherung (kein Schwimmen/Eis-Gefühl)
     const dx = target.x - this.vel.x, dz = target.z - this.vel.z;
     const dl = Math.hypot(dx, dz), step = accel * dt;
     if (dl <= step || dl < 1e-6) { this.vel.x = target.x; this.vel.z = target.z; }
     else { this.vel.x += dx / dl * step; this.vel.z += dz / dl * step; }
+    }
 
     // Zu steiler Hang: rutschen
     if (this.grounded && slopeDeg > T.slopeLimitDeg) {
@@ -94,7 +103,10 @@ export class CharacterController {
     // Drehung zur Laufrichtung
     const hs = Math.hypot(this.vel.x, this.vel.z);
     const prevYaw = this.yaw;
-    if (hs > 0.25 && mag > 0.05) {
+    if (this.faceYaw !== null) {
+      let d = this.faceYaw - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
+      this.yaw += d * (1 - Math.exp(-(this.faceRate || T.turnRate) * dt));
+    } else if (hs > 0.25 && mag > 0.05 && !this.override && !this.frozen) {
       const want = Math.atan2(this.vel.x, this.vel.z);
       let d = want - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
       this.yaw += d * (1 - Math.exp(-T.turnRate * dt));
@@ -103,7 +115,7 @@ export class CharacterController {
     this.turn = damp(this.turn, dt > 0 ? dy / dt : 0, 10, dt);
 
     // Sprung: Buffer + Coyote
-    this.buffer = intent.jumpPressed ? T.jumpBuffer : Math.max(0, this.buffer - dt);
+    this.buffer = (intent.jumpPressed && !this.frozen) ? T.jumpBuffer : Math.max(0, this.buffer - dt);
     this.coyote = this.grounded ? T.coyoteTime : Math.max(0, this.coyote - dt);
     if (this.buffer > 0 && this.coyote > 0 && !this.swimming) {
       this.vel.y = Math.sqrt(2 * T.gravity * T.jumpHeight);
@@ -123,8 +135,9 @@ export class CharacterController {
     }
 
     // Integration horizontal + Kollision
-    this.pos.x += this.vel.x * dt;
-    this.pos.z += this.vel.z * dt;
+    this.pos.x += (this.vel.x + this.push.x) * dt;
+    this.pos.z += (this.vel.z + this.push.z) * dt;
+    const pk = Math.exp(-7 * dt); this.push.x *= pk; this.push.z *= pk;
     w.collide(this.pos, this.radius, this.height, this.vel);
     // Inselrand: unsichtbare weiche Grenze weit draußen im Wasser
     const rr = Math.hypot(this.pos.x, this.pos.z), lim = w.radius + 60;

@@ -1,0 +1,150 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Viniland – Bosse</title>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<style>
+body{margin:0;overflow:hidden;background:#2a2430;font-family:sans-serif}
+#ui{position:fixed;top:8px;left:8px;display:flex;gap:6px;z-index:2;flex-wrap:wrap}
+button{font-size:14px;padding:7px 11px;border-radius:8px;border:0;background:#fff8e8;box-shadow:0 2px 0 #b08860}
+#hud{position:fixed;top:46px;left:8px;color:#fff;font:12px monospace;white-space:pre;text-shadow:0 1px 0 #000;z-index:2}
+#err{position:fixed;left:0;right:0;bottom:0;color:#fff;background:#a00c;font:13px monospace;white-space:pre-wrap;padding:6px;display:none;z-index:3}
+.lbl{position:fixed;transform:translate(-50%,-100%);color:#fff;font-weight:bold;font-size:13px;text-shadow:0 1px 2px #000;pointer-events:none;white-space:nowrap;text-align:center}
+.bar{width:120px;height:6px;background:#0008;margin:2px auto 0}.bar i{display:block;height:100%;background:#e33}
+.bar.s i{background:#fc3}
+</style></head><body>
+<div id="ui"><button data-k="0">Alle</button><button data-k="1">1 Dogo</button><button data-k="2">2 Morra</button><button data-k="3">3 Kohlherz</button><button data-k="h">Treffer</button><button data-k="k">Töten</button></div>
+<div id="hud"></div><div id="err"></div>
+<script>
+window.onerror=(m,s,l,c,e)=>{const d=document.getElementById('err');d.style.display='block';d.textContent+=`${m} @${(s||'').split('/').pop()}:${l}\n${e&&e.stack||''}\n`;};
+window.addEventListener('unhandledrejection',e=>window.onerror(String(e.reason),'',0,0,e.reason));
+</script>
+<script type="module">
+// Parameter: ?boss=dogo|morra|kohlherz (einzeln), ?warm=<s> Vor-Simulation, ?dmg=<Schaden pro Dummy-Treffer> (0 = aus),
+//            ?near=1 (Dummies starten nah → Bosse wachen sofort), ?cam=<x> Kamera-Orbit-Winkel
+import * as THREE from 'three';
+import { MeshBuilder, clamp } from '../js/kit.js';
+import { psxMat } from '../js/psx.js';
+import { BOSS_TYPES, BOSS_INFO, createBoss } from '../js/bosses.js';
+import { Combat } from './_combat_stub.js';
+
+const Q = new URLSearchParams(location.search);
+const ren = new THREE.WebGLRenderer({ antialias: false });
+ren.setPixelRatio(1); ren.setSize(innerWidth, innerHeight); ren.shadowMap.enabled = true; document.body.appendChild(ren.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x3a3248); scene.fog = new THREE.Fog(0x3a3248, 30, 80);
+scene.add(new THREE.HemisphereLight(0xffe8d0, 0x3a4a2a, 1.5));
+const sun = new THREE.DirectionalLight(0xffd8b0, 2.0); sun.position.set(10, 20, 14); sun.castShadow = true;
+Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 20, bottom: -20, far: 80 }); sun.shadow.mapSize.set(1024, 1024); scene.add(sun);
+
+// Flache Arena mit Hügel (Hang-Test) und Teich (Wasser-Test)
+const world = {
+  waterLevel: 0,
+  heightAt(x, z) {
+    let h = 0.6 + Math.sin(x * 0.11) * Math.cos(z * 0.09) * 0.35;
+    h += 3.2 * Math.exp(-((x + 8) ** 2 + (z + 16) ** 2) / 60);      // Hügel
+    h -= 2.2 * Math.exp(-((x - 10) ** 2 + (z + 14) ** 2) / 30);     // Teich
+    return h;
+  },
+  collide() { return 0; },
+};
+{
+  const g = new THREE.PlaneGeometry(120, 90, 80, 60); g.rotateX(-Math.PI / 2);
+  const p = g.attributes.position, col = new Float32Array(p.count * 3), c = new THREE.Color();
+  for (let i = 0; i < p.count; i++) {
+    const h = world.heightAt(p.getX(i), p.getZ(i)); p.setY(i, h);
+    c.set(h < 0.2 ? 0xc8b070 : h > 2 ? 0x6a7a3a : 0x4f7a34).offsetHSL(0, 0, (Math.random() - 0.5) * 0.04); col.set([c.r, c.g, c.b], i * 3);
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, psxMat()); m.receiveShadow = true; scene.add(m);
+  const w = new THREE.Mesh(new THREE.PlaneGeometry(14, 12), new THREE.MeshLambertMaterial({ color: 0x3a7ab0, transparent: true, opacity: 0.8 }));
+  w.rotation.x = -Math.PI / 2; w.position.set(10, 0, -14); scene.add(w);
+}
+const combat = new Combat(scene, world);
+
+// Dummy-Spieler (Kapseln), laufen im Kreis, gelegentliche „Ausweichrolle“ (invuln), treffen den Boss
+function makeDummy(i, cx) {
+  const b = new MeshBuilder(); b.capsule(0.35, 1.05, [0x4aa0ff, 0xffb040, 0x80e070][i % 3], { y: 0.88 }); b.box(0.2, 0.12, 0.3, 0x222222, { y: 1.45, z: 0.3 });
+  const m = b.mesh(); scene.add(m);
+  const actor = { id: 'p' + i, name: 'Dummy' + i, team: 'player', pos: new THREE.Vector3(), radius: 0.35, height: 1.75, hp: 1e6, maxHp: 1e6, alive: true,
+    rollT: 0, invuln() { return this.rollT > 0; }, onHit(h) { this.flash = 0.3; } };
+  combat.addActor(actor);
+  return { actor, pos: actor.pos, alive: true, m, cx, ang: i * 2.1, r: 9, t: 0, atk: 1 + i * 0.4 };
+}
+
+let bosses = [], dummies = [], labels = [];
+const DMG = +(Q.get('dmg') ?? 28);
+function setup(which) {
+  bosses.forEach(b => b.dispose()); dummies.forEach(d => { scene.remove(d.m); combat.removeActor(d.actor); }); labels.forEach(l => l.remove());
+  const types = which ? [which] : BOSS_TYPES;
+  const gap = 15;
+  bosses = types.map((t, i) => createBoss(t, { scene, world, combat, home: new THREE.Vector3((i - (types.length - 1) / 2) * gap, 0, 0), yaw: 0 }));
+  dummies = bosses.map((b, i) => { const d = makeDummy(i, b.home); d.r = Q.has('near') ? 8 : 26; return d; });
+  labels = bosses.map(b => { const el = document.createElement('div'); el.className = 'lbl'; document.body.appendChild(el); return el; });
+  T = 0;
+}
+let T = 0;
+const which = Q.get('boss'); setup(BOSS_TYPES.includes(which) ? which : null);
+
+function stepDummy(d, b, dt) {
+  // nähert sich, umkreist auf wechselndem Radius
+  d.t += dt;
+  const want = 4 + 5 * (0.5 + 0.5 * Math.sin(d.t * 0.23 + d.ang));
+  d.r += clamp(want - d.r, -4 * dt, 4 * dt);
+  const pause = Math.sin(d.t * 0.7 + d.ang * 0.3) > 0.55; // ab und zu stehen bleiben → Treffer möglich
+  d.ang += pause ? 0 : dt * 4.2 / Math.max(3, d.r);
+  d.pos.set(d.cx.x + Math.sin(d.ang) * d.r, 0, d.cx.z + Math.cos(d.ang) * d.r);
+  d.pos.y = world.heightAt(d.pos.x, d.pos.z);
+  d.actor.rollT -= dt; if (Math.random() < dt * 0.4) d.actor.rollT = 0.35;
+  d.m.position.copy(d.pos); d.m.rotation.y = d.ang + Math.PI / 2;
+  d.atk -= dt;
+  if (d.atk <= 0 && DMG > 0 && b.awake && !b.gone && b.distTo(d.pos) < 12) {
+    d.atk = 1.3;
+    const c = b.pos.clone(); c.y += 1;
+    combat.hitbox({ owner: d.actor, team: 'player', radius: 0.5, duration: 0.05, damage: DMG, stagger: Math.random() < 0.2 ? 0.7 : 0.25, at: () => c, kind: 'melee' });
+  }
+}
+
+function sim(dt) {
+  const r = combat.update(dt); const sdt = dt * r.timeScale;
+  T += sdt;
+  bosses.forEach((b, i) => { stepDummy(dummies[i], b, sdt); b.update(sdt, [dummies[i]]); });
+}
+const warm = +(Q.get('warm') || 0);
+for (let t = 0; t < warm; t += 1 / 60) sim(1 / 60);
+
+addEventListener('keydown', e => key(e.key));
+document.querySelectorAll('button').forEach(b => b.onclick = () => key(b.dataset.k));
+function key(k) {
+  if (k >= '0' && k <= '3') setup(k === '0' ? null : BOSS_TYPES[+k - 1]);
+  if (k === 'h') bosses.forEach(b => { b.actor.hp -= 80; b.onHit({ damage: 80, dir: new THREE.Vector3(0, 0, 1), knockback: 3, stagger: 0.8, kind: 'melee' }); });
+  if (k === 'k') bosses.forEach(b => { b.actor.hp = 0; });
+}
+
+const cam = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 150);
+addEventListener('resize', () => { ren.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); });
+const hud = document.getElementById('hud'), v = new THREE.Vector3();
+let last = performance.now(), fx = bosses[0].pos.x, fz = bosses[0].pos.z;
+function frame(now) {
+  let real = Math.min(0.5, (now - last) / 1000); last = now;
+  while (real > 1e-4) { const s = Math.min(1 / 60, real); sim(s); real -= s; } // Teilschritte (Headless: wenige fps)
+  const ca = +(Q.get('cam') || 0) + Math.sin(T * 0.1) * 0.15, one = bosses.length === 1;
+  const D = one ? 13 : 30, sh = combat.shakeAmt * 0.3;
+  if (one) { // folgt dem Boss, schaut ihm (versetzt um ?cam) ins Gesicht
+    const b = bosses[0], a = b.yaw + ca;
+    fx = fx * 0.9 + b.pos.x * 0.1; fz = fz * 0.9 + b.pos.z * 0.1;
+    cam.position.set(fx + Math.sin(a) * D, b.pos.y + 6, fz + Math.cos(a) * D); cam.lookAt(fx, b.pos.y + 2, fz);
+  } else { cam.position.set(Math.sin(ca) * D + (Math.random() - 0.5) * sh, 11, Math.cos(ca) * D); cam.lookAt(0, 2, 0); }
+  bosses.forEach((b, i) => {
+    v.set(b.pos.x, b.pos.y + b.def.height + 0.8, b.pos.z).project(cam);
+    const el = labels[i]; el.style.left = ((v.x + 1) / 2 * innerWidth) + 'px'; el.style.top = ((1 - v.y) / 2 * innerHeight) + 'px';
+    const a = b.actor, inf = BOSS_INFO[b.type];
+    el.innerHTML = `${inf.name}, ${inf.title}<br><small>${b.state}${b.scriptKind && b.state === 'script' ? ':' + b.scriptKind : ''} · P${b.phase}</small>` +
+      `<div class="bar"><i style="width:${Math.max(0, a.hp / a.maxHp * 100)}%"></i></div><div class="bar s"><i style="width:${a.stagger * 100}%"></i></div>`;
+    el.style.display = b.gone ? 'none' : '';
+  });
+  let tris = 0; scene.traverse(o => { if (o.isMesh && o.visible) tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; });
+  hud.textContent = `t=${T.toFixed(1)}s  tris=${tris | 0}  calls=${ren.info.render.calls}\n` + combat.log.slice(-6).join('\n');
+  ren.render(scene, cam);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+console.log('BOSSES OK');
+</script></body></html>

@@ -162,23 +162,77 @@ function buildFoot(L) {
 }
 
 // ---- Aktionen ----
-// Chop: Keyframes für Oberkörper (Zeit in s). wr = Handgelenk-Kippung der Axt.
-const CHOP = { duration: 0.55, impactAt: 0.28 };
-const CHOP_KEYS = [
-  { t: 0.0, rsx: -0.6, rsz: -0.15, rel: -0.5, wr: 1.7, lsx: -0.5, lsz: 0.2, lel: -0.6, tx: 0.0, ty: 0.0, crouch: 0.0 },
-  { t: 0.19, rsx: -2.75, rsz: -0.25, rel: -1.25, wr: 2.1, lsx: -2.3, lsz: 0.35, lel: -1.2, tx: -0.2, ty: -0.38, crouch: 0.02 },
-  { t: 0.28, rsx: -1.05, rsz: -0.05, rel: -0.12, wr: 3.0, lsx: -1.1, lsz: 0.45, lel: -0.35, tx: 0.32, ty: 0.18, crouch: 0.09 },
-  { t: 0.36, rsx: -0.85, rsz: -0.05, rel: -0.18, wr: 2.95, lsx: -0.9, lsz: 0.4, lel: -0.4, tx: 0.36, ty: 0.22, crouch: 0.08 },
-  { t: 0.55, rsx: -0.4, rsz: -0.1, rel: -0.4, wr: 1.8, lsx: -0.3, lsz: 0.2, lel: -0.4, tx: 0.1, ty: 0.05, crouch: 0.0 },
-];
-const WAVE = { duration: 1.6, impactAt: 0.5 };
+// Keyframes für den Oberkörper (Zeit in s). wr/wy = Axt-Kippung im Handgelenk (Euler YXZ), tx/ty = Torso, crouch = Hocke.
+// fast = Index des Segments, das mit ease-in beschleunigt (der eigentliche Schlag).
+const REST = { rsx: -0.4, rsz: -0.1, rel: -0.4, wr: 1.42, wy: 0, lsx: -0.3, lsz: 0.2, lel: -0.4, tx: 0, ty: 0, crouch: 0 };
+const K = (t, o) => ({ ...REST, ...o, t });
+const PI = Math.PI;
+const ACTIONS = {
+  chop: { duration: 0.55, impactAt: 0.28, fast: 1, keys: [
+    K(0.0, { rsx: -0.6, rsz: -0.15, rel: -0.5, wr: 1.7, lsx: -0.5, lsz: 0.2, lel: -0.6 }),
+    K(0.19, { rsx: -2.75, rsz: -0.25, rel: -1.25, wr: 2.1, lsx: -2.3, lsz: 0.35, lel: -1.2, tx: -0.2, ty: -0.38, crouch: 0.02 }),
+    K(0.28, { rsx: -1.05, rsz: -0.05, rel: -0.12, wr: 3.0, lsx: -1.1, lsz: 0.45, lel: -0.35, tx: 0.32, ty: 0.18, crouch: 0.09 }),
+    K(0.36, { rsx: -0.85, rsz: -0.05, rel: -0.18, wr: 2.95, lsx: -0.9, lsz: 0.4, lel: -0.4, tx: 0.36, ty: 0.22, crouch: 0.08 }),
+    K(0.55, { rsx: -0.4, rsz: -0.1, rel: -0.4, wr: 1.8, lsx: -0.3, lsz: 0.2, lel: -0.4, tx: 0.1, ty: 0.05 }),
+  ] },
+  // Vorhand: waagerechter Schwung rechts -> links
+  attack1: { duration: 0.5, impactAt: 0.2, fast: 1, keys: [
+    K(0.0, {}),
+    K(0.12, { rsx: -1.25, rsz: -1.55, rel: -0.7, wr: PI, wy: -PI / 2, lsx: -0.9, lsz: 0.55, lel: -1.2, ty: -0.65, tx: 0.05, crouch: 0.04 }),
+    K(0.2, { rsx: -1.5, rsz: 0.25, rel: -0.08, wr: PI, wy: -PI / 2, lsx: -0.3, lsz: 0.9, lel: -0.5, ty: 0.4, tx: 0.18, crouch: 0.07 }),
+    K(0.3, { rsx: -1.3, rsz: 0.85, rel: -0.3, wr: PI, wy: -PI / 2, lsx: -0.2, lsz: 0.8, lel: -0.5, ty: 0.62, tx: 0.15, crouch: 0.06 }),
+    K(0.5, { rsx: -0.6, rsz: 0.1, rel: -0.5, wr: 1.6, lsx: -0.3, lsz: 0.3, ty: 0.15, tx: 0.05 }),
+  ] },
+  // Rückhand: links -> rechts, leicht aufsteigend
+  attack2: { duration: 0.5, impactAt: 0.2, fast: 1, keys: [
+    K(0.0, { rsx: -0.9, rsz: 0.6, rel: -0.6, wr: PI, wy: -PI / 2, ty: 0.4, tx: 0.1 }),
+    K(0.11, { rsx: -1.2, rsz: 1.05, rel: -1.35, wr: PI, wy: PI / 2, lsx: -0.6, lsz: 0.2, lel: -1.1, ty: 0.7, tx: 0.08, crouch: 0.05 }),
+    K(0.2, { rsx: -1.75, rsz: -0.75, rel: -0.05, wr: PI, wy: PI / 2, lsx: -0.4, lsz: 0.7, lel: -0.4, ty: -0.45, tx: 0.12, crouch: 0.07 }),
+    K(0.3, { rsx: -1.9, rsz: -1.35, rel: -0.2, wr: PI, wy: PI / 2, lsx: -0.3, lsz: 0.75, lel: -0.5, ty: -0.62, tx: 0.08, crouch: 0.05 }),
+    K(0.5, { rsx: -0.6, rsz: -0.4, rel: -0.5, wr: 1.6, ty: -0.12 }),
+  ] },
+  // Finisher: großer Überkopf-Hieb mit beiden Händen
+  attack3: { duration: 0.75, impactAt: 0.36, fast: 1, keys: [
+    K(0.0, { rsx: -0.7, rsz: -0.3, rel: -0.6, wr: 1.8, ty: -0.3 }),
+    K(0.24, { rsx: -3.0, rsz: -0.2, rel: -1.35, wr: 2.2, lsx: -2.7, lsz: 0.3, lel: -1.3, tx: -0.32, ty: -0.25, crouch: 0.0 }),
+    K(0.36, { rsx: -0.8, rsz: -0.05, rel: -0.05, wr: 3.1, lsx: -0.95, lsz: 0.4, lel: -0.25, tx: 0.55, ty: 0.12, crouch: 0.17 }),
+    K(0.5, { rsx: -0.7, rsz: -0.05, rel: -0.1, wr: 3.05, lsx: -0.85, lsz: 0.4, lel: -0.3, tx: 0.5, ty: 0.14, crouch: 0.15 }),
+    K(0.75, { rsx: -0.45, rsz: -0.1, rel: -0.4, wr: 1.7, tx: 0.08 }),
+  ] },
+  // Fernzauber: linke Hand zieht zurück und stößt nach vorne
+  cast1: { duration: 0.48, impactAt: 0.2, fast: 1, keys: [
+    K(0.0, {}),
+    K(0.13, { lsx: 0.35, lsz: 0.5, lel: -1.6, ty: -0.55, tx: -0.08, rsx: -0.2, rsz: -0.4 }),
+    K(0.2, { lsx: -1.6, lsz: -0.12, lel: -0.02, ty: 0.38, tx: 0.16, rsx: -0.1, rsz: -0.5, crouch: 0.05 }),
+    K(0.32, { lsx: -1.55, lsz: -0.1, lel: -0.05, ty: 0.35, tx: 0.12, rsx: -0.1, rsz: -0.5, crouch: 0.04 }),
+    K(0.48, {}),
+  ] },
+  // Nahbereichs-AoE: Arme hoch, dann Stoß nach unten/außen
+  cast2: { duration: 0.72, impactAt: 0.34, fast: 1, keys: [
+    K(0.0, {}),
+    K(0.24, { lsx: -2.85, lsz: 0.35, lel: -0.3, rsx: -2.85, rsz: -0.35, rel: -0.3, wr: 1.2, tx: -0.22, crouch: -0.02 }),
+    K(0.34, { lsx: -0.55, lsz: 1.25, lel: -0.05, rsx: -0.55, rsz: -1.25, rel: -0.05, wr: 1.6, tx: 0.42, crouch: 0.22 }),
+    K(0.5, { lsx: -0.5, lsz: 1.2, lel: -0.1, rsx: -0.5, rsz: -1.2, rel: -0.1, wr: 1.6, tx: 0.38, crouch: 0.2 }),
+    K(0.72, {}),
+  ] },
+  // Getroffen: Rumpf schnappt zurück, Arme fliegen hoch
+  hurt: { duration: 0.42, impactAt: 0, fast: -1, keys: [
+    K(0.0, {}),
+    K(0.07, { tx: -0.5, ty: 0.25, lsx: -1.0, lsz: 0.9, lel: -1.0, rsx: -1.0, rsz: -0.9, rel: -1.0, crouch: 0.06 }),
+    K(0.2, { tx: -0.2, ty: 0.1, lsx: -0.5, lsz: 0.5, lel: -0.7, rsx: -0.6, rsz: -0.5, crouch: 0.04 }),
+    K(0.42, {}),
+  ] },
+  wave: { duration: 1.6, impactAt: 0.5 },
+  roll: { duration: 0.55, impactAt: 0 },
+  death: { duration: 1.1, impactAt: 0.75 },
+};
 
-function sampleKeys(keys, t) {
+function sampleKeys(keys, t, fast) {
   let i = 0;
   while (i < keys.length - 2 && t > keys[i + 1].t) i++;
   const a = keys[i], b = keys[i + 1];
   let u = clamp((t - a.t) / (b.t - a.t), 0, 1);
-  u = i === 1 ? u * u * u : u * u * (3 - 2 * u);   // Schlag beschleunigt (ease-in), Rest weich
+  u = i === fast ? u * u * u : u * u * (3 - 2 * u);   // Schlag beschleunigt (ease-in), Rest weich
   const o = {};
   for (const k in a) if (k !== 't') o[k] = lerp(a[k], b[k], u);
   return o;
@@ -191,7 +245,9 @@ export function createPlayerModel(index = 0) {
   const w = L.width;
 
   const root = new THREE.Group(); root.name = 'player_' + L.name;
-  const body = grp(root);                       // Squash + Seitlehnen (Pivot an den Füßen)
+  const ROLL_Y = 0.55;
+  const rollG = grp(root, 0, ROLL_Y, 0);         // Pivot für Ausweichrolle (Körpermitte)
+  const body = grp(rollG, 0, -ROLL_Y, 0);        // Squash + Seitlehnen (Pivot an den Füßen)
   const hips = grp(body, 0, HIP, 0); hips.add(buildPelvis(L));
   const torso = grp(hips, 0, 0.05, 0); torso.add(buildTorso(L));
   const cape = grp(torso, 0, 0.47, -0.1); cape.add(buildCape(L));
@@ -205,7 +261,8 @@ export function createPlayerModel(index = 0) {
     const hand = grp(el, 0, -FORE, 0); hand.add(buildHand(L));
     arm[key] = { sh, el, hand };
   }
-  const axe = grp(arm.r.hand, 0, -0.045, 0.0); axe.add(buildAxe(L));
+  const axe = grp(arm.r.hand, 0, -0.045, 0.0); axe.add(buildAxe(L)); axe.rotation.order = 'YXZ';
+  const blade = grp(axe, 0, 0.49, 0.16);        // Schneide (für Hitbox/FX)
 
   const leg = {};
   for (const [key, s] of [['l', 1], ['r', -1]]) {
@@ -222,12 +279,20 @@ export function createPlayerModel(index = 0) {
     headY: 0,
   };
   let action = null, actionT = 0;
+  // Pose-Überblendung zwischen Aktionen (Combo-Ketten ohne Springen)
+  const POSE_KEYS = ['lsx', 'lsz', 'lel', 'rsx', 'rsz', 'rel', 'wr', 'wy', 'tx', 'ty', 'crouch'];
+  const last = {}, from = {}; for (const k of POSE_KEYS) last[k] = from[k] = 0;
+  let fadeT = 0; const FADE = 0.12;
 
+  /** 'chop'|'wave'|'attack1'|'attack2'|'attack3'|'roll'|'cast1'|'cast2'|'hurt'|'death' → { duration, impactAt } */
   function playAction(name) {
-    if (name === 'chop') { action = 'chop'; actionT = 0; return { ...CHOP }; }
-    if (name === 'wave') { action = 'wave'; actionT = 0; return { ...WAVE }; }
-    return { duration: 0, impactAt: 0 };
+    const A = ACTIONS[name];
+    if (!A) return { duration: 0, impactAt: 0 };
+    if (action && action !== 'death') { for (const k of POSE_KEYS) from[k] = last[k]; fadeT = FADE; } else fadeT = 0;
+    action = name; actionT = 0;
+    return { duration: A.duration, impactAt: A.impactAt };
   }
+  function cancelAction() { action = null; actionT = 0; fadeT = 0; }
 
   // Bein-Pose: Hüfte senkt sich um d -> symmetrischer Knick (Fuß bleibt unter der Hüfte, flach)
   const crouchAngle = d => Math.acos(clamp(1 - d / LEG, -1, 1));
@@ -323,34 +388,81 @@ export function createPlayerModel(index = 0) {
       a.sx = lerp(a.sx, -0.35, st.land); a.sz += sg * st.land * 0.5;      // Landung: Arme fangen ab
     }
 
-    // --- Aktions-Layer (nur Oberkörper, überlagert Locomotion) ---
-    let actW = 0;
-    if (action) {
-      actionT += dt;
-      if (action === 'chop') {
-        const k = sampleKeys(CHOP_KEYS, actionT);
-        actW = smooth(0, 0.12, actionT) * (1 - smooth(0.38, CHOP.duration, actionT));
-        const wl = actW, wa = actW;   // linker Arm greift mit
-        arms.r.sx = lerp(arms.r.sx, k.rsx, wl); arms.r.sz = lerp(arms.r.sz, k.rsz, wl);
-        arms.r.el = lerp(arms.r.el, k.rel, wl); arms.r.wr = lerp(arms.r.wr, k.wr, wl);
-        arms.l.sx = lerp(arms.l.sx, k.lsx, wa); arms.l.sz = lerp(arms.l.sz, k.lsz, wa); arms.l.el = lerp(arms.l.el, k.lel, wa);
-        torsoX += k.tx * actW; torsoY = lerp(torsoY, k.ty, actW * 0.85);
-        crouch += k.crouch * actW * (1 - moveW);
-        hipY -= k.crouch * actW * 0.6 * (1 - moveW);
-        if (actionT >= CHOP.duration) action = null;
-      } else if (action === 'wave') {
-        actW = smooth(0, 0.25, actionT) * (1 - smooth(WAVE.duration - 0.3, WAVE.duration, actionT));
-        const wv = Math.sin(actionT * 13);
-        arms.l.sx = lerp(arms.l.sx, -0.35, actW); arms.l.sz = lerp(arms.l.sz, 2.55 + wv * 0.12, actW);
-        arms.l.el = lerp(arms.l.el, -0.45 + wv * 0.35, actW);
-        arms.l.wv = wv * 0.4 * actW;
-        torsoZ += -0.06 * actW; torsoY += 0.1 * actW;
-        if (actionT >= WAVE.duration) action = null;
+    // --- Aktions-Layer (nur Oberkörper, überlagert Locomotion; Rolle/Tod = ganzer Körper) ---
+    let neckJerk = 0, deathX = 0;
+    let actW = 0, rollA = 0, tuckW = 0, deathW = 0, deathLift = 0;
+    if (action) actionT += dt;
+    const AC = action ? ACTIONS[action] : null;
+    if (AC && AC.keys) {
+      const k = sampleKeys(AC.keys, Math.min(actionT, AC.duration), AC.fast);
+      actW = smooth(0, 0.07, actionT) * (1 - smooth(AC.duration - 0.16, AC.duration, actionT));
+      if (fadeT > 0) actW = 1;                               // beim Kettenwechsel voll im Aktions-Layer bleiben
+      const legW = 1 - moveW;
+      arms.r.sx = lerp(arms.r.sx, k.rsx, actW); arms.r.sz = lerp(arms.r.sz, k.rsz, actW);
+      arms.r.el = lerp(arms.r.el, k.rel, actW); arms.r.wr = lerp(arms.r.wr, k.wr, actW); arms.r.wy = lerp(0, k.wy, actW);
+      arms.l.sx = lerp(arms.l.sx, k.lsx, actW); arms.l.sz = lerp(arms.l.sz, k.lsz, actW); arms.l.el = lerp(arms.l.el, k.lel, actW);
+      torsoX += k.tx * actW; torsoY = lerp(torsoY, k.ty, actW * 0.85);
+      crouch += k.crouch * actW * legW;
+      hipY -= k.crouch * actW * 0.6 * legW;
+      if (action === 'hurt') neckJerk = 0.5 * actW;
+      if (actionT >= AC.duration) action = null;
+    } else if (action === 'wave') {
+      actW = smooth(0, 0.25, actionT) * (1 - smooth(AC.duration - 0.3, AC.duration, actionT));
+      const wv = Math.sin(actionT * 13);
+      arms.l.sx = lerp(arms.l.sx, -0.35, actW); arms.l.sz = lerp(arms.l.sz, 2.55 + wv * 0.12, actW);
+      arms.l.el = lerp(arms.l.el, -0.45 + wv * 0.35, actW);
+      arms.l.wv = wv * 0.4 * actW;
+      torsoZ += -0.06 * actW; torsoY += 0.1 * actW;
+      if (actionT >= AC.duration) action = null;
+    } else if (action === 'roll') {
+      // Hechtrolle: kurzer Abdruck nach vorne, dann 360° über die Schulter, Beine/Arme eng angezogen
+      const D = AC.duration, u = clamp(actionT / D, 0, 1);
+      const ru = smooth(0.06, 0.82, u);
+      rollA = ru * Math.PI * 2;
+      tuckW = smooth(0.0, 0.22, u) * (1 - smooth(0.78, 1.0, u));
+      torsoX += 0.75 * tuckW + 0.25 * (1 - smooth(0, 0.15, u)) * smooth(0, 0.05, u);
+      crouch += 0.3 * tuckW;
+      for (const k of ['l', 'r']) {
+        const sg = k === 'l' ? 1 : -1, a = arms[k];
+        a.sx = lerp(a.sx, -1.25, tuckW); a.sz = lerp(a.sz, sg * 0.35, tuckW); a.el = lerp(a.el, -1.75, tuckW);
       }
+      if (actionT >= D) action = null;
+    } else if (action === 'death') {
+      const u = actionT;
+      deathW = smooth(0, 0.12, u);
+      const fall = smooth(0.12, 0.62, u), bounce = Math.sin(clamp((u - 0.62) / 0.3, 0, 1) * Math.PI) * 0.08;
+      deathX = -1.47 * fall + bounce;
+      deathLift = 0.14 * fall;
+      torsoX = lerp(torsoX, -0.25 + 0.35 * (1 - fall), deathW);
+      for (const k of ['l', 'r']) {
+        const sg = k === 'l' ? 1 : -1, a = arms[k];
+        a.sx = lerp(a.sx, lerp(-1.2, -0.25, fall), deathW); a.sz = lerp(a.sz, sg * lerp(0.6, 1.35, fall), deathW); a.el = lerp(a.el, -0.25, deathW);
+      }
+      neckJerk = -0.35 * fall;
+    }
+    // Überblendung von der vorigen Aktionspose
+    if (fadeT > 0) {
+      fadeT = Math.max(0, fadeT - dt);
+      const f = smooth(0, 1, fadeT / FADE);
+      arms.l.sx = lerp(arms.l.sx, from.lsx, f); arms.l.sz = lerp(arms.l.sz, from.lsz, f); arms.l.el = lerp(arms.l.el, from.lel, f);
+      arms.r.sx = lerp(arms.r.sx, from.rsx, f); arms.r.sz = lerp(arms.r.sz, from.rsz, f); arms.r.el = lerp(arms.r.el, from.rel, f);
+      arms.r.wr = lerp(arms.r.wr, from.wr, f); arms.r.wy = lerp(arms.r.wy || 0, from.wy, f);
+      torsoX = lerp(torsoX, from.tx, f); torsoY = lerp(torsoY, from.ty, f);
+    }
+    last.lsx = arms.l.sx; last.lsz = arms.l.sz; last.lel = arms.l.el; last.rsx = arms.r.sx; last.rsz = arms.r.sz; last.rel = arms.r.el;
+    last.wr = arms.r.wr; last.wy = arms.r.wy || 0; last.tx = torsoX; last.ty = torsoY;
+    // Rolle/Tod: Beine anziehen bzw. ausstrecken
+    if (tuckW > 0 || deathW > 0) for (const k of ['l', 'r']) {
+      const g = legs[k], sg = k === 'l' ? 1 : -1;
+      if (tuckW > 0) { g.th = lerp(g.th, -1.75, tuckW); g.kn = lerp(g.kn, 2.35, tuckW); g.ft = lerp(g.ft, -0.2, tuckW); }
+      if (deathW > 0) { g.th = lerp(g.th, -0.12, deathW); g.kn = lerp(g.kn, 0.15, deathW); g.ft = lerp(g.ft, 0.5, deathW); g.z = lerp(g.z, sg * 0.12, deathW); }
     }
 
     // --- Anwenden ---
-    body.rotation.set(bodyX, 0, bodyZ);
+    rollG.rotation.set(rollA, 0, 0);
+    rollG.position.y = ROLL_Y + Math.sin(rollA / 2) * 0.12;
+    body.rotation.set(bodyX * (1 - deathW) + deathX, 0, bodyZ * (1 - deathW));
+    body.position.y = -ROLL_Y + deathLift;
     const sq = st.land;
     body.scale.set(1 + sq * 0.07, 1 - sq * 0.1 + st.air * Math.max(0, st.rise) * 0.04, 1 + sq * 0.07);
     const dropFromCrouch = LEG * (1 - Math.cos(base));
@@ -359,7 +471,7 @@ export function createPlayerModel(index = 0) {
     torso.rotation.set(torsoX, torsoY, torsoZ);
     torso.scale.set(1 + breath * 0.012 * idleW, 1 + breath * 0.008 * idleW, 1 + breath * 0.02 * idleW);
     // Kopf stabilisiert Blick (wirkt dem Torso entgegen)
-    neck.rotation.set(-torsoX * 0.6 - bodyX * 0.8 + idleW * Math.sin(st.t * 0.4) * 0.04 + st.air * 0.1 * st.rise,
+    neck.rotation.set(neckJerk - torsoX * 0.6 - bodyX * 0.8 + idleW * Math.sin(st.t * 0.4) * 0.04 + st.air * 0.1 * st.rise,
       -(torsoY + hipsY) * 0.7 + idleW * Math.sin(st.t * 0.31) * 0.12, -bodyZ * 0.5 - torsoZ * 0.8 + (action === 'wave' ? 0.12 * actW : 0));
 
     for (const k of ['l', 'r']) {
@@ -372,7 +484,7 @@ export function createPlayerModel(index = 0) {
       lg.kn.rotation.set(g.kn, 0, 0);
       lg.ft.rotation.set(g.ft, 0, -g.z);
     }
-    axe.rotation.set(arms.r.wr, 0, 0);
+    axe.rotation.set(arms.r.wr, arms.r.wy || 0, 0);
 
     // Umhang: gedämpfte Feder, flattert mit Tempo / weht im Fall nach oben
     const capeTarget = 0.08 + st.spd * 0.09 + torsoX * -0.6 + st.air * (-st.rise * 0.6) + moveW * Math.sin(P * 2) * 0.05 * (0.5 + runF);
@@ -388,6 +500,11 @@ export function createPlayerModel(index = 0) {
     look: L,
     animate,
     playAction,
+    cancelAction,
     get actionActive() { return action !== null; },
+    get action() { return action; },
+    /** Weltposition der Hand ('l'|'r') bzw. der Axtschneide */
+    handWorld(side = 'l', out = new THREE.Vector3()) { root.updateMatrixWorld(); return arm[side].hand.getWorldPosition(out); },
+    bladeWorld(out = new THREE.Vector3()) { root.updateMatrixWorld(); return blade.getWorldPosition(out); },
   };
 }

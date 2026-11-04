@@ -72,3 +72,57 @@ Segmente: leichte eigene Physik (kein Physik-Lib): rollen hangabwärts, rutschen
 lassen sich vom Spieler schieben. Log treffen → teilt sich, bis zu kurz → wird zu „Holz“ (wood++) mit Puff.
 Außerdem: Terrain mit Vertex-Farben (Sand/Gras/Fels/Erde), sanfte Hügel + ein größerer Hügel/Fels, Wasser mit Wellen-Vertex-Shader,
 Felsen, Büsche, Gras-Büschel (Instancing), Blumen. Fog + Himmel (Gradient-Kuppel). Performance: Splitscreen = 2× rendern.
+
+---
+
+## Kampf (Erweiterung 2)
+
+### js/combat.js  (Agent „Kampf“)
+
+```js
+export class Combat {
+  constructor(scene, world)
+  addActor(a)      // a = { id, team:'player'|'enemy', pos:Vector3 (Fuß), radius, height,
+                   //       hp, maxHp, alive:true, invuln:()=>bool (i-frames), onHit:(hit)=>void,
+                   //       object3D?, isBoss?, name? }
+  removeActor(a)
+  // Hitbox: Kugel, die für `duration` s aktiv ist und jeden Gegner-Actor höchstens 1× trifft.
+  hitbox({ owner, team, radius, duration, damage, knockback=4, stagger=0..1,
+           at: ()=>Vector3  (Weltposition, wird jeden Frame abgefragt, z. B. Knochen/Kiefer/Faust),
+           kind:'melee'|'spell'|'slam', onHitFx?:'spark'|'fire'|'frost'|'dark' })
+  projectile({ owner, team, pos, vel, radius, damage, life, gravity=0, fx:'fire'|'frost'|'dark',
+               homing?:actor, onExpire?:(pos)=>void, explodeRadius?, knockback?, stagger? })
+  telegraph({ pos, radius, duration, color=0xff3020, shape:'circle'|'cone'|'line', dir?, length?, angle? })
+                   // Boden-Warnung (blinkend, füllt sich bis zum Einschlag)
+  hitstop(sec)     // kurzes Einfrieren bei Treffern
+  shake(amount)    // Kamera-Shake-Anfrage (Main leitet weiter)
+  fx(kind, pos, n) // Partikel-Burst ('spark','fire','frost','dark','dust','blood' (cozy: weiße Sterne statt Blut))
+  damageNumber(pos, value, color)
+  nearestEnemy(fromPos, team, maxDist) -> actor|null
+  update(dt)       // -> gibt zurück { timeScale } (0 während hitstop)
+}
+```
+`hit` an onHit: `{ damage, dir:Vector3 (horizontal, normiert), knockback, stagger, kind, source }`.
+**Schaden:** Combat zieht `hit.damage` von `actor.hp` ab (min. 0) und ruft DANACH `onHit(hit)` auf – onHit zieht nichts mehr ab.
+`alive` setzt Combat nie (das macht der Besitzer nach seiner Tod-Animation); Actors mit `hp <= 0` werden nicht mehr getroffen.
+Zusätzlich: `combat.shockwave(pos, radius, color, dur)`, `fx(kind, pos, n, { ring, speed, up, stars })`, Hitbox-Option `onConnect(actor, hit)`, `combat.debug = true` (Hitboxen zeigen).
+Teams: Hitboxen treffen nur Actors des anderen Teams. Alles in Metern, Treffer-Test Kugel gegen Kapsel (pos..pos+height, radius).
+
+### js/bosses.js  (Agent „Bosse“)
+
+```js
+export const BOSS_TYPES = ['dogo', <2 weitere>];
+export const BOSS_INFO = { dogo: { name:'…', title:'…', hp, color }, … };
+export function createBoss(type, { scene, world, combat, home:Vector3 }) => {
+  actor,            // bereits per combat.addActor registriert (team 'enemy', isBoss:true, name)
+  object3D,
+  update(dt, players),   // players = [{ actor, pos, alive }]; Boss-KI, Animation, Hitboxen über combat.*
+  awake: bool,           // wacht auf, wenn Spieler < ~22 m von home; schläft/kehrt zurück, wenn alle > 60 m oder tot
+  phase: 1|2,            // Phase 2 ab 50 % HP (aggressiver, neue Attacke)
+  dispose(),
+}
+```
+Bosse: Bewegung über world.heightAt/collide, Angriffe IMMER mit Vorwarnung (Ausholen + optional telegraph), faire Fenster zum Ausweichen,
+Stagger-Fenster nach großen Attacken. Tod: dramatische Animation, zerfällt/verpufft, Belohnung (combat.fx + Main zählt).
+
+Spieler-Steuerung Kampf: siehe README (Agent „Kampf“ dokumentiert sie).
