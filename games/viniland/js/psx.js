@@ -7,8 +7,33 @@ export const PSX = {
     uSnap: { value: 220.0 },     // Raster der Vertex-Snapping (kleiner = wackeliger). 0 = aus
     uDither: { value: 1.0 },     // 1 = Dithering + Farbtiefe 5 Bit, 0 = aus
     uTime: { value: 0.0 },
+    // Farb-Grading (global, wird von world.applyAtmosphere pro Ansicht gesetzt)
+    uGrade: { value: new THREE.Vector4(1, 1, 0, 1) },   // x = contrast, y = saturation, z = vignette, w = exposure
+    uTint: { value: new THREE.Color(1, 1, 1) },
+    uView: { value: new THREE.Vector4(0, 0, 1, 1) },    // aktueller Viewport in Pixeln (für Vignette pro Splitscreen-Ansicht)
   },
 };
+
+/** Farb-Grading setzen: { contrast=1, saturation=1, tint=0xffffff|Color, vignette=0, exposure=1 } – nur übergebene Felder. */
+export function setGrade({ contrast, saturation, tint, vignette, exposure } = {}) {
+  const g = PSX.uniforms.uGrade.value;
+  if (contrast !== undefined) g.x = contrast;
+  if (saturation !== undefined) g.y = saturation;
+  if (vignette !== undefined) g.z = vignette;
+  if (exposure !== undefined) g.w = exposure;
+  if (tint !== undefined) { if (tint.isColor) PSX.uniforms.uTint.value.copy(tint); else PSX.uniforms.uTint.value.setHex(tint, THREE.LinearSRGBColorSpace); } // Werte im Ausgabe-Raum (sRGB), keine Konvertierung
+}
+
+/** Hängt an scene.onBeforeRender, damit die Vignette jeder Splitscreen-Ansicht zentriert ist. */
+const _vp = new THREE.Vector4();
+export function trackViewport(scene) {
+  const prev = scene.onBeforeRender;
+  scene.onBeforeRender = (renderer, sc, cam, rt) => {
+    if (prev) prev(renderer, sc, cam, rt);
+    if (rt) PSX.uniforms.uView.value.set(0, 0, rt.width, rt.height);
+    else { renderer.getCurrentViewport(_vp); PSX.uniforms.uView.value.copy(_vp); }
+  };
+}
 
 export function setPSX({ snap, dither } = {}) {
   if (snap !== undefined) PSX.uniforms.uSnap.value = snap;
@@ -28,6 +53,17 @@ const SNAP_VERT = /* glsl */`
 
 const DITHER_FRAG = /* glsl */`
   #include <dithering_fragment>
+  {
+    vec3 gc = gl_FragColor.rgb * uGrade.w;
+    float gl = dot(gc, vec3(0.299, 0.587, 0.114));
+    gc = mix(vec3(gl), gc, uGrade.y);
+    gc = (gc - 0.5) * uGrade.x + 0.5;
+    gc *= uTint;
+    vec2 vq = (gl_FragCoord.xy - uView.xy) / max(uView.zw, vec2(1.0)) - 0.5;
+    vq.x *= uView.z / max(uView.w, 1.0);
+    gc *= 1.0 - uGrade.z * smoothstep(0.3, 0.95, length(vq));
+    gl_FragColor.rgb = clamp(gc, 0.0, 1.0);
+  }
   if (uDither > 0.5) {
     int bx = int(mod(gl_FragCoord.x, 4.0));
     int by = int(mod(gl_FragCoord.y, 4.0));
@@ -45,9 +81,12 @@ export function patchPSX(material) {
     shader.uniforms.uSnap = PSX.uniforms.uSnap;
     shader.uniforms.uDither = PSX.uniforms.uDither;
     shader.uniforms.uTime = PSX.uniforms.uTime;
+    shader.uniforms.uGrade = PSX.uniforms.uGrade;
+    shader.uniforms.uTint = PSX.uniforms.uTint;
+    shader.uniforms.uView = PSX.uniforms.uView;
     shader.vertexShader = 'uniform float uSnap;\nuniform float uTime;\n' +
       shader.vertexShader.replace('#include <project_vertex>', SNAP_VERT);
-    shader.fragmentShader = 'uniform float uDither;\n' +
+    shader.fragmentShader = 'uniform float uDither;\nuniform vec4 uGrade;\nuniform vec3 uTint;\nuniform vec4 uView;\n' +
       shader.fragmentShader.replace('#include <dithering_fragment>', DITHER_FRAG);
   };
   material.customProgramCacheKey = () => 'psx-' + (material.userData.psxKey || '');

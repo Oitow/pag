@@ -23,6 +23,8 @@ for n in order:
     src = re.sub(r"import\s*\{([^}]*)\}\s*from\s*'\./([\w-]+\.js)';", imp, src)
     src = re.sub(r"import\s+\*\s+as\s+THREE\s+from\s+'three';\n?", '', src)
     exports = re.findall(r"^export\s+(?:async\s+)?(?:function\*?|const|let|class)\s+([A-Za-z_$][\w$]*)", src, re.M)
+    src = re.sub(r"^export\s+default\s+[\w$]+\s*;?\s*$", '', src, flags=re.M)
+    src = re.sub(r"^export\s+\{[^}]*\}\s*;?\s*$", '', src, flags=re.M)
     src = re.sub(r"^export\s+", '', src, flags=re.M)
     assert 'import ' not in re.sub(r'//.*', '', src).split('\n')[0] or True
     parts.append(f"// ===== {n} =====\nconst {var} = (() => {{\n{src}\nreturn {{ {', '.join(exports)} }};\n}})();\n")

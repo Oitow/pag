@@ -2,6 +2,7 @@
 // Terrain-Kollision, Auto-Ausrichtung hinter die Figur, Sprint-FOV, Lande-Shake.
 import * as THREE from 'three';
 import { clamp, damp } from './kit.js';
+import { OPTIONS } from './options.js';
 
 export const CAM_TUNING = {
   distance: 6.5, minDist: 2.5, maxDist: 14,
@@ -29,7 +30,7 @@ export class FollowCamera {
     this._look = new THREE.Vector3(); this._lastLock = new THREE.Vector3();
   }
 
-  kick(amount) { this.shakeAmp = Math.max(this.shakeAmp, amount * CAM_TUNING.shake); this.shakeT = 0; }
+  kick(amount) { const m = CAM_TUNING.shake * (OPTIONS.screenShake ?? 1); if (m <= 0) return; this.shakeAmp = Math.max(this.shakeAmp, amount * m); this.shakeT = 0; }
 
   update(dt, ctrl, intent, world) {
     const C = CAM_TUNING;
@@ -46,12 +47,14 @@ export class FollowCamera {
       this.yaw -= intent.lookX * dt;
       this.pitch = clamp(this.pitch + intent.lookY * dt, -0.35, 1.25);
     }
-    this.dist = clamp(this.dist + intent.zoom, C.minDist, C.maxDist);
+    // D-Pad-Zoom: Stufen nah → mittel → weit → nah
+    if (intent.zoomStep) { const st = [4.2, C.distance, 9.5]; const i = st.findIndex(v => v > this.dist + 0.3); this.dist = i < 0 ? st[0] : st[i]; }
+    this.dist = clamp(this.dist + (intent.zoom || 0), C.minDist, C.maxDist);
     const looking = Math.abs(intent.lookX) + Math.abs(intent.lookY) > 0.01;
     this.lookIdle = looking ? 0 : this.lookIdle + dt;
 
     // Auto-Ausrichtung nur bei Bewegung und wenn der Spieler die Kamera eine Weile nicht anfasst
-    if (!this.lock && C.autoAlign > 0 && this.lookIdle > 1.2 && ctrl.speed > 1.5 && ctrl.grounded) {
+    if (!this.lock && C.autoAlign > 0 && OPTIONS.autoAlign !== false && this.lookIdle > 1.2 && ctrl.speed > 1.5 && ctrl.grounded) {
       const behind = ctrl.yaw + Math.PI;
       let d = behind - this.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
       // seitliches Laufen nicht "jagen": nur wenn nicht fast rückwärts

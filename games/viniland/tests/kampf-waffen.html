@@ -1,0 +1,212 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Viniland – Kampf: Waffen & Zauber</title>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<style>
+body{margin:0;overflow:hidden;background:#1e1c22;font-family:sans-serif}
+#hud{position:fixed;top:8px;left:8px;color:#eee;font:12px monospace;white-space:pre;text-shadow:0 1px 0 #000;z-index:2;background:#0006;padding:6px 8px;border-radius:6px}
+#help{position:fixed;bottom:6px;left:8px;right:8px;color:#ccc;font:11px sans-serif;text-shadow:0 1px 0 #000;z-index:2}
+#err{position:fixed;left:0;right:0;bottom:0;color:#fff;background:#a00c;font:13px monospace;white-space:pre-wrap;padding:6px;display:none;z-index:3}
+#ui{position:fixed;top:8px;right:8px;display:flex;gap:4px;flex-wrap:wrap;max-width:560px;justify-content:flex-end;z-index:2}
+button{font-size:12px;padding:5px 8px;border-radius:6px;border:0;background:#3a3440;color:#eee}
+button.on{background:#a8642a}
+.lbl{position:fixed;transform:translate(-50%,-100%);color:#fff;font-weight:bold;font-size:12px;text-shadow:0 1px 2px #000;pointer-events:none;white-space:nowrap;text-align:center}
+.bar{width:80px;height:6px;background:#0008;margin:2px auto 0}.bar i{display:block;height:100%;background:#d33}
+#bars{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:2;width:360px}
+#bars div{height:8px;margin:3px 0;background:#0008}#bars i{display:block;height:100%}
+#act{position:fixed;top:40%;left:50%;transform:translateX(-50%);color:#ffd890;font:bold 22px serif;text-shadow:0 2px 4px #000;z-index:2;opacity:0;transition:opacity .3s}
+</style></head><body>
+<div id="hud"></div><div id="ui"></div><div id="bars"><div><i id="bhp" style="background:#c33"></i></div><div><i id="bsta" style="background:#3c6"></i></div><div><i id="bmana" style="background:#46c"></i></div></div>
+<div id="act"></div>
+<div id="help">1–9/0 Waffe · N / M Zauber-Slot A/B durchschalten · K / L Zauber wirken · H Glutflakon · F/Klick leicht · R schwer (halten) · V Waffenkunst · C rollen · T Lock-On · WASD/Space/Shift · Q/E Kamera · ?w=&lt;id&gt; ?demo ?warm=&lt;s&gt; ?s=a,b ?debug</div>
+<div id="err"></div>
+<script>
+window.onerror=(m,s,l,c,e)=>{const d=document.getElementById('err');d.style.display='block';d.textContent+=`${m} @${(s||'').split('/').pop()}:${l}\n${e&&e.stack||''}\n`;};
+window.addEventListener('unhandledrejection',e=>window.onerror(String(e.reason),'',0,0,e.reason));
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { MeshBuilder } from '../js/kit.js';
+import { psxMat } from '../js/psx.js';
+import { Combat } from '../js/combat.js';
+import { CharacterController } from '../js/controller.js';
+import { FollowCamera } from '../js/camera.js';
+import { createPlayerModel } from '../js/players.js';
+import { Fighter, FIGHT } from '../js/fighter.js';
+import { WEAPONS, WEAPON_CLASSES } from '../js/weapons.js';
+import { SPELLS, SPELL_IDS } from '../js/spells.js';
+import { Input, KEYMAPS } from '../js/input.js';
+
+const Q = new URLSearchParams(location.search);
+const ren = new THREE.WebGLRenderer({ antialias: false });
+ren.setPixelRatio(1); ren.setSize(innerWidth, innerHeight); ren.shadowMap.enabled = true; document.body.appendChild(ren.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x3a3a44); scene.fog = new THREE.Fog(0x3a3a44, 25, 70);
+scene.add(new THREE.HemisphereLight(0xc8ccd8, 0x3a3a2a, 1.4));
+const sun = new THREE.DirectionalLight(0xffe0c0, 2.2); sun.position.set(8, 18, 10); sun.castShadow = true;
+Object.assign(sun.shadow.camera, { left: -20, right: 20, top: 20, bottom: -20, far: 60 }); sun.shadow.mapSize.set(1024, 1024); scene.add(sun);
+
+const world = {
+  waterLevel: -5, radius: 200,
+  heightAt(x, z) { return 0.15 * Math.sin(x * 0.2) * Math.cos(z * 0.17); },
+  groundAt(x, z) { return this.heightAt(x, z); },
+  collide() { return 0; },
+  hitTree() { return { hit: false }; },
+};
+{
+  const g = new THREE.PlaneGeometry(90, 90, 60, 60); g.rotateX(-Math.PI / 2);
+  const p = g.attributes.position, col = new Float32Array(p.count * 3), c = new THREE.Color();
+  for (let i = 0; i < p.count; i++) { p.setY(i, world.heightAt(p.getX(i), p.getZ(i))); c.set(0x4a4f3a).offsetHSL(0, 0, (Math.random() - 0.5) * 0.05); col.set([c.r, c.g, c.b], i * 3); }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, psxMat()); m.receiveShadow = true; scene.add(m);
+}
+const combat = new Combat(scene, world);
+combat.debug = Q.has('debug');
+
+// ---- Spieler ----
+KEYMAPS[0].spell1 = ['KeyK']; KEYMAPS[0].spell2 = ['KeyL']; KEYMAPS[0].flask = ['KeyH'];
+const input = new Input(ren.domElement); input.players = 1; input.keyboardFor = [true, false];
+const model = createPlayerModel(+(Q.get('look') || 0)); scene.add(model.object3D);
+model.object3D.traverse(o => { if (o.isMesh) o.castShadow = true; });
+const ctrl = new CharacterController(world, new THREE.Vector3(0, 0, -2));
+const cam = new FollowCamera(innerWidth / innerHeight); cam.yaw = Math.PI; cam.dist = 7; cam.pitch = 0.42;
+const P = { i: 0, model, ctrl, cam };
+const fighter = new Fighter(P, combat, world, { kick: (i, a) => cam.kick(a), spawn: () => new THREE.Vector3(0, 0, -2) });
+fighter.setStats({ vit: 20, end: 20, str: 22, dex: 22, int: 24, fai: 24 });
+fighter.hp = fighter.maxHp; fighter.mana = fighter.maxMana;
+const WIDS = Object.keys(WEAPONS);
+const ui = document.getElementById('ui');
+let spellA = 0, spellB = 1;
+const sp = (Q.get('s') || '').split(',').filter(s => SPELLS[s]);
+if (sp.length) { spellA = SPELL_IDS.indexOf(sp[0]); spellB = SPELL_IDS.indexOf(sp[1] || sp[0]); }
+fighter.equipSpells([SPELL_IDS[spellA], SPELL_IDS[spellB]]);
+function equip(id) { fighter.equipWeapon({ weaponId: id, upgrade: 2, rarity: ['common', 'rare', 'epic', 'legendary'][WIDS.indexOf(id) % 4] }); renderUI(); }
+equip(WEAPONS[Q.get('w')] ? Q.get('w') : 'fists');
+const actEl = document.getElementById('act'); let actT = 0;
+fighter.onAction = (k, info) => { if (k === 'art') { actEl.textContent = '✦ ' + fighter.weapon.art.name + ' ✦'; actEl.style.opacity = 1; actT = 1.2; } };
+let kills = 0; fighter.onKill = () => kills++;
+
+// ---- Dummies (Kapseln mit HP-Anzeige) ----
+const dummies = [];
+function makeDummy(x, z, hp = 260) {
+  const b = new MeshBuilder(); b.capsule(0.42, 1.0, 0x8a7a6a, { y: 0.95 }); b.box(0.5, 0.1, 0.1, 0x5a3a2a, { y: 1.2 }); b.sphere(0.2, 0x9a8a7a, { y: 1.85 });
+  const m = b.mesh(); m.castShadow = true; scene.add(m);
+  const home = new THREE.Vector3(x, world.heightAt(x, z), z);
+  const actor = { id: 'dummy' + dummies.length, team: 'enemy', name: 'Puppe', pos: home.clone(), radius: 0.45, height: 1.9, hp, maxHp: hp, alive: true,
+    onHit(h) { d.flash = 0.25; d.vel.addScaledVector(h.dir, h.knockback * 0.6); } };
+  combat.addActor(actor);
+  const el = document.createElement('div'); el.className = 'lbl'; el.innerHTML = '<span></span><div class="bar"><i></i></div>'; document.body.appendChild(el);
+  const d = { actor, m, home, el, vel: new THREE.Vector3(), flash: 0, dead: 0 };
+  dummies.push(d); return d;
+}
+for (let k = 0; k < 5; k++) { const a = -0.9 + k * 0.45; makeDummy(Math.sin(a) * 3.2, Math.cos(a) * 3.2 + 1); }
+makeDummy(-1.5, 9.5, 400); makeDummy(2, 11, 400);
+function stepDummies(dt) {
+  for (const d of dummies) {
+    const a = d.actor;
+    if (a.hp <= 0) { if (!d.dead) { d.dead = 1.4; a.alive = false; combat.fx('dust', a.pos.clone().setY(a.pos.y + 1), 14); } d.dead -= dt;
+      d.m.scale.setScalar(Math.max(0.01, d.dead / 1.4)); if (d.dead <= 0) { d.dead = 0; a.hp = a.maxHp; a.alive = true; a._killCredited = false; a.pos.copy(d.home); d.m.scale.setScalar(1); } }
+    a.pos.addScaledVector(d.vel, dt); d.vel.multiplyScalar(Math.exp(-6 * dt));
+    a.pos.lerp(d.home, 1 - Math.exp(-0.8 * dt)); a.pos.y = world.heightAt(a.pos.x, a.pos.z);
+    d.m.position.copy(a.pos); d.flash = Math.max(0, d.flash - dt);
+    d.m.rotation.z = Math.sin(d.flash * 30) * d.flash * 0.6;
+  }
+}
+
+// ---- UI ----
+function renderUI() {
+  ui.innerHTML = '';
+  WIDS.forEach((id, n) => { const b = document.createElement('button'); b.textContent = `${(n + 1) % 10} ${WEAPONS[id].icon || ''}${WEAPONS[id].name}`; if (fighter.weapon.id === id) b.className = 'on'; b.onclick = () => equip(id); ui.appendChild(b); });
+}
+addEventListener('keydown', e => {
+  const m = /^Digit(\d)$/.exec(e.code);
+  if (m) { const n = (+m[1] + 9) % 10; if (WIDS[n]) equip(WIDS[n]); }
+  if (e.code === 'KeyN') { spellA = (spellA + 1) % SPELL_IDS.length; fighter.equipSpells([SPELL_IDS[spellA], SPELL_IDS[spellB]]); }
+  if (e.code === 'KeyM') { spellB = (spellB + 1) % SPELL_IDS.length; fighter.equipSpells([SPELL_IDS[spellA], SPELL_IDS[spellB]]); }
+});
+
+// ---- Auto-Demo ----
+const DEMO = Q.has('demo');
+const SCRIPT = [];
+{
+  const plan = [['sword', 'glutkugel'], ['spear', 'seelenpfeile'], ['daggers', 'heilung'], ['hammer', 'meteor'], ['greatsword', 'frostring'], ['scythe', 'dornenfeld'], ['fists', 'blitzspeer'], ['axe', 'sporenwolke'], ['staff', 'lichtschild'], ['driftwood', 'schattenschritt']];
+  let t = 0.3;
+  for (const [w, s] of plan) {
+    SCRIPT.push({ t, w, s });
+    for (let k = 0; k < WEAPONS[w].combo.length; k++) SCRIPT.push({ t: t + 0.15 + k * 0.42 / WEAPON_CLASSES[WEAPONS[w].class].speed, a: 'light' });
+    const ta = t + 0.3 + WEAPONS[w].combo.length * 0.42 / WEAPON_CLASSES[WEAPONS[w].class].speed;
+    SCRIPT.push({ t: ta, a: 'art' });
+    SCRIPT.push({ t: ta + 1.05, a: 'spell' });
+    t = ta + 1.7;
+  }
+}
+let demoT = 0, demoI = 0;
+function demoIntent(dt, it) {
+  demoT += dt;
+  while (demoI < SCRIPT.length && SCRIPT[demoI].t <= demoT) {
+    const e = SCRIPT[demoI++];
+    if (e.w) { equip(e.w); fighter.equipSpells([e.s, SPELL_IDS[spellB]]); fighter.mana = fighter.maxMana; fighter.sta = fighter.maxSta; fighter.cds[0] = 0; }
+    if (e.a === 'light') it.chopPressed = true;
+    if (e.a === 'art') it.artPressed = true;
+    if (e.a === 'spell') it.spell1Pressed = true;
+  }
+  if (demoI >= SCRIPT.length) { demoT = 0; demoI = 0; }
+  // zum nächsten Dummy laufen, wenn zu weit weg
+  let best = null, bd = 1e9;
+  for (const d of dummies) { if (d.actor.hp <= 0) continue; const l = Math.hypot(d.actor.pos.x - ctrl.pos.x, d.actor.pos.z - ctrl.pos.z); if (l < bd) { bd = l; best = d; } }
+  if (best && bd > 1.7 && fighter.state === 'free') {
+    const dx = best.actor.pos.x - ctrl.pos.x, dz = best.actor.pos.z - ctrl.pos.z, sn = Math.sin(cam.yaw), cs = Math.cos(cam.yaw);
+    // Weltrichtung → Stick (Umkehrung von inputDir)
+    const l = Math.hypot(dx, dz); it.moveX = (cs * dx - sn * dz) / l; it.moveY = (-sn * dx - cs * dz) / l;
+  }
+}
+
+// ---- Loop ----
+const hud = document.getElementById('hud');
+const bhp = document.getElementById('bhp'), bsta = document.getElementById('bsta'), bmana = document.getElementById('bmana');
+const _p = new THREE.Vector3();
+function step(dt, render) {
+  const r = combat.update(dt), gdt = dt * r.timeScale;
+  const it = input.read(0, dt);
+  if (DEMO) demoIntent(gdt, it);
+  if (gdt > 0) {
+    const mul = fighter.update(gdt, it, cam.yaw);
+    ctrl.update(gdt, it, cam.yaw, mul);
+  } else {
+    if (it.chopPressed) fighter.bufAtk = FIGHT.buffer; if (it.artPressed) fighter.bufArt = FIGHT.buffer; if (it.heavyPressed) fighter.bufHeavy = FIGHT.buffer;
+  }
+  for (const d of dummies) { const dx = ctrl.pos.x - d.actor.pos.x, dz = ctrl.pos.z - d.actor.pos.z, l = Math.hypot(dx, dz), mn = 0.85; if (l < mn && l > 1e-3) { ctrl.pos.x += dx / l * (mn - l); ctrl.pos.z += dz / l * (mn - l); } }
+  model.object3D.position.copy(ctrl.pos); model.object3D.rotation.y = ctrl.yaw;
+  model.animate(gdt, { speed: ctrl.speed, maxSpeed: 8.2, grounded: ctrl.grounded, vy: ctrl.vel.y, turn: ctrl.turn, landImpact: ctrl.landImpact, sprint: ctrl.sprint });
+  stepDummies(gdt);
+  for (const s of combat.shakes) cam.kick(s.amount); combat.shakes.length = 0;
+  cam.update(dt, ctrl, it, world);
+  input.endFrame();
+  if (actT > 0) { actT -= dt; if (actT <= 0) actEl.style.opacity = 0; }
+  if (!render) return;
+  for (const d of dummies) {
+    _p.copy(d.actor.pos); _p.y += 2.35; _p.project(cam.cam);
+    d.el.style.display = _p.z < 1 && d.actor.hp > 0 ? 'block' : 'none';
+    d.el.style.left = ((_p.x + 1) / 2 * innerWidth) + 'px'; d.el.style.top = ((1 - _p.y) / 2 * innerHeight) + 'px';
+    d.el.firstChild.textContent = Math.ceil(d.actor.hp); d.el.querySelector('i').style.width = (d.actor.hp / d.actor.maxHp * 100) + '%';
+  }
+  const W = fighter.weapon, s0 = fighter.spellInfo(0), s1 = fighter.spellInfo(1);
+  hud.textContent = `${W.icon || ''} ${W.name}  [${WEAPON_CLASSES[W.class].name}]  Skal. ${Object.entries(W.scaling).map(([k, v]) => k + ' ' + v).join(' ')}  Schaden ~${fighter.weaponDmg(1)}\n` +
+    `Combo ${W.combo.length}: ${W.combo.map(c => c.anim).join(' › ')}   schwer: ${W.heavy.anim}${W.heavy.charge ? ' (laden)' : ''}\n` +
+    `Waffenkunst: ${W.art.name} (${W.art.sta} Sta${W.art.mana ? ' · ' + W.art.mana + ' Mana' : ''})\n` +
+    `Zauber A: ${s0.def?.icon} ${s0.def?.name} cd ${s0.cd.toFixed(1)}   B: ${s1.def?.icon} ${s1.def?.name} cd ${s1.cd.toFixed(1)}\n` +
+    `Zustand ${fighter.state}  Combo#${fighter.combo}  Flakon ${fighter.flask.charges}/${fighter.flask.max}  Kills ${kills}  T ${demoT.toFixed(1)}  Lock ${fighter.lock ? fighter.lock.name : '-'}`;
+  bhp.style.width = (fighter.hp / fighter.maxHp * 100) + '%'; bsta.style.width = (fighter.sta / fighter.maxSta * 100) + '%'; bmana.style.width = (fighter.mana / fighter.maxMana * 100) + '%';
+  ren.render(scene, cam.cam);
+}
+const warm = +(Q.get('warm') || 0);
+for (let t = 0; t < warm; t += 1 / 60) step(1 / 60, false);
+let last = performance.now();
+function frame(now) {
+  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;
+  step(dt, true);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+addEventListener('resize', () => { ren.setSize(innerWidth, innerHeight); cam.cam.aspect = innerWidth / innerHeight; cam.cam.updateProjectionMatrix(); });
+window.__k = { fighter, combat, dummies, model, ctrl, cam };
+</script>
+</body></html>

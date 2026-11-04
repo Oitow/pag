@@ -52,6 +52,12 @@
   #menu em { font-style: normal; font-family: monospace; text-align: right; opacity: .8; }
   #menu .pads { font-size: 12px; background: #0006; border-radius: 6px; padding: 6px 8px; margin: 4px 0; line-height: 1.5; }
   #menu .hint { font-size: 12px; opacity: .7; }
+  .view .hud, .view .bars, .view .spells { zoom: var(--hud, 1); }
+  .bossbar .bn { font-family: 'Cinzel','Trajan Pro','Palatino Linotype',Georgia,serif; letter-spacing: .08em; }
+  #menu .mtabs { display: flex; gap: 2px; margin: 4px 0 8px; border-bottom: 1px solid #8a6a3e; }
+  #menu .mtabs button { border-radius: 6px 6px 0 0; margin: 0; border-bottom: none; background: #241b12; }
+  #menu .mtabs button.on { background: #57412a; color: #ffe2a0; }
+  #menu label.opt button { justify-self: start; min-width: 90px; }
   #back { position: fixed; right: 10px; bottom: 10px; color: #f4ecd8; font-size: 12px; opacity: .55; text-decoration: none; }
 </style>
 </head>
@@ -60,13 +66,13 @@
 <div class="divider" id="divV"></div><div class="divider" id="divH"></div>
 <div class="view" id="view0"><div class="hud" id="hud0"></div>
   <div class="bars"><div class="bar hp"><i></i><span></span></div><div class="bar sta"><i></i></div><div class="bar mana"><i></i></div></div>
-  <div class="spells"><div class="sp s1" title="Glutkugel">🔥<b>1</b><i></i></div><div class="sp s2" title="Frostring">❄️<b>2</b><i></i></div></div>
+  <div class="spells"><div class="sp s1"><span>·</span><b>1</b><i></i></div><div class="sp s2"><span>·</span><b>2</b><i></i></div></div>
   <div class="lockm" style="display:none"></div>
   <div class="bossbar" style="display:none"><div class="bn"></div><div class="bbar"><u></u><i></i></div><div class="stg"><i></i></div></div>
   <div class="flash"></div><div class="deadmsg" style="display:none"></div></div>
 <div class="view" id="view1"><div class="hud" id="hud1"></div>
   <div class="bars"><div class="bar hp"><i></i><span></span></div><div class="bar sta"><i></i></div><div class="bar mana"><i></i></div></div>
-  <div class="spells"><div class="sp s1" title="Glutkugel">🔥<b>7</b><i></i></div><div class="sp s2" title="Frostring">❄️<b>8</b><i></i></div></div>
+  <div class="spells"><div class="sp s1"><span>·</span><b>7</b><i></i></div><div class="sp s2"><span>·</span><b>8</b><i></i></div></div>
   <div class="lockm" style="display:none"></div>
   <div class="bossbar" style="display:none"><div class="bn"></div><div class="bbar"><u></u><i></i></div><div class="stg"><i></i></div></div>
   <div class="flash"></div><div class="deadmsg" style="display:none"></div></div>

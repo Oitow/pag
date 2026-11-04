@@ -126,3 +126,80 @@ Bosse: Bewegung über world.heightAt/collide, Angriffe IMMER mit Vorwarnung (Aus
 Stagger-Fenster nach großen Attacken. Tod: dramatische Animation, zerfällt/verpufft, Belohnung (combat.fx + Main zählt).
 
 Spieler-Steuerung Kampf: siehe README (Agent „Kampf“ dokumentiert sie).
+
+---
+
+## Erweiterung 3: Biome, RPG, Loot, Musik  (siehe DESIGN.md)
+
+**Datei-Besitz (nur der Besitzer ändert die Datei!):**
+| Agent | Dateien |
+|---|---|
+| Welt | `js/world.js`, `js/biomes.js` (neu), `js/psx.js` (Farb-Grading) |
+| Gegner | `js/bosses.js`, `js/bosses2.js` (neu), `js/enemies.js` (neu) |
+| Kampf | `js/fighter.js`, `js/weapons.js` (neu), `js/spells.js` (neu), `js/players.js`, `js/combat.js`, `js/input.js`, `js/controller.js`, `js/camera.js` |
+| RPG | `js/main.js`, `js/items.js`, `js/loot.js`, `js/progression.js`, `js/ui.js` (alle neu außer main), `js/options.js` (neu), `index.html`, `README.md` |
+| Musik | `js/audio.js` (neu) |
+Neue Testseiten nur unter `tests/<agent>-*.html`. Bundler (`tests/bundle.py`) kann nur statische `import {..} from './x.js'` – keine dynamischen Imports, keine Unterordner.
+
+### js/biomes.js + world.js  (Welt)
+```js
+// biomes.js – reine Daten
+export const BIOMES = [{ id:'kueste', name:'Graue Küste', order:1, atmo:{ fog:0x..., fogNear, fogFar, sky:[top,horizon], sun:0x.., sunI, hemiSky, hemiGround, hemiI, grade:{ contrast, saturation, tint:0x.., vignette } }, palette:{...}, mobs:['…'] }, ...];
+// world.js (bestehende API bleibt!) + neu:
+world.biomeAt(x, z) -> biome-Objekt aus BIOMES (mit Übergangszonen: world.biomeBlend(x,z) -> [{biome, w}] optional)
+world.applyAtmosphere(pos, dt?)  // vor dem Rendern jeder Ansicht aufrufen: setzt Fog, Himmel, Licht, Grading weich für diese Position
+world.bossSlots   // [{ biome:'kueste', index:0..2, key:bool, pos:Vector3 }]  9 Slots (3 Biome × 3), Arenen sichtbar markiert
+world.mobZones   // [{ biome, pos, radius, count }]
+world.shrines    // [{ id, biome, pos }]  Leuchtfeuer (Modell baut Welt; RPG macht die Interaktion)
+world.gates      // [{ id, fromBiome, toBiome, pos, yaw, width, open:false }] Nebeltor (Wand, blockiert über collide solange !open)
+world.setGateOpen(id, true)
+world.wreck      // { pos, lootPos } Schiffswrack am Startstrand (Spawn daneben)
+```
+Insel deutlich größer (Biome nacheinander, z. B. Startküste → Wald → Pilzhain, 4/5 als angedeutete Platzhalter-Regionen), Performance beachten (Chunks, gröbere Zellen weit weg, Instancing).
+
+### js/bosses2.js + enemies.js  (Gegner)
+```js
+// bosses.js: BOSS_INFO[type] bekommt { biome, key:bool, loot:'<lootTableId>' }; createBoss nimmt zusätzlich
+//   variant: { scale=1, tint:0xRRGGBB|null, hpMul=1, dmgMul=1, speedMul=1, minion=false, name? }
+//   minion=true: kein Phase-2, kürzere Wutskripte, wacht im Radius 14 m auf, verfolgt max. 30 m von home.
+// boss.onDeath = (boss) => {}   // Hook, wird einmal beim Tod (Beginn Auflösen) aufgerufen
+// bosses2.js: exportiert BOSS_TYPES2, BOSS_INFO2, createBoss2(type, opts) (gleiche Signatur/Rückgabe)
+// enemies.js – Registry für alles:
+export const ALL_BOSSES = { ...BOSS_INFO, ...BOSS_INFO2 };          // type -> info (biome, key, name, title, hp, loot)
+export function spawnBoss(type, opts)                                // ruft das richtige Modul
+export const ENEMY_TYPES = { '<id>': { name, biome, base:'<bossType>', variant:{...}, glut:<Belohnung>, loot:'<tableId>' } }
+export function spawnEnemy(id, opts) -> gleiche Rückgabe wie createBoss (+ .enemyId)
+```
+
+### js/weapons.js, js/spells.js, fighter.js  (Kampf)
+```js
+export const WEAPONS = { fists:{ name:'Fäuste', class:'light', scaling:{str:'E',dex:'D'}, base:{dmg}, combo:[{anim, dmg, kb, stagger, lunge, reach, arc, impactAt?}], heavy:{...}, art:{ name, desc, sta, mana?, ... }, mesh:'fists' }, driftwood:{...}, axe, sword, greatsword, spear, daggers, hammer, scythe, staff, ... }  // ~9
+export function buildWeaponMesh(id, rarityColor?) -> Object3D (in die Hand, Griff am Ursprung, Klinge +Y)
+export const SPELLS = { glutkugel, frostring, heilung, ... 10 } // { name, desc, icon (Emoji), school:'verstand'|'glaube', mana, cd, castTime, scaling, ... }
+// fighter.js:
+fighter.equipWeapon(itemOrWeaponId)   // item = { weaponId, upgrade:0..5, rarity }
+fighter.equipSpells([spellIdA, spellIdB])
+fighter.setStats({ vit, end, str, dex, int, fai, level })  // berechnet maxHp/maxSta/maxMana/Schaden-Skalierung
+fighter.flask = { charges, max }, fighter.useFlask()
+fighter.relics = [relicDefA, relicDefB]   // Relikt-Defs aus items.js: { id, name, mods:{ dmgMul, hpOnKill, ... } }
+fighter.onKill = (actor) => {}      // Hook
+```
+Neue Intents (input.js): `heavyPressed`, `artPressed`, `flaskPressed`, `interactPressed`, `inventoryPressed`, `uiUp/uiDown/uiLeft/uiRight` (Edges), `uiConfirm`, `uiBack`, `uiTabL/uiTabR`. Optionen aus `options.js` (`OPTIONS`) werden von input/controller/camera gelesen (z. B. `OPTIONS.sprintToggle`, `OPTIONS.invertY`, `OPTIONS.camSensX`, `OPTIONS.lockToggle`).
+
+### js/options.js (RPG besitzt, alle lesen)
+```js
+export const OPTIONS = { sprintToggle:false, autoRun:false, invertX:false, invertY:false, camSens:1, padSens:1, lockToggle:true,
+  autoAlign:true, damageNumbers:true, screenShake:1, rumble:true, autoPickup:false, hudScale:1, musicVol:0.6, sfxVol:0.8, showHitboxes:false, ... }
+export function loadOptions(), saveOptions()
+```
+
+### js/audio.js  (Musik)
+```js
+export const Audio = {
+  init(),                    // beim ersten User-Input aufrufen (Autoplay-Regeln)
+  setMusic({ biome:'kueste', combat:null|'boss'|'key', intensity:0..1 }), // weiche Übergänge (2–4 s)
+  sting('victory'|'death'|'discovery'|'levelup'),
+  sfx(name, { vol=1, pan=0, pitch=1 }), // 'swing','hit','hitHeavy','roll','block','cast','fire','frost','heal','pickup','coin','roar','step','gate','ui','uiConfirm'
+  setVolume({ music, sfx }),
+};
+```
