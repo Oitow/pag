@@ -1,0 +1,88 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Viniland – World Test</title>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<style>body{margin:0;overflow:hidden;background:#000;font:13px monospace;color:#fff}
+#hud{position:fixed;left:8px;top:8px;background:#0008;padding:6px 8px;border-radius:6px;white-space:pre}
+#err{position:fixed;left:0;right:0;bottom:0;color:#f66;background:#000c;white-space:pre-wrap;padding:6px;display:none}
+#btns{position:fixed;right:8px;top:8px;display:flex;gap:6px}button{font:14px monospace;padding:8px 10px}</style></head><body>
+<div id="hud">…</div><div id="btns"><button id="bf">F: Baum fällen</button><button id="bc">C: Kamera</button></div><div id="err"></div>
+<script>
+window.onerror = (m, s, l, c, e) => { const d = document.getElementById('err'); d.style.display = 'block'; d.textContent += (e && e.stack || m) + '\n'; };
+window.addEventListener('unhandledrejection', e => window.onerror(String(e.reason), 0, 0, 0, e.reason));
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { PSX } from '../js/psx.js';
+import { createWorld } from '../js/world.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: false });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const cam = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 2000);
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); });
+
+const t0 = performance.now();
+const world = createWorld(scene, { seed: 7 });
+const buildMs = performance.now() - t0;
+const sp = world.spawnPoints, mid = sp[0].clone().add(sp[1]).multiplyScalar(0.5);
+const inward = new THREE.Vector3(-mid.x, 0, -mid.z).normalize();
+
+// Spieler-Dummies an den Spawns
+for (const [i, p] of sp.entries()) {
+  const m = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 1.05, 3, 8), new THREE.MeshLambertMaterial({ color: i ? 0x4a8cff : 0xff7a3a }));
+  m.position.copy(p).y += 0.875; m.castShadow = true; scene.add(m);
+}
+
+const nearestStanding = () => {
+  let best = null, bd = 1e9;
+  for (const t of world.trees) if (t.state === 0) { const d = (t.x - mid.x) ** 2 + (t.z - mid.z) ** 2; if (d < bd) { bd = d; best = t; } }
+  return best;
+};
+function fellTree(t) {
+  if (!t) return;
+  const dir = new THREE.Vector3(t.x - mid.x, 0, t.z - mid.z).normalize();
+  const o = new THREE.Vector3(t.x - dir.x * (t.r + 0.9), t.y, t.z - dir.z * (t.r + 0.9));
+  for (let i = 0; i < 8; i++) { const r = world.hitTree(o, dir, 2.2, 1); if (r.felled || !r.hit) break; }
+}
+let closeTree = nearestStanding();
+const fellNext = () => fellTree(nearestStanding());
+let mode = +(new URLSearchParams(location.search).get('cam') || 0); const MODES = ['Überflug Spawn', 'Nahansicht Baum', 'Insel-Überblick'];
+const cycleCam = () => { mode = (mode + 1) % 3; closeTree = nearestStanding() || closeTree; };
+addEventListener('keydown', e => { if (e.key === 'f' || e.key === 'F') fellNext(); if (e.key === 'c' || e.key === 'C') cycleCam(); });
+document.getElementById('bf').onclick = fellNext; document.getElementById('bc').onclick = cycleCam;
+setTimeout(() => { for (let i = 0; i < 3; i++) fellNext(); }, 1000);
+// danach Logs zerhacken-Test: ein Log treffen
+setTimeout(() => {
+  const lg = world.logs.find(l => l.alive);
+  if (lg) { const o = new THREE.Vector3(lg.x - inward.x * 1.2, lg.y - 0.3, lg.z - inward.z * 1.2); world.hitTree(o, inward, 2.5, 1); }
+}, 6000);
+
+const look = new THREE.Vector3(); let last = performance.now(), fps = 0, acc = 0, frames = 0, T = 0;
+function frame(now) {
+  const raw = Math.min(3, (now - last) / 1000), dt = Math.min(0.05, raw); last = now; T += dt;
+  acc += raw; frames++; if (acc > 0.5) { fps = frames / acc; acc = 0; frames = 0; }
+  PSX.uniforms.uTime.value += dt;
+  // langsame Frames (Headless) in 0.05-s-Schritten nachsimulieren
+  for (let left = raw; left > 1e-4; left -= 0.05) world.update(Math.min(0.05, left), []);
+  if (mode === 0) {
+    const a = T * 0.06 + 2.4, c = mid.clone().addScaledVector(inward, 22);
+    cam.position.set(c.x + Math.cos(a) * 30, world.heightAt(c.x, c.z) + 13, c.z + Math.sin(a) * 30);
+    look.set(c.x, world.heightAt(c.x, c.z) + 1.5, c.z);
+  } else if (mode === 1) {
+    const t = closeTree, a = T * 0.15;
+    cam.position.set(t.x + Math.cos(a) * 8, t.y + 2.5, t.z + Math.sin(a) * 8); look.set(t.x, t.y + 2.5, t.z);
+  } else {
+    const a = T * 0.04; cam.position.set(Math.cos(a) * 260, 120, Math.sin(a) * 260); look.set(0, 0, 0);
+  }
+  cam.lookAt(look);
+  world.sun.target.position.copy(look); world.sun.position.copy(look).add(world.sunOffset);
+  renderer.render(scene, cam);
+  const s = world.stats(), ri = renderer.info.render;
+  document.getElementById('hud').textContent = `FPS ${fps.toFixed(0)}  build ${buildMs.toFixed(0)}ms\nCam: ${MODES[mode]}\nBäume ${s.trees}  Logs ${s.logs}  Holz ${s.wood}\nDraws ${ri.calls}  Tris ${(ri.triangles / 1000).toFixed(0)}k`;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script></body></html>

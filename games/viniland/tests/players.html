@@ -1,0 +1,81 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Viniland – Spieler-Viewer</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<style>body{margin:0;overflow:hidden;background:#000;font:13px monospace}#err{position:fixed;top:0;left:0;right:0;color:#fff;background:#b00c;white-space:pre-wrap;padding:6px;display:none;z-index:9}
+#lbl{position:fixed;bottom:6px;left:0;right:0;text-align:center;color:#fff;text-shadow:1px 1px 0 #000}</style></head><body>
+<div id="err"></div><div id="lbl"></div>
+<script>
+window.onerror=(m,s,l,c,e)=>{const d=document.getElementById('err');d.style.display='block';d.textContent+='ERR: '+m+' @'+l+':'+c+'\n'+(e&&e.stack||'')+'\n';};
+window.addEventListener('unhandledrejection',e=>window.onerror(String(e.reason),'',0,0,e.reason));
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { psxMat, PSX } from '../js/psx.js';
+import { PLAYER_LOOKS, createPlayerModel } from '../js/players.js';
+
+const r = new THREE.WebGLRenderer({ antialias: false });
+r.setPixelRatio(1); r.setSize(innerWidth, innerHeight); r.shadowMap.enabled = true;
+document.body.appendChild(r.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9cc8e8); scene.fog = new THREE.Fog(0x9cc8e8, 14, 40);
+scene.add(new THREE.HemisphereLight(0xfff2dd, 0x4a6a3a, 1.6));
+const sun = new THREE.DirectionalLight(0xffe2b0, 2.2); sun.position.set(4, 8, 5); sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024); Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6 });
+scene.add(sun);
+const ground = new THREE.Mesh(new THREE.CircleGeometry(20, 24).rotateX(-Math.PI / 2), psxMat({ vertexColors: false, color: 0x6fa65a }));
+ground.receiveShadow = true; scene.add(ground);
+
+const states = ['idle + wave', 'gehen + kurve', 'sprinten', 'springen', 'chop (1.5 s)'];
+const N = Math.max(5, PLAYER_LOOKS.length);
+const ps = [];
+for (let i = 0; i < N; i++) {
+  const m = createPlayerModel(i);
+  m.object3D.position.x = (i - (N - 1) / 2) * 1.6;
+  scene.add(m.object3D);
+  ps.push({ m, st: i % 5, y: 0, vy: 0, wait: 0.3, timer: 0 });
+}
+const LBL = document.getElementById('lbl').textContent = ps.map((p, i) => PLAYER_LOOKS[i % PLAYER_LOOKS.length].name + ': ' + states[p.st]).join('  |  ');
+
+const cam = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 100);
+let t = 0, last = performance.now(); window.__f = 0;
+function frame(now) {
+  let el = Math.min(1.0, Math.max(0, (now - last) / 1000)); last = now;
+  // Substeps: in langsamen Headless-Läufen trotzdem korrekt simulieren
+  while (el > 1e-4) { const dt = Math.min(1 / 30, el); el -= dt; t += dt; step(dt); }
+  PSX.uniforms.uTime.value = t;
+  render();
+  requestAnimationFrame(frame);
+}
+function step(dt) {
+  for (const p of ps) {
+    const s = { speed: 0, maxSpeed: 6, grounded: true, vy: 0, turn: 0, landImpact: 0, sprint: false };
+    p.timer += dt;
+    if (p.st === 0) { if (p.timer > 3) { p.timer = 0; p.m.playAction('wave'); } }
+    else if (p.st === 1) { s.speed = 1.9; s.turn = Math.sin(t * 0.7) * 1.2; p.m.object3D.rotation.y += s.turn * dt * 0.0; }
+    else if (p.st === 2) { s.speed = 6.2; s.sprint = true; s.maxSpeed = 6.5; }
+    else if (p.st === 3) {
+      s.speed = 2.5;
+      if (p.y <= 0 && p.vy <= 0) {
+        p.wait -= dt; s.grounded = true;
+        if (p.wait <= 0) { p.vy = 5.2; p.y = 0.001; }
+      }
+      if (p.y > 0) {
+        p.vy -= 14 * dt; p.y += p.vy * dt; s.grounded = false; s.vy = p.vy;
+        if (p.y <= 0) { s.landImpact = Math.min(1, -p.vy / 8); p.y = 0; p.vy = 0; p.wait = 0.55; s.grounded = true; }
+      }
+      p.m.object3D.position.y = p.y;
+    } else if (p.st === 4) { if (p.timer > 1.5) { p.timer = 0; p.m.playAction('chop'); } }
+    p.m.animate(dt, s);
+  }
+}
+function render() {
+  const a = t * 0.25 + 0.5;
+  cam.position.set(Math.sin(a) * 7.5, 2.0, Math.cos(a) * 7.5); cam.lookAt(0, 0.95, 0);
+  r.render(scene, cam); window.__f++; document.getElementById("lbl").textContent = LBL + "   [f" + window.__f + " t" + t.toFixed(2) + "]"; if (window.__f % 10 === 0) document.title = document.getElementById("err").dataset.f = "f" + window.__f + " t" + t.toFixed(2);
+}
+// ?warm=<s> : Zeit vorsimulieren und Bild einfrieren (für Screenshots bestimmter Posen)
+const WARM = parseFloat(new URLSearchParams(location.search).get('warm'));
+if (WARM > 0) { for (let k = 0; k < WARM * 60; k++) { t += 1 / 60; step(1 / 60); } (function still() { render(); requestAnimationFrame(still); })(); }
+else requestAnimationFrame(frame);
+addEventListener('resize', () => { r.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); });
+</script></body></html>
