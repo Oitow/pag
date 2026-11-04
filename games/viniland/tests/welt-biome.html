@@ -1,0 +1,108 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Viniland – Welt: Biome-Überflug</title>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<style>body{margin:0;overflow:hidden;background:#000;font:13px monospace;color:#fff}
+#hud{position:fixed;left:8px;top:8px;background:#000a;padding:6px 8px;border-radius:6px;white-space:pre;z-index:2}
+#err{position:fixed;left:0;right:0;bottom:0;color:#f66;background:#000c;white-space:pre-wrap;padding:6px;display:none;z-index:3}
+#btns{position:fixed;right:8px;top:8px;display:flex;gap:6px;z-index:2}button{font:14px monospace;padding:8px 10px}</style></head><body>
+<div id="hud">…</div><div id="btns"><button id="bp">Pause</button><button id="bg">Tore öffnen</button><button id="bs">Split</button></div><div id="err"></div>
+<script>
+window.onerror = (m, s, l, c, e) => { const d = document.getElementById('err'); d.style.display = 'block'; d.textContent += (e && e.stack || m) + '\n'; };
+window.addEventListener('unhandledrejection', e => window.onerror(String(e.reason), 0, 0, 0, e.reason));
+</script>
+<script type="module">
+// Überflug: Kamera fährt world.route ab.  ?t=0..1 fixe Position · ?warm=<s> Vorlauf · ?split Splitscreen (2. Ansicht +0.25) · ?open Tore offen
+import * as THREE from 'three';
+import { PSX } from '../js/psx.js';
+import { createWorld } from '../js/world.js';
+
+const q = new URLSearchParams(location.search);
+const renderer = new THREE.WebGLRenderer({ antialias: false });
+renderer.setPixelRatio(1);
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.setScissorTest(true);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const cams = [0, 1].map(() => new THREE.PerspectiveCamera(60, 1, 0.1, 1100));
+
+const t0 = performance.now();
+const world = createWorld(scene, { seed: Number(q.get('seed')) || 1337 });
+const buildMs = performance.now() - t0;
+if (q.has('open')) for (const g of world.gates) world.setGateOpen(g.id, true);
+let split = q.has('split'), paused = false;
+document.getElementById('bp').onclick = () => { paused = !paused; };
+document.getElementById('bg').onclick = () => { for (const g of world.gates) world.setGateOpen(g.id, !g.open); };
+document.getElementById('bs').onclick = () => { split = !split; };
+
+const fq = q.get('focus') || '', fd = Number(q.get('fd') || 18);
+const focus = fq === 'wreck' ? world.wreck.pos : fq === 'cathedral' ? world.landmarks.cathedral : fq.startsWith('g') ? world.gates.find(g => g.id === fq)?.pos
+  : fq.startsWith('slot') ? world.bossSlots[+fq.slice(4)]?.pos : fq.startsWith('shrine') ? world.shrines[+fq.slice(6)]?.pos : null;
+// Route nach Bogenlänge
+const R = world.route, acc = [0];
+for (let i = 1; i < R.length; i++) acc.push(acc[i - 1] + R[i].distanceTo(R[i - 1]));
+const total = acc[acc.length - 1];
+const at = (u, out) => {
+  u = ((u % 1) + 1) % 1; const d = u * total; let i = 1; while (i < acc.length - 1 && acc[i] < d) i++;
+  const f = (d - acc[i - 1]) / (acc[i] - acc[i - 1] || 1); out.lerpVectors(R[i - 1], R[i], f); out.y = world.heightAt(out.x, out.z); return out;
+};
+const pos = [new THREE.Vector3(), new THREE.Vector3()], ahead = new THREE.Vector3(), back = new THREE.Vector3();
+let T = Number(q.get('t') ?? 0), fixed = q.has('t');
+const speed = 1 / 240; // ganze Route in 4 min
+
+// Vorlauf (Wetter/Partikel/Shader-Zeit)
+const warm = Number(q.get('warm') || 0);
+for (let s = 0; s < warm; s += 0.05) { world.update(0.05, []); PSX.uniforms.uTime.value += 0.05; }
+
+let last = performance.now(), fps = 0, accT = 0, frames = 0;
+function frame(now) {
+  const raw = Math.min(3, (now - last) / 1000), dt = Math.min(0.05, raw); last = now;
+  accT += raw; frames++; if (accT > 0.5) { fps = frames / accT; accT = 0; frames = 0; }
+  PSX.uniforms.uTime.value += dt;
+  if (!paused && !fixed) T += dt * speed;
+  for (let left = raw; left > 1e-4; left -= 0.05) world.update(Math.min(0.05, left), []);
+  const W = innerWidth, H = innerHeight, views = split ? [[0, 0, W / 2, H], [W / 2, 0, W / 2, H]] : [[0, 0, W, H]];
+  let calls = 0, tris = 0, names = [];
+  views.forEach(([x, y, w, h], k) => {
+    const u = T + k * 0.25, cam = cams[k], p = pos[k];
+    if (focus && k === 0) { // ?focus=wreck|cathedral|g1..g3|slot0..8|shrine0..
+      p.copy(focus); const a = 2.2 + (fixed ? 0 : T * 40);
+      cam.position.set(p.x + Math.cos(a) * fd, p.y + fd * 0.45, p.z + Math.sin(a) * fd); cam.lookAt(p.x, p.y + 2, p.z);
+    } else {
+    at(u, p); at(u + 0.012, ahead); at(u - 0.01, back);
+    const dx = ahead.x - back.x, dz = ahead.z - back.z, l = Math.hypot(dx, dz) || 1;
+    cam.position.set(p.x - dx / l * 9, Math.max(p.y, 0) + 6.5, p.z - dz / l * 9);
+    cam.lookAt(ahead.x, ahead.y + 2.2, ahead.z);
+    }
+    cam.aspect = w / h; cam.updateProjectionMatrix();
+    world.applyAtmosphere(p, fixed ? 0 : dt, k);
+    world.sun.target.position.copy(p); world.sun.position.copy(p).add(world.sunOffset); world.sun.target.updateMatrixWorld();
+    renderer.setViewport(x, y, w, h); renderer.setScissor(x, y, w, h);
+    renderer.render(scene, cam);
+    calls += renderer.info.render.calls; tris += renderer.info.render.triangles;
+    const b = world.biomeBlend(p.x, p.z);
+    names.push(b.map(e => `${e.biome.name} ${(e.w * 100).toFixed(0)}%`).join(' / '));
+  });
+  const s = world.stats();
+  document.getElementById('hud').textContent = `FPS ${fps.toFixed(0)}  build ${buildMs.toFixed(0)}ms  t=${(((T % 1) + 1) % 1).toFixed(3)}\n` +
+    names.map((n, i) => `Ansicht ${i + 1}: ${n}`).join('\n') +
+    `\nDraws ${calls}  Tris ${(tris / 1000).toFixed(0)}k (gesamt, inkl. Schatten)\nBäume ${s.trees}  Bosse ${world.bossSlots.length}  Feuer ${world.shrines.length}  Tore ${world.gates.map(g => g.id + (g.open ? ' offen' : ' zu')).join(', ')}`;
+  requestAnimationFrame(frame);
+}
+renderer.info.autoReset = true;
+requestAnimationFrame(frame);
+window.__world = world;
+// Selbsttest Kollision: über jedes Tor laufen (zu → blockiert, offen → durch) und über einen Grat
+function walk(from, dir, n = 120) { const p = from.clone(); for (let i = 0; i < n; i++) { p.addScaledVector(dir, 0.12); p.y = world.groundAt(p.x, p.z, p.y); world.collide(p, 0.35, 1.75); } return p; }
+const res = [];
+for (const g of world.gates) {
+  const dir = new THREE.Vector3(Math.sin(g.yaw), 0, Math.cos(g.yaw)), start = g.pos.clone().addScaledVector(dir, -6);
+  const wasOpen = g.open; g.open = false; const a = walk(start, dir).sub(g.pos).dot(dir);
+  g.open = true; const b = walk(start, dir).sub(g.pos).dot(dir); g.open = wasOpen;
+  res.push(`${g.id}: zu ${a < 0 ? 'blockiert' : 'DURCH!'} / offen ${b > 3 ? 'durch' : 'BLOCKIERT!'}`);
+  for (const k of [0.6, 1.25]) { const side = g.pos.clone().multiplyScalar(k); side.y = world.heightAt(side.x, side.z); const r = walk(side.clone().addScaledVector(dir, -25), dir, 420).sub(side).dot(dir);
+  res.push(`Grat bei ${g.id} r×${k}: ${r < 20 ? 'blockiert' : 'DURCH!'} (${r.toFixed(1)})`); }
+}
+document.getElementById('err').style.display = q.has('selftest') ? 'block' : 'none';
+if (q.has('selftest')) document.getElementById('err').textContent = res.join('\n') + `\nSlots: ${world.bossSlots.map(s => s.biome[0] + s.index + (s.key ? '*' : '') + ' h' + s.pos.y.toFixed(1)).join(' ')}\nWrack ${world.wreck.pos.toArray().map(v => v.toFixed(0))} Spawn ${world.spawnPoints[0].toArray().map(v => v.toFixed(0))}`;
+</script></body></html>

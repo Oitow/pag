@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { patchPSX } from './psx.js';
 import { clamp } from './kit.js';
+import { OPTIONS } from './options.js';
 
 const MAX_P = 640, MAX_STAR = 256, MAX_NUM = 28, MAX_PROJ = 32, MAX_DBG = 24;
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _m = new THREE.Matrix4(), _q = new THREE.Quaternion(),
@@ -21,12 +22,17 @@ const FX_COLORS = {
   blood: [0xffffff, 0xfff6c0, 0xffe0f0],
   heal: [0x8aff9a, 0xffffff, 0xd0ffb0],
   wood: [0xc89a5a, 0x8a5a32, 0xe8c890],
+  holy: [0xfff2b0, 0xffffff, 0xffd870, 0xfff8e0],
+  shock: [0xb8e0ff, 0xffffff, 0x6aa8ff, 0xfff8a0],
+  spore: [0x8aff5a, 0xd0ff6a, 0x5ac870, 0xe070ff],
+  soul: [0x6af0d0, 0xc8fff0, 0x3a8aa8, 0xffffff],
 };
 // [Geschwindigkeit, Schwerkraft, Lebensdauer, Größe, Luftwiderstand]
 const FX_PHYS = {
   spark: [6, 14, 0.4, 0.07, 2], fire: [2.6, -3.5, 0.7, 0.13, 2.5], frost: [4, 6, 0.75, 0.1, 2.2],
   dark: [2.4, -2, 0.85, 0.12, 2], dust: [2.2, 3, 0.8, 0.14, 3.5], blood: [4.5, 9, 0.6, 0.11, 1.8],
   heal: [1.5, -2.5, 0.9, 0.09, 1.5], wood: [4, 14, 0.8, 0.09, 1.5],
+  holy: [2.2, -2, 0.8, 0.1, 2], shock: [7, 4, 0.3, 0.07, 3], spore: [1.2, -0.6, 1.3, 0.13, 1.8], soul: [2, -3, 0.9, 0.1, 2],
 };
 
 // ---------- Telegraph-Shader (auf das Gelände drapiert) ----------
@@ -123,8 +129,11 @@ export class Combat {
     this.damageNumber(top, Math.round(hit.damage), toPlayer ? 0xff6050 : big ? 0xffb030 : 0xfff4d0);
     const fxk = o.onHitFx || o.fx || 'spark';
     _v.copy(src); this.fx(fxk, _v, big ? 16 : 9); this.fx('blood', _v, big ? 7 : 4);
-    if (o.kind === 'melee' || o.kind === 'slam') this.hitstop(toPlayer ? 0.07 : big ? 0.1 : 0.055);
-    this.shake(toPlayer ? 0.6 : big ? 0.55 : 0.2, a.pos);
+    // Hitstop/Shake: Hitbox darf eigene Werte vorgeben (Waffengewicht), sonst Standard
+    if (o.hitstop != null) { if (o.hitstop > 0) this.hitstop(o.hitstop * (big ? 1.3 : 1)); }
+    else if (o.kind === 'melee' || o.kind === 'slam') this.hitstop(toPlayer ? 0.07 : big ? 0.1 : 0.055);
+    const sh = o.shake != null ? o.shake * (big ? 1.4 : 1) : toPlayer ? 0.6 : big ? 0.55 : 0.2;
+    if (sh > 0) this.shake(sh, a.pos);
     if (o.onConnect) o.onConnect(a, hit);
     return true;
   }
@@ -133,7 +142,7 @@ export class Combat {
   hitbox(o) {
     const h = { owner: o.owner || null, team: o.team || o.owner?.team || 'enemy', radius: o.radius ?? 0.6, duration: o.duration ?? 0.1,
       damage: o.damage ?? 10, knockback: o.knockback ?? 4, stagger: o.stagger ?? 0, at: o.at || (() => o.pos), kind: o.kind || 'melee',
-      onHitFx: o.onHitFx, onConnect: o.onConnect, t: 0, hitSet: new Set() };
+      onHitFx: o.onHitFx, onConnect: o.onConnect, hitstop: o.hitstop, shake: o.shake, t: 0, hitSet: new Set() };
     this.hitboxes.push(h);
     return h;
   }
@@ -144,7 +153,7 @@ export class Combat {
     if (!slot) return null;
     slot.active = true;
     slot.o = { owner: o.owner || null, team: o.team || o.owner?.team || 'enemy', damage: o.damage ?? 12, kind: 'spell',
-      knockback: o.knockback ?? 3, stagger: o.stagger ?? 0.2, onHitFx: o.fx || 'fire', onConnect: o.onConnect };
+      knockback: o.knockback ?? 3, stagger: o.stagger ?? 0.2, onHitFx: o.fx || 'fire', onConnect: o.onConnect, shake: o.shake, hitstop: o.hitstop };
     slot.pos.copy(o.pos); slot.vel.copy(o.vel);
     slot.radius = o.radius ?? 0.3; slot.life = o.life ?? 3; slot.gravity = o.gravity ?? 0;
     slot.fx = o.fx || 'fire'; slot.homing = o.homing || null; slot.homingRate = o.homingRate ?? 3.5;
@@ -320,6 +329,7 @@ export class Combat {
     this._numNext = 0;
   }
   damageNumber(pos, value, color = 0xffffff) {
+    if (OPTIONS.damageNumbers === false) return;
     const n = this._nums[this._numNext]; this._numNext = (this._numNext + 1) % MAX_NUM;
     const c = n.ctx; c.clearRect(0, 0, 128, 64);
     c.font = 'bold 40px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';

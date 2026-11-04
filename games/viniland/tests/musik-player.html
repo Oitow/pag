@@ -1,0 +1,76 @@
+<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Viniland – Musik &amp; Klang</title>
+<style>
+body{margin:0;background:#0c0b0f;color:#cfc6b8;font:14px Georgia,serif;padding:12px}
+h1{font-size:20px;color:#e0b768;letter-spacing:2px;margin:4px 0 10px;font-weight:normal}
+h2{font-size:13px;color:#8d8577;text-transform:uppercase;letter-spacing:2px;margin:14px 0 6px;font-weight:normal;border-bottom:1px solid #2a2630}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+button{background:#1b1820;color:#d8cfbf;border:1px solid #3a3340;border-radius:4px;padding:9px 11px;font:13px Georgia,serif;cursor:pointer}
+button:hover{border-color:#a8863e}button.on{background:#3a2a14;border-color:#e0b768;color:#ffe2a0}
+#start{background:#4a1f12;border-color:#c0603a;font-size:15px;padding:12px 18px}
+#stat,#self{white-space:pre;font:12px monospace;color:#9fb08f;background:#111016;padding:8px;border-radius:4px;margin-top:8px}
+#err{position:fixed;left:0;right:0;bottom:0;color:#f66;background:#000d;white-space:pre-wrap;padding:6px;display:none;font:12px monospace}
+input[type=range]{width:220px;accent-color:#c08a3a}label{margin-right:14px}
+</style></head><body>
+<h1>VINILAND · Musik &amp; Klang</h1>
+<button id="start">▶ Audio starten (Geste)</button>
+<h2>Erkundung (Biom)</h2><div class="row" id="biomes"></div>
+<h2>Kampf</h2><div class="row" id="combat"></div>
+<div style="margin-top:8px"><label>Intensität <input id="int" type="range" min="0" max="1" step="0.01" value="0.5"> <span id="intv">0.50</span></label></div>
+<div style="margin-top:6px"><label>Musik <input id="vm" type="range" min="0" max="1" step="0.01" value="0.6"></label><label>Effekte <input id="vs" type="range" min="0" max="1" step="0.01" value="0.8"></label></div>
+<h2>Stings</h2><div class="row" id="stings"></div>
+<h2>Effekte</h2><div class="row" id="sfx"></div>
+<div id="stat">Audio noch nicht gestartet.</div>
+<div id="self"></div>
+<div id="err"></div>
+<script>
+window.onerror = (m, s, l, c, e) => { const d = document.getElementById('err'); d.style.display = 'block'; d.textContent += (e && e.stack || m) + '\n'; };
+window.addEventListener('unhandledrejection', e => window.onerror(String(e.reason), 0, 0, 0, e.reason));
+</script>
+<script type="module">
+import { Audio, renderOffline } from '../js/audio.js';
+const $ = id => document.getElementById(id);
+const BIOMES = { kueste: 'Graue Küste', duesterwald: 'Düsterwald', pilzhain: 'Leuchtpilzhain', aschenoede: 'Aschenöde', frostgipfel: 'Frostgipfel' };
+const STINGS = { victory: 'Sieg', death: 'Tod', discovery: 'Entdeckung', levelup: 'Stufenaufstieg' };
+const SFXL = { swing: 'Schwung', hit: 'Treffer', hitHeavy: 'Schwerer Treffer', roll: 'Rolle', block: 'Block', cast: 'Zauber', fire: 'Feuer', frost: 'Frost',
+  heal: 'Heilung', pickup: 'Aufheben', coin: 'Münze', roar: 'Brüllen', step: 'Schritt', gate: 'Nebeltor', ui: 'UI', uiConfirm: 'UI Bestätigen',
+  lightning: 'Blitz', explode: 'Explosion', drink: 'Trinken', levelup: 'Level-Up' };
+const state = { biome: 'kueste', combat: null, intensity: 0.5 };
+const btn = (parent, label, fn) => { const b = document.createElement('button'); b.textContent = label; b.onclick = () => { Audio.init(); fn(b); }; $(parent).appendChild(b); return b; };
+const mark = (parent, b) => { for (const x of $(parent).children) x.classList.toggle('on', x === b); };
+const apply = () => Audio.setMusic(state);
+for (const [id, n] of Object.entries(BIOMES)) btn('biomes', n, b => { state.biome = id; mark('biomes', b); apply(); });
+btn('combat', 'Kein Kampf', b => { state.combat = null; mark('combat', b); apply(); });
+btn('combat', 'Bosskampf', b => { state.combat = 'boss'; mark('combat', b); apply(); });
+btn('combat', 'Siegelträger', b => { state.combat = 'key'; mark('combat', b); apply(); });
+btn('combat', 'Musik aus', b => { mark('combat', b); Audio.stopMusic(); });
+for (const [id, n] of Object.entries(STINGS)) btn('stings', n, () => Audio.sting(id));
+for (const id of Audio.SFX_NAMES) btn('sfx', SFXL[id] || id, () => Audio.sfx(id, { pan: Math.random() * 1.2 - 0.6 }));
+$('int').oninput = e => { state.intensity = +e.target.value; $('intv').textContent = state.intensity.toFixed(2); if (state.combat) apply(); };
+$('vm').oninput = e => Audio.setVolume({ music: +e.target.value });
+$('vs').oninput = e => Audio.setVolume({ sfx: +e.target.value });
+$('start').onclick = () => { Audio.init(); apply(); mark('biomes', $('biomes').children[0]); };
+setInterval(() => { if (Audio.ready) $('stat').textContent = `Kontext: ${Audio.ctx.state}  t=${Audio.ctx.currentTime.toFixed(1)} s  Biom=${state.biome}  Kampf=${state.combat || '–'}  Intensität=${state.intensity.toFixed(2)}`; }, 250);
+
+const db = x => (20 * Math.log10(Math.max(1e-9, x))).toFixed(1) + ' dB';
+if (new URLSearchParams(location.search).has('selftest')) {
+  $('self').textContent = 'Selbsttest läuft (OfflineAudioContext) …';
+  const cases = [
+    ['Boss Düsterwald, Int 0.9', { biome: 'duesterwald', combat: 'boss', intensity: 0.9, seconds: 4 }],
+    ['Siegelträger Küste, Int 1', { biome: 'kueste', combat: 'key', intensity: 1, seconds: 4 }],
+    ['Erkundung Pilzhain', { biome: 'pilzhain', seconds: 4 }],
+    ['Erkundung Küste', { biome: 'kueste', seconds: 4 }],
+    ['Alle SFX + Stings (über Boss)', { biome: 'aschenoede', combat: 'boss', intensity: 0.6, seconds: 8, sfx: Audio.SFX_NAMES, stings: ['victory', 'levelup'] }],
+  ];
+  const lines = [];
+  for (const [name, o] of cases) {
+    const t0 = performance.now();
+    const r = await renderOffline(o);
+    const ok = r.rms > 0.005 && r.peak < 1.0;
+    lines.push(`${ok ? 'OK  ' : 'FEHLER'} ${name.padEnd(32)} RMS ${db(r.rms).padStart(9)}  Peak ${db(r.peak).padStart(9)}  (${(performance.now() - t0).toFixed(0)} ms)`);
+    $('self').textContent = 'Selbsttest:\n' + lines.join('\n');
+  }
+  $('self').textContent += '\nfertig.';
+}
+</script>
+</body></html>

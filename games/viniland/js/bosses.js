@@ -4,8 +4,8 @@
 //   stun (Stagger-Leiste voll, 2 s), return (alle weg → zurück nach home, Heilung), dead (Kollaps + Auflösen).
 // Angriffe sind Generatoren: `yield sek` wartet, dazwischen setzen sie Pose-Ziele, Antrieb und rufen combat.* auf.
 import * as THREE from 'three';
-import { psxMat } from './psx.js';
-import { MeshBuilder, clamp, lerp, damp } from './kit.js';
+import { psxMat, patchPSX } from './psx.js';
+import { MeshBuilder as KitMB, clamp, lerp, damp } from './kit.js';
 
 const TAU = Math.PI * 2, PI = Math.PI, V3 = THREE.Vector3;
 const UP = new V3(0, 1, 0);
@@ -13,21 +13,57 @@ const _v = new V3(), _w = new V3(), _q = new THREE.Quaternion(), _e = new THREE.
 
 export const BOSS_TYPES = ['dogo', 'morra', 'kohlherz'];
 export const BOSS_INFO = {
-  dogo:     { name: 'Blanco', title: 'der Weiße Wächter', hp: 900, color: 0xf4efe8 },
-  morra:    { name: 'Morra', title: 'die Glutlaterne', hp: 750, color: 0xff7a2a },
-  kohlherz: { name: 'Kohlherz', title: 'der Grollende Koloss', hp: 1600, color: 0xff4a10 },
+  dogo:     { name: 'Blanco', title: 'der Weiße Wächter', hp: 900, color: 0xf4efe8, biome: 'kueste', key: false, loot: 'boss_dogo' },
+  morra:    { name: 'Morra', title: 'die Glutlaterne', hp: 750, color: 0xff7a2a, biome: 'kueste', key: false, loot: 'boss_morra' },
+  kohlherz: { name: 'Kohlherz', title: 'der Grollende Koloss', hp: 1600, color: 0xff4a10, biome: 'kueste', key: true, loot: 'boss_kohlherz' },
 };
 
-const angDiff = (a, b) => { let d = (b - a) % TAU; if (d > PI) d -= TAU; if (d < -PI) d += TAU; return d; };
-const smooth = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
-function grp(parent, x = 0, y = 0, z = 0) { const g = new THREE.Group(); g.position.set(x, y, z); parent.add(g); return g; }
+export const angDiff = (a, b) => { let d = (b - a) % TAU; if (d > PI) d -= TAU; if (d < -PI) d += TAU; return d; };
+export const smooth = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
+
+// ---------------------------------------------------------------- Geometrie-Cache (pro Typ + Tönung)
+// Während def.build() läuft, ist BUILD gesetzt: beim ersten Bau werden die verschmolzenen Geometrien gesammelt
+// (optional umgefärbt), bei jedem weiteren Exemplar desselben Typs werden sie in derselben Reihenfolge wiederverwendet
+// (Primitive werden dann gar nicht erst erzeugt). Viele Minions = eine Geometrie pro Teil.
+const GEO_CACHE = new Map();
+let BUILD = null;
+const _tc = new THREE.Color();
+function tintGeo(g, hex, amt = 0.72) {
+  const c = g.attributes.color.array; _tc.set(hex);
+  const tl = Math.max(0.05, _tc.r * 0.3 + _tc.g * 0.59 + _tc.b * 0.11);
+  for (let i = 0; i < c.length; i += 3) {
+    const l = c[i] * 0.3 + c[i + 1] * 0.59 + c[i + 2] * 0.11, k = l / tl;
+    c[i] = lerp(c[i], Math.min(1, _tc.r * k), amt); c[i + 1] = lerp(c[i + 1], Math.min(1, _tc.g * k), amt); c[i + 2] = lerp(c[i + 2], Math.min(1, _tc.b * k), amt);
+  }
+}
+/** MeshBuilder mit Cache-Unterstützung (für alle Boss-/Gegner-Modelle verwenden). */
+export class MeshBuilder extends KitMB {
+  add(g, c, t) { return BUILD && BUILD.replay ? this : super.add(g, c, t); }
+  box(...a) { return BUILD && BUILD.replay ? this : super.box(...a); }
+  sphere(...a) { return BUILD && BUILD.replay ? this : super.sphere(...a); }
+  cyl(...a) { return BUILD && BUILD.replay ? this : super.cyl(...a); }
+  cone(...a) { return BUILD && BUILD.replay ? this : super.cone(...a); }
+  ico(...a) { return BUILD && BUILD.replay ? this : super.ico(...a); }
+  capsule(...a) { return BUILD && BUILD.replay ? this : super.capsule(...a); }
+  geometry() {
+    if (!BUILD) return super.geometry();
+    if (BUILD.replay) return BUILD.geos[BUILD.i++];
+    const g = super.geometry();
+    if (BUILD.tint != null) tintGeo(g, BUILD.tint, BUILD.tintAmt);
+    g.userData.shared = true; BUILD.geos.push(g); return g;
+  }
+}
+/** Unbeleuchtetes Vertex-Farb-Material (Biolumineszenz, mehrfarbig). Helligkeit über .color. */
+export function lumMat() { return patchPSX(new THREE.MeshBasicMaterial({ vertexColors: true, fog: true })); }
+
+export function grp(parent, x = 0, y = 0, z = 0) { const g = new THREE.Group(); g.position.set(x, y, z); parent.add(g); return g; }
 /** Zylinder von p1 nach p2 (Arrays [x,y,z]) in einen MeshBuilder. */
-function seg(b, p1, p2, r1, r2, color, n = 6) {
+export function seg(b, p1, p2, r1, r2, color, n = 6) {
   _v.set(p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]); const L = _v.length(); _v.normalize();
   _q.setFromUnitVectors(UP, _v); _e.setFromQuaternion(_q);
   b.cyl(r2, r1, L, color, { x: (p1[0] + p2[0]) / 2, y: (p1[1] + p2[1]) / 2, z: (p1[2] + p2[2]) / 2, rx: _e.x, ry: _e.y, rz: _e.z }, n);
 }
-function addLeg(B, parent, o) {
+export function addLeg(B, parent, o) {
   const { x, y, z, l1, l2, r, c1, c2, fc } = o;
   const hip = grp(parent, x, y, z);
   const b1 = new MeshBuilder();
@@ -47,7 +83,7 @@ function addLeg(B, parent, o) {
 }
 
 // ---------------------------------------------------------------- Partikel (eigene, Weltraum, vorallokiert)
-class Embers {
+export class Embers {
   constructor(scene, n, color, size) {
     this.n = n; this.i = 0; this.scene = scene;
     this.p = new Float32Array(n * 3); this.v = new Float32Array(n * 3); this.c = new Float32Array(n * 3);
@@ -84,20 +120,29 @@ class Embers {
 
 // ---------------------------------------------------------------- Boss-Basis
 let UID = 0;
-class Boss {
+export class Boss {
   constructor(type, def, o) {
     this.type = type; this.def = def; this.scene = o.scene; this.world = o.world; this.combat = o.combat;
-    this.info = BOSS_INFO[type];
+    const va = o.variant || {}, S = va.scale ?? 1;
+    this.variant = va; this.S = S; this.minion = !!va.minion;
+    this.dmgMul = va.dmgMul ?? 1; this.enemyId = null; this.onDeath = null;
+    this.info = o.info || BOSS_INFO[type];
+    def = this.def = variantDef(def, va);
     this.home = (o.home || new V3()).clone();
     this.pos = this.home.clone(); this.pos.y = this.world.heightAt(this.pos.x, this.pos.z);
     this.yaw = o.yaw ?? def.yaw0 ?? 0;
     this.object3D = new THREE.Group(); this.object3D.name = 'boss_' + type;
+    this.object3D.scale.setScalar(S);
     this.tilt = grp(this.object3D); this.mdl = grp(this.tilt);
     this.mat = psxMat({ noCache: true });
-    this.glowMat = psxMat({ noCache: true, vertexColors: false, color: 0x000000, emissive: def.glow });
+    this.glowMat = psxMat({ noCache: true, vertexColors: false, color: 0x000000, emissive: va.glow ?? def.glow });
+    this.lumMat = lumMat();
     this.pc = {}; this.pt = {}; this.pr = {};
     for (const k of def.poseKeys) { this.pc[k] = 0; this.pt[k] = 0; this.pr[k] = 8; }
-    this.R = def.build(this);
+    const ck = type + '|' + (va.tint ?? '') + '|' + (va.tintAmt ?? '');
+    const cached = GEO_CACHE.get(ck);
+    BUILD = cached ? { replay: true, geos: cached, i: 0 } : { replay: false, geos: [], tint: va.tint ?? null, tintAmt: va.tintAmt ?? 0.72 };
+    try { this.R = def.build(this); } finally { if (!cached) GEO_CACHE.set(ck, BUILD.geos); BUILD = null; }
     // Zustände
     this.state = 'sleep'; this.awake = false; this.phase = 1; this.T = Math.random() * 10;
     this.gen = null; this.scriptKind = ''; this.wait = 0; this.tickFn = null;
@@ -110,11 +155,13 @@ class Boss {
     this._fx = Array.from({ length: 16 }, () => new V3()); this._fxi = 0; this._cand = [];
     this.cds = {}; for (const a of def.attacks) this.cds[a.id] = Math.random() * a.cd * 0.5;
     this.players = [];
-    this.embers = new Embers(this.scene, def.emberN || 48, def.emberColor, def.emberSize || 0.14);
+    this.embers = new Embers(this.scene, def.emberN || 48, va.emberColor ?? def.emberColor, (def.emberSize || 0.14) * Math.max(0.6, S));
+    this._lodF = (Math.random() * 4) | 0; this._lodAcc = 0;
     const self = this;
     this.actor = {
-      id: `boss_${type}_${++UID}`, team: 'enemy', pos: this.pos, radius: def.radius, height: def.height,
-      hp: this.info.hp, maxHp: this.info.hp, alive: true, isBoss: true, name: `${this.info.name}, ${this.info.title}`,
+      id: `${this.minion ? 'mob' : 'boss'}_${type}_${++UID}`, team: 'enemy', pos: this.pos, radius: def.radius, height: def.height,
+      hp: Math.round(this.info.hp * (va.hpMul ?? 1)), maxHp: Math.round(this.info.hp * (va.hpMul ?? 1)), alive: true, isBoss: !this.minion,
+      name: va.name ?? `${this.info.name}, ${this.info.title}`, minion: this.minion,
       object3D: this.object3D, stagger: 0,
       invuln: () => self.state === 'dead',
       onHit: h => self.onHit(h),
@@ -131,13 +178,26 @@ class Boss {
   boneAt(obj, x = 0, y = 0, z = 0) { const v = new V3(); return () => { v.set(x, y, z); return obj.localToWorld(v); }; }
   worldOf(obj, x = 0, y = 0, z = 0, out = new V3()) { out.set(x, y, z); return obj.localToWorld(out); }
   fwd(out = this._fwd) { return out.set(Math.sin(this.yaw), 0, Math.cos(this.yaw)); }
-  ahead(d, out = new V3()) { this.fwd(_w); return out.copy(this.pos).addScaledVector(_w, d); }
+  ahead(d, out = new V3()) { this.fwd(_w); return out.copy(this.pos).addScaledVector(_w, d * this.S); }
   pose(o, rate = 8) { for (const k in o) { this.pt[k] = o[k]; this.pr[k] = rate; } }
   poseReset(rate = 6) { for (const k in this.pt) { this.pt[k] = 0; this.pr[k] = rate; } }
   angTo(p) { return Math.atan2(p.x - this.pos.x, p.z - this.pos.z); }
   distTo(p) { const dx = p.x - this.pos.x, dz = p.z - this.pos.z; return Math.sqrt(dx * dx + dz * dz); }
-  hit(o) { return this.combat.hitbox({ owner: this.actor, team: 'enemy', knockback: 4, stagger: 0.3, kind: 'melee', ...o }); }
-  tele(o) { return this.combat.telegraph(o); }
+  // Hitbox/Telegraph/Projektil skalieren automatisch mit variant.scale (Radius, Länge) und dmgMul (Schaden).
+  hit(o) {
+    const S = this.S;
+    return this.combat.hitbox({ owner: this.actor, team: 'enemy', knockback: 4, stagger: 0.3, kind: 'melee', ...o,
+      radius: (o.radius ?? 0.6) * S, damage: Math.round((o.damage ?? 10) * this.dmgMul), knockback: (o.knockback ?? 4) * Math.sqrt(S) });
+  }
+  tele(o) {
+    const S = this.S; if (S === 1) return this.combat.telegraph(o);
+    return this.combat.telegraph({ ...o, radius: (o.radius ?? 3) * S, length: o.length != null ? o.length * S : undefined });
+  }
+  proj(o) {
+    const S = this.S;
+    return this.combat.projectile({ owner: this.actor, team: 'enemy', ...o, radius: (o.radius ?? 0.3) * Math.max(0.6, S),
+      damage: Math.round((o.damage ?? 10) * this.dmgMul), explodeRadius: o.explodeRadius ? o.explodeRadius * S : 0 });
+  }
   alivePlayers(out, maxD = 1e9) {
     out.length = 0;
     for (const p of this.players) if (p && p.alive !== false && (!p.actor || p.actor.alive !== false) && this.distTo(p.pos) < maxD) out.push(p);
@@ -159,8 +219,9 @@ class Boss {
   }
   die() {
     if (this.state === 'dead') return;
-    this.endScript(); this.state = 'dead'; this.deadT = 0; this.awake = false; this.combat.shake(0.6);
+    this.endScript(); this.state = 'dead'; this.deadT = 0; this.awake = false; this.combat.shake(this.minion ? 0.2 : 0.6);
     this.flash = 1; this.flashRed = 1;
+    if (this.onDeath) { try { this.onDeath(this); } catch (e) { console.error(e); } }
   }
   onHit(h) {
     if (this.state === 'dead' || this.gone) return;
@@ -220,14 +281,22 @@ class Boss {
   place() {
     const W = this.world, d = this.def;
     this.pos.y = W.heightAt(this.pos.x, this.pos.z);
-    this.object3D.position.set(this.pos.x, this.pos.y + this.leapY, this.pos.z);
+    this.object3D.position.set(this.pos.x, this.pos.y + this.leapY * this.S, this.pos.z);
     this.object3D.rotation.y = this.yaw;
   }
 
   // ---- Haupt-Update
   update(dt, players) {
     if (this.gone) return;
-    this.players = players || this.players; this.T += dt;
+    this.players = players || this.players;
+    if (this.minion) { // LOD: weit weg (> 40 m) und schlafend → nur jeden 4. Frame (mit gesammeltem dt)
+      let nd = 1e9;
+      for (const p of this.players) if (p && p.pos) { const dx = p.pos.x - this.pos.x, dz = p.pos.z - this.pos.z, q = dx * dx + dz * dz; if (q < nd) nd = q; }
+      this._lodAcc += dt;
+      if (nd > 1600 && (this.state === 'sleep' || this.state === 'return')) { if ((++this._lodF & 3) !== 0) return; }
+      dt = Math.min(0.25, this._lodAcc); this._lodAcc = 0;
+    }
+    this.T += dt;
     const a = this.actor, d = this.def;
     if (this.state !== 'dead' && a.hp <= 0) this.die();
     for (const k in this.cds) this.cds[k] -= dt;
@@ -244,7 +313,7 @@ class Boss {
       case 'sleep': {
         this.awake = false;
         if (this.provoked || this.alivePlayers(this._cand, 1e9).some(p => p.pos.distanceTo(this.home) < d.wakeR)) {
-          this.provoked = false; this.runScript(d.wake(this), 'wake');
+          this.provoked = false; this.runScript(this.minion ? minionWake(this) : d.wake(this), 'wake');
         }
         break;
       }
@@ -264,8 +333,8 @@ class Boss {
           this.wait += (r.value || 0) / (this.phase === 2 ? d.p2tempo : 1);
         }
         this.fwd(); this._side.set(this._fwd.z, 0, -this._fwd.x);
-        tvx = this._fwd.x * this.drive + this._side.x * this.driveSide;
-        tvz = this._fwd.z * this.drive + this._side.z * this.driveSide; direct = true;
+        tvx = (this._fwd.x * this.drive + this._side.x * this.driveSide) * this.S;
+        tvz = (this._fwd.z * this.drive + this._side.z * this.driveSide) * this.S; direct = true;
         break;
       }
       case 'recover': {
@@ -282,7 +351,7 @@ class Boss {
       }
       case 'chase': {
         this.awake = true;
-        if (this.phase === 1 && a.hp <= a.maxHp * 0.5) {
+        if (this.phase === 1 && !this.minion && a.hp <= a.maxHp * 0.5) {
           this.phase = 2; this.flashRed = 1; this.flash = 1;
           if (d.enrage) { this.runScript(d.enrage(this), 'enrage'); break; }
         }
@@ -383,10 +452,35 @@ class Boss {
   dispose() {
     this.combat.removeActor(this.actor);
     this.scene.remove(this.object3D); this.scene.remove(this.embers.points);
-    this.object3D.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+    this.object3D.traverse(o => { if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose(); });
     this.embers.points.geometry.dispose(); this.embers.points.material.dispose();
-    this.mat.dispose(); this.glowMat.dispose(); this.gone = true;
+    this.mat.dispose(); this.glowMat.dispose(); this.lumMat.dispose(); this.gone = true;
   }
+}
+
+/** Def-Kopie für Varianten (Prototyp-Vererbung: Funktionen bleiben, Zahlen werden skaliert). */
+function variantDef(def, va) {
+  const S = va.scale ?? 1, sp = va.speedMul ?? 1;
+  if (S === 1 && sp === 1 && !va.minion && !va.attacks) return def;
+  const d = Object.create(def);
+  d.radius = def.radius * S; d.height = def.height * S; d.keep = [def.keep[0] * S, def.keep[1] * S];
+  d.walk = def.walk * sp; d.run = def.run * sp; d.turn = def.turn * Math.sqrt(sp);
+  d.tiltL = def.tiltL * S; d.tiltW = def.tiltW * S;
+  let atk = def.attacks;
+  if (va.attacks) atk = atk.filter(a => va.attacks.includes(a.id));
+  else if (va.minion) atk = (def.minionAttacks ? atk.filter(a => def.minionAttacks.includes(a.id)) : atk.filter(a => !a.p2).slice(0, 2));
+  if (!atk.length) atk = def.attacks.filter(a => !a.p2).slice(0, 1);
+  d.attacks = atk.map(a => ({ ...a, min: a.min * S, max: a.max * S }));
+  if (va.minion) {
+    d.wakeR = va.wakeR ?? 14; d.leash = va.leash ?? 30; d.stgMax = def.stgMax * 0.5; d.kbMul = Math.min(1, def.kbMul * 3 + 0.2);
+    d.wakeRate = 4; d.deathDur = Math.min(1.2, def.deathDur || 1.6); d.emberN = 12; d.gap = def.gap * 1.4;
+    d.enrage = null;
+  }
+  return d;
+}
+function* minionWake(b) {
+  b.combat.fx('dust', b.fxPos(b.pos.x, b.pos.y + 0.3, b.pos.z), 6);
+  yield 0.45;
 }
 
 // ================================================================ 1) DOGO – Blanco, der Weiße Wächter
@@ -535,7 +629,7 @@ const DOGO = {
       b.track = 4; b.pose({ crouch: 1, head: 0.25 }, 5);
       yield 0.35;
       b.track = 0;                                           // Richtung festlegen → faires Ausweichen
-      const L = clamp(b.distTo(t.pos) + 1.5, 6, 13), dir = b.fwd(new V3());
+      const L = clamp(b.distTo(t.pos) + 1.5, 6 * b.S, 13 * b.S) / b.S, dir = b.fwd(new V3());
       b.tele({ pos: b.pos.clone(), radius: 1.3, duration: 0.6, shape: 'line', dir, length: L + 1 });
       yield 0.6;
       const dur = 0.55; let tt = 0;
@@ -713,7 +807,7 @@ const MORRA = {
         const dir = new V3(t.pos.x - L.x, t.pos.y + 1 - L.y, t.pos.z - L.z).normalize();
         for (let i = 0; i < n; i++) {
           const vel = dir.clone().applyAxisAngle(UP, (i - (n - 1) / 2) * 0.2).multiplyScalar(12);
-          b.combat.projectile({ owner: b.actor, team: 'enemy', pos: L.clone(), vel, radius: 0.32, damage: 10, life: 2.6, fx: 'fire', knockback: 4, stagger: 0.25 });
+          b.proj({ pos: L.clone(), vel, radius: 0.32, damage: 10, life: 2.6, fx: 'fire', knockback: 4, stagger: 0.25 });
         }
         b.combat.fx('fire', L, 12); b.pose({ staff: 0.6 }, 20);
         yield 0.2; b.pose({ staff: 1 }, 10); yield 0.35;
@@ -771,7 +865,7 @@ function* souls(b, t0) {
   for (let i = 0; i < 4; i++) {
     const p = b.R.orbs[i].getWorldPosition(new V3());
     const vel = new V3(p.x - b.pos.x, 1.5, p.z - b.pos.z).normalize().multiplyScalar(5);
-    b.combat.projectile({ owner: b.actor, team: 'enemy', pos: p, vel, radius: 0.38, damage: 12, life: 5, fx: 'dark', homing: t ? t.actor : null, knockback: 5, stagger: 0.35 });
+    b.proj({ pos: p, vel, radius: 0.38, damage: 12, life: 5, fx: 'dark', homing: t ? t.actor : null, knockback: 5, stagger: 0.35 });
   }
   b.pose({ orbs: 0, claw: 0, staff: 0 }, 30);
   yield 0.5;
@@ -913,7 +1007,7 @@ const KOHL = {
     b.ventT = 6.5;
     for (let i = 0; i < 2; i++) {
       const p = b.worldOf(b.R.vents[i], 0, 0.7, 0);
-      b.combat.projectile({ owner: b.actor, team: 'enemy', pos: p, vel: new V3((i - 0.5) * 4, 6, 0), radius: 0.35, damage: 9, life: 4.5, fx: 'fire',
+      b.proj({ pos: p, vel: new V3((i - 0.5) * 4, 6, 0), radius: 0.35, damage: 9, life: 4.5, fx: 'fire',
         homing: t.actor, knockback: 3, stagger: 0.2 });
       b.combat.fx('fire', p, 8);
     }
@@ -969,7 +1063,7 @@ const KOHL = {
       const H = b.R.boulder.getWorldPosition(new V3());
       const vel = new V3((land.x - H.x) / T, (land.y + 0.4 - H.y + 0.5 * g * T * T) / T, (land.z - H.z) / T);
       b.pose({ lift: 0 }, 18); b.pt.lift = 0; b.R.boulder.visible = false;
-      b.combat.projectile({ owner: b.actor, team: 'enemy', pos: H, vel, radius: 0.85, damage: 20, life: T + 0.4, gravity: g, fx: 'fire',
+      b.proj({ pos: H, vel, radius: 0.85, damage: 20, life: T + 0.4, gravity: g, fx: 'fire',
         explodeRadius: 2.6, knockback: 9, stagger: 0.6, onExpire: p => { b.combat.fx('dust', p, 24); b.combat.shake(0.4); } });
       yield 0.5;
       b.recT = 0.8;
@@ -1003,8 +1097,13 @@ function* rift(b) {
 
 const DEFS = { dogo: DOGO, morra: MORRA, kohlherz: KOHL };
 
-export function createBoss(type, { scene, world, combat, home, yaw } = {}) {
+/**
+ * createBoss(type, { scene, world, combat, home, yaw, variant })
+ * variant: { scale=1, tint:0xRRGGBB|null, tintAmt=0.72, glow?, emberColor?, hpMul=1, dmgMul=1, speedMul=1, minion=false, name?, attacks?:[ids], wakeR?, leash? }
+ * Rückgabe: Boss-Instanz ({ actor, object3D, update(dt, players), awake, phase, dispose(), onDeath, minion, ... })
+ */
+export function createBoss(type, { scene, world, combat, home, yaw, variant } = {}) {
   const def = DEFS[type];
   if (!def) throw new Error('Unbekannter Boss: ' + type);
-  return new Boss(type, def, { scene, world, combat, home, yaw });
+  return new Boss(type, def, { scene, world, combat, home, yaw, variant, info: BOSS_INFO[type] });
 }

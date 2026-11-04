@@ -1,0 +1,178 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Viniland – Gegner (alle Bosse + Minions)</title>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<style>
+body{margin:0;overflow:hidden;background:#1a1820;font-family:sans-serif}
+#ui{position:fixed;top:6px;left:6px;display:flex;gap:4px;z-index:2;flex-wrap:wrap;max-width:98vw}
+button,select{font-size:12px;padding:5px 8px;border-radius:7px;border:0;background:#e8e0f0;box-shadow:0 2px 0 #6a5a80}
+#hud{position:fixed;top:40px;left:8px;color:#fff;font:11px monospace;white-space:pre;text-shadow:0 1px 0 #000;z-index:2}
+#err{position:fixed;left:0;right:0;bottom:0;color:#fff;background:#a00c;font:13px monospace;white-space:pre-wrap;padding:6px;display:none;z-index:3}
+.lbl{position:fixed;transform:translate(-50%,-100%);color:#fff;font-weight:bold;font-size:11px;text-shadow:0 1px 2px #000;pointer-events:none;white-space:nowrap;text-align:center}
+.lbl.k{color:#ffd27a}.lbl.m{font-size:9px;font-weight:normal;color:#ccc}
+.bar{width:90px;height:5px;background:#0008;margin:2px auto 0}.bar i{display:block;height:100%;background:#e33}
+.bar.s i{background:#fc3}
+</style></head><body>
+<div id="ui"><button data-k="row">Reihe</button><select id="sel"></select><button data-k="h">Treffer</button><button data-k="k">Töten</button></div>
+<div id="hud"></div><div id="err"></div>
+<script>
+window.onerror=(m,s,l,c,e)=>{const d=document.getElementById('err');d.style.display='block';d.textContent+=`${m} @${(s||'').split('/').pop()}:${l}\n${e&&e.stack||''}\n`;};
+window.addEventListener('unhandledrejection',e=>window.onerror(String(e.reason),'',0,0,e.reason));
+</script>
+<script type="module">
+// Parameter:
+//   (ohne)          Reihe: alle 9 Bosse vorn, alle Minion-Typen dahinter, wach im Leerlauf, Kamera-Orbit. ?biome=<id> filtert.
+//   ?boss=<type>    Einzelkampf gegen Dummy (echtes combat.js), ?enemy=<id> Einzelkampf gegen Minion, ?pack=<id> 4 Minions + 2 Dummies
+//   ?warm=<s>       Vor-Simulation, ?dmg=<n> Dummy-Schaden (0 = aus), ?near=1, ?cam=<rad> Kamera-Winkel, ?hp=<0..1> Start-HP (Phase-2-Test)
+import * as THREE from 'three';
+import { MeshBuilder, clamp } from '../js/kit.js';
+import { psxMat } from '../js/psx.js';
+import { Combat } from '../js/combat.js';
+import { ALL_BOSS_TYPES, ALL_BOSSES, ENEMY_TYPES, spawnBoss, spawnEnemy } from '../js/enemies.js';
+
+const Q = new URLSearchParams(location.search);
+const ren = new THREE.WebGLRenderer({ antialias: false });
+ren.setPixelRatio(1); ren.setSize(innerWidth, innerHeight); ren.shadowMap.enabled = true; document.body.appendChild(ren.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x2a2636); scene.fog = new THREE.Fog(0x2a2636, 45, 140);
+scene.add(new THREE.HemisphereLight(0xd8d0ff, 0x2a3020, 1.4));
+const sun = new THREE.DirectionalLight(0xffe0c0, 1.9); sun.position.set(12, 24, 18); sun.castShadow = true;
+Object.assign(sun.shadow.camera, { left: -55, right: 55, top: 35, bottom: -35, far: 120 }); sun.shadow.mapSize.set(2048, 2048); scene.add(sun);
+
+const world = {
+  waterLevel: -5,
+  heightAt(x, z) { return 0.4 + Math.sin(x * 0.09) * Math.cos(z * 0.08) * 0.3 + 2.0 * Math.exp(-((x + 14) ** 2 + (z - 22) ** 2) / 80); },
+  collide() { return 0; },
+};
+{
+  const g = new THREE.PlaneGeometry(180, 120, 90, 60); g.rotateX(-Math.PI / 2);
+  const p = g.attributes.position, col = new Float32Array(p.count * 3), c = new THREE.Color();
+  for (let i = 0; i < p.count; i++) {
+    const h = world.heightAt(p.getX(i), p.getZ(i)); p.setY(i, h);
+    c.set(0x3a4a30).offsetHSL(0, 0, (Math.random() - 0.5) * 0.04 + h * 0.02); col.set([c.r, c.g, c.b], i * 3);
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, psxMat()); m.receiveShadow = true; scene.add(m);
+}
+const combat = new Combat(scene, world);
+
+function makeDummy(i, cx) {
+  const b = new MeshBuilder(); b.capsule(0.35, 1.05, [0x4aa0ff, 0xffb040, 0x80e070][i % 3], { y: 0.88 }); b.box(0.2, 0.12, 0.3, 0x222222, { y: 1.45, z: 0.3 });
+  const m = b.mesh(); scene.add(m);
+  const actor = { id: 'p' + i, name: 'Dummy' + i, team: 'player', pos: new THREE.Vector3(), radius: 0.35, height: 1.75, hp: 1e6, maxHp: 1e6, alive: true,
+    rollT: 0, invuln() { return this.rollT > 0; }, onHit() {} };
+  combat.addActor(actor);
+  return { actor, pos: actor.pos, alive: true, m, cx, ang: i * 2.1, r: 9, t: 0, atk: 1 + i * 0.4 };
+}
+
+const SEL = document.getElementById('sel');
+SEL.innerHTML = '<option value="">– Einzelkampf –</option>' + ALL_BOSS_TYPES.map(t => `<option value="boss=${t}">${ALL_BOSSES[t].name} (${ALL_BOSSES[t].biome}${ALL_BOSSES[t].key ? ', Siegel' : ''})</option>`).join('') +
+  Object.keys(ENEMY_TYPES).map(id => `<option value="enemy=${id}">· ${ENEMY_TYPES[id].name} (${ENEMY_TYPES[id].biome})</option>`).join('');
+SEL.onchange = () => { if (SEL.value) location.search = '?' + SEL.value; };
+
+let ents = [], dummies = [], labels = [], mode = 'row', T = 0;
+const DMG = +(Q.get('dmg') ?? 30);
+function clear() { ents.forEach(e => e.dispose()); dummies.forEach(d => { scene.remove(d.m); combat.removeActor(d.actor); }); labels.forEach(l => l.remove()); ents = []; dummies = []; labels = []; }
+function label(e, cls) { const el = document.createElement('div'); el.className = 'lbl ' + cls; document.body.appendChild(el); return el; }
+function setupRow() {
+  clear(); mode = 'row';
+  const bio = Q.get('biome');
+  const bt = ALL_BOSS_TYPES.filter(t => !bio || ALL_BOSSES[t].biome === bio);
+  const gap = bio ? 10 : 9.5;
+  bt.forEach((t, i) => ents.push(spawnBoss(t, { scene, world, combat, home: new THREE.Vector3((i - (bt.length - 1) / 2) * gap, 0, 0), yaw: 0 })));
+  const et = Object.keys(ENEMY_TYPES).filter(id => !bio || ENEMY_TYPES[id].biome === bio);
+  const per = Math.ceil(et.length / 2);
+  et.forEach((id, i) => {
+    const row = Math.floor(i / per), k = i % per, n = row ? et.length - per : per;
+    ents.push(spawnEnemy(id, { scene, world, combat, home: new THREE.Vector3((k - (n - 1) / 2) * 5.2 + row * 2.6, 0, -9 - row * 6), yaw: 0 }));
+  });
+  for (const e of ents) { e.state = 'recover'; e.recT = 1e9; e.awake = true; e.sleepK = 0; e.provoked = false; }
+  labels = ents.map(e => label(e, e.minion ? 'm' : (e.info.key ? 'k' : '')));
+  T = 0;
+}
+function setupFight(kind, id) {
+  clear(); mode = 'fight';
+  const n = kind === 'pack' ? 4 : 1;
+  for (let i = 0; i < n; i++) {
+    const home = new THREE.Vector3((i - (n - 1) / 2) * 3, 0, (i % 2) * 2);
+    ents.push(kind === 'boss' ? spawnBoss(id, { scene, world, combat, home, yaw: 0 }) : spawnEnemy(id, { scene, world, combat, home, yaw: 0 }));
+  }
+  const hp = Q.get('hp'); if (hp) ents.forEach(e => { e.actor.hp = e.actor.maxHp * +hp; });
+  ents.forEach(e => { e.onDeath = b => console.log('onDeath', b.type, b.enemyId || ''); });
+  const nd = kind === 'pack' ? 2 : 1;
+  for (let i = 0; i < nd; i++) { const d = makeDummy(i, ents[0].home); d.r = Q.has('near') ? 7 : 24; dummies.push(d); }
+  labels = ents.map(e => label(e, e.minion ? '' : (e.info.key ? 'k' : '')));
+  T = 0;
+}
+if (Q.get('boss')) setupFight('boss', Q.get('boss'));
+else if (Q.get('enemy')) setupFight('enemy', Q.get('enemy'));
+else if (Q.get('pack')) setupFight('pack', Q.get('pack'));
+else setupRow();
+
+function stepDummy(d, dt) {
+  d.t += dt;
+  const want = 4 + 5 * (0.5 + 0.5 * Math.sin(d.t * 0.23 + d.ang));
+  d.r += clamp(want - d.r, -4 * dt, 4 * dt);
+  const pause = Math.sin(d.t * 0.7 + d.ang * 0.3) > 0.55;
+  d.ang += pause ? 0 : dt * 4.2 / Math.max(3, d.r);
+  d.pos.set(d.cx.x + Math.sin(d.ang) * d.r, 0, d.cx.z + Math.cos(d.ang) * d.r);
+  d.pos.y = world.heightAt(d.pos.x, d.pos.z);
+  d.actor.rollT -= dt; if (Math.random() < dt * 0.4) d.actor.rollT = 0.35;
+  d.m.position.copy(d.pos); d.m.rotation.y = d.ang + Math.PI / 2;
+  d.atk -= dt;
+  const b = ents.find(e => !e.gone && e.awake && e.distTo(d.pos) < 10);
+  if (d.atk <= 0 && DMG > 0 && b) {
+    d.atk = 1.3;
+    const c = b.pos.clone(); c.y += b.def.height * 0.4;
+    combat.hitbox({ owner: d.actor, team: 'player', radius: 0.6 + b.def.radius * 0.5, duration: 0.05, damage: DMG, stagger: Math.random() < 0.2 ? 0.7 : 0.25, at: () => c, kind: 'melee' });
+  }
+}
+function sim(dt) {
+  const r = combat.update(dt); const sdt = dt * r.timeScale;
+  T += sdt;
+  dummies.forEach(d => stepDummy(d, sdt));
+  const pl = dummies;
+  for (const e of ents) e.update(sdt, pl);
+  combat.shakes.length = 0;
+}
+const warm = +(Q.get('warm') || 0);
+for (let t = 0; t < warm; t += 1 / 60) sim(1 / 60);
+
+addEventListener('keydown', e => key(e.key));
+document.querySelectorAll('button').forEach(b => b.onclick = () => key(b.dataset.k));
+function key(k) {
+  if (k === 'row') location.search = '';
+  if (k === 'h') ents.forEach(e => { const h = { damage: 80, dir: new THREE.Vector3(0, 0, 1), knockback: 3, stagger: 0.8, kind: 'melee' }; e.actor.hp = Math.max(0, e.actor.hp - 80); e.onHit(h); });
+  if (k === 'k') ents.forEach(e => { e.actor.hp = 0; });
+}
+
+const cam = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 250);
+addEventListener('resize', () => { ren.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); });
+const hud = document.getElementById('hud'), v = new THREE.Vector3();
+let last = performance.now(), fx = ents[0].pos.x, fz = ents[0].pos.z;
+function frame(now) {
+  let real = Math.min(0.5, (now - last) / 1000); last = now;
+  while (real > 1e-4) { const s = Math.min(1 / 60, real); sim(s); real -= s; }
+  const ca = +(Q.get('cam') || 0);
+  if (mode === 'row') {
+    const bio = Q.get("biome"), D = bio ? 22 : 58, a = ca + Math.sin(T * 0.15) * 0.25;
+    cam.position.set(Math.sin(a) * D, bio ? 7 : 16, Math.cos(a) * D + 2); cam.lookAt(0, bio ? 2.2 : 2, bio ? -3 : -4);
+  } else {
+    const b = ents[0], D = 9 + b.def.height * 1.6, a = b.yaw + ca + 0.5;
+    fx = fx * 0.92 + b.pos.x * 0.08; fz = fz * 0.92 + b.pos.z * 0.08;
+    cam.position.set(fx + Math.sin(a) * D, b.pos.y + 3 + b.def.height * 0.7, fz + Math.cos(a) * D); cam.lookAt(fx, b.pos.y + b.def.height * 0.4, fz);
+  }
+  ents.forEach((e, i) => {
+    v.set(e.pos.x, e.pos.y + e.def.height + 0.5, e.pos.z).project(cam);
+    const el = labels[i]; el.style.left = ((v.x + 1) / 2 * innerWidth) + 'px'; el.style.top = ((1 - v.y) / 2 * innerHeight) + 'px';
+    const a = e.actor, inf = e.info;
+    const nm = e.minion ? a.name : `${inf.name}${inf.key ? ' ✦' : ''}<br><small>${inf.title} · ${inf.biome}</small>`;
+    el.innerHTML = mode === 'row' ? nm : `${nm}<br><small>${e.state}${e.state === 'script' ? ':' + e.scriptKind : ''} · P${e.phase} · ${a.hp | 0}/${a.maxHp}</small>` +
+      `<div class="bar"><i style="width:${Math.max(0, a.hp / a.maxHp * 100)}%"></i></div><div class="bar s"><i style="width:${a.stagger * 100}%"></i></div>`;
+    el.style.display = e.gone || v.z > 1 ? 'none' : '';
+  });
+  hud.textContent = `t=${T.toFixed(1)}s  ents=${ents.length}  calls=${ren.info.render.calls}  tris=${ren.info.render.triangles}  geos=${ren.info.memory.geometries}`;
+  ren.render(scene, cam);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+console.log('GEGNER OK');
+</script></body></html>

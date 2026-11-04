@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8"><title>Viniland – RPG-UI-Test</title>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<style>html,body{margin:0;height:100%;background:#2a3030 linear-gradient(160deg,#4a5a58,#1a1e22);overflow:hidden;color:#eee;font-family:system-ui}
+.view{position:fixed;overflow:hidden} #err{position:fixed;left:0;bottom:0;color:#f88;font:12px monospace;white-space:pre-wrap;z-index:9}
+.nav{position:fixed;right:6px;top:4px;z-index:9;font:12px monospace} .nav a{color:#fc8;margin:0 4px}</style></head>
+<body><div class="view" id="v0" style="left:0;top:0;width:50%;height:100%"></div><div class="view" id="v1" style="left:50%;top:0;width:50%;height:100%;border-left:4px solid #1a140e;box-sizing:border-box"></div>
+<div class="nav"><a href="?screen=inventory">inventory</a><a href="?screen=shrine">shrine</a><a href="?screen=levelup">levelup</a><a href="?screen=forge">forge</a><a href="?screen=equip">equip</a><a href="?screen=options">options</a></div>
+<div id="err"></div>
+<script>addEventListener('error', e => document.getElementById('err').textContent += e.message + '\n');</script>
+<script type="module">
+import { RpgUI } from '../js/ui.js';
+import { Progression } from '../js/progression.js';
+import { makeItem, spellIds } from '../js/items.js';
+const scr = new URLSearchParams(location.search).get('screen') || 'inventory';
+function fake(i) {
+  const p = new Progression(i);
+  for (const s of [{ weapon: 'driftwood' }, { weapon: 'sword', rarity: 'rare' }, { weapon: 'greatsword', rarity: 'legendary', upgrade: 3 }, { weapon: 'staff', rarity: 'epic' },
+    { relic: 'glutherz' }, { relic: 'kohlherz' }, { relic: 'aschenring' }, { consumable: 'forgeStone', count: 4 }, { consumable: 'glutkern' }, { sigil: 'kueste' }, { scroll: spellIds()[3] || spellIds()[0] }]) p.addItem(makeItem(s));
+  spellIds().slice(0, 4).forEach(id => p.learnSpell(id));
+  p.addGlut(2350, { raw: true }); p.level = 7; p.attrs.vit = 14; p.attrs.str = 12;
+  return p;
+}
+const fighter = { flask: { charges: 2, max: 4 } };
+const keys = { interact: 'G', confirm: 'Leertaste', back: 'C', nav: 'WASD', tabL: 'Q', tabR: 'E', flask: '3' };
+const uis = [0, 1].map(i => new RpgUI(document.getElementById('v' + i), { prog: fake(i), fighter, i, keyLabel: a => keys[a], inCombat: () => false, onLevelUp: () => true }));
+const [a, b] = uis;
+a.update(0); b.update(0);
+if (scr === 'inventory') { a.open('inventory', { tab: 1, sel: 3 }); b.open('inventory', { tab: 0, sel: 1 }); }
+if (scr === 'equip') { a.open('inventory', { tab: 2 }); b.open('inventory', { tab: 0 }); b.open('choose', { slot: 'relic0' }); }
+if (scr === 'shrine') { a.open('shrine', { sel: 1 }); b.setPrompt('Am Leuchtfeuer rasten'); b.showTitle('Leuchtfeuer entzündet', 'Graue Küste', 'banner'); }
+if (scr === 'levelup') { a.open('levelup', { alloc: { vit: 2, dex: 1 }, sel: 0 }); b.open('forge', { sel: 2 }); }
+if (scr === 'forge') { a.open('forge', { sel: 2 }); b.showTitle('Düsterwald', 'Neues Gebiet entdeckt'); }
+if (scr === 'options') { a.open('inventory', { tab: 3, sel: 4 }); b.popup('Treibholzknüppel', '#c9c1ae'); b.popup('Glutherz', '#5f9bff'); b.popup('+120 Glut', '#ffd890', ''); b.setPrompt('Aufheben: Kohlherz'); }
+// Tastatursteuerung testen (Pfeile/Enter/Esc/Q/E) für die linke Ansicht
+addEventListener('keydown', e => a.handle({ uiUp: e.key === 'ArrowUp', uiDown: e.key === 'ArrowDown', uiLeft: e.key === 'ArrowLeft', uiRight: e.key === 'ArrowRight', uiConfirm: e.key === 'Enter', uiBack: e.key === 'Escape', uiTabL: e.key === 'q', uiTabR: e.key === 'e' }));
+</script></body></html>
