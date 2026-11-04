@@ -32,7 +32,9 @@ export class Input {
     this.keys = new Set();
     this.pressed = new Set();
     this.mouse = { dx: 0, dy: 0, down: false, chop: false, wheel: 0 };
-    this.swapPads = false;
+    this.padMode = 'auto';      // auto | p1 | p2  (wem gehört Gamepad 1)
+    this.players = 2;
+    this.keyboardFor = [true, true]; // Tastatur pro Spieler an/aus (z. B. wenn Steam Tasten emuliert)
     this.prevPad = [{}, {}];
     this.lastDevice = ['Tastatur', 'Tastatur'];
     addEventListener('keydown', e => {
@@ -59,16 +61,24 @@ export class Input {
   any(list) { return list.some(k => this.keys.has(k)); }
   anyPressed(list) { return list.some(k => this.pressed.has(k)); }
 
-  pads() {
-    const raw = navigator.getGamepads ? [...navigator.getGamepads()].filter(p => p && p.connected) : [];
-    return this.swapPads ? raw.slice().reverse() : raw;
+  rawPads() { return navigator.getGamepads ? [...navigator.getGamepads()].filter(p => p && p.connected) : []; }
+  /** Gamepad für Spieler i. auto: bei 2 Spielern und nur 1 Gamepad bekommt Spieler 2 das Pad (Tastatur = P1). */
+  padFor(i) {
+    const raw = this.rawPads();
+    let mode = this.padMode;
+    if (mode === 'auto') mode = (this.players === 2 && raw.length === 1) ? 'p2' : 'p1';
+    if (this.players === 1) return i === 0 ? raw[0] : null;
+    if (mode === 'p2') return i === 1 ? raw[0] : raw[1];
+    return raw[i];
   }
+  padOwner(n) { for (let i = 0; i < 2; i++) { const p = this.padFor(i); if (p && p === this.rawPads()[n]) return i; } return -1; }
 
   /** Liest den Zustand für Spieler i (0/1). Einmal pro Frame pro Spieler aufrufen, danach endFrame(). */
   read(i, dt) {
     const km = KEYMAPS[i];
     const o = { moveX: 0, moveY: 0, lookX: 0, lookY: 0, sprint: false, jump: false, jumpPressed: false, chopPressed: false, wavePressed: false, zoom: 0, menuPressed: false };
     // Tastatur
+    if (this.keyboardFor[i]) {
     o.moveX = (this.any(km.right) ? 1 : 0) - (this.any(km.left) ? 1 : 0);
     o.moveY = (this.any(km.up) ? 1 : 0) - (this.any(km.down) ? 1 : 0);
     const kl = Math.hypot(o.moveX, o.moveY); if (kl > 1) { o.moveX /= kl; o.moveY /= kl; }
@@ -81,7 +91,8 @@ export class Input {
     o.chopPressed = this.anyPressed(km.chop);
     o.wavePressed = this.anyPressed(km.wave);
     if (kl > 0 || o.jumpPressed) this.lastDevice[i] = 'Tastatur';
-    if (i === 0) {
+    }
+    if (i === 0 && this.keyboardFor[0]) {
       o.menuPressed = this.pressed.has('Escape') || this.pressed.has('Tab');
       // Maus liefert Pixel/Frame -> in Rate (rad/s) umrechnen, damit Kamera einheitlich lookX*dt rechnet
       if (dt > 0) { o.lookX += this.mouse.dx * 0.0025 / dt; o.lookY += this.mouse.dy * 0.0018 / dt; }
@@ -89,7 +100,7 @@ export class Input {
       if (this.mouse.chop) { o.chopPressed = true; this.lastDevice[0] = 'Maus'; }
     }
     // Gamepad
-    const pad = this.pads()[i];
+    const pad = this.padFor(i);
     if (pad) {
       const b = n => pad.buttons[n] && (pad.buttons[n].pressed || pad.buttons[n].value > 0.5);
       const prev = this.prevPad[i];
@@ -121,7 +132,7 @@ export class Input {
   }
 
   rumble(i, strength = 0.5, ms = 80) {
-    const pad = this.pads()[i];
+    const pad = this.padFor(i);
     try { pad?.vibrationActuator?.playEffect('dual-rumble', { duration: ms, strongMagnitude: strength, weakMagnitude: strength * 0.6 }); } catch (e) { /* egal */ }
   }
 }

@@ -16,7 +16,8 @@ const SETTINGS = {
   snap: 220, dither: true, shadows: true,
   animals: true,
   debug: false,
-  swapPads: false,
+  padMode: 'auto',
+  keyboard: [true, true],
   looks: [0, 1],
 };
 try { Object.assign(SETTINGS, JSON.parse(localStorage.getItem('viniland.settings') || '{}')); } catch (e) { /* ok */ }
@@ -95,7 +96,12 @@ function buildMenu() {
   <div class="row">
     <button data-act="players">${SETTINGS.players === 2 ? '👥 2 Spieler' : '👤 1 Spieler'}</button>
     <button data-act="split">Split: ${SETTINGS.split}</button>
-    <button data-act="swap">Gamepads tauschen${SETTINGS.swapPads ? ' ✓' : ''}</button>
+    <button data-act="pad">Gamepad 1 → ${{ auto: 'Auto', p1: 'Spieler 1', p2: 'Spieler 2' }[SETTINGS.padMode]}</button>
+    <button data-act="kb0">Tastatur P1 ${SETTINGS.keyboard[0] ? 'an' : 'aus'}</button>
+    <button data-act="kb1">Tastatur P2 ${SETTINGS.keyboard[1] ? 'an' : 'aus'}</button>
+  </div>
+  <div class="pads">${padInfo()}</div>
+  <div class="row">
     <button data-act="look0">P1 Look: ${PLAYER_LOOKS[SETTINGS.looks[0]]?.name ?? SETTINGS.looks[0]}</button>
     <button data-act="look1">P2 Look: ${PLAYER_LOOKS[SETTINGS.looks[1]]?.name ?? SETTINGS.looks[1]}</button>
     <button data-act="dither">Dithering ${SETTINGS.dither ? 'an' : 'aus'}</button>
@@ -119,9 +125,11 @@ function buildMenu() {
   });
   menu.querySelectorAll('button[data-act]').forEach(b => b.onclick = () => {
     const a = b.dataset.act;
-    if (a === 'players') { SETTINGS.players = SETTINGS.players === 2 ? 1 : 2; resize(); }
+    if (a === 'players') { SETTINGS.players = SETTINGS.players === 2 ? 1 : 2; applyInput(); resize(); }
     if (a === 'split') SETTINGS.split = { auto: 'vertical', vertical: 'horizontal', horizontal: 'auto' }[SETTINGS.split];
-    if (a === 'swap') { SETTINGS.swapPads = !SETTINGS.swapPads; input.swapPads = SETTINGS.swapPads; }
+    if (a === 'pad') SETTINGS.padMode = { auto: 'p1', p1: 'p2', p2: 'auto' }[SETTINGS.padMode];
+    if (a === 'kb0' || a === 'kb1') { const i = +a.slice(-1); SETTINGS.keyboard[i] = !SETTINGS.keyboard[i]; }
+    applyInput();
     if (a === 'dither') { SETTINGS.dither = !SETTINGS.dither; setPSX({ dither: SETTINGS.dither }); }
     if (a === 'shadows') { SETTINGS.shadows = !SETTINGS.shadows; if (sun) sun.castShadow = SETTINGS.shadows; }
     if (a === 'debug') SETTINGS.debug = !SETTINGS.debug;
@@ -140,7 +148,14 @@ function toggleMenu(open = !menu.classList.contains('open')) {
   menu.classList.toggle('open', open);
   if (open && document.pointerLockElement) document.exitPointerLock();
 }
-input.swapPads = SETTINGS.swapPads;
+function applyInput() { input.padMode = SETTINGS.padMode; input.players = SETTINGS.players; input.keyboardFor = SETTINGS.keyboard; }
+function padInfo() {
+  const raw = input.rawPads();
+  if (!raw.length) return '🎮 Kein Gamepad erkannt – einmal eine Taste am Controller drücken.';
+  return raw.map((p, n) => { const o = input.padOwner(n); return `🎮 ${n + 1}: ${p.id.slice(0, 48)} → ${o < 0 ? 'niemand' : 'Spieler ' + (o + 1)}`; }).join('<br>');
+}
+applyInput();
+addEventListener('gamepadconnected', () => { if (menu.classList.contains('open')) buildMenu(); });
 if (sun) sun.castShadow = SETTINGS.shadows;
 
 // ---------- Layout ----------
@@ -224,9 +239,10 @@ function frame(now) {
 
   const active = players.slice(0, SETTINGS.players);
   const menuOpen = menu.classList.contains('open');
+  let menuReq = false;
   for (const p of active) {
     const intent = input.read(p.i, dt);
-    if (intent.menuPressed) toggleMenu();
+    if (intent.menuPressed) menuReq = true;
     if (menuOpen) { intent.moveX = intent.moveY = intent.lookX = intent.lookY = 0; intent.jumpPressed = intent.chopPressed = intent.jump = false; }
     if (DEMO) demoIntent(p, intent);
     p.intent = intent;
@@ -254,6 +270,7 @@ function frame(now) {
   players[1].model.object3D.visible = SETTINGS.players === 2;
   separatePlayers();
   input.endFrame();
+  if (menuReq) toggleMenu();
 
   world.update(dt, active.map(p => ({ pos: p.ctrl.pos, vel: p.ctrl.vel })));
   if (fauna) fauna.update(dt, active.map(p => ({ pos: p.ctrl.pos, speed: p.ctrl.speed })));

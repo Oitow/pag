@@ -30,6 +30,7 @@
   #menu label { display: grid; grid-template-columns: 130px 1fr 46px; gap: 6px; align-items: center; font-size: 12.5px; margin: 3px 0; }
   #menu input[type=range] { width: 100%; accent-color: #e0a050; }
   #menu em { font-style: normal; font-family: monospace; text-align: right; opacity: .8; }
+  #menu .pads { font-size: 12px; background: #0006; border-radius: 6px; padding: 6px 8px; margin: 4px 0; line-height: 1.5; }
   #menu .hint { font-size: 12px; opacity: .7; }
   #back { position: fixed; right: 10px; bottom: 10px; color: #f4ecd8; font-size: 12px; opacity: .55; text-decoration: none; }
 </style>
@@ -2205,7 +2206,9 @@ class Input {
     this.keys = new Set();
     this.pressed = new Set();
     this.mouse = { dx: 0, dy: 0, down: false, chop: false, wheel: 0 };
-    this.swapPads = false;
+    this.padMode = 'auto';      // auto | p1 | p2  (wem gehört Gamepad 1)
+    this.players = 2;
+    this.keyboardFor = [true, true]; // Tastatur pro Spieler an/aus (z. B. wenn Steam Tasten emuliert)
     this.prevPad = [{}, {}];
     this.lastDevice = ['Tastatur', 'Tastatur'];
     addEventListener('keydown', e => {
@@ -2232,16 +2235,24 @@ class Input {
   any(list) { return list.some(k => this.keys.has(k)); }
   anyPressed(list) { return list.some(k => this.pressed.has(k)); }
 
-  pads() {
-    const raw = navigator.getGamepads ? [...navigator.getGamepads()].filter(p => p && p.connected) : [];
-    return this.swapPads ? raw.slice().reverse() : raw;
+  rawPads() { return navigator.getGamepads ? [...navigator.getGamepads()].filter(p => p && p.connected) : []; }
+  /** Gamepad für Spieler i. auto: bei 2 Spielern und nur 1 Gamepad bekommt Spieler 2 das Pad (Tastatur = P1). */
+  padFor(i) {
+    const raw = this.rawPads();
+    let mode = this.padMode;
+    if (mode === 'auto') mode = (this.players === 2 && raw.length === 1) ? 'p2' : 'p1';
+    if (this.players === 1) return i === 0 ? raw[0] : null;
+    if (mode === 'p2') return i === 1 ? raw[0] : raw[1];
+    return raw[i];
   }
+  padOwner(n) { for (let i = 0; i < 2; i++) { const p = this.padFor(i); if (p && p === this.rawPads()[n]) return i; } return -1; }
 
   /** Liest den Zustand für Spieler i (0/1). Einmal pro Frame pro Spieler aufrufen, danach endFrame(). */
   read(i, dt) {
     const km = KEYMAPS[i];
     const o = { moveX: 0, moveY: 0, lookX: 0, lookY: 0, sprint: false, jump: false, jumpPressed: false, chopPressed: false, wavePressed: false, zoom: 0, menuPressed: false };
     // Tastatur
+    if (this.keyboardFor[i]) {
     o.moveX = (this.any(km.right) ? 1 : 0) - (this.any(km.left) ? 1 : 0);
     o.moveY = (this.any(km.up) ? 1 : 0) - (this.any(km.down) ? 1 : 0);
     const kl = Math.hypot(o.moveX, o.moveY); if (kl > 1) { o.moveX /= kl; o.moveY /= kl; }
@@ -2254,7 +2265,8 @@ class Input {
     o.chopPressed = this.anyPressed(km.chop);
     o.wavePressed = this.anyPressed(km.wave);
     if (kl > 0 || o.jumpPressed) this.lastDevice[i] = 'Tastatur';
-    if (i === 0) {
+    }
+    if (i === 0 && this.keyboardFor[0]) {
       o.menuPressed = this.pressed.has('Escape') || this.pressed.has('Tab');
       // Maus liefert Pixel/Frame -> in Rate (rad/s) umrechnen, damit Kamera einheitlich lookX*dt rechnet
       if (dt > 0) { o.lookX += this.mouse.dx * 0.0025 / dt; o.lookY += this.mouse.dy * 0.0018 / dt; }
@@ -2262,7 +2274,7 @@ class Input {
       if (this.mouse.chop) { o.chopPressed = true; this.lastDevice[0] = 'Maus'; }
     }
     // Gamepad
-    const pad = this.pads()[i];
+    const pad = this.padFor(i);
     if (pad) {
       const b = n => pad.buttons[n] && (pad.buttons[n].pressed || pad.buttons[n].value > 0.5);
       const prev = this.prevPad[i];
@@ -2294,7 +2306,7 @@ class Input {
   }
 
   rumble(i, strength = 0.5, ms = 80) {
-    const pad = this.pads()[i];
+    const pad = this.padFor(i);
     try { pad?.vibrationActuator?.playEffect('dual-rumble', { duration: ms, strongMagnitude: strength, weakMagnitude: strength * 0.6 }); } catch (e) { /* egal */ }
   }
 }
@@ -2582,7 +2594,8 @@ const SETTINGS = {
   snap: 220, dither: true, shadows: true,
   animals: true,
   debug: false,
-  swapPads: false,
+  padMode: 'auto',
+  keyboard: [true, true],
   looks: [0, 1],
 };
 try { Object.assign(SETTINGS, JSON.parse(localStorage.getItem('viniland.settings') || '{}')); } catch (e) { /* ok */ }
@@ -2661,7 +2674,12 @@ function buildMenu() {
   <div class="row">
     <button data-act="players">${SETTINGS.players === 2 ? '👥 2 Spieler' : '👤 1 Spieler'}</button>
     <button data-act="split">Split: ${SETTINGS.split}</button>
-    <button data-act="swap">Gamepads tauschen${SETTINGS.swapPads ? ' ✓' : ''}</button>
+    <button data-act="pad">Gamepad 1 → ${{ auto: 'Auto', p1: 'Spieler 1', p2: 'Spieler 2' }[SETTINGS.padMode]}</button>
+    <button data-act="kb0">Tastatur P1 ${SETTINGS.keyboard[0] ? 'an' : 'aus'}</button>
+    <button data-act="kb1">Tastatur P2 ${SETTINGS.keyboard[1] ? 'an' : 'aus'}</button>
+  </div>
+  <div class="pads">${padInfo()}</div>
+  <div class="row">
     <button data-act="look0">P1 Look: ${PLAYER_LOOKS[SETTINGS.looks[0]]?.name ?? SETTINGS.looks[0]}</button>
     <button data-act="look1">P2 Look: ${PLAYER_LOOKS[SETTINGS.looks[1]]?.name ?? SETTINGS.looks[1]}</button>
     <button data-act="dither">Dithering ${SETTINGS.dither ? 'an' : 'aus'}</button>
@@ -2685,9 +2703,11 @@ function buildMenu() {
   });
   menu.querySelectorAll('button[data-act]').forEach(b => b.onclick = () => {
     const a = b.dataset.act;
-    if (a === 'players') { SETTINGS.players = SETTINGS.players === 2 ? 1 : 2; resize(); }
+    if (a === 'players') { SETTINGS.players = SETTINGS.players === 2 ? 1 : 2; applyInput(); resize(); }
     if (a === 'split') SETTINGS.split = { auto: 'vertical', vertical: 'horizontal', horizontal: 'auto' }[SETTINGS.split];
-    if (a === 'swap') { SETTINGS.swapPads = !SETTINGS.swapPads; input.swapPads = SETTINGS.swapPads; }
+    if (a === 'pad') SETTINGS.padMode = { auto: 'p1', p1: 'p2', p2: 'auto' }[SETTINGS.padMode];
+    if (a === 'kb0' || a === 'kb1') { const i = +a.slice(-1); SETTINGS.keyboard[i] = !SETTINGS.keyboard[i]; }
+    applyInput();
     if (a === 'dither') { SETTINGS.dither = !SETTINGS.dither; setPSX({ dither: SETTINGS.dither }); }
     if (a === 'shadows') { SETTINGS.shadows = !SETTINGS.shadows; if (sun) sun.castShadow = SETTINGS.shadows; }
     if (a === 'debug') SETTINGS.debug = !SETTINGS.debug;
@@ -2706,7 +2726,14 @@ function toggleMenu(open = !menu.classList.contains('open')) {
   menu.classList.toggle('open', open);
   if (open && document.pointerLockElement) document.exitPointerLock();
 }
-input.swapPads = SETTINGS.swapPads;
+function applyInput() { input.padMode = SETTINGS.padMode; input.players = SETTINGS.players; input.keyboardFor = SETTINGS.keyboard; }
+function padInfo() {
+  const raw = input.rawPads();
+  if (!raw.length) return '🎮 Kein Gamepad erkannt – einmal eine Taste am Controller drücken.';
+  return raw.map((p, n) => { const o = input.padOwner(n); return `🎮 ${n + 1}: ${p.id.slice(0, 48)} → ${o < 0 ? 'niemand' : 'Spieler ' + (o + 1)}`; }).join('<br>');
+}
+applyInput();
+addEventListener('gamepadconnected', () => { if (menu.classList.contains('open')) buildMenu(); });
 if (sun) sun.castShadow = SETTINGS.shadows;
 
 // ---------- Layout ----------
@@ -2790,9 +2817,10 @@ function frame(now) {
 
   const active = players.slice(0, SETTINGS.players);
   const menuOpen = menu.classList.contains('open');
+  let menuReq = false;
   for (const p of active) {
     const intent = input.read(p.i, dt);
-    if (intent.menuPressed) toggleMenu();
+    if (intent.menuPressed) menuReq = true;
     if (menuOpen) { intent.moveX = intent.moveY = intent.lookX = intent.lookY = 0; intent.jumpPressed = intent.chopPressed = intent.jump = false; }
     if (DEMO) demoIntent(p, intent);
     p.intent = intent;
@@ -2820,6 +2848,7 @@ function frame(now) {
   players[1].model.object3D.visible = SETTINGS.players === 2;
   separatePlayers();
   input.endFrame();
+  if (menuReq) toggleMenu();
 
   world.update(dt, active.map(p => ({ pos: p.ctrl.pos, vel: p.ctrl.vel })));
   if (fauna) fauna.update(dt, active.map(p => ({ pos: p.ctrl.pos, speed: p.ctrl.speed })));

@@ -29,7 +29,12 @@ Nach Code-Änderungen neu bündeln: `python3 tests/bundle.py . viniland.html`
 | Kamera | Q/E, R/V, rechte Maustaste ziehen, Doppelklick = Maus fangen | U/O | Rechter Stick |
 | Zoom | Z/X, Mausrad | Komma/Punkt | D-Pad ↑↓ |
 
-Gamepad 1 → Spieler 1, Gamepad 2 → Spieler 2 (im Menü tauschbar).
+Gamepad-Zuordnung (Menü): **Auto** = bei 2 Spielern und nur 1 Gamepad steuert das Gamepad Spieler 2 (Tastatur = Spieler 1),
+bei 2 Gamepads je eins pro Spieler. Fest einstellbar, Tastatur pro Spieler abschaltbar.
+
+**Steam Controller:** Steam emuliert im Desktop-Betrieb Tastatur/Maus (Stick = Pfeiltasten, Trigger = Mausklick).
+In Steam → Einstellungen → Controller → Desktop-Layout die Emulation deaktivieren bzw. auf eine Gamepad-Vorlage stellen,
+sonst steuert der Controller doppelt. Alternativ im Menü „Tastatur P2 aus“.
 
 ## Code (ES-Module, kein Build)
 | Datei | Inhalt |
