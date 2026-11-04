@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Viniland – Testlab</title>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0d1016; font-family: system-ui, sans-serif; color: #f4ecd8; }
+  #c { display: block; image-rendering: pixelated; image-rendering: crisp-edges; position: fixed; inset: 0; }
+  .hud { position: fixed; top: 10px; padding: 6px 10px; background: #1a140ecc; border: 2px solid #6b4f2e; border-radius: 8px; font-size: 14px; pointer-events: none; text-shadow: 1px 1px 0 #000; }
+  #hud0 { left: 10px; }
+  #hud1 { left: calc(50% + 10px); }
+  body.hsplit #hud1 { left: 10px; top: calc(50% + 10px); }
+  .divider { position: fixed; background: #1a140e; pointer-events: none; }
+  #divV { top: 0; bottom: 0; left: calc(50% - 2px); width: 4px; }
+  #divH { left: 0; right: 0; top: calc(50% - 2px); height: 4px; display: none; }
+  body.hsplit #divV { display: none; } body.hsplit #divH { display: block; }
+  body.solo .divider { display: none !important; }
+  #fps { position: fixed; right: 10px; top: 10px; font: 12px monospace; background: #000a; padding: 4px 8px; border-radius: 6px; pointer-events: none; }
+  #help { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); max-width: 92vw; font-size: 13px; line-height: 1.5; background: #1a140ee6; border: 2px solid #6b4f2e; border-radius: 10px; padding: 8px 14px; transition: opacity 1.5s; pointer-events: none; }
+  #help.fade { opacity: 0; }
+  #err { display: none; position: fixed; left: 10px; bottom: 10px; right: 10px; white-space: pre-wrap; font: 12px monospace; color: #ffb4a8; background: #300c; padding: 8px; z-index: 9; }
+  #menu { position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 100vw); overflow-y: auto; background: #1b1610f2; border-left: 3px solid #6b4f2e; padding: 12px 16px; box-sizing: border-box; transform: translateX(105%); transition: transform .2s; z-index: 5; }
+  #menu.open { transform: none; }
+  #menu .mhead { display: flex; justify-content: space-between; align-items: center; font-size: 18px; margin-bottom: 8px; }
+  #menu button { background: #3a2c1c; color: #f4ecd8; border: 1px solid #8a6a3e; border-radius: 6px; padding: 6px 9px; margin: 3px 2px; font-size: 13px; cursor: pointer; }
+  #menu button:hover { background: #57412a; }
+  #menu h3 { margin: 14px 0 6px; font-size: 14px; color: #f0c27a; border-bottom: 1px solid #4b3a24; }
+  #menu label { display: grid; grid-template-columns: 130px 1fr 46px; gap: 6px; align-items: center; font-size: 12.5px; margin: 3px 0; }
+  #menu input[type=range] { width: 100%; accent-color: #e0a050; }
+  #menu em { font-style: normal; font-family: monospace; text-align: right; opacity: .8; }
+  #menu .hint { font-size: 12px; opacity: .7; }
+  #back { position: fixed; right: 10px; bottom: 10px; color: #f4ecd8; font-size: 12px; opacity: .55; text-decoration: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="divider" id="divV"></div><div class="divider" id="divH"></div>
+<div class="hud" id="hud0"></div><div class="hud" id="hud1"></div>
+<div id="fps"></div>
+<div id="help"></div>
+<div id="menu"></div>
+<div id="err"></div>
+<a id="back" href="../../">← Spiele</a>
+<script>
+  addEventListener('error', e => { const el = document.getElementById('err'); el.style.display = 'block'; el.textContent += (e.message || e) + '\n'; });
+  addEventListener('unhandledrejection', e => { const el = document.getElementById('err'); el.style.display = 'block'; el.textContent += 'Promise: ' + (e.reason?.message || e.reason) + '\n'; });
+</script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
