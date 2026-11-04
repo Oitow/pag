@@ -47,6 +47,12 @@
   addEventListener('error', e => { const el = document.getElementById('err'); el.style.display = 'block'; el.textContent += (e.message || e) + '\n'; });
   addEventListener('unhandledrejection', e => { const el = document.getElementById('err'); el.style.display = 'block'; el.textContent += 'Promise: ' + (e.reason?.message || e.reason) + '\n'; });
 </script>
+<script>
+  if (location.protocol === 'file:' && document.querySelector('script[src="js/main.js"]')) {
+    const el = document.getElementById('err'); el.style.display = 'block'; el.style.fontSize = '16px';
+    el.textContent = 'Per Doppelklick blockiert der Browser die js/-Dateien. Öffne stattdessen viniland.html (gleicher Ordner) – die läuft auch so.';
+  }
+</script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

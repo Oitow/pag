@@ -4,6 +4,9 @@ Spiel à la Valheim, aber mit mehr Platz und Spielraum. Dieses Testlab prüft Ch
 
 **Spielen:** `games/viniland/` (GitHub Pages) · `?p=1` = 1 Spieler · `?seed=42` = andere Insel · `?demo` = Auto-Demo · `?dbg` = Positionsanzeige
 
+**Lokal per Doppelklick:** `viniland.html` öffnen (alles in einer Datei, braucht Internet für Three.js). `index.html` braucht einen Server oder GitHub Pages.
+Nach Code-Änderungen neu bündeln: `python3 tests/bundle.py . viniland.html`
+
 ## Inhalt
 - Große Insel (~220 m Radius), Wiesen, Wäldchen, Hügel mit Felsen, Strand, Wasser mit Wellen
 - ~170 fällbare Bäume (Kiefer, Laubbaum, Birke): kippen mit Scharnier-Physik, zerfallen in Stamm-Segmente,
