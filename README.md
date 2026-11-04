@@ -4,6 +4,7 @@ Alle Spiele: Single-File HTML, mobil-tauglich. Startseite: [index.html](index.ht
 
 | Spiel | Beschreibung |
 |---|---|
+| [👹 Boss-Labor](games/bosse/) | 10 Bosse aus reinem Code (Voxel, Metaballs, Skinning, Raymarching, Pixelart …) mit Idle/Laufen/Angriff |
 | [🪐 Planet – Tierfänger](games/planet/) | Survival à la Valheim auf einem prozeduralen Kugel-Planeten: Tiere fangen, ihre Fähigkeiten nutzen, Biome freischalten |
 | [🌍 Tier-Testwelt](games/voxel-tiere/welt.html) | Alle Tiere in einer begehbaren Welt |
 | [🐾 Voxel-Tiere](games/voxel-tiere/) | 148 süße Voxel-Tiere zum Anschauen |

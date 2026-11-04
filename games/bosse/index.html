@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Boss-Labor</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:system-ui,sans-serif;color:#fff;touch-action:none}
+  canvas{display:block}
+  #oben{position:fixed;top:0;left:0;right:0;padding:10px 12px 0;pointer-events:none;background:linear-gradient(#000a,#0000)}
+  #oben a{pointer-events:auto;color:#fff;text-decoration:none;opacity:.8;font-size:14px}
+  #titel{font-size:22px;font-weight:700;margin-top:4px;text-shadow:0 2px 6px #000}
+  #info{font-size:13px;opacity:.85;text-shadow:0 1px 4px #000}
+  #info b{display:inline-block;background:#fff2;border-radius:6px;padding:1px 6px;margin:3px 4px 0 0;font-weight:600}
+  #liste{position:fixed;left:0;right:0;bottom:84px;display:flex;gap:8px;overflow-x:auto;padding:6px 12px;scrollbar-width:none}
+  #liste::-webkit-scrollbar{display:none}
+  #liste button{flex:0 0 auto;border:0;border-radius:14px;padding:8px 12px;background:#000a;color:#fff;font-size:14px;backdrop-filter:blur(6px)}
+  #liste button.an{background:#fff;color:#111;font-weight:700}
+  #anim{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px 12px 18px;justify-content:center}
+  #anim button{flex:1;max-width:150px;border:0;border-radius:16px;padding:14px 0;font-size:16px;font-weight:700;background:#000b;color:#fff;backdrop-filter:blur(6px)}
+  #anim button.an{background:#ffd23f;color:#111}
+  #anim #atk{background:#e8433a}
+  #anim #atk.an{background:#ff8a7a;color:#111}
+  #drehen{position:fixed;right:12px;top:12px;border:0;border-radius:12px;background:#000a;color:#fff;font-size:18px;padding:8px 10px}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="oben">
+  <a href="../../index.html">← Spiele</a>
+  <div id="titel">Boss-Labor</div>
+  <div id="info"></div>
+</div>
+<button id="drehen" title="Kamera drehen">⟳</button>
+<div id="liste"></div>
+<div id="anim">
+  <button data-a="idle">😐 Idle</button>
+  <button data-a="walk">🚶 Laufen</button>
+  <button id="atk" data-a="attack">⚔️ Angriff</button>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
