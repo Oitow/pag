@@ -499,56 +499,156 @@ const cloudIM=inst(cloudGeo,cloudMat,CLOUDN,false);cloudIM.frustumCulled=false;
 {const r=mulberry(W.seed+7);for(let i=0;i<CLOUDN;i++)clouds.push({x:(r()-.5)*220,z:(r()-.5)*200,y:26+r()*10,s:.8+r()*1.1,sy:.45+r()*.25,v:.6+r()*.5});}
 function updateClouds(dt){for(let i=0;i<CLOUDN;i++){const c=clouds[i];c.x+=c.v*dt;c.z+=c.v*.3*dt;if(c.x>115)c.x-=230;if(c.z>105)c.z-=210;setInst(cloudIM,i,c.x,c.y,c.z,0,c.s*1.4,c.s*c.sy,c.s);}cloudIM.instanceMatrix.needsUpdate=true;}
 
+// ================= Natur-Geometrie (Helfer: Jitter, Vertex-Farben/Fake-AO, Äste, Halme) =================
+// Teile werden nicht-indiziert; der Jitter hängt nur von der Eckposition ab (keine Risse an geteilten Ecken).
+// Farben liegen im 'color'-Attribut (Multiplikator: Material × Instanzfarbe × Vertexfarbe).
+const NGC=[1,1,1],NGV={x:0,y:0,z:0};
+function pkey(x,y,z){let h=(Math.imul(Math.round(x*613)|0,73856093)^Math.imul(Math.round(y*613)|0,19349663)^Math.imul(Math.round(z*613)|0,83492791))|0;h=Math.imul(h^(h>>>13),1274126177);h^=h>>>16;return (h>>>0)/4294967295;}
+function ng(g,jit,fn){const n=g.index?g.toNonIndexed():g,p=n.attributes.position.array;
+  for(let i=0;i+2<p.length;i+=3){let x=p[i],y=p[i+1],z=p[i+2];
+    if(jit){const a=pkey(x,y,z),b=pkey(z+3.1,x,y),c=pkey(y,z-1.7,x);x+=(a-.5)*jit;y+=(b-.5)*jit;z+=(c-.5)*jit;}
+    if(fn){NGV.x=x;NGV.y=y;NGV.z=z;fn(NGV);x=NGV.x;y=NGV.y;z=NGV.z;}p[i]=x;p[i+1]=y;p[i+2]=z;}
+  n.computeVertexNormals();return n;}
+// fn(x,y,z,nx,ny,nz) verändert NGC (vorbelegt mit vorhandener Farbe oder Weiß)
+function paint(g,fn){const p=g.attributes.position.array,nm=g.attributes.normal?g.attributes.normal.array:p,old=g.attributes.color&&g.attributes.color.array,c=new Float32Array(p.length);
+  for(let i=0;i+2<p.length;i+=3){if(old&&old.length>i+2){NGC[0]=old[i];NGC[1]=old[i+1];NGC[2]=old[i+2];}else NGC[0]=NGC[1]=NGC[2]=1;
+    fn(p[i],p[i+1],p[i+2],nm[i]||0,nm[i+1]||0,nm[i+2]||0);c[i]=NGC[0];c[i+1]=NGC[1];c[i+2]=NGC[2];}
+  g.setAttribute('color',new THREE.BufferAttribute(c,3));return g;}
+const mulC=k=>{NGC[0]*=k;NGC[1]*=k;NGC[2]*=k;},setC=(r,g,b)=>{NGC[0]=r;NGC[1]=g;NGC[2]=b;};
+const tint=(g,r,gg,b)=>paint(g,()=>{NGC[0]*=r;NGC[1]*=gg;NGC[2]*=b;});
+function mergeC(list){let total=0;const parts=list.map(g=>{const n=g.index?g.toNonIndexed():g;if(!n.attributes.normal)n.computeVertexNormals();total+=n.attributes.position.count;return n;});
+  const pos=new Float32Array(total*3),nor=new Float32Array(total*3),col=new Float32Array(total*3).fill(1);let o=0;
+  for(const p of parts){const c=p.attributes.position.count*3,sub=a=>a.length>c?a.subarray(0,c):a;pos.set(sub(p.attributes.position.array),o);nor.set(sub(p.attributes.normal.array),o);if(p.attributes.color)col.set(sub(p.attributes.color.array),o);o+=c;}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('normal',new THREE.BufferAttribute(nor,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));return g;}
+function triGeo(a){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(a),3));g.computeVertexNormals();return g;}
+// Ast/Stab von A nach B (offener Zylinder)
+function stick(x0,y0,z0,x1,y1,z1,r0,r1,seg,hs){const dx=x1-x0,dy=y1-y0,dz=z1-z0,L=Math.hypot(dx,dy,dz)||1e-3;
+  return ng(new THREE.CylinderGeometry(r1,r0,L,seg||4,hs||1,true).translate(0,L/2,0).rotateZ(-Math.acos(Math.max(-1,Math.min(1,dy/L)))).rotateY(-Math.atan2(dz,dx)).translate(x0,y0,z0));}
+// Knubbel (Krone, Busch): Dodekaeder bzw. Ikosaeder(1), verbeult
+const lump=(r,x,y,z,sx,sy,sz,det)=>ng((det?new THREE.IcosahedronGeometry(r,1):new THREE.DodecahedronGeometry(r,0)).scale(sx||1,sy||1,sz||1).translate(x,y,z),r*.38);
+// Stamm: verjüngt, gebogen, Wurzelanlauf
+function trunkGeo(h,r0,r1,seg,hs,bend,bx,bz,flare){return ng(new THREE.CylinderGeometry(r1,r0,h,seg,hs,true).translate(0,h/2-.03,0),0,v=>{const t=Math.max(0,v.y/h);v.x+=bx*bend*t*t;v.z+=bz*bend*t*t;
+  if(t<.05){const f=1+flare*(.6+.8*pkey(v.x,0,v.z));v.x*=f;v.z*=f;}});}
+const trunkPt=(h,bend,bx,bz,t)=>[bx*bend*t*t,t*h-.03,bz*bend*t*t];
+// Halm (3 Dreiecke) in Array a
+function blade(a,x,z,h,w,ang,bend,y0){y0=y0||0;const cx=Math.cos(ang),cz=Math.sin(ang),sx=-cz*w,sz=cx*w,mb=bend*h*.3,tb=bend*h;
+  const L=[x-sx,y0,z-sz],R=[x+sx,y0,z+sz],ML=[x-sx*.6+cx*mb,y0+h*.55,z-sz*.6+cz*mb],MR=[x+sx*.6+cx*mb,y0+h*.55,z+sz*.6+cz*mb],T=[x+cx*tb,y0+h*(1-.18*Math.min(1,Math.abs(bend))),z+cz*tb];
+  a.push(...L,...R,...MR,...L,...MR,...ML,...ML,...MR,...T);}
+// Farnwedel: gewölbt, mit Mittelrippe und gezackten Fiedern
+function frond(a,len,ang,lift,w,segs){const cx=Math.cos(ang),cz=Math.sin(ang),sx=-cz,sz=cx;let P=null;
+  for(let k=0;k<=segs;k++){const t=k/segs,d=len*t,y=len*(lift*t-lift*.9*t*t)+.03,ww=w*Math.pow(Math.max(0,Math.sin(Math.PI*(.12+.88*t))),.7)*(k%2?1:.6);
+    const C=[cx*d,y,cz*d],L=[C[0]-sx*ww,y-ww*.35,C[2]-sz*ww],R=[C[0]+sx*ww,y-ww*.35,C[2]+sz*ww];
+    if(P)a.push(...P[0],...P[1],...C,...P[0],...C,...L,...P[1],...P[2],...R,...P[1],...R,...C);P=[L,C,R];}}
+// Blüte: Blütenblätter als Fächer + kleiner Stempel
+function blossom(a,x,y,z,r,n,rot){for(let k=0;k<n;k++){const a0=rot+k*6.283/n,a1=a0+6.283/n*.8;a.push(x,y,z,x+Math.cos(a0)*r,y+r*.3,z+Math.sin(a0)*r,x+Math.cos(a1)*r,y+r*.3,z+Math.sin(a1)*r);}
+  const c=r*.3;a.push(x-c,y,z,x+c,y,z,x,y+c*1.6,z,x,y,z-c,x,y,z+c,x,y+c*1.6,z);}
+// Fake-AO für Kronen: unten/innen dunkler und kühler, oben/außen heller und wärmer
+function crownAO(g,y0,y1,R){return paint(g,(x,y,z,nx,ny)=>{const t=Math.max(0,Math.min(1,(y-y0)/(y1-y0))),rr=Math.min(1,Math.hypot(x,z)/R),k=(.38+.5*t+.26*rr*rr+.12*Math.max(0,ny)-.1*Math.max(0,-ny))*(.88+.24*pkey(x,y,z));
+  NGC[0]*=k*(.92+.16*t);NGC[1]*=k;NGC[2]*=k*(1.12-.3*t);});}
+function barkAO(g,h){return paint(g,(x,y,z)=>mulC((.5+.5*Math.min(1,Math.max(0,y)/h*2.5))*(.82+.36*pkey(x,y,z))));}
+// Fels-Teil: verbeultes Ikosaeder, optional mit Schichtstufen, Boden abgeflacht
+function rockPart(r,x,y,z,sx,sy,sz,det,strata){return ng(new THREE.IcosahedronGeometry(r,det).scale(sx,sy,sz).translate(x,y,z),r*.42,v=>{
+  if(strata){const s=((v.y*strata+pkey(Math.round(v.y*strata),0,0)*.3)%1+1)%1,f=1-.11*s;v.x=x+(v.x-x)*f;v.z=z+(v.z-z)*f;}if(v.y<-.05)v.y=-.05;});}
+function pebbleRing(n,R,r,seed){const a=[];for(let i=0;i<n;i++){const an=i*2.4+seed,d=R*(.8+.4*pkey(i,R,seed));a.push(ng(new THREE.IcosahedronGeometry(r*(.55+.7*pkey(i,2,seed)),0).scale(1,.55,1).translate(Math.cos(an)*d,0,Math.sin(an)*d),r*.45));}return a;}
+function rockPaint(g){return paint(g,(x,y,z,nx,ny)=>{const n=pkey(x*3,y*3,z*3);mulC(.8+.32*n);
+  if(y<.06)mulC(.6);else if(ny>.5&&y>.14){const m=Math.min(1,(ny-.5)*2.6)*(.6+.4*pkey(x*2,0,z*2));NGC[0]*=1-.42*m;NGC[1]*=1+.14*m;NGC[2]*=1-.58*m;}
+  else if(n>.92){NGC[0]*=1.18;NGC[1]*=1.12;NGC[2]*=.8;}});}
+
 // ================= Vegetation & Felsen (Instancing) =================
 const trees=W.trees,rocks=W.rocks,bushes=W.bushes,tufts=W.tufts,flowers=W.flowers;
 // Baumarten: 0 Tanne,1 Eiche,2 Birke,3 Kiefer
 const ico=(r,x,y,z)=>new THREE.IcosahedronGeometry(r,0).translate(x,y,z);
+const lumps=L=>L.map(l=>lump(l[0],l[1],l[2],l[3],l[4],l[5],l[6]));
+function treeTanne(lo){const h=.95,tr=barkAO(mergeC([trunkGeo(h,.1,.035,5,2,.04,1,0,.35)]),1);
+  const parts=[],n=lo?3:5;
+  for(let i=0;i<n;i++){const f=i/(n-1),y=.42+f*1.32,r=.6-f*.42,ht=.62-f*.22,ox=(pkey(i,1,n)-.5)*.07,oz=(pkey(i,2,n)-.5)*.07;
+    parts.push(ng(new THREE.ConeGeometry(r,ht,lo?6:8,lo?1:2).rotateY(i*.9).translate(ox,y+ht/2,oz),0,v=>{const rx=v.x-ox,rz=v.z-oz,rad=Math.hypot(rx,rz);
+      if(Math.abs(v.y-y)<1e-3){if(rad>r*.5){const j=.78+.34*pkey(v.x,i,v.z);v.x=ox+rx*j;v.z=oz+rz*j;v.y-=r*(.12+.14*pkey(v.z,i,v.x));}else v.y+=ht*.32;}
+      else if(!lo&&Math.abs(v.y-y-ht/2)<1e-3){v.x=ox+rx*1.14;v.z=oz+rz*1.14;v.y-=ht*.08;}}));}
+  if(!lo)parts.push(ng(new THREE.ConeGeometry(.07,.32,5).translate(0,2.02,0)));
+  return {trunk:tr,crown:crownAO(mergeC(parts),.3,2.1,.62)};}
+function treeEiche(lo){const h=.9,bend=.1,tp=t=>trunkPt(h,bend,1,.3,t),a=tp(.62),b=tp(.75),c=tp(.55);
+  const tr=barkAO(mergeC([trunkGeo(h,.15,.08,6,3,bend,1,.3,.55),stick(a[0],a[1],a[2],.42,1.02,.14,.055,.025),stick(a[0],a[1],a[2],-.34,.98,-.18,.05,.022),
+    stick(b[0],b[1],b[2],.08,1.3,-.24,.045,.02),stick(c[0],c[1],c[2],-.22,.8,.32,.035,.014)]),1.2);
+  const L=lo?[[.55,0,1.12,0,1.25,.8,1.2],[.4,.3,1.32,-.1],[.38,-.3,1.06,.18]]
+    :[[.46,0,1.12,0,1.15,.78,1.1],[.36,.4,1.02,.12],[.34,-.36,.98,-.17],[.32,.06,1.38,-.22,1,.9,1],[.32,-.14,1.3,.3,1,.9,1],[.27,.34,1.3,-.1],[.25,-.42,1.17,.25],[.23,.22,.84,-.32]];
+  return {trunk:tr,crown:crownAO(mergeC(lumps(L)),.65,1.7,.8)};}
+function treeBirke(lo){const h=1.6,bend=.07,tp=t=>trunkPt(h,bend,-.4,1,t),a=tp(.6),b=tp(.72),c=tp(.55);
+  const tr=paint(mergeC([trunkGeo(h,.075,.032,5,lo?3:6,bend,-.4,1,.3),stick(a[0],a[1],a[2],.24,1.3,.1,.02,.008),stick(b[0],b[1],b[2],-.22,1.5,-.04,.02,.008),stick(c[0],c[1],c[2],-.12,1.1,.24,.018,.007)]),
+    (x,y,z)=>{if(y<.28)mulC(.38+.5*Math.max(0,y)/.28);else if(pkey(x*2,Math.round(y*11),z*2)<.3)mulC(.26);else mulC(.9+.15*pkey(x,y,z));});
+  const L=lo?[[.26,0,1.62,0,1,1.4,1],[.23,.16,1.3,.06,1,1.2,1],[.22,-.15,1.22,-.08,1,1.2,1]]
+    :[[.2,-.02,1.8,.02,1,1.35,1],[.21,.2,1.52,.08,1,1.2,1],[.2,-.19,1.43,-.08,1,1.2,1],[.18,.08,1.2,-.2,1,1.15,1],[.17,-.12,1.12,.18,1,1.15,1],[.16,.27,1.18,.14,1,1.1,1],[.14,-.06,2.02,.05,1,1.3,1]];
+  return {trunk:tr,crown:crownAO(mergeC(lumps(L)),.95,2.15,.42)};}
+function treeKiefer(lo){const h=1.6,bend=.2,tp=t=>trunkPt(h,bend,1,-.4,t),a=tp(.82),b=tp(.75),c=tp(.92),T=tp(1);
+  const tr=paint(barkAO(mergeC([trunkGeo(h,.1,.05,6,lo?2:4,bend,1,-.4,.35),stick(a[0],a[1],a[2],T[0]+.36,1.4,T[2]+.14,.035,.015),stick(b[0],b[1],b[2],T[0]-.3,1.32,T[2]-.14,.035,.015),stick(c[0],c[1],c[2],T[0]-.16,1.62,T[2]+.26,.03,.012)]),1.6),
+    (x,y)=>{const t=Math.max(0,Math.min(1,(y-.6)/1));NGC[0]*=1+.25*t;NGC[1]*=1-.06*t;NGC[2]*=1-.2*t;});
+  const T0=T[0],T2=T[2],L=lo?[[.4,T0,1.66,T2,1.35,.6,1.25],[.3,T0+.3,1.42,T2+.12,1.3,.55,1.2]]
+    :[[.36,T0+.04,1.66,T2,1.35,.55,1.25],[.28,T0+.38,1.42,T2+.14,1.3,.5,1.2],[.26,T0-.32,1.34,T2-.14,1.3,.55,1.2],[.22,T0,1.88,T2-.06,1.2,.6,1.1],[.2,T0-.18,1.64,T2+.27,1.2,.5,1.1]];
+  return {trunk:tr,crown:crownAO(mergeC(lumps(L)),1.2,2.05,.6)};}
 const SP=[
-  {trunk:new THREE.CylinderGeometry(.07,.11,.6,5).translate(0,.3,0),tc:0x6b4a2b,
-   crown:mergeGeos([new THREE.ConeGeometry(.5,.9,7).translate(0,.85,0),new THREE.ConeGeometry(.38,.75,7).translate(0,1.3,0),new THREE.ConeGeometry(.24,.55,7).translate(0,1.7,0)]),h:[.36,.4,.2,.08],amp:.012},
-  {trunk:new THREE.CylinderGeometry(.08,.14,.75,6).translate(0,.37,0),tc:0x6e4c2e,
-   crown:mergeGeos([ico(.5,0,1.05,0),ico(.36,.3,1.28,.12),ico(.34,-.26,1.22,-.18),ico(.3,.05,1.45,-.25),ico(.28,-.1,.92,.3)]),h:[.24,.5,.3,.1],amp:.014},
-  {trunk:new THREE.CylinderGeometry(.04,.07,1.1,5).translate(0,.55,0),tc:0xe8e4da,
-   crown:mergeGeos([new THREE.IcosahedronGeometry(.34,0).scale(1,1.5,1).translate(0,1.25,0),ico(.22,.15,1.0,.08),ico(.2,-.12,1.55,-.05)]),h:[.2,.55,.42,.1],amp:.022},
-  {trunk:new THREE.CylinderGeometry(.05,.09,1.3,5).translate(0,.65,0),tc:0x7a4e30,
-   crown:mergeGeos([new THREE.ConeGeometry(.42,.5,6).translate(0,1.35,0),new THREE.ConeGeometry(.3,.45,6).translate(.08,1.65,0),ico(.22,-.18,1.3,.1)]),h:[.32,.35,.22,.06],amp:.012},
+  {tc:0x6b4a2b,h:[.36,.38,.22,.08],amp:.012,mk:treeTanne},
+  {tc:0x6e4c2e,h:[.22,.42,.3,.1],amp:.014,mk:treeEiche},
+  {tc:0xe8e4da,h:[.19,.5,.4,.12],amp:.022,mk:treeBirke},
+  {tc:0x7a4e30,h:[.31,.32,.24,.07],amp:.012,mk:treeKiefer},
 ];
+for(const d of SP){const hi=d.mk(false),lo=d.mk(true);d.trunk=hi.trunk;d.crown=hi.crown;d.crownLo=lo.crown;}
 const spCount=[0,0,0,0];for(const t of trees){t.ci=spCount[t.sp]++;}
 for(let s=0;s<4;s++){const d=SP[s];
-  d.tIM=inst(d.trunk,lam(d.tc),spCount[s],true);
-  d.cIM=inst(d.crown,windMat(0xffffff,d.amp),spCount[s],true);}
+  d.tIM=inst(d.trunk,lam(d.tc,{vertexColors:true}),spCount[s],true);
+  d.cIM=inst(d.crown,windMat(0xffffff,d.amp,{vertexColors:true}),spCount[s],true);}
 for(const t of trees){const d=SP[t.sp],h1=hash(t.tx,t.tz),h2=hash(t.tz,t.tx);
   tmpC.setHSL(d.h[0]+h1*.06,d.h[1]+h2*.1,d.h[2]+h2*d.h[3]);if(hash(t.tx+7,t.tz)<.07&&t.sp!==0)tmpC.setHSL(.09+h1*.04,.55,.38);// vereinzelt Herbstfarbe
   d.cIM.setColorAt(t.ci,tmpC);}
-const stumpIM=inst(mergeGeos([new THREE.CylinderGeometry(.1,.14,.16,6).translate(0,.06,0)]),lam(0x7a5636),trees.length,true);
+// Dürrständer (abgestorbene Bäume) und junge Bäume: rein optisch, aus dem Hash abgeleitet
+let nSnag=0;for(const t of trees){const b=W.tBiome[t.tz*N+t.tx],p=b===B_MARSH?.1:b===B_HEATH||b===B_ROCK?.06:.025,hs=hash(t.tx+31,t.tz+17);
+  t.snag=hs<p;t.sap=!t.snag&&hs>.95;if(t.snag)t.sni=nSnag++;}
+const snagGeo=(()=>{const h=1.25,bend=.12,tp=t=>trunkPt(h,bend,.6,1,t),a=tp(.55),b=tp(.7),c=tp(.42),T=tp(1);
+  const tg=ng(new THREE.CylinderGeometry(.05,.12,h,6,4,true).translate(0,h/2-.03,0),0,v=>{const t=Math.max(0,v.y/h);v.x+=.6*bend*t*t;v.z+=bend*t*t;if(t>.99){v.y-=.22*pkey(v.x,1,v.z);}if(t<.05){const f=1.4+.5*pkey(v.x,0,v.z);v.x*=f;v.z*=f;}});
+  return paint(mergeC([tg,stick(a[0],a[1],a[2],a[0]+.38,a[1]+.32,a[2]+.05,.03,.01),stick(b[0],b[1],b[2],b[0]-.3,b[1]+.38,b[2]-.12,.028,.008),stick(c[0],c[1],c[2],c[0]-.05,c[1]+.12,c[2]+.34,.026,.008),
+    stick(a[0]+.25,a[1]+.21,a[2]+.03,a[0]+.3,a[1]+.45,a[2]-.1,.01,.004,3),stick(T[0],T[1]-.15,T[2],T[0]+.15,T[1]+.12,T[2]+.06,.02,.006,3)]),
+    (x,y,z)=>{const k=(.45+.55*Math.min(1,Math.max(0,y)/.5))*(.8+.4*pkey(x,y,z));setC(.6*k,.55*k,.5*k);});})();
+const snagIM=inst(snagGeo,lam(0xffffff,{vertexColors:true}),nSnag,true);
+// Stumpf: unregelmäßige Schnittfläche (hell), Rinde, Wurzelanläufe
+const stumpGeo=paint(mergeC([ng(new THREE.CylinderGeometry(.11,.15,.2,7,1).translate(0,.07,0),0,v=>{if(v.y>.16){v.y+=(pkey(v.x,1,v.z)-.35)*.06;}else if(v.y<0){v.x*=1.25;v.z*=1.25;}}),
+  stick(.06,.05,0,.24,-.03,.04,.045,.015),stick(-.05,.05,.04,-.18,-.03,.17,.04,.012),stick(-.02,.05,-.06,-.06,-.03,-.24,.04,.012)]),
+  (x,y,z,nx,ny)=>{if(ny>.6&&y>.12)setC(1.55,1.25,.85);else mulC((.6+.5*Math.min(1,Math.max(0,y)/.17))*(.8+.35*pkey(x,y,z)));});
+const stumpIM=inst(stumpGeo,lam(0x7a5636,{vertexColors:true}),trees.length,true);
 for(let i=0;i<trees.length;i++)stumpIM.setMatrixAt(i,ZERO);
-function setTree(t,i){const s=t.wood>0?t.s*t.g:0,d=SP[t.sp];
-  setInstT(d.tIM,t.ci,t.x,t.y-.03,t.z,t.ax,t.r,t.az,s,s*(.9+(t.s-.75)*.3),s);setInstT(d.cIM,t.ci,t.x,t.y-.03,t.z,t.ax,t.r,t.az,s,s,s);
+function setTree(t,i){let s=t.wood>0?t.s*t.g:0;const d=SP[t.sp];if(t.sap)s*=.6;
+  const hw=.86+.3*hash(t.tx*3+1,t.tz+7),hd=.86+.3*hash(t.tx+11,t.tz*3+2),hh=.88+.26*hash(t.tz*5+2,t.tx+3);
+  if(t.snag){d.tIM.setMatrixAt(t.ci,ZERO);d.cIM.setMatrixAt(t.ci,ZERO);setInstT(snagIM,t.sni,t.x,t.y-.03,t.z,t.ax*1.3,t.r,t.az*1.3,s,s*hh,s);}
+  else{setInstT(d.tIM,t.ci,t.x,t.y-.03,t.z,t.ax,t.r,t.az,s,s*hh,s);setInstT(d.cIM,t.ci,t.x,t.y-.03,t.z,t.ax,t.r,t.az,s*hw,s*hh,s*hd);}
   if(t.wood<=0)setInst(stumpIM,i,t.x,t.y,t.z,t.r,t.s,t.s,t.s);else stumpIM.setMatrixAt(i,ZERO);}
 trees.forEach(setTree);
 const treeIdx=new Map();trees.forEach((t,i)=>treeIdx.set(t,i));
-function flushTrees(){for(const d of SP){d.tIM.instanceMatrix.needsUpdate=d.cIM.instanceMatrix.needsUpdate=true;}stumpIM.instanceMatrix.needsUpdate=true;}
+function flushTrees(){for(const d of SP){d.tIM.instanceMatrix.needsUpdate=d.cIM.instanceMatrix.needsUpdate=true;}stumpIM.instanceMatrix.needsUpdate=true;snagIM.instanceMatrix.needsUpdate=true;}
+// Niedrige Auto-Qualität: einfachere Kronen (tauscht die Geometrie aller Kronen-Instanzen)
+function setVegLOD(lo){for(const d of SP){const want=lo?d.crownLo:d.crown;scene.traverse(o=>{if(o.geometry===d.crown||o.geometry===d.crownLo)o.geometry=want;});}}
 
-// Felsen: 0 Findling, 1 Felsnadel, 2 flache Platte
-const RGEO=[mergeGeos([new THREE.DodecahedronGeometry(.5,0).translate(0,.2,0),new THREE.DodecahedronGeometry(.25,0).translate(.38,.08,.15)]),
-  mergeGeos([new THREE.DodecahedronGeometry(.32,0).scale(1,2.4,1).translate(0,.55,0),new THREE.DodecahedronGeometry(.24,0).scale(1,1.6,1).translate(.3,.25,.1),new THREE.DodecahedronGeometry(.18,0).translate(-.25,.1,-.15)]),
-  mergeGeos([new THREE.DodecahedronGeometry(.55,0).scale(1.2,.45,1).translate(0,.12,0),new THREE.DodecahedronGeometry(.3,0).scale(1,.6,1).translate(.2,.3,-.1)])];
+// Felsen: 0 Findling, 1 Felsnadel (geschichtet), 2 flache Platte — Moos oben, Kiesel am Fuß
+const RGEO=[rockPaint(mergeC([rockPart(.5,0,.2,0,1,.92,1,1,0),rockPart(.27,.4,.08,.16,1,.9,1,1,0),...pebbleRing(4,.62,.07,.3)])),
+  rockPaint(mergeC([rockPart(.32,0,.55,0,1,2.4,1,1,6),rockPart(.24,.3,.26,.1,1,1.6,1,1,7),rockPart(.18,-.25,.1,-.15,1,1,1,0,0),...pebbleRing(4,.5,.06,1.1)])),
+  rockPaint(mergeC([rockPart(.55,0,.12,0,1.2,.45,1,1,9),rockPart(.3,.2,.3,-.1,1,.6,1,1,0),...pebbleRing(3,.75,.07,2.2)]))];
 const rCount=[0,0,0];for(const r of rocks){r.ri=rCount[r.k]++;}
-const rockIMs=RGEO.map((g,k)=>inst(g,lam(0xffffff),rCount[k],true));
-rocks.forEach(r=>{const b=W.tBiome[r.tz*N+r.tx];tmpC.setHSL(.08+hash(r.tx,9)*.04,.05+hash(r.tx,9)*.06,(b===B_SNOW?.62:.43)+hash(r.tz,r.tx)*.12);rockIMs[r.k].setColorAt(r.ri,tmpC);});
+const rockIMs=RGEO.map((g,k)=>inst(g,lam(0xffffff,{vertexColors:true}),rCount[k],true));
+rocks.forEach(r=>{const b=W.tBiome[r.tz*N+r.tx];tmpC.setHSL(.08+hash(r.tx,9)*.04,.05+hash(r.tx,9)*.06,(b===B_SNOW?.66:.5)+hash(r.tz,r.tx)*.12);rockIMs[r.k].setColorAt(r.ri,tmpC);});
 function setRock(r){const k=r.stone>0?r.s*(.45+.55*r.stone/6):0;setInst(rockIMs[r.k],r.ri,r.x,r.y-.05,r.z,r.r,k*r.sx,k*r.sy,k);}
 function flushRocks(){for(const im of rockIMs)im.instanceMatrix.needsUpdate=true;}
 rocks.forEach(setRock);
 
-const bushGeo=mergeGeos([ico(.28,0,.22,0),ico(.2,.18,.17,.05),ico(.18,-.15,.16,-.08)]);
-const berryGeo=mergeGeos([[.12,.36,.12],[-.14,.3,.1],[.2,.25,-.1],[-.05,.38,-.15],[.02,.2,.22],[-.2,.22,-.12]].map(p=>ico(.045,p[0],p[1],p[2])));
-const bushIM=inst(bushGeo,windMat(0xffffff,.05),bushes.length,false);bushIM.castShadow=true;
-const berryIM=inst(berryGeo,lam(0xc2304e),bushes.length,false);
-bushes.forEach((b,i)=>{tmpC.setHSL(.27+hash(b.tx,3)*.06,.45,.27+hash(b.tz,5)*.06);bushIM.setColorAt(i,tmpC);});
+// Beerenbusch: mehrere Knubbel mit Fake-AO, Beeren in Trauben auf der Oberfläche
+const BL=[[.27,0,.24,0,1.1,.85,1.05],[.2,.19,.18,.06],[.19,-.17,.17,-.08],[.17,.05,.37,-.12],[.16,-.07,.14,.2]];
+const bushGeo=crownAO(mergeC([...lumps(BL),stick(0,0,0,.12,.2,.05,.025,.012),stick(0,0,0,-.1,.18,-.06,.025,.012)]),0,.5,.36);
+const berryGeo=paint(mergeC(Array.from({length:10},(_,k)=>{const l=BL[k%BL.length],u=pkey(k,1,7)*6.283,v=.25+.9*pkey(k,2,7),r=l[0]*.98,
+  bx=l[1]+Math.cos(u)*Math.cos(v)*r*(l[4]||1),by=l[2]+Math.sin(v)*r*(l[5]||1)*.9,bz=l[3]+Math.sin(u)*Math.cos(v)*r*(l[6]||1);
+  return ng(new THREE.IcosahedronGeometry(.031+.01*pkey(k,3,7),0).translate(bx,by,bz),.012);})),(x,y,z)=>mulC(.6+.55*pkey(Math.round(x*40),Math.round(y*40),Math.round(z*40))));
+const bushIM=inst(bushGeo,windMat(0xffffff,.05,{vertexColors:true}),bushes.length,false);bushIM.castShadow=true;
+const berryIM=inst(berryGeo,lam(0xc2304e,{vertexColors:true}),bushes.length,false);
+bushes.forEach((b,i)=>{tmpC.setHSL(.26+hash(b.tx,3)*.07,.42,.3+hash(b.tz,5)*.07);bushIM.setColorAt(i,tmpC);});
 function setBush(b,i){setInst(bushIM,i,b.x,b.y,b.z,b.r,b.s,b.s,b.s);if(b.food>0)setInst(berryIM,i,b.x,b.y,b.z,b.r,b.s,b.s,b.s);else berryIM.setMatrixAt(i,ZERO);}
 bushes.forEach(setBush);
 
-// ---- Deko-Gruppen (Gras, Blumen, Schilf, Seerosen, Baumstämme, Kiesel, Pilze) ----
+// ---- Deko-Gruppen (Gras, Farn, Blumen, Schilf, Seerosen, Baumstämme, Kiesel, Pilze) ----
 const DECO=[];
 function decoGroup(list,geo,mat,colFn,wearMax,opts){opts=opts||{};
   const im=inst(geo,mat,list.length,false);if(opts.shadow)im.castShadow=true;if(opts.recv)im.receiveShadow=true;
@@ -557,21 +657,39 @@ function decoGroup(list,geo,mat,colFn,wearMax,opts){opts=opts||{};
   list.forEach((o,i)=>{colFn(o,i);im.setColorAt(i,tmpC);put(o,i);});
   const g={list,im,wearMax,put,full:list.length};DECO.push(g);return g;}
 const GRASSC=[[.15,.4,.55],[.25,.5,.32],[.27,.45,.24],[.24,.45,.33],[.13,.45,.42],[.22,.4,.26],[.2,.15,.42],[0,0,.8]];
-const tuftGeo=mergeGeos([new THREE.ConeGeometry(.035,.28,3).rotateZ(.25).translate(.04,.12,0),new THREE.ConeGeometry(.035,.24,3).rotateZ(-.3).translate(-.04,.1,.02),new THREE.ConeGeometry(.035,.3,3).rotateX(.25).translate(0,.13,-.04),new THREE.ConeGeometry(.03,.2,3).rotateX(-.35).translate(.02,.08,.05)]);
-const gTuft=decoGroup(tufts,tuftGeo,windMat(0xffffff,.55),(t,i)=>{const g=GRASSC[t.b]||GRASSC[1];tmpC.setHSL(g[0]+hash(i,1)*.06,g[1],g[2]+hash(i,2)*.1);},0.33);
-const flowerGeo=mergeGeos([new THREE.CylinderGeometry(.01,.01,.18,3).translate(0,.09,0),new THREE.IcosahedronGeometry(.045,0).translate(0,.19,0),new THREE.IcosahedronGeometry(.03,0).translate(.05,.13,.02)]);
+const grassAO=(g,h)=>paint(g,(x,y,z)=>{const t=Math.min(1,Math.max(0,y)/h);NGC[0]*=.42+.75*t;NGC[1]*=.45+.68*t;NGC[2]*=.5+.42*t;});
+const tuftGeo=(()=>{const a=[];for(let k=0;k<9;k++){const an=k*2.4+.3,d=.012+.05*pkey(k,1,3);blade(a,Math.cos(an)*d,Math.sin(an)*d,.17+.2*pkey(k,2,3),.013,an+(pkey(k,4,3)-.5),.35+.6*pkey(k,5,3));}return grassAO(triGeo(a),.36);})();
+const grassMat=windMat(0xffffff,.55,{vertexColors:true,side:THREE.DoubleSide});
+const fernSet=new Set(tufts.filter((t,i)=>(t.b===B_FOREST&&hash(i,41)<.55)||(t.b===B_BIRCH&&hash(i,41)<.3)||(t.b===B_MARSH&&hash(i,41)<.15)));
+const gTuft=decoGroup(tufts.filter(t=>!fernSet.has(t)),tuftGeo,grassMat,(t,i)=>{const g=GRASSC[t.b]||GRASSC[1];tmpC.setHSL(g[0]+hash(i,1)*.06,g[1],g[2]+hash(i,2)*.1);},0.33);
+const fernGeo=(()=>{const a=[];for(let k=0;k<6;k++)frond(a,.26+.12*pkey(k,1,9),k*1.05+pkey(k,2,9)*.5,.9+.5*pkey(k,3,9),.05,4);
+  return paint(triGeo(a),(x,y,z)=>{const d=Math.min(1,Math.hypot(x,z)/.3);mulC(.45+.7*d);NGC[2]*=.85+.2*(1-d);});})();
+decoGroup([...fernSet],fernGeo,grassMat,(t,i)=>tmpC.setHSL(.26+hash(i,43)*.06,.42,.26+hash(i,44)*.08),0.33);// teilt das Gras-Material (Jahreszeit-Tönung)
+const flowerGeo=(()=>{const st=[],pt=[];blade(st,0,0,.19,.006,.4,.12);blade(st,0,0,.07,.022,1.9,1.3);blade(st,0,0,.06,.02,4.2,1.2);blade(st,.04,.015,.12,.005,2.4,.1);
+  blossom(pt,.02,.19,0,.048,5,.2);blossom(pt,.045,.125,.02,.034,5,1);
+  return mergeC([tint(triGeo(st),.38,.78,.3),paint(triGeo(pt),(x,y,z)=>{if(Math.hypot(x-.02,z)<.012||Math.hypot(x-.045,z-.02)<.009)setC(1.05,.85,.35);})]);})();
 const FCOL=[0xf4e04d,0xf2f2f2,0xd65a9a,0x7a8ef0,0xb06ac0,0xf0d860];
-const gFlower=decoGroup(flowers,flowerGeo,windMat(0xffffff,.9),f=>tmpC.set(FCOL[f.c]),0.22);
-const reedGeo=mergeGeos([new THREE.CylinderGeometry(.012,.018,.7,3).translate(0,.35,0),new THREE.CylinderGeometry(.012,.018,.55,3).rotateZ(.15).translate(.07,.27,.02),new THREE.CylinderGeometry(.012,.018,.6,3).rotateX(-.15).translate(-.04,.3,.06),
-  new THREE.CylinderGeometry(.03,.03,.12,4).translate(0,.68,0),new THREE.ConeGeometry(.03,.4,3).rotateZ(-.35).translate(-.08,.18,-.03)]);
-decoGroup(W.reeds,reedGeo,windMat(0xffffff,.35),(o,i)=>tmpC.setHSL(.17+hash(i,11)*.06,.42,.3+hash(i,12)*.1),0.5);
-const lilyGeo=mergeGeos([new THREE.CylinderGeometry(.16,.16,.015,7),new THREE.CylinderGeometry(.1,.1,.015,6).translate(.2,0,.12),new THREE.IcosahedronGeometry(.045,0).translate(.03,.04,.02)]);
-decoGroup(W.lilies,lilyGeo,lam(0xffffff),(o,i)=>tmpC.setHSL(.3+hash(i,5)*.05,.5,o.c?.42:.32),null);
-const logGeo=mergeGeos([new THREE.CylinderGeometry(.09,.1,1.3,6).rotateZ(Math.PI/2).translate(0,.08,0),new THREE.CylinderGeometry(.04,.05,.3,4).rotateZ(.8).translate(.3,.18,.05)]);
-decoGroup(W.logs,logGeo,lam(0xffffff),(o,i)=>tmpC.setHSL(.07,.35,.24+hash(i,8)*.08),0.4,{shadow:true,recv:true});
-decoGroup(W.pebbles,new THREE.DodecahedronGeometry(.09,0).translate(0,.03,0),lam(0xffffff),(o,i)=>tmpC.setHSL(.08,.05,.4+hash(i,4)*.2),0.6,{sy:.6});
-const shroomGeo=mergeGeos([new THREE.CylinderGeometry(.015,.02,.08,4).translate(0,.04,0),new THREE.ConeGeometry(.05,.04,6).translate(0,.09,0),new THREE.CylinderGeometry(.01,.015,.05,4).translate(.05,.025,.02),new THREE.ConeGeometry(.03,.025,5).translate(.05,.06,.02)]);
-decoGroup(W.shrooms,shroomGeo,lam(0xffffff),o=>tmpC.set(o.c?0xd8b07a:0xc8352a),0.3);
+const gFlower=decoGroup(flowers,flowerGeo,windMat(0xffffff,.9,{vertexColors:true,side:THREE.DoubleSide}),f=>tmpC.set(FCOL[f.c]),0.22);
+const reedGeo=(()=>{const a=[],H=[];for(let k=0;k<6;k++){const an=k*2.1,d=.02+.05*pkey(k,1,5),h=.5+.25*pkey(k,2,5),x=Math.cos(an)*d,z=Math.sin(an)*d;blade(a,x,z,h,.01,an,.04);if(k<3)H.push([x+Math.cos(an)*h*.04,h,z+Math.sin(an)*h*.04]);}
+  for(let k=0;k<4;k++)blade(a,0,0,.35+.15*pkey(k,3,5),.022,k*1.6+.4,.9);
+  return mergeC([grassAO(triGeo(a),.6),...H.map(p=>tint(ng(new THREE.CylinderGeometry(.026,.024,.11,5).translate(p[0],p[1]-.09,p[2])),.5,.32,.2))]);})();
+decoGroup(W.reeds,reedGeo,windMat(0xffffff,.35,{vertexColors:true,side:THREE.DoubleSide}),(o,i)=>tmpC.setHSL(.17+hash(i,11)*.06,.42,.32+hash(i,12)*.1),0.5);
+const lilyGeo=mergeC([ng(new THREE.CylinderGeometry(.16,.16,.015,9,1,false,.3,5.7)),ng(new THREE.CylinderGeometry(.1,.1,.015,7,1,false,2,5.6).translate(.2,0,.12)),tint(ng(new THREE.IcosahedronGeometry(.045,0).translate(.03,.04,.02),.02),1.6,1.3,1.4)]);
+decoGroup(W.lilies,lilyGeo,lam(0xffffff,{vertexColors:true}),(o,i)=>tmpC.setHSL(.3+hash(i,5)*.05,.5,o.c?.42:.32),null);
+// Liegender Stamm: Rinde, Moos oben, helle Bruchenden, Aststummel
+const logGeo=paint(mergeC([ng(new THREE.CylinderGeometry(.09,.105,1.3,7,3).rotateZ(Math.PI/2).translate(0,.08,0),.025,v=>{v.y+=.03*Math.sin(v.x*2.4);if(Math.abs(v.x)>.6)v.x+=(pkey(v.y,v.z,1)-.5)*.12;}),
+  stick(.25,.12,.02,.42,.33,.08,.04,.018),stick(-.3,.1,-.05,-.4,.12,-.3,.035,.015)]),
+  (x,y,z,nx,ny)=>{if(Math.abs(nx)>.75&&Math.abs(x)>.55)setC(.95,.75,.5);else if(ny>.45&&y>.12)setC(.32,.42,.16);else{const k=(.6+.5*Math.min(1,Math.max(0,y)/.16))*(.75+.4*pkey(x,y,z));setC(.42*k,.3*k,.2*k);}});
+decoGroup(W.logs,logGeo,lam(0xffffff,{vertexColors:true}),(o,i)=>{const v=.8+hash(i,8)*.35;tmpC.setRGB(v,v*.97,v*.92);},0.4,{shadow:true,recv:true});
+decoGroup(W.pebbles,rockPaint(mergeC(pebbleRing(3,.07,.075,.5))),lam(0xffffff,{vertexColors:true}),(o,i)=>tmpC.setHSL(.08,.05,.45+hash(i,4)*.2),0.6,{sy:.6});
+// Pilze: Fliegenpilz (rot, weiße Tupfen) und braune Gruppe
+const capG=(r,x,y,z)=>new THREE.SphereGeometry(r,7,3,0,6.283,0,1.6).scale(1,.62,1).translate(x,y,z);
+const shroomRed=mergeC([tint(ng(new THREE.CylinderGeometry(.014,.02,.085,5,1,true).translate(0,.042,0)),.95,.92,.85),tint(ng(capG(.05,0,.08,0)),.82,.13,.09),
+  ...[0,1,2,3,4].map(k=>tint(ng(new THREE.IcosahedronGeometry(.009,0).translate(Math.cos(k*1.3)*.03,.1-.006*(k%2),Math.sin(k*1.3)*.03)),1,1,.95)),
+  tint(ng(new THREE.CylinderGeometry(.01,.014,.05,5,1,true).translate(.055,.025,.02)),.95,.92,.85),tint(ng(capG(.032,.055,.048,.02)),.78,.15,.1)]);
+const shroomBrown=mergeC([[0,0,1],[.05,.02,.7],[-.03,.045,.8]].flatMap(([x,z,s])=>[tint(ng(new THREE.CylinderGeometry(.016*s,.022*s,.06*s,5,1,true).translate(x,.03*s,z)),.85,.8,.68),tint(ng(capG(.04*s,x,.055*s,z)),.55,.37,.22)]));
+decoGroup(W.shrooms.filter(o=>!o.c),shroomRed,lam(0xffffff,{vertexColors:true}),(o,i)=>{const v=.85+hash(i,3)*.2;tmpC.setRGB(v,v,v);},0.3);
+decoGroup(W.shrooms.filter(o=>o.c),shroomBrown,lam(0xffffff,{vertexColors:true}),(o,i)=>{const v=.85+hash(i,6)*.25;tmpC.setRGB(v,v*.95,v*.9);},0.3);
 
 // ================= Gebäude =================
 const DEF={
@@ -848,12 +966,20 @@ function demolish(b){
 // ================= NPCs (instanziert) =================
 const MAXNPC=120;
 const npcMat=lam(0xffffff);
-const torsoIM=new THREE.InstancedMesh(new THREE.CylinderGeometry(.07,.09,.19,6).translate(0,.235,0),npcMat,MAXNPC);
-const headIM=new THREE.InstancedMesh(mergeGeos([new THREE.IcosahedronGeometry(.085,0).translate(0,.41,0)]),lam(0xf0c8a0),MAXNPC);
-const hairIM=new THREE.InstancedMesh(new THREE.CylinderGeometry(.06,.095,.06,6).translate(0,.47,-.01),lam(0xffffff),MAXNPC);
-const legGeo=new THREE.BoxGeometry(.05,.15,.05).translate(0,-.075,0),armGeo=new THREE.BoxGeometry(.04,.15,.04).translate(0,-.075,0);
-const legL=new THREE.InstancedMesh(legGeo,lam(0x4a3c2c),MAXNPC),legR=new THREE.InstancedMesh(legGeo,lam(0x4a3c2c),MAXNPC);
-const armL=new THREE.InstancedMesh(armGeo,npcMat,MAXNPC),armR=new THREE.InstancedMesh(armGeo,npcMat,MAXNPC);
+// Körper: Kittel mit Taille, ausgestelltem Saum und Gürtel; Kopf mit Nase und Hals; Haar, Kapuze oder Hut je Index
+const NPC_R=[.1,.086,.068,.08,.062];// Kittel-Radius je Ring (Saum → Schulter)
+const torsoGeo=paint(mergeC([ng(new THREE.CylinderGeometry(.07,.1,.24,8,4).translate(0,.225,0),0,v=>{const t=Math.max(0,Math.min(1,(v.y-.105)/.24)),k=Math.round(t*4),f=NPC_R[k]/(.1-.03*t);v.x*=f*1.12;v.z*=f*.82;}),
+  tint(ng(new THREE.CylinderGeometry(.071,.071,.024,8,1,true).scale(1.13,1,.84).translate(0,.222,0)),.3,.27,.24)]),(x,y)=>{if(y<.13)mulC(.78);else if(y>.32)mulC(1.06);});
+const npcVC=lam(0xffffff,{vertexColors:true});
+const torsoIM=new THREE.InstancedMesh(torsoGeo,npcVC,MAXNPC);
+const headIM=new THREE.InstancedMesh(mergeC([ng(new THREE.IcosahedronGeometry(.075,1).scale(1,1.08,1).translate(0,.41,0)),ng(new THREE.IcosahedronGeometry(.016,0).scale(1,1.1,1).translate(0,.402,.073)),ng(new THREE.CylinderGeometry(.028,.033,.07,5,1,true).translate(0,.345,0))]),lam(0xffffff),MAXNPC);
+const hairIM=new THREE.InstancedMesh(mergeC([ng(new THREE.SphereGeometry(.082,8,4,0,6.283,0,1.75).rotateX(-.4).translate(0,.418,-.008)),ng(new THREE.IcosahedronGeometry(.05,0).scale(1.1,.9,.7).translate(0,.375,-.055),.015)]),lam(0xffffff),MAXNPC);
+const hoodIM=new THREE.InstancedMesh(paint(mergeC([ng(new THREE.SphereGeometry(.098,8,4,0,6.283,0,1.95).rotateX(-.45).translate(0,.415,-.012)),ng(new THREE.CylinderGeometry(.075,.112,.08,8,1,true).scale(1.12,1,.86).translate(0,.335,0))]),(x,y,z)=>mulC(.8+.3*pkey(x,y,z))),npcVC,MAXNPC);
+const hatIM=new THREE.InstancedMesh(paint(mergeC([ng(new THREE.CylinderGeometry(.145,.15,.014,10,1),.012).translate(0,.468,0),ng(new THREE.CylinderGeometry(.058,.074,.075,8,1).translate(0,.505,0)),tint(ng(new THREE.CylinderGeometry(.075,.075,.018,8,1,true).translate(0,.48,0)),.45,.4,.35)]),(x,y,z)=>mulC(.85+.25*pkey(x,y,z))),npcVC,MAXNPC);
+const legGeo=mergeC([ng(new THREE.CylinderGeometry(.03,.024,.15,5,1,true).translate(0,-.075,0)),tint(ng(new THREE.IcosahedronGeometry(.03,0).scale(.95,.55,1.5).translate(0,-.15,.014)),.45,.4,.38)]);
+const armGeo=paint(mergeC([ng(new THREE.CylinderGeometry(.026,.022,.15,5,1,true).translate(0,-.075,0)),ng(new THREE.IcosahedronGeometry(.023,0).translate(0,-.155,.004))]),(x,y)=>{if(y<-.14)mulC(.8);});
+const legL=new THREE.InstancedMesh(legGeo,lam(0x4a3c2c,{vertexColors:true}),MAXNPC),legR=new THREE.InstancedMesh(legGeo,lam(0x4a3c2c,{vertexColors:true}),MAXNPC);
+const armL=new THREE.InstancedMesh(armGeo,npcVC,MAXNPC),armR=new THREE.InstancedMesh(armGeo,npcVC,MAXNPC);
 const carryIM={wood:new THREE.InstancedMesh(mergeGeos([new THREE.CylinderGeometry(.04,.04,.34,6).rotateZ(Math.PI/2).translate(0,.03,0),new THREE.CylinderGeometry(.035,.035,.3,6).rotateZ(Math.PI/2).translate(.02,.09,-.02)]),lam(0x8b5a2b),MAXNPC),
   stone:new THREE.InstancedMesh(mergeGeos([new THREE.DodecahedronGeometry(.08,0).translate(0,.06,0),new THREE.DodecahedronGeometry(.05,0).translate(.06,.12,0)]),lam(0x9a9a9a),MAXNPC),
   basket:new THREE.InstancedMesh(mergeGeos([new THREE.CylinderGeometry(.08,.06,.09,7).translate(0,.04,0),new THREE.IcosahedronGeometry(.07,0).scale(1,.5,1).translate(0,.09,0)]),lam(0xa8443e),MAXNPC),
@@ -864,11 +990,16 @@ const carryIM={wood:new THREE.InstancedMesh(mergeGeos([new THREE.CylinderGeometr
   sack:new THREE.InstancedMesh(mergeGeos([new THREE.IcosahedronGeometry(.1,0).scale(1,1.2,1).translate(0,.1,0)]),lam(0xe8e0d0),MAXNPC),
   loaf:new THREE.InstancedMesh(mergeGeos([new THREE.IcosahedronGeometry(.08,0).scale(1.4,.7,.9).translate(0,.05,0),new THREE.IcosahedronGeometry(.07,0).scale(1.4,.7,.9).translate(.02,.11,0)]),lam(0xc08a48),MAXNPC)};
 const CARRY_OF={wood:'wood',stone:'stone',planks:'planks',berry:'basket',fish:'fish',meat:'meat',wheat:'sheaf',flour:'sack',bread:'loaf'};
-const BODY_IMS=[torsoIM,headIM,hairIM,legL,legR,armL,armR];
+const BODY_IMS=[torsoIM,headIM,hairIM,hoodIM,hatIM,legL,legR,armL,armR];
 const NPC_IMS=BODY_IMS.concat(Object.values(carryIM));
 const SHIRT=[0x3c6ea8,0x9c4b3b,0x5f7d3a,0x8a6aa0,0xc08a2e,0x3a8a8a];
 const HAIR=[0x3a2a1a,0x7a4a20,0xc8a050,0x222222,0xa05a2a];
-for(let i=0;i<MAXNPC;i++){tmpC.set(SHIRT[i%SHIRT.length]);torsoIM.setColorAt(i,tmpC);armL.setColorAt(i,tmpC);armR.setColorAt(i,tmpC);tmpC.set(HAIR[(i*7)%HAIR.length]);hairIM.setColorAt(i,tmpC);for(const im of NPC_IMS)im.setMatrixAt(i,ZERO);}
+const SKIN=[0xf0c8a0,0xe2b48c,0xc99a72,0xf4d6b8,0xb07e58],HOOD=[0x6a5a48,0x4e5a3a,0x7a3a2c,0x5a5450],HAT=[0xc8a860,0x6a4a30,0x3e3a36,0xb89450];
+const NPC_HW=new Uint8Array(MAXNPC);// 0 Haar, 1 Kapuze, 2 Hut
+for(let i=0;i<MAXNPC;i++){const hw=hash(i*13+5,77);NPC_HW[i]=hw<.22?1:hw<.45?2:0;
+  tmpC.set(SHIRT[i%SHIRT.length]);tmpC.multiplyScalar(.85+.3*hash(i,91));torsoIM.setColorAt(i,tmpC);armL.setColorAt(i,tmpC);armR.setColorAt(i,tmpC);tmpC.set(HAIR[(i*7)%HAIR.length]);hairIM.setColorAt(i,tmpC);
+  tmpC.set(SKIN[(i*3)%SKIN.length]);headIM.setColorAt(i,tmpC);tmpC.set(HOOD[i%HOOD.length]);hoodIM.setColorAt(i,tmpC);tmpC.set(HAT[(i*5)%HAT.length]);hatIM.setColorAt(i,tmpC);
+  for(const im of NPC_IMS)im.setMatrixAt(i,ZERO);}
 for(const im of NPC_IMS){im.count=0;im.castShadow=true;im.frustumCulled=false;scene.add(im);}
 const npcs=[];
 const NAMES=['Anna','Bertram','Clara','Dietrich','Emma','Friedrich','Greta','Hans','Ida','Jakob','Klara','Ludwig','Marta','Nikolaus','Otto','Paula','Rosa','Sebastian','Theda','Ulrich','Vera','Wilhelm','Agnes','Benno','Cäcilie','Elsa','Franz','Gisela','Hedwig','Konrad','Liese','Mathilde','Oswin','Rudolf','Sophie','Walter','Wiebke','Henning','Frieda','Karl','Lotte','Moritz','Johanna','Albrecht','Irmgard','Kuno','Hilde','Egon','Mina','Gustav','Berta','Anton','Luise','Emil','Käthe','Fritz','Erna','Jost','Magda','Wendel'];
@@ -1001,7 +1132,7 @@ function drawNpcs(){
     const working=n.state==='work'||n.state==='build'||n.state==='craft';
     const tilt=working?Math.sin(n.phase*4)*.12:0;
     eu.set(tilt,n.rot,0,'YXZ');qt.setFromEuler(eu);eu.order='XYZ';m4.compose(v3.set(n.x,y,n.z),qt,sc.set(1,1,1));
-    torsoIM.setMatrixAt(i,m4);headIM.setMatrixAt(i,m4);hairIM.setMatrixAt(i,m4);
+    torsoIM.setMatrixAt(i,m4);headIM.setMatrixAt(i,m4);hairIM.setMatrixAt(i,m4);if(NPC_HW[i]===1)hoodIM.setMatrixAt(i,m4);else if(NPC_HW[i]===2)hatIM.setMatrixAt(i,m4);
     const sw=n.moving?Math.sin(n.phase)*.7:0;
     limb(legL,i,-.04,.15,0,sw);limb(legR,i,.04,.15,0,-sw);
     let aL=-sw*.8,aR=sw*.8;
@@ -1018,11 +1149,20 @@ function drawNpcs(){
 
 // ================= Wildtiere =================
 const deer=[],rabbits=[],birds=[],fishJ=[];
-const deerIM=inst(mergeGeos([B(.17,.19,.44).translate(0,.42,0),B(.08,.22,.08).rotateX(.45).translate(0,.58,.2),B(.09,.09,.17).translate(0,.7,.28),B(.03,.07,.02).translate(-.05,.77,.22),B(.03,.07,.02).translate(.05,.77,.22),
-  B(.045,.34,.045).translate(-.055,.17,.16),B(.045,.34,.045).translate(.055,.17,.16),B(.045,.34,.045).translate(-.055,.17,-.16),B(.045,.34,.045).translate(.055,.17,-.16),B(.05,.06,.04).translate(0,.47,-.23)]),lam(0x9a6438),24,true);
-const rabbitIM=inst(mergeGeos([new THREE.IcosahedronGeometry(.09,0).scale(1,.85,1.3).translate(0,.1,0),new THREE.IcosahedronGeometry(.06,0).translate(0,.17,.1),B(.02,.1,.03).translate(-.025,.25,.08),B(.02,.1,.03).translate(.025,.25,.08)]),lam(0xa08a70),30,true);
-const birdIM=inst(mergeGeos([B(.04,.04,.14),B(.22,.01,.08).rotateZ(.35).translate(.11,.04,0),B(.22,.01,.08).rotateZ(-.35).translate(-.11,.04,0)]),lam(0x3a3430),18,false);birdIM.frustumCulled=false;
-const fishIM=inst(new THREE.IcosahedronGeometry(.07,0).scale(.6,.7,1.8),lam(0xb8c4cc,{emissive:0x223040}),8,false);fishIM.frustumCulled=false;
+// Reh: Rumpf, Hals, Kopf mit Schnauze, zweigliedrige Beine (Sprunggelenk hinten), Spiegel, Geweih (Bock) extra
+const deerIM=inst((()=>{const legs=[];for(const sx of [-1,1]){legs.push(stick(sx*.055,.42,.15,sx*.05,.2,.17,.032,.02),stick(sx*.05,.2,.17,sx*.05,0,.16,.019,.013),stick(sx*.06,.45,-.15,sx*.055,.22,-.22,.042,.02),stick(sx*.055,.22,-.22,sx*.052,0,-.17,.019,.013));}
+  const body=paint(ng(new THREE.IcosahedronGeometry(1,1).scale(.1,.115,.24).translate(0,.45,0),.02,v=>{v.y+=v.z*.12;}),(x,y,z,nx,ny)=>{const k=.9+.18*pkey(x,y,z);if(ny<-.35||y<.39)setC(.78*k,.66*k,.5*k);else if(z<-.19)setC(.88,.84,.76);else setC(.52*k*(y>.54?.82:1),.32*k*(y>.54?.82:1),.17*k);});
+  const head=paint(mergeC([ng(new THREE.IcosahedronGeometry(1,0).scale(.048,.052,.085).translate(0,.72,.34)),stick(0,.715,.38,0,.685,.46,.032,.018,5),
+    ng(new THREE.IcosahedronGeometry(1,0).scale(.014,.05,.028).rotateZ(-.8).translate(.055,.77,.31)),ng(new THREE.IcosahedronGeometry(1,0).scale(.014,.05,.028).rotateZ(.8).translate(-.055,.77,.31))]),(x,y,z)=>{if(z>.445)setC(.1,.08,.07);else if(y<.7&&z>.38)setC(.75,.66,.55);else setC(.5,.33,.19);});
+  return mergeC([body,tint(stick(0,.5,.16,0,.7,.3,.058,.04,5),.5,.33,.19),head,paint(mergeC(legs),(x,y)=>{if(y<.03)setC(.08,.07,.06);else setC(.42*(y<.18?.75:1),.28*(y<.18?.75:1),.16);}),tint(ng(new THREE.IcosahedronGeometry(.032,0).translate(0,.5,-.245)),.92,.9,.85)]);})(),lam(0xffffff,{vertexColors:true}),24,true);
+const antlerIM=inst(tint(mergeC([-1,1].flatMap(sx=>[stick(sx*.025,.77,.33,sx*.085,.93,.3,.012,.008),stick(sx*.085,.93,.3,sx*.1,1.03,.23,.008,.005,3),stick(sx*.072,.88,.31,sx*.075,.95,.4,.007,.004,3),stick(sx*.093,.98,.27,sx*.145,1.03,.3,.006,.004,3)])),.85,.78,.62),lam(0xffffff,{vertexColors:true}),24,true);
+const rabbitIM=inst(mergeC([paint(ng(new THREE.IcosahedronGeometry(1,1).scale(.085,.08,.115).translate(0,.1,-.01),.012),(x,y,z,nx,ny)=>{const k=.9+.2*pkey(x,y,z);if(ny<-.3)setC(.82,.76,.66);else setC(.56*k,.47*k,.37*k);}),
+  tint(ng(new THREE.IcosahedronGeometry(1,0).scale(.05,.05,.062).translate(0,.165,.09)),.58,.49,.39),
+  ...[-1,1].map(sx=>paint(ng(new THREE.IcosahedronGeometry(1,0).scale(.014,.062,.026).rotateX(-.3).rotateZ(sx*-.15).translate(sx*.022,.245,.06)),(x,y)=>y>.28?setC(.3,.25,.2):setC(.6,.5,.42))),
+  tint(ng(new THREE.IcosahedronGeometry(.026,0).translate(0,.13,-.125)),.95,.93,.9)]),lam(0xffffff,{vertexColors:true}),30,true);
+const birdIM=inst(mergeC([paint(ng(new THREE.IcosahedronGeometry(1,0).scale(.028,.028,.085)),(x,y)=>y<0?setC(.42,.38,.34):setC(.22,.2,.19)),tint(ng(new THREE.IcosahedronGeometry(.024,0).translate(0,.012,.08)),.2,.18,.17),
+  tint(triGeo([0,0,-.06,-.035,.004,-.1,.035,.004,-.1]),.2,.19,.18),...[-1,1].map(sx=>tint(triGeo([0,.01,.04,0,.01,-.04,sx*.2,.06,-.03,0,.01,-.04,sx*.12,.04,-.08,sx*.2,.06,-.03]),.25,.23,.21))]),lam(0xffffff,{vertexColors:true,side:THREE.DoubleSide}),18,false);birdIM.frustumCulled=false;
+const fishIM=inst(mergeC([ng(new THREE.IcosahedronGeometry(.07,0).scale(.6,.7,1.8)),triGeo([0,0,-.11,0,.05,-.17,0,-.05,-.17])]),lam(0xb8c4cc,{emissive:0x223040,side:THREE.DoubleSide}),8,false);fishIM.frustumCulled=false;
 const wr=mulberry(W.seed+99);
 function wildTileOk(tx,tz,kind){if(!W.inMap(tx,tz))return false;const i=tz*N+tx;if(W.tWater[i]||W.occ[i]>=T_BUILD||W.tH[i]<.3||W.tSlope[i]>1)return false;const b=W.tBiome[i];
   return kind==='deer'?(b===B_FOREST||b===B_BIRCH||b===B_MEADOW||b===B_HEATH):(b===B_MEADOW||b===B_HEATH||b===B_BIRCH);}
@@ -1042,10 +1182,10 @@ function moveAnimal(a,dt,spd,kind,range){
   return false;}
 function updateWild(dt,t){
   for(let i=0;i<deer.length;i++){const a=deer[i];const mv=moveAnimal(a,dt,.9,'deer',5);
-    if(a.dead)deerIM.setMatrixAt(i,ZERO);else{a.ph+=dt*(mv?9:1);setInstT(deerIM,i,a.x,heightAt(a.x,a.z)+(mv?Math.abs(Math.sin(a.ph))*.03:0),a.z,mv?0:Math.sin(a.ph*.3)*.05,a.rot,0,1,1,1);}}
+    if(a.dead){deerIM.setMatrixAt(i,ZERO);antlerIM.setMatrixAt(i,ZERO);}else{a.ph+=dt*(mv?9:1);setInstT(deerIM,i,a.x,heightAt(a.x,a.z)+(mv?Math.abs(Math.sin(a.ph))*.03:0),a.z,mv?0:Math.sin(a.ph*.3)*.05,a.rot,0,1,1,1);antlerIM.setMatrixAt(i,i%3===0?m4:ZERO);}}
   for(let i=0;i<rabbits.length;i++){const a=rabbits[i];const mv=moveAnimal(a,dt,1.3,'rabbit',3);
     if(a.dead)rabbitIM.setMatrixAt(i,ZERO);else{a.ph+=dt*(mv?14:0);setInst(rabbitIM,i,a.x,heightAt(a.x,a.z)+(mv?Math.abs(Math.sin(a.ph))*.14:0),a.z,a.rot,1,1,1);}}
-  deerIM.instanceMatrix.needsUpdate=rabbitIM.instanceMatrix.needsUpdate=true;
+  deerIM.instanceMatrix.needsUpdate=antlerIM.instanceMatrix.needsUpdate=rabbitIM.instanceMatrix.needsUpdate=true;
   for(let i=0;i<birds.length;i++){const b=birds[i];if(night){birdIM.setMatrixAt(i,ZERO);continue;}const a=t*b.w+b.off;
     const x=b.cx+Math.cos(a)*b.R,z=b.cz+Math.sin(a)*b.R,y=b.h+Math.sin(t*.7+b.ph)*.6;
     const fl=Math.cos(t*11+b.ph*3);setInst(birdIM,i,x,y,z,Math.atan2(-Math.sin(a)*b.w,Math.cos(a)*b.w),1.3,fl*1.3,1.3);}
@@ -1419,6 +1559,7 @@ function step(dt){
 }
 let last=performance.now(),errShown=false;
 function applyQuality(){
+  setVegLOD(qLevel>=2);
   gTuft.im.count=Math.floor(gTuft.full*(qLevel>=3?.3:qLevel>=1?.55:1));gFlower.im.count=Math.floor(gFlower.full*(qLevel>=1?.6:1));
   if(qLevel>=2){sun.shadow.mapSize.set(1024,1024);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null;}renderer.setPixelRatio(Math.min(DPR,qLevel>=3?1:1.25));resize();}
   if(qLevel>=3){sun.castShadow=false;}
