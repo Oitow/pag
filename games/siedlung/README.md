@@ -25,6 +25,9 @@ Aufbauspiel im Stil von Manor Lords, aber anders. Mobil im Hochformat, Single-Fi
   - Regen lässt Äcker ~35 % schneller wachsen, bei Gewitter pausieren die Fischer
   - Regen/Schnee als Shader-Partikel um die Kamera, Menge nach Auto-Qualität
 - Jahreszeiten-Optik: Laubbäume färben sich im Herbst, Blüte im Frühling, Schneedecke auf Boden, Dächern und Bäumen im Winter, Blumen nur in der warmen Zeit
+- Gebäude-Look: handgemachtes, raues Dorf – Fachwerk mit Streben, Steinsockel mit Ecksteinen, Dächer mit Dicke, Überstand und Durchhang (Reet mit ausgefranster Traufe, Ziegel, Schiefer, Schindeln, Moos), Läden, Blumenkästen, Türrahmen, Schornsteine und viel Kleinkram (Fässer, Kisten, Säcke, Holzstapel, Karren, Zäune, Werkzeug, Laternen)
+  - 6 prozedurale Canvas-Texturen (256 px: Holz, Putz, Stein, Ziegel, Dachziegel, Reet), Vertexfarben mit Flächenrauschen und Boden-Schmutz, gedämpfte Farben; `bake()` fasst weiter pro Material zusammen (~3–8 Draw-Calls, ≲3k Dreiecke je Gebäude)
+  - Wohnhäuser in 3 Varianten (Putzfarbe, Dachart, Läden, Requisiten), Auswahl per Position (`tmplFor`); Baustelle mit Gerüst und Leiter, Pflaster aus gewölbten Einzelsteinen, Weizen in Reihen, detailliertere Traglasten
 - Leben: Vogelschwärme + Zugvögel (V-Formation), Schornsteinrauch, springende Fische, Glühwürmchen in Sommernächten
 
 ## Steuerung
