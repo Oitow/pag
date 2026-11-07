@@ -504,7 +504,8 @@ const IMS=[];// für Auto-Qualität
 // (CInst, gleiche API wie InstancedMesh) -> Frustum- und Distanz-Culling pro Chunk.
 let CHUNKED=false;const CINSTS=[];
 function inst(geo,mat,n,shadow){if(CHUNKED){const c=new CInst(geo,mat,n,shadow);scene.add(c.group);return c;}
-  const im=new THREE.InstancedMesh(geo,mat,Math.max(1,n));im.count=n;if(shadow){im.castShadow=true;im.receiveShadow=true;}scene.add(im);return im;}
+  const im=new THREE.InstancedMesh(geo,mat,Math.max(1,n));im.count=n;im.frustumCulled=false;// dynamische Instanzen: Bounding-Sphere wäre veraltet
+  if(shadow){im.castShadow=true;im.receiveShadow=true;}scene.add(im);return im;}
 const CHB=new Map();
 function chunkHB(cx,cz,cs){const k=cs+'_'+cx+'_'+cz;let b=CHB.get(k);if(b)return b;let mn=1e9,mx=-1e9;
   for(let tz=cz*cs;tz<Math.min(N,(cz+1)*cs);tz++)for(let tx=cx*cs;tx<Math.min(N,(cx+1)*cs);tx++){const h=W.tH[tz*N+tx];if(h<mn)mn=h;if(h>mx)mx=h;}
