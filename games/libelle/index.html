@@ -135,22 +135,69 @@ const WATER = 0;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const KMH = 0.9;         // 1 Einheit/s → km/h (Libelle ~3 cm groß gedacht)
+const sstep = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
-function H(x, z) {
+// Value-Noise (deterministisch, günstig) für Biome und Details
+function hash2(ix, iz) {
+  let h = (Math.imul(ix, 374761393) + Math.imul(iz, 668265263)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+function vnoise(x, z) {
+  const ix = Math.floor(x), iz = Math.floor(z), fx = x - ix, fz = z - iz;
+  const u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz);
+  const a = hash2(ix, iz), b = hash2(ix + 1, iz), c = hash2(ix, iz + 1), d = hash2(ix + 1, iz + 1);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+// Feuchte 0..1: niedrig = Blumenwiese, mittel = Wald, hoch = Sumpf
+const moist = (x, z) => vnoise(x * 0.0011 + 50, z * 0.0011) * 0.65 + vnoise(x * 0.004, z * 0.004 + 20) * 0.35;
+
+// Fluss: schlängelt sich in x-Richtung durch die ganze Welt
+const riverZ = x => 520 * Math.sin(x * 0.0011 + .4) + 240 * Math.sin(x * 0.0029 + 1.0) - 150;
+const riverSlope = x => 520 * 0.0011 * Math.cos(x * 0.0011 + .4) + 240 * 0.0029 * Math.cos(x * 0.0029 + 1.0);
+const riverDist = (x, z) => { const s = riverSlope(x); return Math.abs(z - riverZ(x)) / Math.sqrt(1 + s * s); };
+
+function baseH(x, z) {
   return Math.sin(x * 0.0021) * Math.cos(z * 0.0017) * 38
        + Math.sin(x * 0.0063 + 1.3) * Math.sin(z * 0.0051 + 0.7) * 14
        + Math.sin((x + z) * 0.013) * 4 + 8;
 }
+function H(x, z) {
+  const base = baseH(x, z);
+  let h = base;
+  // Sumpf: Tiefland flach ziehen, mit vielen kleinen Tümpeln
+  const sw = sstep(.56, .68, moist(x, z)) * (1 - sstep(16, 28, base));
+  if (sw > 0) h = h * (1 - sw) + (2.2 + (0.42 - vnoise(x * .009 + 7, z * .009 - 3)) * 12) * sw;
+  // Hochland: zerklüftete Grate
+  if (base > 26) h += (base - 26) * 0.55 * (1 - Math.abs(2 * vnoise(x * .006, z * .006) - 1));
+  // Flussbett
+  const t = sstep(26, 100, riverDist(x, z));
+  if (t < 1) h = Math.min(h, h * t - 6 * (1 - t));
+  return h;
+}
 const floorAt = (x, z) => Math.max(H(x, z), WATER);
+// Biom-Abfrage für andere Systeme (z. B. Schwarm-Platzierung)
+function biomeAt(x, z) {
+  const h = H(x, z);
+  if (h < 0.3) return 'see';
+  if (h > 34) return 'hochland';
+  const m = moist(x, z);
+  if (m > 0.6) return 'sumpf';
+  if (m < 0.42) return 'wiese';
+  return 'wald';
+}
 
 // ---------- Renderer ----------
-const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true, powerPreference: 'high-performance' });
+// Adaptive Auflösung: startet bei 1.5, regelt anhand gemessener FPS zwischen 1 und 1.75
+const PR_MAX = Math.min(devicePixelRatio || 1, 1.75), PR_MIN = Math.min(1, PR_MAX);
+let pixelRatio = Math.min(PR_MAX, 1.5);
+renderer.setPixelRatio(pixelRatio);
 const scene = new THREE.Scene();
 const SKY = new THREE.Color(0x9fd3e6);
 scene.background = SKY;
-scene.fog = new THREE.Fog(SKY, 140, 1050);
-const camera = new THREE.PerspectiveCamera(80, 1, 0.1, 1400);
+scene.fog = new THREE.Fog(SKY, 120, 950);
+const camera = new THREE.PerspectiveCamera(80, 1, 0.1, 1000); // far knapp hinter Nebelende
 let baseFov = 80;
 function resize() {
   const w = innerWidth, h = innerHeight;
@@ -165,82 +212,265 @@ scene.add(new THREE.HemisphereLight(0xdff4ff, 0x4a6a3a, 1.0));
 const sun = new THREE.DirectionalLight(0xffffff, 1.1);
 sun.position.set(300, 500, 200); scene.add(sun);
 
-// ---------- Terrain + Wasser (Platzhalter) ----------
-{
-  const g = new THREE.PlaneGeometry(WORLD, WORLD, 200, 200);
-  g.rotateX(-Math.PI / 2);
-  const p = g.attributes.position, col = [], c = new THREE.Color();
-  const sand = new THREE.Color(0xd9c78f), g1 = new THREE.Color(0x76b34e), g2 = new THREE.Color(0x3f7a35),
-        r1 = new THREE.Color(0x7d8a6a), r2 = new THREE.Color(0xc4c4bc);
-  for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i), z = p.getZ(i), y = H(x, z);
-    p.setY(i, y);
-    if (y < 1.8) c.copy(sand);
-    else if (y < 32) c.copy(g1).lerp(g2, (y - 1.8) / 30);
-    else c.copy(r1).lerp(r2, Math.min(1, (y - 32) / 28));
-    col.push(c.r, c.g, c.b);
+// Instanzen in Kacheln (Chunks) gruppieren, damit Frustum-Culling ganze Kacheln verwirft
+const CH = 550;
+const chunkKey = (x, z) => Math.floor((x + WORLD / 2) / CH) * 1000 + Math.floor((z + WORLD / 2) / CH);
+let instMeshCount = 0;
+function addChunked(geo, mat, items) { // items: { m: Matrix4, x, z, c?: Color }
+  const buckets = new Map();
+  for (const it of items) {
+    const k = chunkKey(it.x, it.z);
+    if (!buckets.has(k)) buckets.set(k, []);
+    buckets.get(k).push(it);
   }
-  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  g.computeVertexNormals();
-  scene.add(new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })));
-  const w = new THREE.Mesh(new THREE.PlaneGeometry(WORLD, WORLD).rotateX(-Math.PI / 2),
-    new THREE.MeshLambertMaterial({ color: 0x3b8fb5, transparent: true, opacity: .82 }));
+  for (const list of buckets.values()) {
+    const im = new THREE.InstancedMesh(geo, mat, list.length);
+    list.forEach((it, i) => { im.setMatrixAt(i, it.m); if (it.c) im.setColorAt(i, it.c); });
+    im.computeBoundingSphere();
+    scene.add(im); instMeshCount++;
+  }
+}
+const _q = new THREE.Quaternion(), _e = new THREE.Euler(), _s = new THREE.Vector3(), _v = new THREE.Vector3();
+const mat4 = (x, y, z, sx, sy, sz, rx = 0, ry = 0, rz = 0) =>
+  new THREE.Matrix4().compose(_v.set(x, y, z), _q.setFromEuler(_e.set(rx, ry, rz)), _s.set(sx, sy, sz));
+
+// ---------- Terrain + Wasser (Platzhalter, in Kacheln) ----------
+let waterMat, waveTile;
+{
+  const SEG = 28, n = WORLD / CH;
+  const mat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+  const sand = new THREE.Color(0xd9c78f), wiese = new THREE.Color(0x9cc95a), wald = new THREE.Color(0x3f7a35),
+        sumpf = new THREE.Color(0x6b7a3c), r1 = new THREE.Color(0x7d8a6a), r2 = new THREE.Color(0xc4c4bc), c = new THREE.Color();
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    const cx = -WORLD / 2 + CH * (i + .5), cz = -WORLD / 2 + CH * (j + .5);
+    const g = new THREE.PlaneGeometry(CH, CH, SEG, SEG);
+    g.rotateX(-Math.PI / 2); g.translate(cx, 0, cz);
+    const p = g.attributes.position, col = new Float32Array(p.count * 3);
+    for (let k = 0; k < p.count; k++) {
+      const x = p.getX(k), z = p.getZ(k), y = H(x, z), m = moist(x, z);
+      p.setY(k, y);
+      c.copy(wiese).lerp(wald, sstep(.4, .58, m)).lerp(sumpf, sstep(.58, .68, m) * (1 - sstep(16, 28, y)));
+      c.lerp(r1, sstep(26, 38, y)).lerp(r2, sstep(40, 70, y));
+      if (y < 1.8) c.lerp(sand, sstep(1.8, 0.6, y));
+      col[k * 3] = c.r; col[k * 3 + 1] = c.g; col[k * 3 + 2] = c.b;
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    g.computeVertexNormals(); g.computeBoundingSphere();
+    scene.add(new THREE.Mesh(g, mat));
+  }
+  // Wasser deckend (spart Blending), Farbe schwankt leicht
+  waterMat = new THREE.MeshLambertMaterial({ color: 0x3b8fb5 });
+  const w = new THREE.Mesh(new THREE.PlaneGeometry(WORLD, WORLD).rotateX(-Math.PI / 2), waterMat);
   w.position.y = WATER; scene.add(w);
+  // Wellen-Kachel um die Kamera: flach schattierte Facetten glitzern, Rand läuft auf 0 aus
+  const TS = 260, TSEG = 26;
+  const tg = new THREE.PlaneGeometry(TS, TS, TSEG, TSEG).rotateX(-Math.PI / 2);
+  waveTile = new THREE.Mesh(tg, new THREE.MeshLambertMaterial({ color: 0x3b8fb5, flatShading: true }));
+  waveTile.frustumCulled = false; scene.add(waveTile);
+  waveTile.userData = { TS, base: Float32Array.from(tg.attributes.position.array) };
+}
+function animateWater(t) {
+  waterMat.color.setHSL(.55, .5, .47 + Math.sin(t * .6) * .015);
+  waveTile.material.color.copy(waterMat.color);
+  const { TS, base } = waveTile.userData, step = TS / 26;
+  const ox = Math.round(camera.position.x / step) * step, oz = Math.round(camera.position.z / step) * step;
+  waveTile.position.set(ox, WATER + .12, oz);
+  waveTile.visible = camera.position.y < 120;
+  if (!waveTile.visible) return;
+  const a = waveTile.geometry.attributes.position.array, half = TS / 2;
+  for (let i = 0; i < a.length; i += 3) {
+    const lx = base[i], lz = base[i + 2], wx = lx + ox, wz = lz + oz;
+    const edge = sstep(half, half * .6, Math.max(Math.abs(lx), Math.abs(lz)));
+    a[i + 1] = (Math.sin(wx * .15 + t * 1.6) * Math.cos(wz * .13 - t * 1.2) * .25 + Math.sin((wx + wz) * .31 + t * 2.3) * .08) * edge;
+  }
+  waveTile.geometry.attributes.position.needsUpdate = true;
 }
 
-// ---------- Bäume (Instanced, mit Kollision) ----------
+// Pro Frame aus dem Render-Aufruf: Wasser + adaptive Auflösung (keine Änderung an der Spielschleife nötig)
+let fpsNow = 60, _frames = 0, _acc = 0, _lastT = performance.now();
+function adaptPixelRatio(now) {
+  const dt = now - _lastT; _lastT = now;
+  if (dt > 250) return; // Tab-Wechsel o. ä.
+  _frames++; _acc += dt;
+  if (_acc < 1500) return;
+  fpsNow = 1000 * _frames / _acc; _frames = 0; _acc = 0;
+  let next = pixelRatio;
+  if (fpsNow < 45 && pixelRatio > PR_MIN) next = Math.max(PR_MIN, pixelRatio - .25);
+  else if (fpsNow > 58 && pixelRatio < PR_MAX) next = Math.min(PR_MAX, pixelRatio + .125);
+  if (next !== pixelRatio) { pixelRatio = next; setTimeout(() => renderer.setPixelRatio(pixelRatio), 0); }
+}
+scene.onBeforeRender = () => { const now = performance.now(); animateWater(now / 1000); adaptPixelRatio(now); };
+window.__world = { biomeAt, H, floorAt, solids: () => solids.length };
+window.__perf = () => ({ fps: +fpsNow.toFixed(1), pixelRatio, calls: renderer.info.render.calls, tris: renderer.info.render.triangles, instMeshes: instMeshCount });
+
+// ---------- Bäume (Instanced in Kacheln, mit Kollision) ----------
 const trees = [], grid = new Map(), CELL = 40;
 const ck = (ix, iz) => ix * 100003 + iz;
+function addCollider(t) {
+  trees.push(t);
+  const k = ck(Math.floor(t.x / CELL), Math.floor(t.z / CELL));
+  if (!grid.has(k)) grid.set(k, []);
+  grid.get(k).push(t);
+}
 {
+  const DENS = { wald: .9, sumpf: .18, wiese: .05, hochland: .25, see: 0 };
+  const trunkI = [], crownI = [], c = new THREE.Color();
   let tries = 0;
-  while (trees.length < 2600 && tries < 60000) {
+  while (trees.length < 2600 && tries < 90000) {
     tries++;
     const x = rnd(-PLAY - 300, PLAY + 300), z = rnd(-PLAY - 300, PLAY + 300), y = H(x, z);
-    if (y < 3 || y > 46) continue;
-    if (Math.sin(x * 0.004 + 2) * Math.sin(z * 0.0035) + Math.random() * 0.7 < 0.25) continue; // Waldflecken
-    const s = rnd(0.7, 1.5);
+    if (y < 3 || y > 50) continue;
+    const b = biomeAt(x, z);
+    if (Math.random() > DENS[b]) continue;
+    const s = b === 'sumpf' ? rnd(.6, 1) : rnd(0.7, 1.5);
     const t = { x, z, y, h: 34 * s, r: 6.5 * s, s };
-    trees.push(t);
-    const k = ck(Math.floor(x / CELL), Math.floor(z / CELL));
-    if (!grid.has(k)) grid.set(k, []);
-    grid.get(k).push(t);
+    addCollider(t);
+    trunkI.push({ x, z, m: mat4(x, y - 1, z, 1.6 * s, t.h * .4, 1.6 * s) });
+    c.set(b === 'sumpf' ? 0x5f6f34 : b === 'hochland' ? 0x2c5a3c : 0x2f6b3a).offsetHSL(rnd(-.02, .02), 0, rnd(-.05, .05));
+    crownI.push({ x, z, m: mat4(x, y + t.h * .3, z, t.r, t.h * .75, t.r), c: c.clone() });
   }
-  const trunkG = new THREE.CylinderGeometry(0.6, 0.9, 1, 6).translate(0, .5, 0);
-  const crownG = new THREE.ConeGeometry(1, 1, 7).translate(0, .5, 0);
-  const trunk = new THREE.InstancedMesh(trunkG, new THREE.MeshLambertMaterial({ color: 0x7a5534 }), trees.length);
-  const crown = new THREE.InstancedMesh(crownG, new THREE.MeshLambertMaterial({ color: 0x2f6b3a, flatShading: true }), trees.length);
-  const m = new THREE.Matrix4();
-  trees.forEach((t, i) => {
-    m.makeScale(1.6 * t.s, t.h * 0.4, 1.6 * t.s).setPosition(t.x, t.y - 1, t.z); trunk.setMatrixAt(i, m);
-    m.makeScale(t.r, t.h * 0.75, t.r).setPosition(t.x, t.y + t.h * 0.3, t.z); crown.setMatrixAt(i, m);
-  });
-  scene.add(trunk, crown);
+  addChunked(new THREE.CylinderGeometry(0.6, 0.9, 1, 6).translate(0, .5, 0), new THREE.MeshLambertMaterial({ color: 0x7a5534 }), trunkI);
+  addChunked(new THREE.ConeGeometry(1, 1, 7).translate(0, .5, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), crownI);
 }
 
-// ---------- Schilf, Felsen, Wegmarken ----------
+// ---------- Schilf, Blumen, Seerosen, Felsen, Felsnadeln ----------
 {
-  const N = 4000, reed = new THREE.InstancedMesh(new THREE.BoxGeometry(.3, 1, .3).translate(0, .5, 0),
-    new THREE.MeshLambertMaterial({ color: 0x5d8f3a }), N);
-  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s = new THREE.Vector3(), v = new THREE.Vector3();
-  let n = 0, tries = 0;
-  while (n < N && tries < 400000) {
-    tries++;
+  // Schilf: an allen Ufern, im Sumpf dichter
+  const reeds = [];
+  for (let tries = 0; reeds.length < 6000 && tries < 500000; tries++) {
     const x = rnd(-PLAY - 200, PLAY + 200), z = rnd(-PLAY - 200, PLAY + 200), y = H(x, z);
-    if (y < -1.5 || y > 1.6) continue;
-    e.set(rnd(-.15, .15), 0, rnd(-.15, .15)); q.setFromEuler(e);
-    m.compose(v.set(x, y - .5, z), q, s.set(1, rnd(3, 8), 1)); reed.setMatrixAt(n++, m);
+    const shore = y > -1.5 && y < 1.6, swamp = y > -1 && y < 5 && moist(x, z) > .6;
+    if (!shore && !swamp) continue;
+    reeds.push({ x, z, m: mat4(x, y - .5, z, 1, rnd(3, 8), 1, rnd(-.15, .15), 0, rnd(-.15, .15)) });
   }
-  reed.count = n; scene.add(reed);
+  addChunked(new THREE.BoxGeometry(.3, 1, .3).translate(0, .5, 0), new THREE.MeshLambertMaterial({ color: 0x5d8f3a }), reeds);
 
-  const R = 500, rock = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0),
-    new THREE.MeshLambertMaterial({ color: 0x8b8f92, flatShading: true }), R);
-  for (let i = 0; i < R; i++) {
-    const x = rnd(-PLAY, PLAY), z = rnd(-PLAY, PLAY), sc = rnd(1.5, 6);
-    e.set(rnd(0, 3), rnd(0, 3), 0); q.setFromEuler(e);
-    m.compose(v.set(x, H(x, z), z), q, s.set(sc, sc * .7, sc)); rock.setMatrixAt(i, m);
+  // Blumenwiese: bunte Platzhalter-Blüten
+  const COLS = [0xff7eb6, 0xffe066, 0xffffff, 0xb48cff, 0xff9f43].map(h => new THREE.Color(h));
+  const flowers = [];
+  for (let tries = 0; flowers.length < 7000 && tries < 300000; tries++) {
+    const x = rnd(-PLAY, PLAY), z = rnd(-PLAY, PLAY);
+    if (biomeAt(x, z) !== 'wiese') continue;
+    const y = H(x, z), s = rnd(.5, 1.1);
+    flowers.push({ x, z, m: mat4(x, y + 1.2 * s, z, s, s, s, 0, rnd(0, 3), 0), c: COLS[(Math.random() * COLS.length) | 0] });
   }
-  scene.add(rock);
+  addChunked(new THREE.ConeGeometry(.9, 1.2, 5).rotateX(Math.PI), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), flowers);
+
+  // Seerosen auf flachem Wasser in feuchten Gebieten
+  const pads = [];
+  for (let tries = 0; pads.length < 2500 && tries < 300000; tries++) {
+    const x = rnd(-PLAY, PLAY), z = rnd(-PLAY, PLAY), y = H(x, z);
+    if (y > -.4 || y < -4 || moist(x, z) < .5) continue;
+    const s = rnd(1, 2.4);
+    pads.push({ x, z, m: mat4(x, WATER + .2, z, s, 1, s, 0, rnd(0, 6), 0) });
+  }
+  addChunked(new THREE.CylinderGeometry(1, 1, .12, 8), new THREE.MeshLambertMaterial({ color: 0x3f8f4a }), pads);
+
+  // Felsen: verstreut, im Hochland viele und große
+  const rocks = [];
+  for (let tries = 0; rocks.length < 1600 && tries < 100000; tries++) {
+    const x = rnd(-PLAY, PLAY), z = rnd(-PLAY, PLAY), high = biomeAt(x, z) === 'hochland';
+    if (!high && rocks.length > 500 && Math.random() > .1) continue;
+    const sc = high ? rnd(2.5, 9) : rnd(1.5, 5);
+    rocks.push({ x, z, m: mat4(x, H(x, z), z, sc, sc * .7, sc, rnd(0, 3), rnd(0, 3), 0) });
+  }
+  addChunked(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0x8b8f92, flatShading: true }), rocks);
+
+  // Felsnadeln im Hochland (mit Kollision über das Baum-Raster)
+  const spires = [];
+  for (let tries = 0; spires.length < 90 && tries < 20000; tries++) {
+    const x = rnd(-PLAY, PLAY), z = rnd(-PLAY, PLAY);
+    if (biomeAt(x, z) !== 'hochland') continue;
+    const y = H(x, z), R = rnd(5, 10), h = rnd(40, 80);
+    addCollider({ x, z, y, h, r: R * 1.15, s: R / 1.3 });
+    spires.push({ x, z, m: mat4(x, y - 2, z, R, h * 1.05, R, 0, rnd(0, 3), 0) });
+  }
+  addChunked(new THREE.ConeGeometry(1, 1, 6).translate(0, .5, 0), new THREE.MeshLambertMaterial({ color: 0x9a9890, flatShading: true }), spires);
 }
+
+// ---------- Große Hindernisse zum Durchfliegen (Brücken, Steinbögen, umgestürzte Bäume) ----------
+const solids = []; // gedrehte Quader: { x,y,z, hx,hy,hz, c,s (cos/sin yaw), rad }
+function addSolid(x, y, z, hx, hy, hz, yaw) {
+  solids.push({ x, y, z, hx, hy, hz, c: Math.cos(yaw), s: Math.sin(yaw), rad: Math.hypot(hx, hy, hz) });
+}
+// Schiebt p aus allen Hindernissen heraus; true bei Treffer
+function solidCollide(p) {
+  let hit = false;
+  for (const b of solids) {
+    const dx = p.x - b.x, dy = p.y - b.y, dz = p.z - b.z;
+    if (dx * dx + dy * dy + dz * dz > (b.rad + 2) ** 2) continue;
+    let lx = dx * b.c - dz * b.s, ly = dy, lz = dx * b.s + dz * b.c;
+    const ox = b.hx + 1 - Math.abs(lx), oy = b.hy + 1 - Math.abs(ly), oz = b.hz + 1 - Math.abs(lz);
+    if (ox <= 0 || oy <= 0 || oz <= 0) continue;
+    hit = true;
+    if (ox < oy && ox < oz) lx += Math.sign(lx || 1) * ox;
+    else if (oy < oz) ly += Math.sign(ly || 1) * oy;
+    else lz += Math.sign(lz || 1) * oz;
+    p.x = b.x + lx * b.c + lz * b.s; p.y = b.y + ly; p.z = b.z - lx * b.s + lz * b.c;
+  }
+  return hit;
+}
+{
+  const stone = new THREE.MeshLambertMaterial({ color: 0xa8a49a, flatShading: true });
+  const wood = new THREE.MeshLambertMaterial({ color: 0x8a6440, flatShading: true });
+  const bark = new THREE.MeshLambertMaterial({ color: 0x5e4630, flatShading: true });
+  const block = (w, h, d, mat, x, y, z, yaw) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    m.position.set(x, y, z); m.rotation.y = yaw; scene.add(m);
+    addSolid(x, y, z, w / 2, h / 2, d / 2, yaw);
+  };
+  // lokale x-Achse zeigt in Weltrichtung (dx,dz): yaw = atan2(-dz, dx)
+  const along = (cx, cz, yaw, d) => [cx + Math.cos(yaw) * d, cz - Math.sin(yaw) * d];
+
+  // Brücken quer über den Fluss
+  for (const bx of [-1450, -550, 350, 1250]) {
+    const bz = riverZ(bx), sl = riverSlope(bx), L = Math.hypot(1, sl);
+    const yaw = Math.atan2(-1 / L, -sl / L); // senkrecht zum Fluss
+    const len = 200;
+    const [ax, az] = along(bx, bz, yaw, -len / 2), [ex, ez] = along(bx, bz, yaw, len / 2);
+    const deckY = Math.max(floorAt(ax, az), floorAt(ex, ez), 14) + 4;
+    block(len, 3, 14, wood, bx, deckY, bz, yaw);
+    for (const d of [-90, -32, 32, 90]) {
+      const [px, pz] = along(bx, bz, yaw, d), bottom = Math.min(H(px, pz), -6);
+      const ph = deckY - 1.5 - bottom;
+      if (ph > 1) block(5, ph, 5, stone, px, bottom + ph / 2, pz, yaw);
+    }
+  }
+
+  // Steinbögen auf Wiese und im Hochland
+  let arches = 0;
+  for (let tries = 0; arches < 7 && tries < 4000; tries++) {
+    const x = rnd(-PLAY + 100, PLAY - 100), z = rnd(-PLAY + 100, PLAY - 100), b = biomeAt(x, z);
+    if (b !== 'wiese' && b !== 'hochland') continue;
+    const yaw = rnd(0, Math.PI), [x1, z1] = along(x, z, yaw, -21), [x2, z2] = along(x, z, yaw, 21);
+    const h1 = H(x1, z1), h2 = H(x2, z2);
+    if (Math.abs(h1 - h2) > 6 || Math.min(h1, h2) < 2) continue;
+    const top = Math.max(h1, h2) + 38;
+    block(9, top - h1 + 2, 9, stone, x1, (top + h1 - 2) / 2, z1, yaw);
+    block(9, top - h2 + 2, 9, stone, x2, (top + h2 - 2) / 2, z2, yaw);
+    block(56, 9, 10, stone, x, top + 4.5, z, yaw);
+    arches++;
+  }
+
+  // Umgestürzte Baumstämme in Wald und Sumpf
+  const logG = new THREE.CylinderGeometry(3, 2.4, 1, 8).rotateZ(Math.PI / 2);
+  let logs = 0;
+  for (let tries = 0; logs < 12 && tries < 4000; tries++) {
+    const x = rnd(-PLAY + 100, PLAY - 100), z = rnd(-PLAY + 100, PLAY - 100), b = biomeAt(x, z);
+    if (b !== 'wald' && b !== 'sumpf') continue;
+    const len = rnd(55, 85), yaw = rnd(0, Math.PI);
+    const [x1, z1] = along(x, z, yaw, -len / 2), [x2, z2] = along(x, z, yaw, len / 2);
+    const y = Math.max(floorAt(x1, z1), floorAt(x2, z2), floorAt(x, z)) + 3;
+    const m = new THREE.Mesh(logG, bark); m.scale.x = len;
+    m.position.set(x, y, z); m.rotation.y = yaw; scene.add(m);
+    addSolid(x, y, z, len / 2, 3, 3, yaw);
+    // Wurzelteller an einem Ende (nur Optik)
+    const root = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 2, 8).rotateZ(Math.PI / 2), bark);
+    root.position.set(x1, y, z1); root.rotation.y = yaw; scene.add(root);
+    logs++;
+  }
+}
+
 const landmarks = [[-1200, -1200, 0xe74c3c], [1300, -900, 0x3498db], [0, 1400, 0xf1c40f], [-1500, 700, 0x9b59b6], [900, 900, 0xecf0f1], [200, -1600, 0xe67e22]]
   .map(([x, z, c]) => {
     const y = H(x, z), g = new THREE.Group();
@@ -249,6 +479,7 @@ const landmarks = [[-1200, -1200, 0xe74c3c], [1300, -900, 0x3498db], [0, 1400, 0
     const top = new THREE.Mesh(new THREE.SphereGeometry(12, 10, 8), new THREE.MeshLambertMaterial({ color: c, emissive: c, emissiveIntensity: .35 }));
     top.position.y = 158; g.add(top);
     g.position.set(x, y, z); scene.add(g);
+    addSolid(x, y + 75, z, 4, 75, 4, 0);
     return { x, z, c, y, h: 170 };
   });
 
@@ -537,6 +768,7 @@ function update(dt) {
     P.yaw += ((back - P.yaw + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 2);
   }
   treeCollide();
+  if (solidCollide(P.pos) && P.speed > 15) { P.speed *= .35; P.shake = .3; } // Brücken, Bögen, Stämme
 
   // Energie
   P.energy -= dt * (hovering ? .7 : 1.1) + (canBoost ? dt * 5 : 0);
