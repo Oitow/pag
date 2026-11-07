@@ -3,7 +3,14 @@
 Aufbauspiel im Stil von Manor Lords, aber anders. Mobil im Hochformat, Single-File `index.html` mit Three.js (CDN).
 
 ## Features
-- Prozedurale Insel: Buchten, Erosion, Fluss, Seen, Biome (Wiese, Wald, Birken, Heide, Sumpf, Fels, Schnee)
+- Prozedurale Insel (256×256 Felder, doppelte Kantenlänge; Spielstand-Version 2 – alte 128er-Stände werden mit Hinweis verworfen): Domain-Warp, Gratgebirge, Steilküsten neben Stränden, Tropfen-Erosion, 2–3 Flüsse (Dijkstra von Bergquellen bis ins Meer, mäandernd), Seen, Waldcluster mit Lichtungen, geglätteter Startplatz nahe Wasser und Wald; Biome (Wiese, Wald, Birken, Heide, Sumpf, Fels, Schnee)
+- Engine (Stimmung: warmes Sonnenlicht, kühle Schatten, Dunst in Tälern):
+  - Terrain in 64 Chunks à 32×32 Feldern mit 3 LOD-Stufen (Schürzen gegen Risse), Distanz-Culling hinter dem Nebel; Splatting-Shader (Fels an Hängen mit Schichtung, Sand, Erde/Pflaster, Waldboden, Makro-Variation, Detail-Normalen, Schnee/Nässe), Wege-Abnutzung und Äcker überträgt nur geänderte Chunks
+  - Atmosphäre als globaler Shader-Patch aller Materialien: Distanz- + Höhennebel (Morgendunst), Sonnen-Streulicht, Farbkorrektur, Vignette und Filmkorn ohne Extra-Renderpass; ACES-Tonemapping
+  - Wasser mit Tiefentextur, Fresnel, Himmelsreflexion, Sonnenglanz, Uferschaum und Wellennormalen
+  - Schatten: enger, auf Texel gerasterter Ausschnitt folgt der Kamera
+  - Statische Vegetation/Deko in räumlichen Chunks (`CInst`, gleiche API wie InstancedMesh) mit Frustum- und Distanz-Culling
+  - Qualitätsstufen 0–3 (Auto bei < 30 fps): Pixeldichte (max. 1,5), Schattenauflösung, Terrain-LOD-Distanzen, einfacher Terrain-Shader, Gras-/Blumendichte, Sichtweiten, Korn
 - Trampelpfade entstehen dort, wo NPCs laufen; gepflasterte Wege per Malen
 - Ressourcen: Holz, Stein, Bretter, Nahrung (Beeren, Fisch, Fleisch, Brot)
 - Ketten: Acker → Mühle → Bäckerei, Sägewerk, Fischer, Jäger

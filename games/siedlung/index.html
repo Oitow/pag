@@ -997,7 +997,8 @@ function engineFrame(dt){
   for(const ci of CINSTS)ci.update(cp,Math.min(farC,ci.maxDist));
   // Wasser & Wolken
   WU.uSunD.value.copy(sunDir);WU.uSunC.value.copy(sun.color);WU.uSkyT.value.copy(skyU.uTop.value);WU.uLight.value=Math.max(.08,light*(1-.6*(wv.cov||0)));WU.uWet.value=uWet.value;
-  cloudMat.opacity=.8*sstep(18,55,cp.y);cloudIM.visible=cloudMat.opacity>.02;
+  cloudMat.opacity=.8*(1-sstep(20,36,cp.y));// von oben verdecken Wolken nur das Dorf – dann zeigen nur noch ihre Schatten (Terrain-Shader) sie an
+  cloudIM.visible=cloudMat.opacity>.02;if(typeof wxCloudIM!=='undefined')wxCloudIM.visible=cp.y<30;
 }
 
 // ================= Gebäude =================
