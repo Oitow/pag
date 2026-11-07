@@ -34,7 +34,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--ink);color:var(-
 #efill{height:100%;width:100%;background:var(--acc);border-radius:6px;transition:background .3s}
 .lbl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
 #radar{width:118px;height:118px;border-radius:50%;background:var(--panel);flex:none}
-#warn{position:fixed;z-index:3;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 140px);
+#warn{position:fixed;z-index:3;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 196px);
   background:var(--warn);color:#fff;font-weight:800;padding:6px 14px;border-radius:20px;font-size:14px;pointer-events:none}
 #pops{position:fixed;z-index:3;left:0;right:0;top:40%;display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:none}
 .pop{font-weight:800;font-size:18px;text-shadow:0 2px 6px rgba(0,0,0,.5);animation:up .9s ease-out forwards}
@@ -66,7 +66,24 @@ label.opt{display:flex;gap:10px;align-items:center;color:var(--mute)}
 .big{font-size:44px;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums}
 .legend{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;font-size:14px;align-items:center}
 .dot{width:12px;height:12px;border-radius:50%}
-@media (prefers-reduced-motion:reduce){.pop{animation-duration:.01s}}
+.hudcol{display:flex;flex-direction:column;gap:8px;align-items:center;flex:none}
+#mute{pointer-events:auto;width:44px;height:44px;border-radius:50%;border:0;background:var(--panel);color:var(--txt);font-size:20px;line-height:1;cursor:pointer}
+#mute:focus-visible{outline:2px solid #fff}
+#goal{font-size:13px;font-weight:700;color:var(--txt);display:flex;justify-content:space-between;gap:8px}
+#goal span:last-child{color:var(--gold);font-variant-numeric:tabular-nums}
+#goal.done{animation:gdone .8s ease-out}
+@keyframes gdone{0%{color:var(--acc);transform:scale(1.08)}100%{transform:scale(1)}}
+#flash{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:0;box-shadow:inset 0 0 70px 18px var(--fc,#fff)}
+#flash.on{animation:fl .35s ease-out}
+@keyframes fl{from{opacity:.75}to{opacity:0}}
+#score.bump{animation:bump .25s ease-out}
+@keyframes bump{40%{transform:scale(1.25);color:var(--gold)}}
+#score{display:inline-block;transform-origin:left center}
+#banner{position:fixed;z-index:3;left:50%;top:32%;transform:translateX(-50%);background:var(--acc);color:var(--ink);font-weight:800;
+  padding:10px 18px;border-radius:16px;font-size:16px;text-align:center;pointer-events:none;max-width:80vw;animation:ban 2.2s ease-out forwards}
+@keyframes ban{0%{opacity:0;transform:translate(-50%,10px)}12%{opacity:1;transform:translate(-50%,0)}80%{opacity:1}100%{opacity:0}}
+#warn.soft{background:#e6a23c}
+@media (prefers-reduced-motion:reduce){.pop,#banner,#flash.on,#score.bump,#goal.done{animation-duration:.01s}}
 </style>
 </head>
 <body>
@@ -74,14 +91,19 @@ label.opt{display:flex;gap:10px;align-items:center;color:var(--mute)}
 <div id="touch"></div>
 <div id="vig"></div>
 <div id="hit"></div>
+<div id="flash"></div>
 
 <div id="hud">
   <div id="stats" class="card">
     <div id="row1"><span id="score">0</span><span id="combo"></span><span id="spd">0 km/h</span></div>
-    <div class="lbl">Energie</div>
+    <div class="lbl" id="elbl">Energie</div>
     <div id="ebar"><div id="efill"></div></div>
+    <div id="goal"><span id="gtxt">Ziel</span><span id="gprog"></span></div>
   </div>
-  <canvas id="radar" width="236" height="236"></canvas>
+  <div class="hudcol">
+    <canvas id="radar" width="236" height="236"></canvas>
+    <button id="mute" type="button" aria-label="Ton an/aus">🔊</button>
+  </div>
 </div>
 <div id="warn" hidden>⚠ Vogel jagt dich – Boost!</div>
 <div id="pops"></div>
@@ -102,13 +124,14 @@ label.opt{display:flex;gap:10px;align-items:center;color:var(--mute)}
       <li><b>Daumen links ziehen:</b> lenken &amp; steigen/sinken</li>
       <li><b>Boost</b> halten: bis 55 km/h, kostet Energie</li>
       <li><b>Schweben</b> halten: in der Luft stehen, präzise drehen</li>
-      <li>Rote Vögel jagen dich, mit Boost entkommst du</li>
+      <li>Rote Vögel: Ein <b>!</b> warnt dich, dann greifen sie an. Mit Boost entkommst du</li>
+      <li>Erfülle <b>Ziele</b> für mehr maximale Energie</li>
     </ul>
     <div class="legend">
-      <span class="dot" style="background:#f2f2a0"></span><span>Mücke – Schwärme über Wasser</span><span>+1</span>
-      <span class="dot" style="background:#4a4a5e"></span><span>Fliege – flink</span><span>+3</span>
-      <span class="dot" style="background:#ff9ad5"></span><span>Falter – groß, viel Energie</span><span>+5</span>
-      <span class="dot" style="background:#ffd25a"></span><span>Goldbremse – sehr schnell, selten</span><span>+20</span>
+      <span class="dot" style="background:#f2f2a0"></span><span>Mücke – dichte Wolken über Wasser</span><span>+1</span>
+      <span class="dot" style="background:#4a4a5e"></span><span>Fliege – schlägt Haken</span><span>+3</span>
+      <span class="dot" style="background:#ff9ad5"></span><span>Falter – taumelt, viel Energie</span><span>+5</span>
+      <span class="dot" style="background:#ffd25a"></span><span>Goldbremse – flieht, nur mit Boost zu kriegen</span><span>+20</span>
     </div>
     <label class="opt"><input type="checkbox" id="inv"> Höhensteuerung invertieren</label>
     <button class="go" id="start">Losfliegen</button>
@@ -285,10 +308,10 @@ dust.frustumCulled = false; scene.add(dust);
 
 // ---------- Insekten ----------
 const TYPES = [
-  { name: 'Mücke',      color: 0xf2f2a0, size: .5, speed: 7,  flee: 9,  energy: 3,  pts: 1,  swarms: 34, per: 14 },
-  { name: 'Fliege',     color: 0x4a4a5e, size: .65, speed: 14, flee: 16, energy: 6,  pts: 3,  swarms: 24, per: 7 },
-  { name: 'Falter',     color: 0xff9ad5, size: 1.1, speed: 6,  flee: 11, energy: 12, pts: 5,  swarms: 16, per: 4, flutter: true },
-  { name: 'Goldbremse', color: 0xffd25a, size: .8,  speed: 36, flee: 45, energy: 30, pts: 20, swarms: 8,  per: 1, glow: true, roam: true },
+  { name: 'Mücke',      color: 0xf2f2a0, size: .5, speed: 7,  flee: 9,  energy: 3,  pts: 1,  swarms: 34, per: 14, beh: 'cloud' },
+  { name: 'Fliege',     color: 0x4a4a5e, size: .65, speed: 14, flee: 16, energy: 6,  pts: 3,  swarms: 24, per: 7, beh: 'zigzag' },
+  { name: 'Falter',     color: 0xff9ad5, size: 1.1, speed: 6,  flee: 11, energy: 12, pts: 5,  swarms: 16, per: 4, flutter: true, beh: 'tumble' },
+  { name: 'Goldbremse', color: 0xffd25a, size: .8,  speed: 36, flee: 45, energy: 30, pts: 20, swarms: 8,  per: 1, glow: true, roam: true, beh: 'flee' },
 ];
 const swarms = [], insects = [];
 const insMeshes = TYPES.map(t => {
@@ -301,7 +324,7 @@ TYPES.forEach((t, ti) => {
   for (let s = 0; s < t.swarms; s++) {
     const sw = { t: ti, c: new THREE.Vector3(), base: new THREE.Vector3(), list: [], alive: 0, respawn: 0, ang: rnd(0, 6.28), active: false };
     for (let k = 0; k < t.per; k++) {
-      const ins = { s: sw, t: ti, idx: idx++, p: new THREE.Vector3(), v: new THREE.Vector3(), alive: true, ph: rnd(0, 100) };
+      const ins = { s: sw, t: ti, idx: idx++, p: new THREE.Vector3(), v: new THREE.Vector3(), alive: true, ph: rnd(0, 100), jt: 0, j: new THREE.Vector3() };
       sw.list.push(ins); insects.push(ins);
     }
     swarms.push(sw);
@@ -325,10 +348,144 @@ function placeSwarm(sw, avoid) {
   }
 }
 
+// ---------- Fang-Partikel ----------
+const BURST = 320;
+const burstG = new THREE.BufferGeometry();
+const bPos = new Float32Array(BURST * 3).fill(-9999), bCol = new Float32Array(BURST * 3), bVel = new Float32Array(BURST * 3), bLife = new Float32Array(BURST);
+burstG.setAttribute('position', new THREE.BufferAttribute(bPos, 3));
+burstG.setAttribute('color', new THREE.BufferAttribute(bCol, 3));
+const burst = new THREE.Points(burstG, new THREE.PointsMaterial({ size: .45, vertexColors: true, transparent: true, opacity: .95 }));
+burst.frustumCulled = false; scene.add(burst);
+let bNext = 0;
+function spawnBurst(p, color, n = 18) {
+  const c = new THREE.Color(color);
+  for (let k = 0; k < n; k++) {
+    const i = bNext; bNext = (bNext + 1) % BURST;
+    bPos[i * 3] = p.x; bPos[i * 3 + 1] = p.y; bPos[i * 3 + 2] = p.z;
+    const a = rnd(0, 6.28), e = rnd(-1, 1), sp = rnd(4, 11), r = Math.sqrt(1 - e * e);
+    bVel[i * 3] = Math.cos(a) * r * sp; bVel[i * 3 + 1] = e * sp + 2; bVel[i * 3 + 2] = Math.sin(a) * r * sp;
+    bCol[i * 3] = c.r; bCol[i * 3 + 1] = c.g; bCol[i * 3 + 2] = c.b;
+    bLife[i] = rnd(.4, .8);
+  }
+  burstG.attributes.color.needsUpdate = true;
+}
+function updateBursts(dt) {
+  const damp = Math.exp(-dt * 3);
+  for (let i = 0; i < BURST; i++) {
+    if (bLife[i] <= 0) continue;
+    bLife[i] -= dt;
+    if (bLife[i] <= 0) { bPos[i * 3 + 1] = -9999; continue; }
+    for (let k = 0; k < 3; k++) { bVel[i * 3 + k] *= damp; bPos[i * 3 + k] += bVel[i * 3 + k] * dt; }
+  }
+  burstG.attributes.position.needsUpdate = true;
+}
+
+// ---------- Sound (prozedural, WebAudio) ----------
+const SND = { ctx: null, master: null, humGain: null, hum: null, humF: null, lfo: null, muted: false, beepT: 0 };
+try { SND.muted = localStorage.getItem('libelle-mute') === '1'; } catch (_) {}
+function audioInit() {
+  if (SND.ctx) { SND.ctx.resume?.(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+  const c = SND.ctx = new AC();
+  SND.master = c.createGain(); SND.master.gain.value = SND.muted ? 0 : .6; SND.master.connect(c.destination);
+  // Flügelsummen: Sägezahn -> Tiefpass -> Tremolo (Flügelschlag) -> Lautstärke
+  const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 160;
+  const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 700; f.Q.value = 3;
+  const trem = c.createGain(); trem.gain.value = .55;
+  const lfo = c.createOscillator(); lfo.frequency.value = 30;
+  const lg = c.createGain(); lg.gain.value = .45; lfo.connect(lg); lg.connect(trem.gain);
+  const g = c.createGain(); g.gain.value = 0;
+  o.connect(f); f.connect(trem); trem.connect(g); g.connect(SND.master);
+  o.start(); lfo.start();
+  SND.hum = o; SND.humF = f; SND.humGain = g; SND.lfo = lfo;
+}
+function tone(freq, dur, type = 'sine', vol = .25, slide = 1) {
+  const c = SND.ctx; if (!c || SND.muted) return;
+  const t0 = c.currentTime, o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t0);
+  if (slide !== 1) o.frequency.exponentialRampToValueAtTime(freq * slide, t0 + dur);
+  g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.001, t0 + dur);
+  o.connect(g); g.connect(SND.master); o.start(t0); o.stop(t0 + dur + .02);
+}
+// Fang-Plopp: jede Combo-Stufe einen Ganzton höher
+const plop = combo => tone(480 * Math.pow(2, (Math.min(combo, 9) - 1) * 2 / 12), .14, 'sine', .3, .55);
+function updateSound(dt, chasing, warning) {
+  const c = SND.ctx; if (!c) return;
+  const t = c.currentTime;
+  const playing = state === 'play';
+  const sf = clamp((P.speed - 28) / 34, 0, 1);
+  const vol = playing ? (input.hover ? .06 : .035 + sf * .05) : 0;
+  SND.humGain.gain.setTargetAtTime(vol, t, .08);
+  SND.hum.frequency.setTargetAtTime((input.hover ? 190 : 120) + P.speed * 1.8, t, .1);
+  SND.humF.frequency.setTargetAtTime(500 + P.speed * 18, t, .1);
+  SND.lfo.frequency.setTargetAtTime(input.hover ? 45 : 26 + P.speed * .3, t, .1);
+  SND.beepT -= dt;
+  if (playing && SND.beepT <= 0) {
+    if (chasing) { tone(880, .09, 'square', .07); SND.beepT = .4; }
+    else if (warning) { tone(620, .12, 'square', .06); SND.beepT = .7; }
+  }
+}
+function setMute(m) {
+  SND.muted = m; document.getElementById('mute').textContent = m ? '🔇' : '🔊';
+  if (SND.master) SND.master.gain.setTargetAtTime(m ? 0 : .6, SND.ctx.currentTime, .05);
+  try { localStorage.setItem('libelle-mute', m ? '1' : '0'); } catch (_) {}
+}
+document.getElementById('mute').textContent = SND.muted ? '🔇' : '🔊';
+document.getElementById('mute').addEventListener('click', () => { audioInit(); setMute(!SND.muted); });
+document.addEventListener('visibilitychange', () => {
+  if (!SND.ctx) return;
+  if (document.hidden) SND.ctx.suspend?.(); else if (state === 'play') SND.ctx.resume?.();
+});
+
+// ---------- Ziele ----------
+const GOALS = [
+  { txt: 'Fange 10 Mücken', k: 'type', t: 0, n: 10 },
+  { txt: 'Fange 4 Fliegen', k: 'type', t: 1, n: 4 },
+  { txt: 'Fange 3 Falter', k: 'type', t: 2, n: 3 },
+  { txt: 'Fange eine Goldbremse', k: 'type', t: 3, n: 1 },
+  { txt: 'Erreiche Combo ×5', k: 'combo', n: 5 },
+  { txt: 'Entkomme einem Vogel', k: 'escape', n: 1 },
+];
+const G = { goal: null, prog: 0, done: 0 };
+function showGoal() {
+  if (!G.goal) return;
+  document.getElementById('gtxt').textContent = 'Ziel: ' + G.goal.txt;
+  document.getElementById('gprog').textContent = Math.min(G.prog, G.goal.n) + '/' + G.goal.n;
+}
+function nextGoal(first) {
+  let g = GOALS[0];
+  if (!first) do g = GOALS[Math.floor(Math.random() * GOALS.length)]; while (g === G.goal);
+  G.goal = g; G.prog = 0; showGoal();
+}
+function goalEvent(k, v) {
+  const g = G.goal; if (!g || g.k !== k) return;
+  if (k === 'type') { if (v !== g.t) return; G.prog++; }
+  else if (k === 'combo') G.prog = Math.max(G.prog, v);
+  else G.prog++;
+  if (G.prog >= g.n) {
+    G.done++; P.emax += 10; P.energy = Math.min(P.emax, P.energy + 25); P.score += 25;
+    document.getElementById('banner')?.remove();
+    const b = document.createElement('div'); b.id = 'banner'; b.textContent = `Ziel geschafft: ${g.txt}! Max-Energie +10, +25 Punkte`;
+    document.body.appendChild(b); setTimeout(() => b.remove(), 2300);
+    [0, 90, 180].forEach((d, i) => setTimeout(() => tone(660 * Math.pow(2, i * 4 / 12), .18, 'triangle', .22), d));
+    const el = document.getElementById('goal'); el.classList.remove('done'); void el.offsetWidth; el.classList.add('done');
+    nextGoal();
+    return;
+  }
+  showGoal();
+}
+
 // ---------- Vögel (Gefahr) ----------
 const birds = [];
 {
   const mat = new THREE.MeshLambertMaterial({ color: 0xc0392b, flatShading: true });
+  // Ausrufezeichen-Marker als Platzhalter-Sprite
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+  const cx = cv.getContext('2d');
+  cx.fillStyle = '#ff3b2f'; cx.beginPath(); cx.arc(32, 32, 30, 0, 7); cx.fill();
+  cx.fillStyle = '#fff'; cx.font = 'bold 46px system-ui,sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText('!', 32, 35);
+  const markMat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), depthTest: false, transparent: true });
+  const shadowGeo = new THREE.CircleGeometry(4, 16).rotateX(-Math.PI / 2);
   for (let i = 0; i < 10; i++) {
     const g = new THREE.Group();
     const body = new THREE.Mesh(new THREE.ConeGeometry(1.4, 7, 6).rotateX(Math.PI / 2), mat); g.add(body);
@@ -337,20 +494,23 @@ const birds = [];
     const a = new THREE.Mesh(wgeo, mat); a.position.x = -3; wl.add(a);
     const b = new THREE.Mesh(wgeo, mat); b.position.x = 3; wr.add(b);
     g.add(wl, wr); scene.add(g);
-    birds.push({ g, wl, wr, home: new THREE.Vector3(), pos: new THREE.Vector3(), vel: new THREE.Vector3(), state: 'patrol', ang: rnd(0, 6.28), cd: 0 });
+    const mark = new THREE.Sprite(markMat); mark.scale.set(6, 6, 1); mark.visible = false; scene.add(mark);
+    const shadow = new THREE.Mesh(shadowGeo, new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .3, depthWrite: false }));
+    scene.add(shadow);
+    birds.push({ g, wl, wr, mark, shadow, home: new THREE.Vector3(), pos: new THREE.Vector3(), vel: new THREE.Vector3(), state: 'patrol', ang: rnd(0, 6.28), cd: 0, warnT: 0 });
   }
 }
 function placeBirds() {
   for (const b of birds) {
     let x, z;
     do { x = rnd(-PLAY, PLAY); z = rnd(-PLAY, PLAY); } while (Math.hypot(x, z) < 350);
-    b.home.set(x, 0, z); b.pos.set(x, floorAt(x, z) + 60, z); b.vel.set(0, 0, 0); b.state = 'patrol'; b.cd = 0;
+    b.home.set(x, 0, z); b.pos.set(x, floorAt(x, z) + 60, z); b.vel.set(0, 0, 0); b.state = 'patrol'; b.cd = 0; b.warnT = 0; b.mark.visible = false;
   }
 }
 
 // ---------- Spieler ----------
 const P = { pos: new THREE.Vector3(), prev: new THREE.Vector3(), vel: new THREE.Vector3(), yaw: 0, pitch: 0, roll: 0, speed: 0,
-  energy: 100, score: 0, caught: 0, inv: 0, combo: 0, lastCatch: -9, time: 0, best: 0, shake: 0 };
+  energy: 100, emax: 100, score: 0, caught: 0, inv: 0, combo: 0, lastCatch: -9, time: 0, best: 0, shake: 0 };
 const fwd = new THREE.Vector3();
 function forwardOf(yaw, pitch, out) {
   return out.set(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
@@ -428,7 +588,7 @@ function drawRadar() {
   };
   for (const l of landmarks) plot(l.x, l.z, 6, hex(l.c), true);
   for (const s of swarms) if (s.alive > 0) plot(s.c.x, s.c.z, s.t === 3 ? 6 : 4.5, hex(TYPES[s.t].color));
-  for (const b of birds) if (b.pos.distanceTo(P.pos) < RADAR_RANGE * 1.5) plot(b.pos.x, b.pos.z, b.state === 'chase' ? 7 : 5, b.state === 'chase' ? '#ff3b2f' : '#b0302a');
+  for (const b of birds) if (b.pos.distanceTo(P.pos) < RADAR_RANGE * 1.5) plot(b.pos.x, b.pos.z, b.state === 'patrol' ? 5 : 7, b.state === 'chase' ? '#ff3b2f' : b.state === 'warn' ? '#ffb020' : '#b0302a');
   rc.fillStyle = '#7cf5c8'; rc.beginPath(); rc.moveTo(C, C - 10); rc.lineTo(C - 7, C + 8); rc.lineTo(C + 7, C + 8); rc.closePath(); rc.fill();
 }
 let hudT = 0;
@@ -438,9 +598,13 @@ function updateHud(dt) {
   $('spd').textContent = Math.round(P.speed * KMH) + ' km/h';
   const mult = Math.min(P.combo, 5);
   $('combo').textContent = (P.time - P.lastCatch < 2.5 && mult > 1) ? 'Combo ×' + mult : '';
-  $('efill').style.width = clamp(P.energy, 0, 100) + '%';
+  $('efill').style.width = clamp(P.energy / P.emax * 100, 0, 100) + '%';
   $('efill').style.background = P.energy < 25 ? 'var(--warn)' : 'var(--acc)';
-  $('warn').hidden = !birds.some(b => b.state === 'chase');
+  $('elbl').textContent = `Energie ${Math.ceil(P.energy)} / ${P.emax}`;
+  const chasing = birds.some(b => b.state === 'chase'), warning = birds.some(b => b.state === 'warn');
+  $('warn').hidden = !(chasing || warning);
+  $('warn').textContent = chasing ? '⚠ Vogel jagt dich – Boost!' : '❗ Ein Vogel hat dich entdeckt';
+  $('warn').classList.toggle('soft', !chasing);
   drawRadar();
 }
 
@@ -451,7 +615,7 @@ function reset() {
   let x = 0, z = 0;
   for (let i = 0; i < 400; i++) { x = rnd(-300, 300); z = rnd(-300, 300); if (H(x, z) < 4) break; } // Start nahe Wasser
   P.pos.set(x, floorAt(x, z) + 12, z); P.prev.copy(P.pos);
-  P.yaw = rnd(0, 6.28); P.pitch = 0; P.roll = 0; P.speed = 20; P.energy = 100; P.score = 0; P.caught = 0;
+  P.yaw = rnd(0, 6.28); P.pitch = 0; P.roll = 0; P.speed = 20; P.energy = 100; P.emax = 100; P.score = 0; P.caught = 0;
   P.inv = 1; P.combo = 0; P.lastCatch = -9; P.time = 0;
   swarms.forEach(s => placeSwarm(s));
   // ein paar Schwärme in Startnähe, damit man sofort etwas zu jagen hat
@@ -462,19 +626,23 @@ function reset() {
     for (const ins of sw.list) ins.p.copy(sw.c).add(new THREE.Vector3(rnd(-5, 5), rnd(-2, 2), rnd(-5, 5)));
   });
   placeBirds();
+  G.done = 0; nextGoal(true);
+  for (let i = 0; i < BURST; i++) { bLife[i] = 0; bPos[i * 3 + 1] = -9999; }
   camPos.copy(P.pos).add(new THREE.Vector3(0, 4, 10));
 }
 function startGame() {
   input.invert = $('inv').checked;
+  audioInit();
   reset(); state = 'play'; $('menu').hidden = true; $('over').hidden = true;
   try { navigator.wakeLock?.request('screen').catch(() => {}); } catch (_) {}
 }
 $('start').onclick = startGame; $('again').onclick = startGame;
 function gameOver() {
   state = 'over';
+  tone(330, .6, 'triangle', .25, .4);
   if (P.score > P.best) { P.best = P.score; try { localStorage.setItem('libelle-best', P.best); } catch (_) {} }
   $('final').textContent = P.score + ' Punkte';
-  $('stat').textContent = `${P.caught} Insekten in ${Math.round(P.time)} s gefangen · Rekord: ${P.best}`;
+  $('stat').textContent = `${P.caught} Insekten in ${Math.round(P.time)} s gefangen · ${G.done} Ziele geschafft · Rekord: ${P.best}`;
   $('over').hidden = false;
 }
 
@@ -482,6 +650,7 @@ function gameOver() {
 const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), mtx = new THREE.Matrix4(), ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 const camPos = new THREE.Vector3(), lookAt = new THREE.Vector3();
 const SPEED_CRUISE = 28, SPEED_BOOST = 62;
+const UP = new THREE.Vector3(0, 1, 0);
 
 function treeCollide() {
   const ix = Math.floor(P.pos.x / CELL), iz = Math.floor(P.pos.z / CELL);
@@ -558,20 +727,63 @@ function update(dt) {
       sw.c.set(sw.base.x + Math.cos(sw.ang) * 160, 0, sw.base.z + Math.sin(sw.ang * 1.3) * 160);
       sw.c.y = floorAt(sw.c.x, sw.c.z) + 18;
     }
+    if (!t.roam) {
+      // Wolke weicht gemeinsam aus, kehrt danach langsam zum Ursprung zurück
+      const dp = sw.c.distanceTo(P.pos);
+      if (t.beh === 'cloud' && dp < t.flee + 10) { tmp2.subVectors(sw.c, P.pos); tmp2.y *= .3; sw.c.addScaledVector(tmp2.normalize(), t.speed * 1.4 * dt); }
+      else sw.c.lerp(sw.base, Math.min(1, dt * .12));
+      const cy = floorAt(sw.c.x, sw.c.z) + 2; if (sw.c.y < cy) sw.c.y = cy;
+    }
     const dSw = sw.c.distanceTo(P.pos);
     const near = dSw < 600;
     if (!near && !sw.active) continue;
     sw.active = near;
     for (const ins of sw.list) {
       if (!ins.alive) { insMeshes[sw.t].setMatrixAt(ins.idx, ZERO); continue; }
-      tmp.subVectors(sw.c, ins.p).multiplyScalar(t.roam ? 1.2 : .6);
-      tmp.x += Math.sin(time * 2.3 + ins.ph) * t.speed * .6;
-      tmp.y += Math.sin(time * 3.1 + ins.ph * 2) * t.speed * .35;
-      tmp.z += Math.cos(time * 1.9 + ins.ph) * t.speed * .6;
       const d = ins.p.distanceTo(P.pos);
-      if (d < t.flee) { tmp2.subVectors(ins.p, P.pos).normalize().multiplyScalar(t.speed * 2.4 * (1 - d / t.flee)); tmp.add(tmp2); }
-      ins.v.lerp(tmp, Math.min(1, dt * 3));
-      const vl = ins.v.length(), vmax = t.speed * 1.6; if (vl > vmax) ins.v.multiplyScalar(vmax / vl);
+      const away = tmp2.subVectors(ins.p, P.pos).multiplyScalar(1 / (d || 1));
+      let vmax = t.speed * 1.6, resp = 3;
+      if (t.beh === 'cloud') {
+        // dichte Wolke: starke Bindung ans Zentrum, schnelles Gewusel
+        tmp.subVectors(sw.c, ins.p).multiplyScalar(1.8);
+        tmp.x += Math.sin(time * 5 + ins.ph) * t.speed * .5;
+        tmp.y += Math.sin(time * 6.3 + ins.ph * 2) * t.speed * .4;
+        tmp.z += Math.cos(time * 4.7 + ins.ph) * t.speed * .5;
+        if (d < t.flee) tmp.addScaledVector(away, t.speed * 1.5 * (1 - d / t.flee));
+        resp = 4;
+      } else if (t.beh === 'zigzag') {
+        // ruckartige Haken: alle paar Zehntelsekunden neue Richtung
+        ins.jt -= dt;
+        if (ins.jt <= 0) {
+          ins.jt = rnd(.2, .6);
+          if (d < t.flee) ins.j.crossVectors(away, UP).normalize().multiplyScalar((Math.random() < .5 ? -1 : 1) * t.speed * 1.8).addScaledVector(away, t.speed * 1.1);
+          else ins.j.set(rnd(-1, 1), rnd(-.4, .4), rnd(-1, 1)).normalize().multiplyScalar(t.speed * 1.3);
+        }
+        tmp.subVectors(sw.c, ins.p).multiplyScalar(.5).add(ins.j);
+        resp = 10; vmax = t.speed * 2.1;
+      } else if (t.beh === 'tumble') {
+        // Falter taumeln: langsame Drift, starkes Auf und Ab
+        tmp.subVectors(sw.c, ins.p).multiplyScalar(.3);
+        tmp.x += Math.sin(time * .9 + ins.ph) * t.speed;
+        tmp.z += Math.cos(time * .7 + ins.ph * 1.7) * t.speed;
+        tmp.y += Math.sin(time * 4.2 + ins.ph) * t.speed * 1.5;
+        if (d < t.flee) tmp.addScaledVector(away, t.speed * 1.2 * (1 - d / t.flee));
+        resp = 2;
+      } else {
+        // Goldbremse: flieht mit voller Geschwindigkeit (schneller als Reiseflug, langsamer als Boost)
+        tmp.subVectors(sw.c, ins.p).multiplyScalar(1.2);
+        tmp.x += Math.sin(time * 2.3 + ins.ph) * t.speed * .3;
+        tmp.z += Math.cos(time * 1.9 + ins.ph) * t.speed * .3;
+        if (d < t.flee) {
+          tmp.copy(away).multiplyScalar(t.speed);
+          tmp.x += Math.sin(time * 3 + ins.ph) * 8; tmp.y = Math.max(tmp.y, 1);
+          sw.base.addScaledVector(away, t.speed * dt); // Revier wandert mit, sie kehrt nicht zurück
+          sw.base.x = clamp(sw.base.x, -PLAY + 200, PLAY - 200); sw.base.z = clamp(sw.base.z, -PLAY + 200, PLAY - 200);
+        }
+        vmax = t.speed; resp = 5;
+      }
+      ins.v.lerp(tmp, Math.min(1, dt * resp));
+      const vl = ins.v.length(); if (vl > vmax) ins.v.multiplyScalar(vmax / vl);
       ins.p.addScaledVector(ins.v, dt);
       const gy = floorAt(ins.p.x, ins.p.z) + .8; if (ins.p.y < gy) ins.p.y = gy;
 
@@ -581,7 +793,7 @@ function update(dt) {
         const L2 = tmp2.lengthSq();
         let u = L2 > 0 ? tmp.subVectors(ins.p, P.prev).dot(tmp2) / L2 : 0; u = clamp(u, 0, 1);
         tmp.copy(P.prev).addScaledVector(tmp2, u);
-        if (tmp.distanceTo(ins.p) < 2.0 + t.size) { catchIt(ins, t); insMeshes[sw.t].setMatrixAt(ins.idx, ZERO); continue; }
+        if (tmp.distanceTo(ins.p) < 2.0 + t.size) { catchIt(ins, t); spawnBurst(ins.p, t.color === 0x4a4a5e ? 0x9aa0c8 : t.color, t.roam ? 40 : 18); insMeshes[sw.t].setMatrixAt(ins.idx, ZERO); continue; }
       }
       if (t.flutter) { const f = .35 + .65 * Math.abs(Math.sin(time * 9 + ins.ph)); mtx.makeScale(1, f, 1); }
       else mtx.identity();
@@ -589,16 +801,29 @@ function update(dt) {
     }
   }
   insMeshes.forEach(m => m.instanceMatrix.needsUpdate = true);
+  updateBursts(dt);
 
   // Vögel
   for (const b of birds) {
     b.cd = Math.max(0, b.cd - dt);
     const d = b.pos.distanceTo(P.pos);
-    if (b.state === 'patrol' && d < 150 && b.cd === 0 && P.inv === 0) b.state = 'chase';
-    if (b.state === 'chase' && (d > 280 || P.inv > 0)) b.state = 'patrol';
+    if (b.state === 'patrol' && d < 150 && b.cd === 0 && P.inv === 0) { b.state = 'warn'; b.warnT = 1.4; }
+    if (b.state === 'warn') {
+      b.warnT -= dt;
+      if (d > 220 || P.inv > 0) b.state = 'patrol';
+      else if (b.warnT <= 0) b.state = 'chase';
+    }
+    if (b.state === 'chase' && P.inv > 0) b.state = 'patrol';
+    if (b.state === 'chase' && d > 280) {
+      b.state = 'patrol'; b.cd = 4;
+      pop('Entkommen!', '#7cf5c8'); goalEvent('escape');
+    }
     let sp;
     if (b.state === 'chase') {
       tmp.copy(P.pos).addScaledVector(P.vel, .35).sub(b.pos); sp = 46;
+    } else if (b.state === 'warn') {
+      // Vorwarnung: dreht sich zur Libelle, steigt kurz auf, noch langsam
+      tmp.copy(P.pos).sub(b.pos); tmp.y += 12; sp = 12;
     } else {
       b.ang += dt * .3;
       tmp.set(b.home.x + Math.cos(b.ang) * 90, 0, b.home.z + Math.sin(b.ang) * 90);
@@ -612,6 +837,15 @@ function update(dt) {
     b.g.lookAt(tmp.copy(b.pos).add(b.vel));
     const fa = Math.sin(time * (b.state === 'chase' ? 14 : 7) + b.ang * 10) * .5;
     b.wl.rotation.z = fa; b.wr.rotation.z = -fa;
+    b.mark.visible = b.state !== 'patrol' && d < 400;
+    if (b.mark.visible) {
+      b.mark.position.set(b.pos.x, b.pos.y + 7, b.pos.z);
+      const s = b.state === 'warn' ? 6 + Math.sin(time * 14) * 1.5 : 4.5; b.mark.scale.set(s, s, 1);
+    }
+    const sy = floorAt(b.pos.x, b.pos.z), hgt = b.pos.y - sy;
+    b.shadow.position.set(b.pos.x, sy + .3, b.pos.z);
+    b.shadow.material.opacity = clamp(.45 - hgt / 160, .08, .45);
+    const ss = 1 + hgt / 40; b.shadow.scale.set(ss, 1, ss);
     if (b.state === 'chase' && d < 3.6) {
       P.energy -= 20; P.inv = 2.5; P.shake = .5; P.speed *= .3; b.cd = 8; b.state = 'patrol';
       $('hit').style.opacity = 1; setTimeout(() => $('hit').style.opacity = 0, 250);
@@ -619,7 +853,8 @@ function update(dt) {
     }
   }
 
-  if (P.energy <= 0) { P.energy = 0; gameOver(); }
+  updateSound(dt, birds.some(b => b.state === 'chase'), birds.some(b => b.state === 'warn'));
+  if (P.energy <= 0) { P.energy = 0; gameOver(); updateSound(0, false, false); }
 }
 
 function catchIt(ins, t) {
@@ -627,7 +862,12 @@ function catchIt(ins, t) {
   P.combo = (P.time - P.lastCatch < 2.5) ? P.combo + 1 : 1; P.lastCatch = P.time;
   const mult = Math.min(P.combo, 5);
   P.score += t.pts * mult; P.caught++;
-  P.energy = Math.min(100, P.energy + t.energy);
+  P.energy = Math.min(P.emax, P.energy + t.energy);
+  plop(P.combo);
+  const fl = $('flash'); fl.style.setProperty('--fc', hex(t.color === 0x4a4a5e ? 0xdfe3ff : t.color));
+  fl.classList.remove('on'); void fl.offsetWidth; fl.classList.add('on');
+  const sc = $('score'); sc.classList.remove('bump'); void sc.offsetWidth; sc.classList.add('bump');
+  goalEvent('type', ins.t); goalEvent('combo', P.combo);
   pop(`+${t.pts * mult} ${t.name}${mult > 1 ? ' ×' + mult : ''}`, hex(t.color === 0x4a4a5e ? 0xdfe3ff : t.color));
 }
 
@@ -677,7 +917,7 @@ function idle(dt) {
   const fl = floorAt(P.pos.x, P.pos.z) + 14; P.pos.y += (fl - P.pos.y) * Math.min(1, dt);
 }
 
-window.__libelle = { P, swarms, input }; // Debug-Zugriff für Tests
+window.__libelle = { P, swarms, input, birds, G }; // Debug-Zugriff für Tests
 reset();
 let last = performance.now();
 function loop(now) {
