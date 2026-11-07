@@ -742,142 +742,349 @@ const RES0={wood:60,stone:12,planks:0,berry:30,fish:0,meat:0,wheat:0,flour:0,bre
 const res=Object.assign({},RES0);
 const MC={};const M=c=>MC[c]||(MC[c]=lam(c));
 const WIN=lam(0x3a3226,{emissive:0xffb050,emissiveIntensity:0});MC.win=WIN;
-function mk(geo,c,x,y,z,ry,rx,rz){const m=new THREE.Mesh(geo,c==='win'?WIN:M(c));m.position.set(x,y,z);if(ry)m.rotation.y=ry;if(rx)m.rotation.x=rx;if(rz)m.rotation.z=rz;return m;}
-const B=(w,h,d)=>new THREE.BoxGeometry(w,h,d);
-const CY=(a,b,h,s)=>new THREE.CylinderGeometry(a,b,h,s||6);
+const TIMBER=0x4a3420,WALL=0xeadcb8,STONE=0x8f8a80,ROOF=0x9a4a32,THATCH=0xc9a95a,WOOD=0x8b6a43;
+// ================= Bau-Stil: Texturen, Materialien & Bau-Helfer (handgemachter, rauer Dorf-Look) =================
+// Gemeinsame Canvas-Texturen (256 px, Graustufen-Detail × Vertexfarbe), Vertexfarben mit Flächen-Rauschen + Boden-Schmutz,
+// UVs per Flächenprojektion in bake(). Alles per Seed deterministisch → Varianten je Gebäude (tmplFor).
+let bR=mulberry(1);const bSeed=s=>{bR=mulberry(s|0);},bRr=(a,b)=>a+(b-a)*bR(),bPick=a=>a[(bR()*a.length)|0];
+const pn2=(x,z)=>Math.sin(x*7.3+z*3.1)*.5+Math.sin(x*17.9-z*11.3)*.3+Math.sin(x*31.7+z*23.9)*.2;// Positionsrauschen (rissfrei)
+const shade=(c,k)=>{const f=v=>Math.max(0,Math.min(255,Math.round(v*k)));return (f(c>>16&255)<<16)|(f(c>>8&255)<<8)|f(c&255);};
+const vary=(c,a)=>{const k=1+bRr(-a,a),f=v=>Math.max(0,Math.min(255,Math.round(v*k*(1+bRr(-a,a)*.35))));return (f(c>>16&255)<<16)|(f(c>>8&255)<<8)|f(c&255);};
+const gs=(v,a)=>'rgba('+(v|0)+','+(v|0)+','+(v|0)+','+(a??1)+')';
+function texCanvas(n,seed,draw){try{if(typeof document==='undefined'||!document.createElement)return null;const cv=document.createElement('canvas');if(!cv||!cv.getContext)return null;
+  cv.width=cv.height=n;const x=cv.getContext('2d');if(!x)return null;const R=mulberry(seed);draw(x,n,(a,b)=>a+(b-a)*R(),R);
+  const t=new THREE.CanvasTexture(cv);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t;}catch(e){return null;}}
+// Reihe aus Stücken, die nahtlos über den Rand läuft: f(x,w)
+function rowSplit(n,r,a,b,f){const s0=r(0,b);let x=s0;while(x<s0+n){let w=r(a,b);if(s0+n-x<a*1.4)w=s0+n-x;f(x,w);f(x-n,w);x+=w;}}
+function texWood(x,n,r,R){x.fillStyle=gs(70);x.fillRect(0,0,n,n);const ph=n/8;
+  for(let row=0;row<8;row++){const y=row*ph;rowSplit(n,r,70,170,(X,w)=>{const v=r(180,242);x.fillStyle=gs(v);x.fillRect(X+1,y+1,w-2,ph-2.5);
+    for(let k=0;k<6;k++){x.strokeStyle=gs(r(70,140),r(.12,.32));x.lineWidth=r(.6,1.7);x.beginPath();const yy=y+r(3,ph-4),p=r(0,6);x.moveTo(X+1,yy);for(let t=0;t<=w;t+=8)x.lineTo(X+t,yy+Math.sin(t*.045+p)*1.6);x.stroke();}
+    if(R()<.4){x.fillStyle=gs(70,.55);x.beginPath();x.ellipse(X+r(10,w-10),y+r(8,ph-8),r(2,4),r(1.5,3),0,0,7);x.fill();}
+    x.fillStyle=gs(35,.7);x.fillRect(X+4,y+ph*.3,1.6,1.6);x.fillRect(X+4,y+ph*.7,1.6,1.6);
+    x.fillStyle=gs(255,.12);x.fillRect(X+1,y+1,w-2,1.2);});}
+  for(let k=0;k<40;k++){x.fillStyle=gs(40,r(.03,.08));x.fillRect(r(0,n),r(0,n),r(2,8),r(20,90));}}
+function texPlaster(x,n,r){x.fillStyle=gs(236);x.fillRect(0,0,n,n);
+  for(let k=0;k<300;k++){const X=r(0,n),Y=r(0,n),rad=r(3,30);x.fillStyle=gs(r(170,255),r(.04,.14));for(const ox of[-n,0,n])for(const oy of[-n,0,n]){x.beginPath();x.arc(X+ox,Y+oy,rad,0,7);x.fill();}}
+  for(let k=0;k<2500;k++){x.fillStyle=gs(r(120,255),.3);x.fillRect(r(0,n),r(0,n),1,1);}
+  for(let k=0;k<8;k++){let X=r(0,n),Y=r(0,n);x.strokeStyle=gs(80,.4);x.lineWidth=.8;x.beginPath();x.moveTo(X,Y);for(let s=0;s<r(5,14);s++){X+=r(-6,6);Y+=r(1,8);x.lineTo(X,Y);}x.stroke();}
+  for(let k=0;k<5;k++){const X=r(0,n-30),Y=r(0,n-20);x.fillStyle=gs(150,.25);x.fillRect(X,Y,r(10,26),r(6,14));}}
+function texStone(x,n,r){x.fillStyle=gs(92);x.fillRect(0,0,n,n);let y=0;
+  while(y<n){let h=r(24,42);if(n-y-h<26)h=n-y;rowSplit(n,r,30,74,(X,w)=>{const j=()=>r(-3,3),pts=[[X+2+j(),y+2+j()],[X+w*.5+j(),y+1.5+j()],[X+w-2+j(),y+2+j()],[X+w-1.5+j(),y+h*.5+j()],[X+w-2+j(),y+h-2+j()],[X+w*.5+j(),y+h-1.5+j()],[X+2+j(),y+h-2+j()],[X+1.5+j(),y+h*.5+j()]];
+    x.fillStyle=gs(r(140,228));x.beginPath();pts.forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]));x.closePath();x.fill();
+    x.strokeStyle=gs(255,.22);x.lineWidth=1.5;x.beginPath();x.moveTo(pts[0][0],pts[0][1]+1);x.lineTo(pts[1][0],pts[1][1]+1);x.lineTo(pts[2][0],pts[2][1]+1);x.stroke();
+    x.strokeStyle=gs(20,.3);x.beginPath();x.moveTo(pts[4][0],pts[4][1]-1);x.lineTo(pts[5][0],pts[5][1]-1);x.lineTo(pts[6][0],pts[6][1]-1);x.stroke();
+    for(let k=0;k<10;k++){x.fillStyle=gs(r(60,250),.35);x.fillRect(X+r(3,w-3),y+r(3,h-3),1.5,1.5);}});y+=h;}}
+function texBrick(x,n,r){x.fillStyle=gs(118);x.fillRect(0,0,n,n);const h=n/16;
+  for(let row=0;row<16;row++){const o=row%2?21:0;for(let X=-42+o;X<n;X+=42){x.fillStyle=gs(r(150,236));x.fillRect(X+1.5,row*h+1.5,39,h-3);x.fillStyle=gs(255,.12);x.fillRect(X+1.5,row*h+1.5,39,1.2);
+    if(r(0,1)<.2){x.fillStyle=gs(80,.4);x.fillRect(X+r(2,34),row*h+r(2,h-5),r(3,6),r(2,4));}}}
+  for(let k=0;k<30;k++){x.fillStyle=gs(30,r(.03,.08));x.fillRect(r(0,n),r(0,n),r(4,14),r(30,110));}}
+function texTile(x,n,r){x.fillStyle=gs(60);x.fillRect(0,0,n,n);const h=n/16,w=n/10;
+  for(let row=0;row<16;row++){const o=row%2?w/2:0,y=row*h;for(let X=-w+o;X<n+w;X+=w){const v=r(.78,1.05),gr=x.createLinearGradient(0,y,0,y+h);gr.addColorStop(0,gs(130*v));gr.addColorStop(.55,gs(205*v));gr.addColorStop(1,gs(238*v));
+    x.fillStyle=gr;x.beginPath();x.moveTo(X+1,y);x.lineTo(X+w-1,y);x.lineTo(X+w-1,y+h*.55);x.quadraticCurveTo(X+w-1,y+h,X+w/2,y+h);x.quadraticCurveTo(X+1,y+h,X+1,y+h*.55);x.closePath();x.fill();}
+    x.fillStyle=gs(20,.45);x.fillRect(0,y,n,1.6);}
+  for(let k=0;k<70;k++){x.fillStyle='rgba(150,165,115,'+r(.15,.4)+')';x.beginPath();x.arc(r(0,n),r(0,n),r(1,4.5),0,7);x.fill();}
+  for(let k=0;k<25;k++){x.fillStyle=gs(30,r(.04,.1));x.fillRect(r(0,n),r(0,n),r(3,10),r(20,80));}}
+function texThatch(x,n,r){x.fillStyle=gs(178);x.fillRect(0,0,n,n);
+  for(let k=0;k<1700;k++){const X=r(0,n),Y=r(0,n),L=r(14,48),d=r(-2.5,2.5);x.strokeStyle=gs(r(120,255),r(.35,.7));x.lineWidth=r(.6,1.8);
+    for(const ox of(X<4?[0,n]:X>n-4?[0,-n]:[0]))for(const oy of[0,-n]){x.beginPath();x.moveTo(X+ox,Y+oy);x.lineTo(X+ox+d,Y+oy+L);x.stroke();}}
+  for(let b=0;b<4;b++){const yb=b*64+58,gr=x.createLinearGradient(0,yb,0,yb+14);gr.addColorStop(0,gs(20,.38));gr.addColorStop(1,gs(20,0));x.fillStyle=gr;x.fillRect(0,yb,n,14);x.fillStyle=gs(255,.14);x.fillRect(0,yb-3,n,3);}
+  for(let k=0;k<50;k++){x.fillStyle='rgba(110,120,80,'+r(.08,.25)+')';x.beginPath();x.arc(r(0,n),r(0,n),r(3,12),0,7);x.fill();}}
+const TX={wood:texCanvas(256,11,texWood),plaster:texCanvas(256,12,texPlaster),stone:texCanvas(256,13,texStone),brick:texCanvas(256,14,texBrick),tile:texCanvas(256,15,texTile),thatch:texCanvas(256,16,texThatch)};
+const bmat=(t,c)=>lam(c??0xffffff,{vertexColors:true,map:t||null});
+// Material-Arten: m Material, s UV-Maßstab, c Standardfarbe (Vertex), j Flächen-Rauschen
+const BK={};const defK=(k,m,s,c,j)=>{BK[k]={m,s,c,j};};
+defK('plain',bmat(),1,0x8a7a66,.12);defK('wood',bmat(TX.wood),3.2,0x6e5238,.14);defK('plaster',bmat(TX.plaster),1.3,0xd6c9aa,.05);
+defK('stone',bmat(TX.stone),2.4,0x8f897c,.16);defK('brick',bmat(TX.brick),2.8,0xa05a40,.1);
+// Dächer: Materialfarbe = Schlüssel in MC (Wetter färbt diese MC-Farben bei Schnee um) – Vertexfarbe nur Variation/Tönung
+const defRoof=(k,key,t,s)=>{MC[key]=bmat(t,key);defK(k,MC[key],s,0xffffff,.1);};
+defRoof('tile',ROOF,TX.tile,3.2);defRoof('tileD',0x7a3a2a,TX.tile,3.2);defRoof('tileB',0x6e3a28,TX.tile,3.2);defRoof('ridge',0x5e2a1c,TX.tile,3);defRoof('ridgeR',0x6e2f20,TX.tile,3);
+defRoof('slate',0x6e6a5c,TX.tile,4.4);defRoof('slateD',0x55524a,TX.tile,4.4);defRoof('thatch',THATCH,TX.thatch,2.1);defRoof('thatchO',0xb0904a,TX.thatch,2.1);
+defRoof('shingle',0x6e5a48,TX.tile,3.8);defRoof('moss',0x4f5a3a,TX.tile,3.8);
+// mk(geo, c, x,y,z, ry,rx,rz): c = 'win' | Zahl (schlicht, Vertexfarbe) | 'art' | ['art', farbe]
+function mk(geo,c,x,y,z,ry,rx,rz){let mat,col=null,s=1,j=.12;
+  if(c==='win')mat=WIN;else if(typeof c==='number'){mat=BK.plain.m;col=c;}else{const a=Array.isArray(c)?c:[c],k=BK[a[0]]||BK.plain;mat=k.m;col=a[1]??k.c;s=k.s;j=k.j;}
+  const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.rotation.order='YXZ';if(ry)m.rotation.y=ry;if(rx)m.rotation.x=rx;if(rz)m.rotation.z=rz;
+  m.userData={col,s,j,du:bR()*7,dv:bR()*7,sd:bR()*100};return m;}
+const ud=(m,o)=>{Object.assign(m.userData,o);return m;};
+const B=(w,h,d,a,b,c)=>new THREE.BoxGeometry(w,h,d,a||1,b||1,c||1);
+const CY=(a,b,h,s,hs)=>new THREE.CylinderGeometry(a,b,h,s||6,hs||1);
 // Satteldach als Prisma (First entlang x)
 const prism=(r,len,sy)=>new THREE.CylinderGeometry(r,r,len,3).rotateX(-Math.PI/2).rotateY(Math.PI/2).scale(1,sy,1);
+function warp(geo,fn){const p=geo.attributes&&geo.attributes.position;if(!p)return geo;const a=p.array;for(let i=0;i<a.length;i+=3)fn(a,i);return geo;}
+// Meshes -> eine Geometrie mit position/normal/uv/color (UV per Flächenprojektion, Farbe + Flächenrauschen + Boden-Schmutz)
+const _bc=new THREE.Color(),_bc2=new THREE.Color();
+function bakeGeo(list,noAO){const parts=[];let tot=0;
+  for(const m of list){m.updateMatrix();const g0=m.geometry,geo=g0.index?g0.toNonIndexed():g0.clone();geo.computeVertexNormals();const u=m.userData||{};let caps=null;
+    if(u.c2!=null){const nn=geo.attributes.normal.array;caps=[];for(let i=0;i<nn.length;i+=9)caps.push(Math.abs(nn[i+1])>.85);}
+    geo.applyMatrix4(m.matrix);parts.push([geo,u,caps]);tot+=geo.attributes.position.count;}
+  const P=new Float32Array(tot*3),NN=new Float32Array(tot*3),UV=new Float32Array(tot*2),C=new Float32Array(tot*3);let o=0;
+  for(const [geo,u,caps] of parts){const p=geo.attributes.position.array,nr=geo.attributes.normal.array,cnt=Math.min(geo.attributes.position.count,p.length/3)|0;
+    P.set(p.subarray(0,cnt*3),o*3);NN.set(nr.subarray(0,cnt*3),o*3);const s=u.s||1,j=u.j??.12,sd=u.sd||0;
+    _bc.set(u.col??0xffffff);if(u.c2!=null)_bc2.set(u.c2);
+    for(let t=0;t+2<cnt;t+=3){const nx=nr[t*3],ny=nr[t*3+1],nz=nr[t*3+2];let tx=1,tz=0;
+      if(Math.abs(ny)<.92){const l=Math.hypot(nz,nx)||1;tx=nz/l;tz=-nx/l;}
+      const bx=ny*tz,by=nz*tx-nx*tz,bz=-ny*tx;
+      const h=Math.sin((t+1)*12.9898+sd*78.233)*43758.5453,f=1+((h-Math.floor(h))-.5)*j*2,cc=caps&&caps[t/3]?_bc2:_bc;
+      for(let k=0;k<3;k++){const v=t+k,px=p[v*3],py=p[v*3+1],pz=p[v*3+2];let uu=(px*tx+pz*tz)*s+u.du,vv=(px*bx+py*by+pz*bz)*s+u.dv;if(u.vg){const q=uu;uu=vv;vv=q;}
+        UV[(o+v)*2]=uu||0;UV[(o+v)*2+1]=vv||0;const ao=(noAO||u.ao===0?1:.58+.42*sstep(-.02,.3,py))*(ny<-.4?.6:1)*f;
+        C[(o+v)*3]=cc.r*ao;C[(o+v)*3+1]=cc.g*ao;C[(o+v)*3+2]=cc.b*ao;}}
+    o+=cnt;}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(P,3));g.setAttribute('normal',new THREE.BufferAttribute(NN,3));
+  g.setAttribute('uv',new THREE.BufferAttribute(UV,2));g.setAttribute('color',new THREE.BufferAttribute(C,3));return g;}
 // Gruppe nach Material zusammenführen -> wenige Draw-Calls pro Gebäude
-function bake(g){const by=new Map();
-  for(const m of g.children){m.updateMatrix();const geo=m.geometry.clone().applyMatrix4(m.matrix);if(!by.has(m.material))by.set(m.material,[]);by.get(m.material).push(geo);}
-  const out=new THREE.Group();for(const [mat,list] of by){const mm=new THREE.Mesh(mergeGeos(list),mat);mm.castShadow=mat!==WIN;mm.receiveShadow=true;out.add(mm);}return out;}
-const TIMBER=0x4a3420,WALL=0xeadcb8,STONE=0x8f8a80,ROOF=0x9a4a32,THATCH=0xc9a95a,WOOD=0x8b6a43;
-function timberFront(g,w,h,y0,z,flip){// Fachwerk-Balken auf einer Wand
-  g.add(mk(B(w+.02,.04,.02),TIMBER,0,y0+h*.5,z),mk(B(w+.02,.04,.02),TIMBER,0,y0+h-.02,z));
-  for(const x of[-w/2,w/2])g.add(mk(B(.05,h,.03),TIMBER,x,y0+h/2,z));
-  g.add(mk(B(.03,h*.62,.02),TIMBER,-w*.3,y0+h*.27,z,0,0,flip?.7:-.7),mk(B(.03,h*.62,.02),TIMBER,w*.3,y0+h*.27,z,0,0,flip?-.7:.7));}
+function bake(g,noAO){const by=new Map();
+  for(const m of g.children){if(!m.isMesh)continue;if(!by.has(m.material))by.set(m.material,[]);by.get(m.material).push(m);}
+  const out=new THREE.Group();for(const [mat,list] of by){const mm=new THREE.Mesh(bakeGeo(list,noAO),mat);mm.castShadow=mat!==WIN;mm.receiveShadow=true;out.add(mm);}return out;}
+// ---- Bau-Helfer: lokaler Rahmen f={x,y,z,r}; lx/lz in Wandkoordinaten (Wandnormale = +z) ----
+const FR=(x,y,z,r)=>({x,y,z,r:r||0});
+const ad=(g,geo,c,x,y,z,ry,rx,rz)=>{const m=mk(geo,c,x,y,z,ry,rx,rz);g.add(m);return m;};
+function at(g,f,geo,c,lx,ly,lz,ry,rx,rz){const cs=Math.cos(f.r),sn=Math.sin(f.r);return ad(g,geo,c,f.x+lx*cs+lz*sn,f.y+ly,f.z-lx*sn+lz*cs,(ry||0)+f.r,rx,rz);}
+// Wandflächen eines Quaders: vorne(+z), rechts(+x), hinten, links – Breiten w,d,w,d
+const faces=(x,z,w,d)=>[FR(x,0,z+d/2,0),FR(x+w/2,0,z,Math.PI/2),FR(x,0,z-d/2,Math.PI),FR(x-w/2,0,z,-Math.PI/2)];
+const PLA=[0xd9ccaa,0xcdb486,0xd4d0c2,0xcfb4a0,0xc6b694],TIMB=[0x3f2e20,0x4a3626,0x3a3430,0x52402e],SHUT=[0x5d6e52,0x56677a,0x7a4436,0x8a7448,0x5e5246],DOORC=[0x5a4030,0x4e4436,0x4f5a46,0x6a3e30];
+const FLW=[0xa8606a,0xc0a050,0xd8d0c0,0x8a7aa8,0xb8704a],LEAF=[0x56683a,0x4e5e34,0x627040];
+function bWin(g,f,lx,ly,w,h,o){o=o||{};
+  at(g,f,B(w+.045,h+.045,.022),[o.fk||'wood',o.fc??0x3e2e22],lx,ly,.006);at(g,f,B(w,h,.02),'win',lx,ly,.012);
+  at(g,f,B(.012,h,.01),0x2e241a,lx,ly,.024);at(g,f,B(w,.012,.01),0x2e241a,lx,ly,.024);
+  at(g,f,B(w+.07,.024,.045),o.sill?['stone',0x9a9282]:['wood',0x5a4632],lx,ly-h/2-.03,.02);
+  if(o.lin)at(g,f,B(w+.08,.035,.03),['stone',0x9a9282],lx,ly+h/2+.035,.012);
+  if(o.sh!=null){const sw=w*.5;for(const s of[-1,1])ud(at(g,f,B(sw,h+.015,.014),['wood',o.sh],lx+s*(w/2+.03+sw/2),ly,.018),{vg:1});}
+  if(o.box){at(g,f,B(w+.05,.045,.05),['wood',0x5a4030],lx,ly-h/2-.07,.04);for(let k=0;k<4;k++)at(g,f,B(.034,.03,.034),k%2?bPick(LEAF):bPick(FLW),lx-w/2+.01+k*(w/3),ly-h/2-.035,.045,bR()*2,bRr(-.3,.3));}}
+function bDoor(g,f,lx,w,h,o){o=o||{};const y0=o.y0??.06;
+  at(g,f,B(w+.05,h+.035,.024),['wood',0x2e2218],lx,y0+h/2+.012,.006);ud(at(g,f,B(w,h,.02),['wood',o.c??0x5a4030],lx,y0+h/2,.014),{vg:1});
+  at(g,f,B(w*.8,.012,.006),0x2a2622,lx,y0+h*.25,.026);at(g,f,B(w*.8,.012,.006),0x2a2622,lx,y0+h*.75,.026);at(g,f,B(.018,.018,.014),0x4a4038,lx+w*.3,y0+h*.5,.028);
+  if(y0>.025)at(g,f,B(w+.12,y0,.09),['stone',0x8a857a],lx,y0/2,.05);
+  if(o.lin)at(g,f,B(w+.1,.045,.035),[o.lin,o.lin==='stone'?0x9a9282:0x3a2a1e],lx,y0+h+.04,.012);
+  if(o.hood){at(g,f,B(w+.16,.022,.13),[o.hood],lx,y0+h+.09,.065,0,.4);for(const s of[-1,1])at(g,f,B(.02,.02,.1),['wood',0x3a2a1e],lx+s*(w/2+.05),y0+h+.03,.045,0,-.6);}}
+// Fachwerk auf einer Wandfläche (holes: [[x,breite],…] für Fenster/Türen)
+function frameFace(g,f,w,h,y0,holes,col){const c=['wood',col??TIMBER],t=.036,z=.008,free=x=>!holes.some(([hx,hw])=>Math.abs(x-hx)<hw/2+.03);
+  at(g,f,B(w+.02,t,.026),c,0,y0+t/2,z);at(g,f,B(w+.02,t,.026),c,0,y0+h-t/2,z);const ry=y0+h*.34;at(g,f,B(w,t*.8,.022),c,0,ry,z);
+  for(const s of[-1,1])ud(at(g,f,B(t,h,.028),c,s*(w/2-t/2+.004),y0+h/2,z+.002),{vg:1});
+  const n=Math.max(2,Math.round(w/.2)),bw=w/n;for(let i=1;i<n;i++){const x=-w/2+i*bw;if(free(x))ud(at(g,f,B(t*.8,h-t,.022),c,x,y0+h/2,z),{vg:1});}
+  for(const s of[-1,1]){const xa=s*(w/2-t),xb=s*(w/2-bw+t*.5);if(!free((xa+xb)/2)||!free(xb))continue;
+    for(const [x1,y1,x2,y2] of[[xa,ry,xb,y0+h-t],[xb,y0+t,xa,ry]]){const dx=x2-x1,dy=y2-y1;at(g,f,B(Math.hypot(dx,dy),t*.75,.02),c,(x1+x2)/2,(y1+y2)/2,z,0,0,Math.atan2(dy,dx));}}}
+// Steinsockel mit Ecksteinen und vorstehenden Brocken
+function plinth(g,x,z,w,d,h,col){col=col??0x8a8476;ad(g,B(w,h,d),['stone',col],x,h/2,z);
+  for(const sx of[-1,1])for(const sz of[-1,1])ad(g,B(bRr(.07,.1),h*bRr(1,1.25),bRr(.07,.1)),['stone',vary(shade(col,1.08),.08)],x+sx*(w/2-.03),h*.55,z+sz*(d/2-.03),bRr(-.2,.2));
+  for(let k=0;k<6;k++){const side=k%4,t=bRr(-.42,.42),px=side%2?x+(side===1?w/2:-w/2):x+t*w,pz=side%2?z+t*d:z+(side===0?d/2:-d/2);
+    ad(g,new THREE.DodecahedronGeometry(bRr(.03,.045),0).scale(1.4,.7,1),['stone',vary(col,.12)],px,bRr(.01,.04),pz,bRr(0,3));}}
+// Satteldach mit Dicke, Überstand, Durchhang, ausgefranster Traufe (Reet), Giebelfüllung, Ortgangbrettern, First
+function gableRoof(g,o){const f=FR(o.x||0,o.y,o.z||0,o.r||0),hw=o.w/2,a=Math.atan2(o.rise,hw),W=hw+(o.over??.08),L=W/Math.cos(a),th=o.th??.04,len=o.len,sag=o.sag??.015,rag=o.rag||0,sd=bR()*50,k=o.k||'tile',thatchy=k==='thatch'||k==='thatchO';
+  const cy=o.rise-(W/2)*Math.tan(a)+th/2/Math.cos(a);
+  for(const s of[1,-1]){const geo=B(len,th,L,7,1,3);
+    warp(geo,(p,i)=>{const x=p[i],e=p[i+2]/L+.5;p[i+1]-=sag*(1-(2*x/len)**2)*(.35+.65*e);
+      if(rag){const n=pn2(x*3+sd+s*7,sd);if(e>.99){p[i+2]+=rag*(n*.7+.25);p[i+1]-=rag*.45*(n+.6);}if(Math.abs(x)>len/2-1e-4)p[i]+=Math.sign(x)*rag*.35*pn2(p[i+2]*4,sd+s);}});
+    at(g,f,geo,[k,o.col??0xffffff],0,cy,s*W/2,s>0?0:Math.PI,a);
+    if(o.boards)for(const ex of[-1,1])at(g,f,B(.024,.055,L+.02),['wood',0x3a2c20],ex*(len/2+.006),cy-.012,s*W/2,s>0?0:Math.PI,a);}
+  if(thatchy)ud(at(g,f,CY(.05+th*.4,.05+th*.4,len+.03,7),['thatchO',o.rcol??0xffffff],0,o.rise+th*.55,0,0,0,Math.PI/2),{ao:0});
+  else at(g,f,B(len+.03,.045,.045),[o.rk||'ridge'],0,o.rise+th*.75,0,0,Math.PI/4);
+  if(o.gk){const gl=o.gl??len-.2,r=o.w/Math.sqrt(3)*.995;at(g,f,prism(r,gl,o.rise/(1.5*r)),[o.gk,o.gcol],0,o.rise/3,0);
+    if(o.tc!=null)for(const ex of[-1,1]){const fx=ex*(gl/2+.008);ud(at(g,f,B(.022,o.rise*.88,.032),['wood',o.tc],fx,o.rise*.44,0),{vg:1});at(g,f,B(.022,.032,o.w*.5),['wood',o.tc],fx,o.rise*.48,0);}}}
+// Kegeldach (Rundhütte, Mühle) mit unruhiger Traufe
+function coneRoof(g,x,y,z,r,h,o){o=o||{};const seg=o.seg||10,rag=o.rag??.04,sd=bR()*40,k=o.k||'thatch',th=o.th??.06;
+  const rn=(p,i,dy)=>{const a=Math.atan2(p[i+2],p[i]),n=pn2(a*1.6+sd,sd);p[i]*=1+rag*n;p[i+2]*=1+rag*n;p[i+1]-=dy*rag*(n+.6);};
+  ad(g,warp(new THREE.ConeGeometry(r,h,seg,3),(p,i)=>{if(p[i+1]<-h/2+1e-4)rn(p,i,.7);}),[k,o.col??0xffffff],x,y+h/2,z,bR()*3,o.rx||0,o.rz||0);
+  ad(g,warp(CY(r*.96,r,th,seg),(p,i)=>rn(p,i,.7)),[k,o.col??0xffffff],x,y-th/2+.005,z);
+  if(o.cap!==false)ad(g,CY(.015,r*.2,h*.24,seg),[o.ck||(k==='thatch'?'thatchO':k),o.ccol??0xffffff],x,y+h*.86,z);}
+function chimney(g,x,y0,z,h,o){o=o||{};const w=o.w||.13;ud(ad(g,CY(w*.6,w*.7,h,4),[o.k||'stone',o.col],x,y0+h/2,z,Math.PI/4),{c2:0x2a2420});
+  ad(g,B(w+.05,.035,w+.05),['stone',0x6e6960],x,y0+h+.015,z);ud(ad(g,CY(.026,.032,.06,6),0x7a4a36,x+.015,y0+h+.06,z-.01),{c2:0x1e1a18});return y0+h+.09;}
+// ---- Kleinkram ----
+function barrel(g,x,z,s,y){s=s||1;y=y||0;const H=.17*s;ud(ad(g,warp(CY(.072*s,.072*s,H,8,3),(p,i)=>{const t=p[i+1]/(H/2),k=1+.14*(1-t*t);p[i]*=k;p[i+2]*=k;}),['wood',vary(0x6a4a30,.12)],x,y+H/2,z,bR()*3),{vg:1,c2:0x4e3826});
+  for(const hy of[-.3,.3])ad(g,CY(.081*s,.081*s,.014*s,8),0x34302c,x,y+H/2+hy*H,z);}
+function crate(g,x,y,z,s,ry){s=s||1;const c=vary(0x7a5a3a,.12);ad(g,B(.15*s,.13*s,.15*s),['wood',c],x,y+.065*s,z,ry);for(const hy of[.01,.12])ad(g,B(.156*s,.018*s,.156*s),['wood',shade(c,.7)],x,y+hy*s,z,ry);}
+function sack(g,x,y,z,s,col){s=s||1;ad(g,warp(new THREE.IcosahedronGeometry(.07*s,0).scale(1,1.25,.85),(p,i)=>{if(p[i+1]<-.045*s)p[i+1]=-.045*s;}),vary(col??0xb0a284,.08),x,y+.05*s,z,bR()*3,0,bRr(-.15,.15));ad(g,CY(.014*s,.024*s,.035*s,5),shade(col??0xb0a284,.85),x,y+.13*s,z);}
+function logs(g,f,len,rows,o){o=o||{};const r=o.r||.045,col=o.col??0x6a4c30;for(let a=0;a<rows;a++)for(let k=0;k<rows-a;k++)ud(at(g,f,CY(r*bRr(.85,1.1),r*bRr(.85,1.1),len*bRr(.9,1.05),o.seg||7),['wood',vary(col,.12)],(k-(rows-a-1)/2)*r*2.05,r+a*r*1.75,bRr(-.02,.02),0,Math.PI/2,0),{c2:o.end??0xb89a70,vg:1});}
+function split(g,f,len,rows,cols){for(let a=0;a<rows;a++)for(let k=0;k<cols;k++)ud(at(g,f,CY(.042,.042,len*bRr(.9,1.05),3).rotateY(bRr(0,6)),['wood',vary(0x7a5a3a,.15)],(k-(cols-1)/2)*.075,.035+a*.065,bRr(-.015,.015),0,Math.PI/2),{c2:0xc8a878,vg:1});}
+function fence(g,pts,o){o=o||{};const col=o.col??0x6e6254,h=o.h||.22;for(let i=0;i<pts.length-1;i++){const [x1,z1]=pts[i],[x2,z2]=pts[i+1],L=Math.hypot(x2-x1,z2-z1),n=Math.max(1,Math.round(L/(o.step||.4))),ang=Math.atan2(-(z2-z1),x2-x1);
+    for(let k=0;k<=n;k++){if(k===n&&i<pts.length-2)continue;const t=k/n,ph=h*bRr(.85,1.12);ud(ad(g,B(.035,ph,.035),['wood',vary(col,.12)],x1+(x2-x1)*t,ph/2,z1+(z2-z1)*t,bR()*1.5,bRr(-.08,.08),bRr(-.08,.08)),{vg:1});}
+    for(const ry of[h*.45,h*.82])for(let k=0;k<n;k++){const t=(k+.5)/n;ad(g,B(L/n+.03,.022,.018),['wood',vary(shade(col,1.1),.1)],x1+(x2-x1)*t,ry-bRr(0,.02),z1+(z2-z1)*t,ang,0,bRr(-.06,.06));}}}
+function cart(g,x,z,ry,load){const f=FR(x,0,z,ry);at(g,f,B(.38,.04,.22),['wood',0x6a5038],0,.15,0);for(const s of[-1,1])at(g,f,B(.38,.06,.016),['wood',0x5e4632],0,.19,s*.11);
+  for(const s of[-1,1]){ud(at(g,f,CY(.09,.09,.025,10),['wood',0x4e3c2c],.02,.09,s*.135,0,Math.PI/2),{c2:0x3a2e24});at(g,f,CY(.025,.025,.04,6),0x2a2622,.02,.09,s*.135,0,Math.PI/2);}
+  for(const s of[-1,1])at(g,f,B(.36,.02,.02),['wood',0x5a4430],-.34,.1,s*.08,0,0,.2);
+  if(load==='sack')for(let k=0;k<3;k++)sack(g,x+Math.cos(ry)*(-.1+k*.1),.17,z-Math.sin(ry)*(-.1+k*.1),.8);
+  else if(load==='hay')at(g,f,new THREE.IcosahedronGeometry(.16,1).scale(1.2,.55,.75),['thatch',0xe0dcd0],0,.25,0);
+  else if(load==='log')logs(g,FR(x,.15,z,ry),.42,2,{r:.04});}
+function bench(g,f,lx,lz,w){w=w||.3;at(g,f,B(w,.025,.08),['wood',0x6a5038],lx,.11,lz);for(const s of[-1,1])at(g,f,B(.025,.1,.07),['wood',0x4e3c2c],lx+s*(w/2-.03),.05,lz);}
+function bucket(g,x,y,z){ud(ad(g,CY(.038,.03,.055,7),['wood',0x6a5038],x,y+.028,z),{c2:0x2e3a3e,vg:1});ad(g,CY(.04,.04,.008,7),0x34302c,x,y+.045,z);}
+function bush(g,x,z,s,col){s=s||1;col=col??bPick(LEAF);ud(ad(g,new THREE.IcosahedronGeometry(.08*s,0).scale(1,.75,1),vary(col,.1),x,.05*s,z,bR()*3),{j:.3});ud(ad(g,new THREE.IcosahedronGeometry(.055*s,0),vary(shade(col,1.12),.1),x+.05*s,.08*s,z-.03*s,bR()*3),{j:.3});}
+function rock(g,x,y,z,s,col){return ud(ad(g,new THREE.DodecahedronGeometry(s,0).scale(1,bRr(.6,.9),bRr(.8,1.1)),['stone',vary(col??0x8a857a,.1)],x,y,z,bR()*3,bRr(-.2,.2),bRr(-.2,.2)),{j:.25});}
+function tool(g,x,z,ry,kind){const f=FR(x,0,z,ry);ud(at(g,f,B(.016,.34,.016),['wood',0x7a5a3a],0,.16,0,0,0,.25),{vg:1});
+  if(kind==='axe')at(g,f,B(.06,.04,.012),0x5a5a5a,-.04,.31,0);else if(kind==='pick')at(g,f,B(.12,.022,.016),0x5a5a5a,-.045,.31,0,0,0,.25);else at(g,f,B(.06,.08,.008),0x5a5a5a,.04,.02,0,0,0,.25);}
+function lantern(g,x,y,z){ad(g,B(.07,.08,.07),'win',x,y,z);ad(g,B(.08,.012,.08),0x2a2622,x,y-.045,z);ad(g,new THREE.ConeGeometry(.065,.05,4),0x2a2622,x,y+.065,z,Math.PI/4);for(const sx of[-1,1])for(const sz of[-1,1])ad(g,B(.008,.08,.008),0x2a2622,x+sx*.035,y,z+sz*.035);}
+// Varianten: n gebackene Fassungen je Typ (Farben, Requisiten, Dachart) – Auswahl per Position
+const TVAR={};
+function variants(k,n,fn){const arr=[];for(let v=0;v<n;v++){let h=0;for(const ch of k)h=(h*31+ch.charCodeAt(0))|0;bSeed(h+v*7919);arr.push(bake(fn(v)));}TEMPL[k]=arr[0];if(n>1)TVAR[k]=arr;}
+function tmplFor(t,tx,tz){const v=TVAR[t];return (v?v[Math.min(v.length-1,(hash((tx|0)*3+11,(tz|0)*5+7)*v.length)|0)]:TEMPL[t]).clone();}
 const TEMPL={},CHIM={};
 {
-  // Haus
-  let g=new THREE.Group();
-  g.add(mk(B(.88,.1,.78),STONE,0,.05,0),mk(B(.8,.44,.7),WALL,0,.32,0));
-  timberFront(g,.8,.44,.1,.355,false);timberFront(g,.8,.44,.1,-.355,true);
-  for(const x of[-.4,.4])g.add(mk(B(.03,.44,.72),TIMBER,x,.32,0));
-  g.add(mk(prism(.56,1.0,.66),ROOF,0,.54+.56*.5*.66,0),mk(B(1.02,.05,.06),0x6e2f20,0,.54+.56*1.5*.66-.03,0));
-  g.add(mk(B(.13,.42,.13),STONE,.24,.86,-.14),mk(B(.17,.05,.17),0x6a655c,.24,1.08,-.14));
-  g.add(mk(B(.17,.27,.03),0x5a3e26,0,.24,.36),mk(B(.13,.11,.03),'win',-.24,.36,.36),mk(B(.13,.11,.03),'win',.24,.36,.36),mk(B(.03,.11,.13),'win',.41,.33,0),mk(B(.03,.11,.13),'win',-.41,.33,0),mk(B(.13,.11,.03),'win',-.2,.33,-.36));
-  g.add(mk(B(.15,.04,.06),0x7a4a2a,-.24,.29,.39),mk(B(.15,.04,.06),0x7a4a2a,.24,.29,.39),mk(B(.04,.04,.04),0xd65a9a,-.28,.32,.39),mk(B(.04,.04,.04),0xf4e04d,.22,.32,.39));
-  TEMPL.house=bake(g);CHIM.house=[.24,1.12,-.14];
-  // Holzfäller: offener Schuppen, Holzstapel, Hackklotz
-  g=new THREE.Group();
-  g.add(mk(B(.8,.06,.6),0x6b5233,0,.03,-.05));
-  for(const [x,z] of[[-.37,-.32],[.37,-.32],[-.37,.22],[.37,.22]])g.add(mk(B(.06,.55,.06),TIMBER,x,.3,z));
-  g.add(mk(B(.8,.38,.04),WOOD,0,.22,-.33),mk(new THREE.BoxGeometry(.96,.05,.78),0x5a4128,0,.62,-.05,0,.18));
-  for(let r=0;r<3;r++)for(let k=0;k<4-r;k++)g.add(mk(CY(.06,.06,.55,6),0xa77b4f,-.24+k*.13+r*.065,.09+r*.11,-.12,0,Math.PI/2));
-  g.add(mk(CY(.1,.12,.14,7),0x7a5636,.3,.07,.42),mk(B(.03,.22,.03),0x5a3e26,.32,.22,.42,0,0,.4),mk(B(.08,.05,.02),0xb0b4b8,.36,.31,.42));
-  g.add(mk(CY(.06,.06,.5,6),0xa77b4f,-.2,.07,.42,.3,0,Math.PI/2));
-  TEMPL.cutter=bake(g);
-  // Steinbruch: Hütte, Kran, Blöcke
-  g=new THREE.Group();g.add(mk(B(.5,.4,.5),0x9a8f7c,-.18,.2,-.15),mk(prism(.36,.6,.6),0x6e5a48,-.18,.4+.36*.5*.6,-.15),mk(B(.1,.18,.02),0x4a3420,-.18,.12,.11),mk(B(.08,.08,.02),'win',-.32,.25,.11));
-  [[.25,.12,.2,.2],[.1,.1,.32,.16],[.32,.1,-.05,.14],[.2,.26,.22,.12]].forEach(p=>g.add(mk(new THREE.DodecahedronGeometry(p[3],0),0x9b9a94,p[0],p[1],p[2])));
-  g.add(mk(B(.14,.1,.1),0xbdb6a6,.38,.05,.38),mk(B(.12,.1,.1),0xbdb6a6,.24,.05,.4),mk(B(.12,.09,.1),0xbdb6a6,.31,.14,.39));
-  g.add(mk(B(.05,.85,.05),0x6b4a2b,-.42,.42,.3),mk(B(.5,.04,.04),0x6b4a2b,-.2,.83,.3),mk(B(.02,.4,.02),0x3a3a3a,.03,.62,.3),mk(B(.04,.42,.03),0x6b4a2b,-.32,.66,.3,0,0,-.75));
-  TEMPL.quarry=bake(g);
-  // Beerensammler: Rundhütte mit Reetdach, Körbe, Trockengestell
-  g=new THREE.Group();g.add(mk(CY(.33,.38,.42,8),0xc9a66b,0,.21,0),mk(new THREE.ConeGeometry(.52,.5,8),THATCH,0,.66,0),mk(new THREE.ConeGeometry(.2,.18,8),0xb0904a,0,.92,0),mk(B(.14,.24,.03),0x5a3e26,0,.13,.35),mk(B(.08,.08,.03),'win',.2,.27,.29,.6));
-  g.add(mk(CY(.13,.1,.14,7),WOOD,.36,.07,.28),mk(CY(.1,.08,.1,7),WOOD,-.36,.05,.3));
-  [[.33,.16,.28],[.4,.16,.25],[.36,.17,.33],[-.36,.11,.3],[-.33,.11,.27]].forEach(p=>g.add(mk(new THREE.IcosahedronGeometry(.05,0),0xc2304e,p[0],p[1],p[2])));
-  g.add(mk(B(.04,.4,.04),TIMBER,-.4,.2,-.3),mk(B(.04,.4,.04),TIMBER,-.1,.2,-.42),mk(B(.36,.03,.03),TIMBER,-.25,.38,-.36,-.4));
-  TEMPL.gather=bake(g);
-  // Lager: Fachwerk, Satteldach, Fässer, Kisten
-  g=new THREE.Group();g.add(mk(B(1.02,.08,.96),STONE,0,.04,0),mk(B(.95,.42,.9),0xd7c49a,0,.29,0));
-  timberFront(g,.95,.42,.08,.455,false);
-  g.add(mk(prism(.66,1.12,.6),0x6e6a5c,0,.5+.66*.5*.6,0),mk(B(1.14,.05,.06),0x55524a,0,.5+.66*1.5*.6-.03,0));
-  g.add(mk(B(.34,.32,.03),0x4a3420,-.15,.24,.46),mk(B(.12,.1,.03),'win',.3,.32,.46),mk(B(.03,.1,.14),'win',.48,.3,0));
-  g.add(mk(B(.2,.2,.2),WOOD,.38,.1,.56),mk(B(.16,.16,.16),0x7a5a33,.17,.08,.58),mk(CY(.08,.08,.2,8),0x7a5030,-.42,.1,.56),mk(CY(.08,.08,.2,8),0x7a5030,-.42,.1,.38),mk(CY(.085,.085,.02,8),0x444444,-.42,.15,.56));
-  TEMPL.store=bake(g);
+  const PI=Math.PI;
+  // Haus: Fachwerk auf Steinsockel, Ziegel- oder Reetdach, Läden, Blumenkästen, Bank/Holzstapel
+  variants('house',3,v=>{const g=new THREE.Group(),pc=PLA[(v*2)%5],tc=TIMB[v%4],sh=SHUT[(v*3+1)%5],F=faces(0,0,.8,.7),wy=.1,wh=.42;
+    plinth(g,0,0,.86,.76,wy);ad(g,B(.8,wh,.7),['plaster',pc],0,wy+wh/2,0);
+    frameFace(g,F[0],.8,wh,wy,[[0,.17],[-.24,.13],[.24,.13]],tc);bDoor(g,F[0],0,.15,.27,{y0:wy,c:DOORC[v%4],hood:v===2?'shingle':null});
+    bWin(g,F[0],-.24,wy+.25,.12,.11,{sh,box:v!==1});bWin(g,F[0],.24,wy+.25,.12,.11,{sh,box:v===1});
+    frameFace(g,F[2],.8,wh,wy,[[-.2,.13]],tc);bWin(g,F[2],-.2,wy+.25,.12,.11,{sh});
+    for(const i of[1,3]){frameFace(g,F[i],.7,wh,wy,[[0,.12]],tc);bWin(g,F[i],0,wy+.25,.1,.1,{});}
+    const th=v===1;gableRoof(g,{y:wy+wh,len:1.0,w:.7,rise:.34,over:.1,th:th?.085:.035,k:th?'thatch':'tile',col:th?0xd6d4dc:[0xffffff,0,0xd8d0cc][v],rag:th?.035:0,sag:.022,boards:!th,gk:'plaster',gcol:pc,gl:.8,tc});
+    chimney(g,.24,.3,-.14,.71);
+    bench(g,F[0],-.3,.1,.22);
+    if(v!==1)logs(g,FR(-.47,0,-.05,0),.44,3,{r:.035});else{barrel(g,-.44,.3);barrel(g,-.45,.12,.85);}
+    if(v===2){bucket(g,.4,0,.42);tool(g,.43,-.36,PI/2,'spade');}else bush(g,.42,.4,.9);
+    return g;});
+  CHIM.house=[.24,1.1,-.14];
+  // Holzfäller: offener Pultschuppen, Stammholz, Hackklotz mit Axt, Sägebock
+  variants('cutter',1,()=>{const g=new THREE.Group();ad(g,B(.84,.04,.64),0x5e4a34,0,.02,-.05);
+    for(const [x,z,h] of[[-.38,-.34,.62],[.38,-.34,.62],[-.38,.24,.48],[.38,.24,.48]])ud(ad(g,B(.055,h,.055),['wood',0x45342a],x,h/2,z,0,bRr(-.04,.04),bRr(-.04,.04)),{vg:1});
+    ud(ad(g,B(.8,.42,.03),['wood',0x6e6254],0,.23,-.35),{vg:1});ad(g,B(.8,.035,.035),['wood',0x45342a],0,.6,-.34);ad(g,B(.8,.035,.035),['wood',0x45342a],0,.47,.24);
+    ad(g,warp(B(.98,.035,.8,6,1,2),(p,i)=>{p[i+1]-=.02*(1-(2*p[i]/.98)**2);}),['shingle'],0,.57,-.05,0,.2);
+    logs(g,FR(-.05,.04,-.12,PI/2),.6,3,{r:.055});
+    ud(ad(g,CY(.1,.12,.13,8),['wood',0x6a4c30],.3,.065,.4),{c2:0xb89a70,vg:1});ud(ad(g,B(.025,.24,.025),['wood',0x7a5a3a],.32,.2,.4,0,0,.4),{vg:1});ad(g,B(.08,.05,.015),0x6a6a68,.37,.3,.4,0,0,.4);
+    for(const s of[-1,1])ad(g,B(.025,.18,.025),['wood',0x5a4430],-.32+s*.05,.08,.38,0,0,s*.35),ad(g,B(.025,.18,.025),['wood',0x5a4430],-.12+s*.05,.08,.38,0,0,s*.35);
+    ud(ad(g,CY(.05,.05,.42,7),['wood',0x6a4c30],-.22,.17,.38,0,0,PI/2),{c2:0xb89a70,vg:1});
+    for(let k=0;k<6;k++)ad(g,B(.03,.008,.02),0xc8aa78,bRr(.05,.4),.01,bRr(.25,.48),bR()*3);
+    return g;});
+  // Steinbruch: Steinhütte, Ladekran, Quader, Geröll, Schubkarre
+  variants('quarry',1,()=>{const g=new THREE.Group(),F=faces(-.18,-.15,.5,.5);plinth(g,-.18,-.15,.54,.54,.06,0x8a8476);ad(g,B(.5,.34,.5),['stone',0x9a9282],-.18,.23,-.15);
+    bDoor(g,F[0],0,.11,.2,{y0:.06,lin:'wood'});bWin(g,F[1],0,.28,.08,.08,{});
+    gableRoof(g,{x:-.18,z:-.15,y:.4,len:.64,w:.5,rise:.24,over:.06,th:.035,k:'shingle',boards:1,gk:'wood',gcol:0x5e5246,gl:.5});
+    for(const [x,y,z,w,h,d] of[[.26,.06,.12,.18,.12,.13],[.08,.06,.34,.16,.12,.14],[.3,.06,.36,.14,.11,.12],[.24,.18,.18,.14,.11,.12]])ad(g,B(w,h,d),['stone',vary(0xb8b0a0,.06)],x,y,z,bRr(-.2,.2));
+    for(let k=0;k<5;k++)rock(g,bRr(-.42,-.05),.04,bRr(.2,.46),bRr(.04,.07),0x8a857a);
+    ud(ad(g,B(.05,.85,.05),['wood',0x5a4430],-.42,.42,.32),{vg:1});ad(g,B(.55,.04,.04),['wood',0x5a4430],-.17,.82,.32,0,0,-.08);ad(g,B(.03,.42,.03),['wood',0x5a4430],-.32,.62,.32,0,0,-.75);
+    ad(g,B(.012,.34,.012),0x8a7a5a,.08,.62,.32);ad(g,B(.1,.08,.08),['stone',0xb0a898],.08,.42,.32);
+    const f=FR(.38,0,-.12,PI/2);at(g,f,B(.16,.05,.22),['wood',0x6a5038],0,.12,0,0,0,-.1);at(g,f,CY(.05,.05,.02,8),0x3a3430,.12,.05,0,0,PI/2);for(const s of[-1,1])at(g,f,B(.2,.015,.015),['wood',0x5a4430],-.14,.12,s*.06,0,0,.2);
+    tool(g,-.44,.05,0,'pick');return g;});
+  // Beerensammler: Rundhütte aus Flechtwerk, Reetkegel, Körbe, Trockengestell
+  variants('gather',1,()=>{const g=new THREE.Group();ad(g,CY(.37,.38,.04,10),0x6e5a40,0,.02,0);ad(g,CY(.33,.35,.4,10),['wood',0x8a7558],0,.24,0);
+    coneRoof(g,0,.42,0,.52,.5,{rag:.06,th:.08});const F=FR(0,0,.34,0);bDoor(g,F,0,.14,.24,{y0:.04,c:0x4a3a2a});bWin(g,FR(.22,0,.26,.7),0,.28,.08,.08,{});
+    for(const [x,z,s] of[[.38,.3,1],[-.38,.32,.8]]){ud(ad(g,CY(.11*s,.085*s,.12*s,8),['wood',0x9a7a50],x,.06*s,z),{c2:0x6a2a34});for(let k=0;k<4;k++)ad(g,new THREE.IcosahedronGeometry(.035*s,0),vary(0x7a2638,.15),x+bRr(-.05,.05)*s,.13*s,z+bRr(-.05,.05)*s);}
+    for(const [x,z] of[[-.42,-.28],[-.08,-.44]])ud(ad(g,B(.04,.42,.04),['wood',0x4e3c2c],x,.21,z),{vg:1});ad(g,B(.42,.025,.025),['wood',0x4e3c2c],-.25,.4,-.36,-.68);
+    for(let k=0;k<4;k++)ad(g,B(.035,.1,.035),vary(0x6a7040,.15),-.38+k*.09,.33,-.31-k*.035,bR());
+    bush(g,.4,-.3,1.1,0x4e5e34);for(let k=0;k<4;k++)ad(g,new THREE.IcosahedronGeometry(.02,0),0x8a2a3a,.4+bRr(-.07,.07),.09,-.3+bRr(-.06,.06));
+    return g;});
+  // Lager: Bohlenscheune auf Steinsockel, Schindeldach, offenes Tor, Fässer, Kisten, Säcke
+  variants('store',1,()=>{const g=new THREE.Group(),F=faces(0,0,.95,.9);plinth(g,0,0,1.0,.94,.08,0x857f72);ud(ad(g,B(.95,.44,.9),['wood',0x7a6c5c],0,.3,0),{vg:1});
+    for(const sx of[-1,1])for(const sz of[-1,1])ud(ad(g,B(.05,.46,.05),['wood',0x3e3026],sx*.47,.31,sz*.445),{vg:1});ad(g,B(.97,.04,.04),['wood',0x3e3026],0,.5,.455);
+    ad(g,B(.38,.34,.02),0x1c1610,-.12,.25,.452);for(const s of[-1,1])ud(at(g,F[0],B(.19,.34,.02),['wood',0x6a5038],-.12+s*.27,.25,.08,s*1.25),{vg:1});ad(g,B(.42,.04,.03),['wood',0x3e3026],-.12,.44,.46);
+    bWin(g,F[0],.32,.34,.1,.09,{sh:0x5e5246});bWin(g,F[1],0,.34,.1,.09,{});
+    gableRoof(g,{y:.52,len:1.14,w:.9,rise:.42,over:.1,th:.04,k:'shingle',sag:.03,boards:1,gk:'wood',gcol:0x6e6254,gl:.95,tc:0x3e3026});
+    ud(ad(g,B(.06,.06,.3),['wood',0x3e3026],.48,.82,0),{});ad(g,B(.01,.22,.01),0x8a7a5a,.6,.7,0);sack(g,.6,.5,0,.7);
+    barrel(g,.36,.6);barrel(g,.22,.62,.9);barrel(g,.3,.62,.85,.153);crate(g,-.42,0,.58,1,.3);crate(g,-.4,.13,.58,.85,-.2);crate(g,-.25,0,.62,.9,.1);sack(g,.05,0,.6);sack(g,-.06,0,.64,.9,0xa89a7a);
+    return g;});
 }
 // ---------- Neue Gebäude-Vorlagen ----------
-function makeSails(){const s=new THREE.Group();for(let k=0;k<4;k++){const a=new THREE.Group();a.rotation.z=k*Math.PI/2;a.add(mk(B(.05,1.1,.03),TIMBER,0,.55,0),mk(B(.22,.78,.015),0xf0e8d8,.13,.66,0));s.add(a);}
-  s.position.set(0,1.25,.62);s.traverse(o=>{if(o.isMesh){o.castShadow=true;}});return s;}
+function makeSails(){const g=new THREE.Group();for(let k=0;k<4;k++){const a=k*Math.PI/2,cs=Math.cos(a),sn=Math.sin(a),P=(lx,ly,geo,c,z)=>g.add(mk(geo,c,lx*cs-ly*sn,lx*sn+ly*cs,z||0,0,0,a));
+    P(0,.56,B(.045,1.12,.035),['wood',0x5a4430]);for(const x of[.03,.27])P(x,.66,B(.012,.82,.012),['wood',0x6a5038],.012);for(let j=0;j<6;j++)P(.15,.27+j*.155,B(.25,.01,.01),['wood',0x6a5038],.012);
+    P(.15,.68,B(.22,.76,.008),['plaster',k%2?0xd2c6aa:0xc8b898],.02);}
+  g.add(mk(CY(.075,.075,.1,8),['wood',0x4e3c2c],0,0,-.02,0,Math.PI/2));
+  const s=bake(g,true);s.position.set(0,1.25,.62);return s;}
 {
-  let g=new THREE.Group();
-  // Bürgerhaus: Steinsockel + Fachwerk-Obergeschoss
-  g.add(mk(B(.9,.08,.8),STONE,0,.04,0),mk(B(.84,.36,.74),STONE,0,.26,0),mk(B(.88,.34,.78),WALL,0,.61,0));
-  timberFront(g,.88,.34,.44,.395,false);timberFront(g,.88,.34,.44,-.395,true);
-  g.add(mk(prism(.6,1.06,.8),0x7a3a2a,0,.78+.6*.5*.8,0),mk(B(1.08,.05,.06),0x5e2a1c,0,.78+.6*1.5*.8-.03,0));
-  g.add(mk(B(.14,.5,.14),STONE,-.26,1.15,.12),mk(B(.18,.05,.18),0x6a655c,-.26,1.42,.12));
-  g.add(mk(B(.18,.28,.03),0x5a3e26,0,.22,.38),mk(B(.13,.11,.03),'win',-.26,.3,.38),mk(B(.13,.11,.03),'win',.26,.3,.38),mk(B(.13,.12,.03),'win',-.22,.62,.4),mk(B(.13,.12,.03),'win',.22,.62,.4),mk(B(.13,.12,.03),'win',0,.62,-.4));
-  g.add(mk(B(.15,.04,.06),0x7a4a2a,-.26,.23,.41),mk(B(.04,.04,.04),0xd65a9a,-.28,.26,.41),mk(B(.04,.04,.04),0xf4e04d,-.22,.26,.41));
-  TEMPL.house2=bake(g);CHIM.house2=[-.26,1.46,.12];
-  // Brunnen
-  g=new THREE.Group();
-  g.add(mk(CY(.3,.33,.28,10),STONE,0,.14,0),mk(CY(.24,.24,.02,10),0x3d7fa0,0,.25,0));
-  g.add(mk(B(.05,.6,.05),TIMBER,-.27,.4,0),mk(B(.05,.6,.05),TIMBER,.27,.4,0),mk(prism(.26,.7,.55),ROOF,0,.7+.26*.5*.55,0),mk(B(.6,.03,.03),TIMBER,0,.58,0),mk(CY(.05,.04,.08,6),WOOD,.06,.45,0),mk(B(.01,.12,.01),0x333333,.06,.52,0));
-  TEMPL.well=bake(g);
-  // Fischerhütte
-  g=new THREE.Group();
-  g.add(mk(B(.62,.06,.56),0x6b5233,0,.03,0),mk(B(.56,.36,.5),0x9a7a52,0,.24,0),mk(prism(.42,.72,.62),THATCH,0,.42+.42*.5*.62,0),
-    mk(B(.14,.22,.03),0x4a3420,0,.15,.26),mk(B(.08,.08,.03),'win',.18,.28,.26));
-  g.add(mk(B(.03,.4,.03),TIMBER,-.38,.2,.3),mk(B(.03,.4,.03),TIMBER,-.38,.2,-.1),mk(B(.02,.02,.42),TIMBER,-.38,.38,.1),mk(B(.01,.24,.38),0x8a8a6a,-.38,.25,.1));
-  for(const z of[-.02,.1,.22])g.add(mk(new THREE.IcosahedronGeometry(.04,0).scale(1,2,1),0x9ab0c0,-.35,.3,z));
-  g.add(mk(CY(.08,.08,.18,8),0x7a5030,.34,.09,.32));
-  TEMPL.fisher=bake(g);
-  // Jägerhütte (Blockhaus)
-  g=new THREE.Group();g.add(mk(B(.62,.06,.56),0x5a4128,0,.03,0));
-  for(let k=0;k<4;k++){const y=.1+k*.09;g.add(mk(CY(.045,.045,.6,6),0x6e4c2e,0,y,.25,0,0,Math.PI/2),mk(CY(.045,.045,.6,6),0x6e4c2e,0,y,-.25,0,0,Math.PI/2),mk(CY(.045,.045,.54,6),0x5e4026,.28,y,0,0,Math.PI/2),mk(CY(.045,.045,.54,6),0x5e4026,-.28,y,0,0,Math.PI/2));}
-  g.add(mk(prism(.44,.74,.6),0x4f5a3a,0,.42+.44*.5*.6,0),mk(B(.14,.22,.03),0x3a2818,0,.14,.28));
-  g.add(mk(B(.02,.14,.02),0xe8dcc0,-.06,.62,.3,0,0,.5),mk(B(.02,.14,.02),0xe8dcc0,.06,.62,.3,0,0,-.5));
-  g.add(mk(B(.03,.36,.03),TIMBER,.4,.18,-.2),mk(B(.03,.36,.03),TIMBER,.4,.18,.2),mk(B(.02,.22,.36),0xa07850,.4,.22,0));
-  TEMPL.hunter=bake(g);
-  // Sägewerk (2x2)
-  g=new THREE.Group();g.add(mk(B(1.7,.06,1.4),0x6b5233,0,.03,0));
-  for(const [x,z] of[[-.75,-.6],[.75,-.6],[-.75,.3],[.75,.3]])g.add(mk(B(.08,.7,.08),TIMBER,x,.38,z));
-  g.add(mk(B(1.75,.06,1.1),0x5a4128,0,.76,-.15,0,.2),mk(B(1.6,.45,.05),WOOD,0,.28,-.62));
-  g.add(mk(B(.9,.08,.3),0x8b6a43,0,.36,-.1),mk(B(.06,.32,.06),TIMBER,-.4,.16,-.1),mk(B(.06,.32,.06),TIMBER,.4,.16,-.1),mk(CY(.16,.16,.02,12),0xc8ccd0,0,.42,-.1,0,Math.PI/2));
-  for(let r=0;r<2;r++)for(let k=0;k<3;k++)g.add(mk(CY(.07,.07,.7,6),0xa77b4f,-.75+k*.15+r*.07,.08+r*.13,.45,0,Math.PI/2));
-  for(let k=0;k<4;k++)g.add(mk(B(.6,.03,.14),0xd8b880,.45,.05+k*.04,.55));
-  TEMPL.sawmill=bake(g);
-  // Mühle (2x2) – Flügel separat (drehen sich)
-  g=new THREE.Group();
-  g.add(mk(CY(.62,.66,.08,10),STONE,0,.04,0),mk(CY(.42,.55,1.25,8),0xe2d6b8,0,.7,0),mk(new THREE.ConeGeometry(.5,.5,8),0x6e3a28,0,1.57,0));
-  g.add(mk(B(.2,.32,.03),0x4a3420,0,.2,.54),mk(B(.1,.12,.03),'win',0,.75,.48),mk(B(.1,.12,.03),'win',0,1.05,-.45),mk(B(.12,.12,.22),TIMBER,0,1.25,.5));
-  for(const p of[[.62,.12,.5],[.74,.12,.32],[.68,.29,.42]])g.add(mk(new THREE.IcosahedronGeometry(.11,0).scale(1,1.2,1),0xe8dcc0,p[0],p[1],p[2]));
-  TEMPL.mill=bake(g);
-  // Bäckerei (2x2)
-  g=new THREE.Group();
-  g.add(mk(B(1.5,.08,1.1),STONE,0,.04,-.1),mk(B(1.4,.5,1.0),WALL,0,.33,-.1));
-  timberFront(g,1.4,.5,.08,.405,false);
-  g.add(mk(prism(.72,1.5,.6),ROOF,0,.58+.72*.5*.6,-.1));
-  g.add(mk(B(.22,.7,.22),0x9a5a40,.45,1.0,-.35),mk(B(.26,.05,.26),0x6a655c,.45,1.37,-.35));
-  g.add(mk(B(.2,.3,.03),0x5a3e26,-.3,.23,.41),mk(B(.2,.14,.03),'win',.25,.35,.41),mk(B(.03,.14,.2),'win',.71,.35,-.1));
-  g.add(mk(new THREE.SphereGeometry(.3,8,5,0,Math.PI*2,0,Math.PI/2),0xb87050,-.45,.06,.66),mk(B(.1,.09,.03),0x221a14,-.45,.1,.95));
-  g.add(mk(B(.42,.04,.26),WOOD,.38,.3,.68),mk(B(.04,.28,.04),TIMBER,.2,.14,.6),mk(B(.04,.28,.04),TIMBER,.56,.14,.76));
-  for(const x of[.26,.38,.5])g.add(mk(new THREE.IcosahedronGeometry(.05,0).scale(1.5,.7,1),0xc08a48,x,.35,.68));
-  TEMPL.bakery=bake(g);CHIM.bakery=[.45,1.42,-.35];
-  // Marktplatz (2x2)
-  g=new THREE.Group();g.add(mk(B(1.8,.04,1.8),0xb8ae98,0,.02,0));
-  [[-.5,-.45,0xc84a3a],[.5,-.45,0x3a7ac8],[0,.45,0xe0b030]].forEach(([x,z,c],k)=>{
-    g.add(mk(B(.56,.2,.3),WOOD,x,.12,z));
-    for(const [px,pz] of[[-.26,-.17],[.26,-.17],[-.26,.17],[.26,.17]])g.add(mk(B(.03,.55,.03),TIMBER,x+px,.29,z+pz));
-    g.add(mk(B(.64,.03,.46),c,x,.58,z,0,k===2?-.2:.2),mk(B(.64,.031,.08),0xf4efe4,x,.585,z,0,k===2?-.2:.2));
-    const gc=[0xc2304e,0xe8a040,0x8cc456];for(let j=0;j<3;j++)g.add(mk(new THREE.IcosahedronGeometry(.05,0),gc[(j+k)%3],x-.15+j*.15,.25,z));});
-  g.add(mk(B(.03,1.1,.03),TIMBER,.7,.55,.7),mk(B(.24,.14,.01),0xc84a3a,.82,1.0,.7),mk(B(.18,.16,.18),WOOD,-.65,.08,.6),mk(CY(.08,.08,.2,8),0x7a5030,-.4,.1,.7));
-  TEMPL.market=bake(g);
-  // Acker (3x3): Zaun + Vogelscheuche (Pflanzen separat instanziert)
-  g=new THREE.Group();
-  for(let k=0;k<=6;k++){const t=-1.45+k*2.9/6;for(const [x,z] of[[t,-1.45],[t,1.45],[-1.45,t],[1.45,t]])g.add(mk(B(.04,.22,.04),0x7a5a33,x,.11,z));}
-  g.add(mk(B(2.9,.025,.025),0x8b6a43,0,.16,-1.45),mk(B(2.9,.025,.025),0x8b6a43,0,.16,1.45),mk(B(.025,.025,2.9),0x8b6a43,-1.45,.16,0),mk(B(.025,.025,2.9),0x8b6a43,1.45,.16,0));
-  g.add(mk(B(.03,.7,.03),0x6b4a2b,1.2,.35,1.2),mk(B(.4,.03,.03),0x6b4a2b,1.2,.52,1.2),mk(B(.14,.2,.08),0x9c4b3b,1.2,.46,1.2),mk(new THREE.IcosahedronGeometry(.07,0),0xd8c070,1.2,.68,1.2),mk(new THREE.ConeGeometry(.1,.1,6),0x5a4128,1.2,.76,1.2));
-  TEMPL.farm=bake(g);
-  // Blumenbeet
-  g=new THREE.Group();g.add(mk(B(.72,.1,.72),WOOD,0,.05,0),mk(B(.62,.11,.62),0x5a3e26,0,.06,0));
-  {const fc=[0xd65a9a,0xf4e04d,0xf2f2f2,0x7a8ef0,0xe85a3a];for(let k=0;k<16;k++){const x=-.24+(k%4)*.16,z=-.24+((k/4)|0)*.16;g.add(mk(B(.015,.12,.015),0x4a7a2a,x,.16,z),mk(new THREE.IcosahedronGeometry(.045,0),fc[(k*3)%5],x,.23,z));}}
-  TEMPL.beet=bake(g);
+  const PI=Math.PI;
+  // Bürgerhaus: Steinerdgeschoss, auskragendes Fachwerk-Obergeschoss, Gaube
+  variants('house2',3,v=>{const g=new THREE.Group(),pc=PLA[(v+1)%5],tc=TIMB[(v+2)%4],sh=SHUT[(v*2)%5],F0=faces(0,0,.84,.74),F1=faces(0,0,.88,.78);
+    plinth(g,0,0,.9,.8,.08);ad(g,B(.84,.36,.74),['stone',0x948d80],0,.26,0);ad(g,B(.92,.04,.82),['wood',tc],0,.46,0);
+    for(let k=-3;k<=3;k++)ad(g,B(.03,.03,.06),['wood',tc],k*.13,.43,.4);
+    ad(g,B(.88,.32,.78),['plaster',pc],0,.64,0);
+    bDoor(g,F0[0],0,.17,.27,{y0:.08,c:DOORC[(v+1)%4],lin:'stone'});bWin(g,F0[0],-.26,.3,.12,.1,{sill:1,lin:1});bWin(g,F0[0],.26,.3,.12,.1,{sill:1,lin:1});
+    frameFace(g,{...F1[0],y:0},.88,.32,.48,[[-.22,.13],[.22,.13]],tc);bWin(g,F1[0],-.22,.66,.12,.12,{sh,box:1});bWin(g,F1[0],.22,.66,.12,.12,{sh,box:v!==0});
+    frameFace(g,F1[2],.88,.32,.48,[[0,.13]],tc);bWin(g,F1[2],0,.66,.12,.12,{sh});
+    for(const i of[1,3]){frameFace(g,F1[i],.78,.32,.48,[[0,.12]],tc);bWin(g,F1[i],0,.66,.1,.11,{});}
+    gableRoof(g,{y:.8,len:1.1,w:.78,rise:.44,over:.1,th:.04,k:'tileD',col:[0xffffff,0xe0d8d4,0xf0e8e0][v],sag:.02,boards:1,gk:'plaster',gcol:pc,gl:.88,tc});
+    ad(g,B(.17,.14,.2),['plaster',pc],.2,.93,.24);bWin(g,FR(.2,0,.34,0),0,.93,.08,.08,{});
+    gableRoof(g,{x:.2,z:.25,r:PI/2,y:1.0,len:.26,w:.19,rise:.08,over:.03,th:.025,k:'tileD',sag:0});
+    chimney(g,-.26,.5,.12,.86);
+    if(v===0)barrel(g,.44,.44);else if(v===1)bench(g,F0[0],.3,.1,.24);else cart(g,.5,.3,PI/2,'sack');
+    bush(g,-.44,.42,.9);return g;});
+  CHIM.house2=[-.26,1.45,.12];
+  // Brunnen: Steinrand, Schindeldach, Winde mit Kurbel, Eimer
+  variants('well',1,()=>{const g=new THREE.Group();ud(ad(g,CY(.29,.32,.27,12),['stone',0x8f897c],0,.135,0),{c2:0x9a9486});ad(g,CY(.22,.22,.02,12),0x2a3a3c,0,.265,0);ad(g,CY(.31,.31,.03,12),['stone',0x7e786e],0,.28,0);
+    for(const s of[-1,1])ud(ad(g,B(.05,.62,.05),['wood',0x45342a],s*.27,.4,0),{vg:1});
+    gableRoof(g,{y:.68,len:.7,w:.42,rise:.18,over:.05,th:.03,k:'shingle',boards:1});
+    ud(ad(g,CY(.035,.035,.56,7),['wood',0x6a5038],0,.52,0,0,0,PI/2),{c2:0xb89a70});ad(g,B(.015,.08,.015),0x3a3430,.32,.49,0);ad(g,B(.015,.015,.07),0x3a3430,.32,.45,.035);
+    ad(g,B(.006,.16,.006),0x8a7a5a,.06,.42,0);bucket(g,.06,.28,0);bucket(g,-.2,.3,.16);for(let k=0;k<3;k++)rock(g,bRr(-.4,.4),.02,bRr(.32,.42),.03);
+    return g;});
+  // Fischerhütte: verwitterte Bohlen, Reetdach, Netzgestell mit Fischen, gekentertes Boot, Ruder
+  variants('fisher',1,()=>{const g=new THREE.Group(),F=faces(0,-.04,.56,.48);ad(g,B(.62,.05,.54),['stone',0x7e786e],0,.025,-.04);ud(ad(g,B(.56,.34,.48),['wood',0x7d7266],0,.22,-.04),{vg:1});
+    for(const sx of[-1,1])for(const sz of[-1,1])ud(ad(g,B(.04,.36,.04),['wood',0x45382c],sx*.28,.22,-.04+sz*.24),{vg:1});
+    bDoor(g,F[0],-.08,.13,.22,{y0:.05,c:0x5a4a3a});bWin(g,F[0],.15,.26,.08,.08,{sh:0x56677a});
+    gableRoof(g,{z:-.04,y:.39,len:.74,w:.48,rise:.3,over:.09,th:.08,k:'thatch',col:0xc8c8d0,rag:.035,sag:.02,gk:'wood',gcol:0x7d7266,gl:.56});
+    for(const z of[.3,-.12])ud(ad(g,B(.03,.42,.03),['wood',0x4e3c2c],-.42,.21,z),{vg:1});ad(g,B(.02,.02,.46),['wood',0x4e3c2c],-.42,.4,.09);
+    ad(g,warp(B(.008,.28,.4,1,3,3),(p,i)=>{p[i]+=.02*Math.sin(p[i+2]*14)+.015*Math.sin(p[i+1]*20);}),0x4e4a3c,-.42,.25,.09);
+    for(const z of[0,.1,.2])ad(g,new THREE.IcosahedronGeometry(.035,0).scale(.6,1.9,.7),vary(0x8a9aa0,.1),-.4,.3,z);
+    const hull=new THREE.CylinderGeometry(.11,.11,.5,9,1,true,0,PI).scale(1,1,.7);ud(ad(g,hull,['wood',0x6a5a48],.3,.0,.34,0,0,PI/2),{ao:0});
+    ud(ad(g,B(.015,.012,.4),['wood',0x7a5a3a],.12,.2,.3,0,.6),{});ud(ad(g,B(.015,.32,.015),['wood',0x7a5a3a],.3,.18,-.3,0,0,.3),{vg:1});ad(g,B(.04,.08,.01),['wood',0x7a5a3a],.34,.05,-.3,0,0,.3);
+    barrel(g,-.2,.34,.9);ud(ad(g,CY(.07,.05,.07,8),['wood',0x9a7a50],-.04,.035,.36),{c2:0x8a9aa0});return g;});
+  // Jägerhütte: Blockhaus mit Stirnholz, Moosdach, Geweih, gespanntes Fell, Holzstoß
+  variants('hunter',1,()=>{const g=new THREE.Group();ad(g,B(.64,.06,.58),['stone',0x7e786e],0,.03,0);
+    for(let k=0;k<5;k++){const y=.1+k*.075,o=k%2?.03:0;for(const z of[.25,-.25])ud(ad(g,CY(.04,.04,.66+o,6),['wood',vary(0x5e4430,.1)],0,y,z,0,0,PI/2),{c2:0xa88a60});for(const x of[.29,-.29])ud(ad(g,CY(.04,.04,.6-o,6),['wood',vary(0x56402c,.1)],x,y+.037,0,0,PI/2),{c2:0xa88a60});}
+    ad(g,B(.54,.36,.46),['wood',0x3e2e22],0,.25,0);
+    gableRoof(g,{y:.46,len:.8,w:.58,rise:.28,over:.07,th:.045,k:'moss',sag:.03,boards:1,gk:'wood',gcol:0x56402c,gl:.6});
+    bDoor(g,FR(0,0,.29,0),0,.14,.22,{y0:.05,c:0x3e2e20});bWin(g,FR(.3,0,0,PI/2),0,.28,.08,.08,{sh:0x4e4436});
+    for(const s of[-1,1]){ad(g,B(.015,.12,.015),0xd8ccb0,s*.05,.64,.3,0,0,s*.5);ad(g,B(.015,.06,.015),0xd8ccb0,s*.09,.66,.3,0,0,-s*.3);}
+    for(const z of[-.22,.2])ud(ad(g,B(.03,.38,.03),['wood',0x4e3c2c],.43,.19,z),{vg:1});ad(g,B(.02,.02,.46),['wood',0x4e3c2c],.43,.36,-.01);ad(g,warp(B(.01,.24,.32,1,2,2),(p,i)=>{p[i]+=.015*Math.sin(p[i+2]*9);}),0x8a6a4a,.43,.22,-.01);
+    logs(g,FR(-.42,0,.1,0),.4,2,{r:.04});ud(ad(g,B(.012,.4,.012),['wood',0x7a5a3a],.22,.2,.38,0,0,.2),{vg:1});return g;});
+  // Sägewerk (2x2): offener Schuppen, Sägebank mit Stamm, Gattersäge, Bretterstapel, Sägemehl
+  variants('sawmill',1,()=>{const g=new THREE.Group();ad(g,B(1.7,.05,1.4),0x5e4a34,0,.025,0);
+    for(const [x,z] of[[-.75,-.6],[0,-.6],[.75,-.6],[-.75,.3],[0,.3],[.75,.3]])ud(ad(g,B(.08,.72,.08),['wood',0x45342a],x,.38,z,0,bRr(-.03,.03),bRr(-.03,.03)),{vg:1});
+    for(const z of[-.6,.3])ad(g,B(1.6,.05,.05),['wood',0x45342a],0,.72,z);
+    ud(ad(g,B(1.55,.32,.03),['wood',0x6e6254],0,.18,-.62),{vg:1});
+    gableRoof(g,{z:-.15,y:.74,len:1.78,w:.9,rise:.34,over:.12,th:.04,k:'shingle',sag:.04,boards:1});
+    ad(g,B(1.0,.06,.24),['wood',0x6a5038],0,.32,-.1);for(const x of[-.42,-.1,.2,.44])ud(ad(g,B(.06,.3,.06),['wood',0x45342a],x,.15,-.1),{vg:1});
+    ud(ad(g,CY(.08,.085,.9,8),['wood',0x6a4c30],-.05,.42,-.1,0,0,PI/2),{c2:0xc0a070,vg:1});
+    for(const s of[-1,1])ud(ad(g,B(.05,.6,.05),['wood',0x45342a],.15,.42,-.1+s*.16),{vg:1});ad(g,B(.05,.05,.38),['wood',0x45342a],.15,.7,-.1);ad(g,B(.012,.45,.2),0x8a8a88,.15,.46,-.1);
+    logs(g,FR(-.55,0,.55,PI/2),.66,3,{r:.06});
+    for(let k=0;k<6;k++){ad(g,B(.62,.025,.13),['wood',vary(0xc0a070,.08)],.42,.035+k*.04,.52,k%2?.03:-.02);if(k%2)ad(g,B(.02,.015,.15),0x5a4430,.42+bRr(-.2,.2),.05+k*.04,.52);}
+    ud(ad(g,new THREE.IcosahedronGeometry(.16,1).scale(1.2,.35,1),0xc8aa78,.35,.02,-.35),{j:.2});cart(g,-.1,.6,0,'log');return g;});
+  // Mühle (2x2): verputzter Turm auf Steinsockel, Holzkappe, Galerie, Säcke – Flügel separat (drehen sich)
+  variants('mill',1,()=>{const g=new THREE.Group();ud(ad(g,CY(.6,.64,.1,12),['stone',0x857f72],0,.05,0),{c2:0x9a9486});ud(ad(g,CY(.55,.58,.22,12),['stone',0x8f897c],0,.21,0),{c2:0x8a8476});
+    ad(g,CY(.42,.54,1.06,12),['plaster',0xd2c6a8],0,.85,0);ad(g,CY(.44,.44,.04,12),['wood',0x4e3c2c],0,1.32,0);
+    coneRoof(g,0,1.34,0,.52,.46,{k:'tileB',seg:12,rag:.015,th:.04,cap:true,ck:'ridge'});
+    ad(g,B(.14,.14,.28),['wood',0x4e3c2c],0,1.25,.48);
+    bDoor(g,FR(0,0,.56,0),0,.2,.3,{y0:.12,c:0x5a4030,lin:'stone'});for(const [y,a] of[[.75,0],[1.05,PI],[.9,PI/2]])bWin(g,FR(Math.sin(a)*.47,0,Math.cos(a)*.47,a),0,y,.09,.11,{});
+    ad(g,B(.5,.03,.16),['wood',0x5a4430],0,.62,.52);for(const s of[-1,1])ad(g,B(.02,.12,.02),['wood',0x4e3c2c],s*.24,.68,.59);ad(g,B(.5,.02,.02),['wood',0x4e3c2c],0,.74,.59);
+    for(const [x,z] of[[.62,.5],[.74,.32],[.6,.32]])sack(g,x,0,z,1.4,0xd8d0bc);sack(g,.68,.14,.4,1.3,0xd0c8b0);cart(g,-.7,.5,.4,'sack');return g;});
+  // Bäckerei (2x2): Fachwerk, Ziegeldach, Backofen-Kuppel, Auslage mit Broten, Zunftschild
+  variants('bakery',1,()=>{const g=new THREE.Group(),pc=0xd6c6a2,F=faces(0,-.1,1.4,1.0);plinth(g,0,-.1,1.5,1.1,.08);ad(g,B(1.4,.5,1.0),['plaster',pc],0,.33,-.1);
+    frameFace(g,F[0],1.4,.5,.08,[[-.3,.21],[.25,.22],[-.62,.12]],TIMBER);frameFace(g,F[2],1.4,.5,.08,[[0,.12]],TIMBER);for(const i of[1,3])frameFace(g,F[i],1.0,.5,.08,[[0,.22]],TIMBER);
+    bDoor(g,F[0],-.3,.18,.3,{y0:.08,c:0x5a4030,hood:'tile'});bWin(g,F[0],.25,.35,.2,.13,{sh:0x7a4436});bWin(g,F[1],0,.35,.18,.13,{});bWin(g,F[3],0,.35,.18,.13,{sh:0x7a4436});bWin(g,F[2],0,.35,.1,.11,{});
+    gableRoof(g,{z:-.1,y:.58,len:1.58,w:1.0,rise:.48,over:.1,th:.04,k:'tile',sag:.03,boards:1,gk:'plaster',gcol:pc,gl:1.4,tc:TIMBER});
+    chimney(g,.45,.6,-.35,.73,{k:'brick',w:.18,col:0x9a5a42});
+    ud(ad(g,B(.66,.12,.5),['stone',0x8a8476],-.45,.06,.66),{});ad(g,new THREE.SphereGeometry(.28,9,5,0,PI*2,0,PI/2),['brick',0xa86048],-.45,.12,.66);ad(g,B(.12,.1,.04),0x1a1410,-.45,.17,.93);
+    ad(g,CY(.04,.05,.16,6),['brick',0x8a4a38],-.55,.45,.58);for(let k=0;k<2;k++)logs(g,FR(-.85,0,.6,PI/2),.3,2,{r:.03});
+    ad(g,B(.44,.035,.26),['wood',0x6a5038],.38,.3,.68);for(const [x,z] of[[.18,.57],[.58,.79],[.18,.79],[.58,.57]])ud(ad(g,B(.035,.28,.035),['wood',0x45342a],x,.14,z),{vg:1});
+    for(let k=0;k<5;k++)ad(g,new THREE.IcosahedronGeometry(.045,0).scale(1.5,.7,1),vary(0xb07a40,.1),.24+k*.07,.34,.68+bRr(-.05,.05),bR());
+    sack(g,.72,0,.72,1.2,0xd8d0bc);sack(g,.8,0,.56,1.1,0xd8d0bc);
+    ad(g,B(.035,.035,.16),['wood',0x3a2a1e],.5,.6,.48);ad(g,B(.01,.08,.01),0x2a2622,.5,.55,.55);ad(g,B(.16,.11,.015),['wood',0x8a6a40],.5,.47,.56);ad(g,new THREE.IcosahedronGeometry(.035,0).scale(1.6,.8,.4),0xb07a40,.5,.47,.57);
+    return g;});
+  CHIM.bakery=[.45,1.42,-.35];
+  // Marktplatz (2x2): Pflaster, drei Stände mit gestreiften Planen, Waren, Maibaum mit Wimpeln
+  variants('market',1,()=>{const g=new THREE.Group();ad(g,B(1.8,.03,1.8),['stone',0xa8a090],0,.015,0);
+    [[-.5,-.45,0x8a3e32,0,0],[.5,-.45,0x4a5a72,0,1],[0,.48,0xa0823a,PI,2]].forEach(([x,z,c,r,k])=>{const f=FR(x,0,z,r);
+      at(g,f,B(.58,.04,.3),['wood',0x6a5038],0,.22,0);ud(at(g,f,B(.56,.2,.02),['wood',0x5e4632],0,.11,.14),{vg:1});
+      for(const [px,pz,h] of[[-.27,-.17,.62],[.27,-.17,.62],[-.27,.17,.52],[.27,.17,.52]])ud(at(g,f,B(.03,h,.03),['wood',0x45342a],px,h/2,pz),{vg:1});
+      for(let j=0;j<6;j++)at(g,f,warp(B(.65/6,.012,.5,1,1,3),(p,i)=>{p[i+1]-=.02*(1-(2*p[i+2]/.5)**2);}),['plaster',j%2?0xd2c8b0:c],-.65/2+.65/12+j*.65/6,.58,0,0,.2);
+      const gc=[[0x8a2a3a,0xb07a30,0x6a7a3a],[0xa89070,0x8a9aa0,0xc8b890],[0x6a7a3a,0xa8603a,0xb8a050]][k];
+      for(let j=0;j<3;j++){ud(at(g,f,B(.14,.05,.1),['wood',0x8a6a44],-.17+j*.17,.265,-.03),{});for(let q=0;q<3;q++)at(g,f,new THREE.IcosahedronGeometry(.03,0),vary(gc[j],.12),-.2+j*.17+q*.03,.3,-.03+bRr(-.03,.03));}
+      crate(g,x+(r?-.3:.3)*1.1,0,z+(r?-.22:.22),.9,bR());});
+    ud(ad(g,CY(.025,.035,1.3,6),['wood',0x6a5038],.72,.65,.72),{vg:1});for(let k=0;k<4;k++){const a=k*PI/2+.3;ad(g,B(.01,.01,.4),0xd8d0bc,.72+Math.sin(a)*.16,1.1,.72+Math.cos(a)*.16,a,.85);ad(g,B(.08,.06,.006),[0x8a3e32,0xa0823a,0x4a5a72,0xd2c8b0][k],.72+Math.sin(a)*.12,1.04,.72+Math.cos(a)*.12,a);}
+    barrel(g,-.7,.66);barrel(g,-.55,.72,.85);sack(g,-.72,0,.48);bench(g,FR(.05,0,-.05,0),0,0,.32);bucket(g,.3,0,.15);return g;});
+  // Acker (3x3): krummer Zaun mit Tor, Vogelscheuche mit Hut (Pflanzen separat instanziert)
+  variants('farm',1,()=>{const g=new THREE.Group(),e=1.45;
+    fence(g,[[-.25,e],[-e,e],[-e,-e],[e,-e],[e,e],[.25,e]],{step:.48});ud(ad(g,B(.04,.3,.04),['wood',0x5a4a3a],-.25,.15,e),{vg:1});ud(ad(g,B(.04,.3,.04),['wood',0x5a4a3a],.25,.15,e),{vg:1});
+    ud(ad(g,B(.03,.72,.03),['wood',0x5a4430],1.2,.36,1.2),{vg:1});ad(g,B(.4,.025,.025),['wood',0x5a4430],1.2,.54,1.2,.3);ad(g,warp(B(.14,.2,.08,1,2,1),(p,i)=>{if(p[i+1]<0)p[i]*=1.3;}),0x6a5a48,1.2,.46,1.2,.3);
+    ad(g,new THREE.IcosahedronGeometry(.065,0),0xc8b078,1.2,.66,1.2);ad(g,CY(.11,.11,.015,8),['thatch',0xd0c8b0],1.2,.71,1.2);ad(g,CY(.05,.065,.06,8),['thatch',0xd0c8b0],1.2,.74,1.2);
+    for(const s of[-1,1])ad(g,B(.04,.06,.02),0xc8b078,1.2+Math.cos(.3)*s*.2,.52,1.2-Math.sin(.3)*s*.2);
+    tool(g,-1.38,1.1,PI/2,'spade');return g;});
+  // Blumenbeet: Hochbeet aus Brettern, Erde, gedeckte Blumen, Randsteine
+  variants('beet',1,()=>{const g=new THREE.Group();for(const [x,z,w,d] of[[0,.33,.72,.05],[0,-.33,.72,.05],[.33,0,.05,.62],[-.33,0,.05,.62]])ad(g,B(w,.11,d),['wood',0x6a5038],x,.055,z,0,0,bRr(-.03,.03));
+    for(const s of[-1,1])for(const t of[-1,1])ud(ad(g,B(.05,.14,.05),['wood',0x45342a],s*.34,.07,t*.34),{vg:1});
+    ud(ad(g,warp(B(.62,.1,.62,3,1,3),(p,i)=>{if(p[i+1]>0)p[i+1]+=.012*pn2(p[i]*4,p[i+2]*4);}),0x3e3024,0,.06,0),{ao:0,j:.2});
+    for(let k=0;k<14;k++){const x=-.24+(k%4)*.16+bRr(-.04,.04),z=-.24+((k/4)|0)*.16+bRr(-.04,.04),h=bRr(.08,.15);ad(g,B(.012,h,.012),0x4a5a30,x,.11+h/2,z);ud(ad(g,new THREE.IcosahedronGeometry(.045,0).scale(1,.6,1),bPick(LEAF),x,.13,z,bR()*3),{j:.25});ad(g,new THREE.IcosahedronGeometry(bRr(.03,.042),0),bPick(FLW),x,.11+h,z,bR()*3);}
+    for(let k=0;k<4;k++)rock(g,bRr(-.42,.42),.02,k%2?.42:-.42,.03);return g;});
   // Laterne + Bank
-  g=new THREE.Group();g.add(mk(B(.12,.06,.12),STONE,-.2,.03,-.2),mk(B(.05,.85,.05),TIMBER,-.2,.45,-.2),mk(B(.2,.03,.03),TIMBER,-.12,.84,-.2),mk(B(.1,.13,.1),'win',-.04,.74,-.2),mk(new THREE.ConeGeometry(.09,.08,4),0x333333,-.04,.84,-.2));
-  g.add(mk(B(.5,.04,.15),WOOD,.12,.16,.18),mk(B(.5,.12,.03),WOOD,.12,.26,.25),mk(B(.04,.15,.12),TIMBER,-.1,.08,.18),mk(B(.04,.15,.12),TIMBER,.34,.08,.18));
-  TEMPL.lantern=bake(g);
+  variants('lantern',1,()=>{const g=new THREE.Group();ad(g,B(.12,.06,.12),['stone',0x8a8476],-.2,.03,-.2);ud(ad(g,B(.05,.85,.05),['wood',0x45342a],-.2,.47,-.2),{vg:1});
+    ad(g,B(.2,.03,.03),['wood',0x45342a],-.12,.84,-.2);ad(g,B(.02,.12,.02),['wood',0x45342a],-.17,.78,-.2,0,0,.8);ad(g,B(.008,.04,.008),0x2a2622,-.04,.82,-.2);lantern(g,-.04,.74,-.2);
+    const f=FR(.12,0,.2,0);at(g,f,B(.5,.03,.14),['wood',0x6a5038],0,.16,0);at(g,f,B(.5,.1,.025),['wood',0x6a5038],0,.27,.065,0,-.15);for(const s of[-1,1]){at(g,f,B(.035,.16,.11),['wood',0x45342a],s*.21,.08,0);at(g,f,B(.03,.14,.03),['wood',0x45342a],s*.21,.24,.065);}
+    bush(g,.4,-.25,.8);return g;});
 }
 // ================= Wirtschaft: Eisen, Lehm/Ziegel, Wolle/Kleidung, Speicher =================
 Object.assign(DEF,{
@@ -898,63 +1105,90 @@ CATS.push(['handwerk','⚒️','Handwerk']);
 const SITE_WK={mine:1,clay:1},SHEEP_PER=5,MAXSHEEP=60;
 const NEAR_TXT={rock:'Muss nah an Felsen oder Gebirge stehen',water:'Muss nah an Fluss, See oder Sumpf stehen',meadow:'Braucht viel freie Wiese in der Nähe'};
 {
-  const BRICK=0xa85a40;
-  // Erzmine: Felshügel mit Stollen, Schienen, Lore, Erzhaufen
-  let g=new THREE.Group();
-  [[-.15,.18,-.2,.32],[.2,.14,-.25,.26],[-.32,.1,.05,.2],[.05,.28,-.3,.24],[.34,.08,-.02,.15]].forEach(p=>g.add(mk(new THREE.DodecahedronGeometry(p[3],0),0x7d7a72,p[0],p[1],p[2])));
-  g.add(mk(B(.3,.32,.06),0x1a1612,0,.16,-.02),mk(B(.06,.38,.06),TIMBER,-.18,.19,.02),mk(B(.06,.38,.06),TIMBER,.18,.19,.02),mk(B(.46,.06,.08),TIMBER,0,.4,.02));
-  g.add(mk(B(.03,.02,.5),0x555555,-.07,.01,.28),mk(B(.03,.02,.5),0x555555,.07,.01,.28),mk(B(.2,.12,.16),0x6b4a2b,0,.1,.3),mk(new THREE.DodecahedronGeometry(.06,0),0x8a4a32,-.03,.18,.3),mk(new THREE.DodecahedronGeometry(.05,0),0x7a5040,.04,.18,.32));
-  g.add(mk(new THREE.DodecahedronGeometry(.1,0),0x8a4a32,.32,.06,.3),mk(new THREE.DodecahedronGeometry(.08,0),0x6e3a2a,.38,.06,.16),mk(B(.03,.32,.03),0x5a3e26,-.33,.15,.3,0,0,.3),mk(B(.12,.04,.03),0x8a8a8a,-.29,.3,.3));
-  TEMPL.mine=bake(g);
-  // Schmiede: Steinwerkstatt mit Vordach, Esse (glüht nachts), Amboss
-  g=new THREE.Group();g.add(mk(B(.86,.08,.76),STONE,0,.04,0),mk(B(.8,.4,.46),0x8a8378,0,.28,-.14));
-  g.add(mk(prism(.52,.92,.55),0x5a4a40,0,.48+.52*.5*.55,-.04),mk(B(.05,.42,.05),TIMBER,-.38,.29,.3),mk(B(.05,.42,.05),TIMBER,.38,.29,.3));
-  g.add(mk(B(.2,.75,.2),STONE,.25,.55,-.25),mk(B(.24,.05,.24),0x6a655c,.25,.95,-.25),mk(B(.3,.18,.22),0x7a7068,.2,.17,.1),mk(B(.18,.04,.12),'win',.2,.27,.1));
-  g.add(mk(B(.12,.12,.08),0x3a3a3a,-.15,.1,.2),mk(B(.2,.05,.09),0x2e2e2e,-.15,.18,.2),mk(CY(.08,.08,.2,8),0x7a5030,-.36,.1,.36),mk(B(.1,.02,.03),0xb0b4b8,-.32,.22,.38));
-  TEMPL.smithy=bake(g);CHIM.smithy=[.25,1.0,-.25];
-  // Lehmgrube: Grube mit Pfütze, Lehmhaufen, Trockengestell, Spaten
-  g=new THREE.Group();g.add(mk(CY(.36,.3,.04,8),0x5a3a22,-.08,.02,-.08),mk(CY(.24,.24,.02,8),0x6a7a6a,-.08,.04,-.08));
-  g.add(mk(new THREE.IcosahedronGeometry(.14,0).scale(1,.6,1),0xa8683e,.3,.06,.28),mk(new THREE.IcosahedronGeometry(.1,0).scale(1,.6,1),0x9a5a34,.38,.05,.1));
-  g.add(mk(B(.04,.32,.04),TIMBER,-.38,.16,.2),mk(B(.04,.32,.04),TIMBER,-.38,.16,.44),mk(B(.08,.02,.28),WOOD,-.38,.17,.32),mk(B(.08,.02,.28),WOOD,-.38,.29,.32));
-  for(let k=0;k<3;k++)g.add(mk(B(.06,.03,.06),0xb06a40,-.38,.195,.24+k*.08),mk(B(.06,.03,.06),0xb06a40,-.38,.315,.24+k*.08));
-  g.add(mk(B(.02,.36,.02),0x5a3e26,.12,.2,.38,0,0,.35),mk(B(.07,.09,.015),0x8a8a8a,.18,.04,.38),mk(B(.04,.4,.04),TIMBER,.32,.2,-.38),mk(B(.04,.4,.04),TIMBER,.32,.2,-.12),mk(B(.3,.03,.36),THATCH,.25,.4,-.25,0,0,.2));
-  TEMPL.claypit=bake(g);
-  // Ziegelei (2x2): Brennofen mit Schlot, Trockenschuppen, Ziegelstapel
-  g=new THREE.Group();g.add(mk(B(1.7,.05,1.5),0x8a6a4a,0,.025,0));
-  g.add(mk(CY(.42,.48,.5,10),0xa04a32,-.4,.25,-.3),mk(new THREE.SphereGeometry(.42,10,5,0,Math.PI*2,0,Math.PI/2),0x9a4430,-.4,.5,-.3),mk(B(.16,.14,.03),0x221a14,-.4,.14,.17),mk(B(.18,.55,.18),0x8a3a2a,-.15,.92,-.55),mk(B(.22,.05,.22),0x5a4a40,-.15,1.2,-.55));
-  for(const [x,z] of[[.2,-.65],[.8,-.65],[.2,.1],[.8,.1]])g.add(mk(B(.05,.5,.05),TIMBER,x,.25,z));
-  g.add(mk(B(.75,.04,.88),THATCH,.5,.52,-.27,0,.12));
-  for(let r=0;r<3;r++)for(let k=0;k<4;k++){g.add(mk(B(.1,.04,.05),0xc07a50,.3+k*.13,.06+r*.05,-.4),mk(B(.1,.04,.05),0xc07a50,.3+k*.13,.06+r*.05,-.15));}
-  for(let r=0;r<3;r++)for(let k=0;k<3;k++)g.add(mk(B(.12,.05,.06),0xa84a30,-.55+k*.14,.06+r*.055,.5));
-  g.add(mk(new THREE.IcosahedronGeometry(.18,0).scale(1,.55,1),0xa8683e,.55,.08,.55),mk(B(.2,.08,.3),WOOD,.2,.06,.6));
-  TEMPL.brickworks=bake(g);CHIM.brickworks=[-.15,1.24,-.55];
-  // Schäferei (2x2): Hütte, Pferch mit Zaun, Heu, Tränke, Wollballen
-  g=new THREE.Group();
-  g.add(mk(B(.7,.06,.6),0x6b5233,-.45,.03,-.45),mk(B(.62,.36,.52),0xc9b088,-.45,.24,-.45),mk(prism(.44,.78,.6),THATCH,-.45,.42+.44*.5*.6,-.45),mk(B(.14,.22,.03),0x4a3420,-.45,.15,-.18),mk(B(.08,.08,.03),'win',-.25,.28,-.18));
-  for(let k=0;k<=4;k++){const t=.05+k*.2;for(const [x,z] of[[t,.05],[t,.85],[.05,t],[.85,t]])g.add(mk(B(.04,.22,.04),0x7a5a33,x,.11,z));}
-  g.add(mk(B(.8,.025,.025),0x8b6a43,.45,.16,.05),mk(B(.8,.025,.025),0x8b6a43,.45,.16,.85),mk(B(.025,.025,.8),0x8b6a43,.05,.16,.45),mk(B(.025,.025,.8),0x8b6a43,.85,.16,.45));
-  g.add(mk(CY(.12,.12,.22,8),THATCH,.6,.12,.3,0,0,Math.PI/2),mk(B(.3,.07,.1),WOOD,.3,.05,.7),mk(B(.26,.02,.07),0x3d7fa0,.3,.09,.7));
-  g.add(mk(new THREE.IcosahedronGeometry(.1,0),0xf0ece0,-.7,.1,.1),mk(new THREE.IcosahedronGeometry(.09,0),0xe8e4d8,-.55,.09,.2),mk(B(.04,.6,.04),TIMBER,-.1,.3,-.75),mk(B(.16,.1,.01),0xf0ece0,-.03,.52,-.75));
-  TEMPL.sheepfarm=bake(g);
-  // Weberei: Fachwerkhaus, Webstuhl vor der Tür, Stoffe auf der Leine
-  g=new THREE.Group();g.add(mk(B(.8,.08,.56),STONE,0,.04,-.12),mk(B(.74,.4,.5),WALL,0,.28,-.12));timberFront(g,.74,.4,.08,.135,false);
-  g.add(mk(prism(.48,.86,.6),0x8a5a3a,0,.48+.48*.5*.6,-.12),mk(B(.14,.24,.03),0x5a3e26,-.18,.2,.14),mk(B(.12,.1,.03),'win',.2,.32,.14));
-  g.add(mk(B(.03,.32,.03),TIMBER,-.05,.16,.3),mk(B(.03,.32,.03),TIMBER,.25,.16,.3),mk(B(.33,.03,.03),TIMBER,.1,.31,.3),mk(B(.28,.2,.005),0xd8c8a8,.1,.2,.3),mk(CY(.035,.035,.3,6),0x3a6ab0,.1,.08,.32,0,0,Math.PI/2));
-  g.add(mk(B(.02,.42,.02),TIMBER,-.42,.21,.4),mk(B(.02,.42,.02),TIMBER,-.42,.21,-.05),mk(B(.01,.01,.46),0x333333,-.42,.4,.18),mk(B(.01,.18,.12),0xc84a3a,-.42,.3,.3),mk(B(.01,.16,.1),0xe0b030,-.42,.31,.08));
-  TEMPL.weaver=bake(g);
-  // Speicher (2x2): hoher Ziegelbau mit Fachwerk, Ladeluke mit Kranbalken, Säcke
-  g=new THREE.Group();g.add(mk(B(1.6,.1,1.3),STONE,0,.05,0),mk(B(1.5,.7,1.2),BRICK,0,.45,0));timberFront(g,1.5,.7,.1,.605,false);
-  g.add(mk(prism(.88,1.62,.75),0x6e3a28,0,.8+.88*.5*.75,0),mk(B(1.64,.05,.07),0x4e2a1c,0,.8+.88*1.5*.75-.03,0));
-  g.add(mk(B(.36,.44,.03),0x4a3420,-.3,.32,.61),mk(B(.2,.18,.03),0x4a3420,.35,.62,.61),mk(B(.05,.05,.32),TIMBER,.35,.85,.74),mk(B(.01,.25,.01),0x333333,.35,.72,.88),mk(B(.12,.1,.03),'win',-.6,.6,.61));
-  for(const p of[[.4,.1,.8],[.56,.1,.76],[.48,.25,.79]])g.add(mk(new THREE.IcosahedronGeometry(.1,0).scale(1,1.2,1),0xe8e0d0,p[0],p[1],p[2]));
-  g.add(mk(B(.2,.2,.2),WOOD,-.6,.1,.8),mk(B(.16,.16,.16),0x7a5a33,-.38,.08,.82));
-  TEMPL.granary=bake(g);
-  // Ziegelhaus: Ziegelwände, Gesims, rotes Dach, Schornstein
-  g=new THREE.Group();g.add(mk(B(.9,.08,.8),STONE,0,.04,0),mk(B(.84,.72,.74),BRICK,0,.44,0),mk(B(.88,.04,.78),0xd8c8a8,0,.44,0));
-  g.add(mk(prism(.6,1.06,.8),0x8a3a2a,0,.8+.6*.5*.8,0),mk(B(1.08,.05,.06),0x5e2a1c,0,.8+.6*1.5*.8-.03,0),mk(B(.14,.5,.14),0x8a3a2a,.26,1.15,-.12),mk(B(.18,.05,.18),0x6a655c,.26,1.42,-.12));
-  g.add(mk(B(.18,.3,.03),0x5a3e26,0,.23,.38),mk(B(.13,.11,.03),'win',-.26,.3,.38),mk(B(.13,.11,.03),'win',.26,.3,.38),mk(B(.13,.12,.03),'win',-.22,.64,.38),mk(B(.13,.12,.03),'win',.22,.64,.38),mk(B(.13,.12,.03),'win',0,.64,-.38));
-  g.add(mk(B(.15,.04,.06),0x7a4a2a,.26,.24,.41),mk(B(.04,.04,.04),0xd65a9a,.22,.27,.41),mk(B(.04,.04,.04),0xf2f2f2,.3,.27,.41));
-  TEMPL.house3=bake(g);CHIM.house3=[.26,1.46,-.12];
+  const BRICK=0xa85a40,PI=Math.PI;
+  // Erzmine: Felskuppe, gezimmertes Stollenmundloch, Gleis mit Schwellen, Lore, Erzhaufen, Grubenlampe
+  variants('mine',1,()=>{const g=new THREE.Group();
+    [[-.15,.16,-.22,.34],[.22,.13,-.26,.27],[-.34,.1,.04,.2],[.05,.3,-.32,.25],[.36,.08,-.04,.16],[-.4,.06,-.3,.18]].forEach(p=>rock(g,p[0],p[1],p[2],p[3],bPick([0x7d786e,0x857f72,0x736e66])));
+    for(let k=0;k<4;k++)ud(ad(g,new THREE.IcosahedronGeometry(.06,0).scale(1,.5,1),vary(0x5a6a3a,.15),bRr(-.4,.4),bRr(.2,.36),bRr(-.4,-.15)),{j:.3});
+    ad(g,B(.28,.3,.08),0x0e0c0a,0,.15,-.02);for(const s of[-1,1])ud(ad(g,B(.06,.36,.06),['wood',0x45342a],s*.17,.18,.03,0,0,s*.06),{vg:1});ad(g,B(.48,.06,.08),['wood',0x45342a],0,.38,.03);ad(g,B(.3,.03,.03),['wood',0x45342a],0,.43,.02,0,0,.04);
+    lantern(g,.24,.3,.08);
+    for(let k=0;k<5;k++)ad(g,B(.22,.02,.04),['wood',0x4e3c2c],0,.01,.06+k*.1);for(const s of[-1,1])ad(g,B(.016,.02,.52),0x4a4642,s*.07,.025,.28);
+    const f=FR(0,.03,.3,0);at(g,f,warp(B(.2,.11,.15),(p,i)=>{if(p[i+1]>0){p[i]*=1.12;p[i+2]*=1.12;}}),['wood',0x5e4632],0,.1,0);for(const sx of[-1,1])for(const sz of[-1,1])at(g,f,CY(.03,.03,.015,8),0x2a2622,sx*.065,.035,sz*.078,0,PI/2);
+    for(let k=0;k<4;k++)rock(g,bRr(-.06,.06),.2,.3+bRr(-.04,.04),.04,0x7a4a36);
+    for(let k=0;k<5;k++)rock(g,.32+bRr(-.07,.07),.04,.24+bRr(-.12,.12),bRr(.04,.07),bPick([0x7a4a36,0x6a3e30]));tool(g,-.32,.3,.3,'pick');return g;});
+  // Schmiede: Steinwerkstatt, Vordach auf Pfosten, Esse mit Glut (leuchtet nachts), Amboss, Löschfass
+  variants('smithy',1,()=>{const g=new THREE.Group(),F=faces(0,-.14,.8,.46);plinth(g,0,0,.86,.76,.06,0x7e786e);ad(g,B(.8,.42,.46),['stone',0x8a8378],0,.27,-.14);
+    bWin(g,F[1],0,.3,.08,.09,{sill:1});bWin(g,F[3],0,.3,.08,.09,{sill:1});
+    gableRoof(g,{z:-.14,y:.48,len:.94,w:.46,rise:.26,over:.07,th:.035,k:'slateD',boards:1,gk:'stone',gcol:0x8a8378,gl:.8});
+    for(const s of[-1,1])ud(ad(g,B(.05,.44,.05),['wood',0x3e3026],s*.38,.22,.33),{vg:1});ad(g,B(.84,.04,.04),['wood',0x3e3026],0,.44,.33);
+    ad(g,warp(B(.92,.03,.44,6,1,1),(p,i)=>{p[i+1]-=.015*(1-(2*p[i]/.92)**2);}),['shingle'],0,.5,.14,0,.32);
+    chimney(g,.25,.4,-.25,.5,{w:.18});ad(g,B(.32,.2,.24),['stone',0x7a7068],.2,.16,.08);ad(g,B(.2,.04,.13),'win',.2,.27,.08);ad(g,new THREE.ConeGeometry(.17,.16,4),['brick',0x6a4a3a],.2,.38,.02,PI/4);
+    ad(g,B(.14,.08,.04),0x2a2622,.04,.18,.14,0,0,.2);
+    ud(ad(g,CY(.06,.07,.1,7),['wood',0x5a4430],-.15,.05,.2),{c2:0x9a8060});ad(g,B(.14,.06,.07),0x3a3836,-.15,.13,.2);ad(g,B(.06,.03,.05),0x3a3836,-.24,.15,.2);ad(g,new THREE.ConeGeometry(.025,.06,4),0x3a3836,-.25,.15,.2,0,0,PI/2);
+    barrel(g,-.34,.38);ad(g,CY(.06,.06,.005,8),0x2a3a3c,-.34,.172,.38);ad(g,new THREE.IcosahedronGeometry(.08,0).scale(1.2,.45,1),0x222020,.38,.03,.38);
+    for(let k=0;k<3;k++)ad(g,B(.012,.1,.012),0x4a4642,-.3+k*.05,.3,-.04+.005);ad(g,B(.16,.012,.012),['wood',0x3e3026],-.25,.35,-.035);
+    ad(g,B(.05,.05,.012),0x5a5652,0,.38,.36);return g;});
+  CHIM.smithy=[.25,.99,-.25];
+  // Lehmgrube: nasse Grube mit Pfütze, Lehmhaufen, Trockengestell mit Rohlingen unter Reetschirm, Spaten, Bohlensteg
+  variants('claypit',1,()=>{const g=new THREE.Group();ud(ad(g,warp(CY(.38,.3,.05,10),(p,i)=>{const a=Math.atan2(p[i+2],p[i]),n=pn2(a*2,1);p[i]*=1+.12*n;p[i+2]*=1+.12*n;}),0x4e3626,-.08,.02,-.08),{ao:0,j:.2});ad(g,CY(.22,.24,.012,10),0x3a4642,-.1,.05,-.1);
+    ad(g,B(.5,.02,.08),['wood',0x6a5a48],-.08,.055,-.08,.5);
+    ud(ad(g,new THREE.IcosahedronGeometry(.15,1).scale(1,.5,1),0x9a5e3a,.3,.05,.28),{j:.25});ud(ad(g,new THREE.IcosahedronGeometry(.1,0).scale(1,.55,1),0x8a5232,.4,.04,.1),{j:.25});
+    for(const z of[.2,.44])for(const x of[-.44,-.32])ud(ad(g,B(.035,.36,.035),['wood',0x45342a],x,.18,z),{vg:1});
+    for(const y of[.15,.27])ad(g,B(.16,.02,.3),['wood',0x6a5038],-.38,y,.32);for(let y=0;y<2;y++)for(let k=0;k<3;k++)ad(g,B(.055,.03,.06),['brick',vary(0xb07048,.08)],-.38+(k%2?.03:-.03),.175+y*.12,.23+k*.09);
+    ad(g,warp(B(.3,.05,.42,2,1,2),(p,i)=>{if(Math.abs(p[i])>.149)p[i]+=.03*pn2(p[i+2]*5,2);}),['thatch',0xd0ccc4],-.38,.42,.32,0,0,.12);
+    ud(ad(g,B(.02,.36,.02),['wood',0x7a5a3a],.14,.2,.4,0,0,.3),{vg:1});ad(g,B(.07,.09,.012),0x5a5652,.18,.05,.4,0,0,.3);bucket(g,.06,0,.2);
+    for(const z of[-.38,-.12])ud(ad(g,B(.04,.4,.04),['wood',0x45342a],.32,.2,z),{vg:1});ad(g,B(.3,.03,.36),['thatch',0xd0ccc4],.25,.4,-.25,0,0,.2);return g;});
+  // Ziegelei (2x2): Brennofen-Kuppel mit Schlot, Trockenschuppen, Ziegelstapel, Lehm, Brennholz, Schubkarre
+  variants('brickworks',1,()=>{const g=new THREE.Group();ad(g,B(1.7,.04,1.5),0x7a5e44,0,.02,0);
+    ad(g,CY(.42,.48,.5,12),['brick',0x9a4a34],-.4,.25,-.3);ad(g,new THREE.SphereGeometry(.42,12,5,0,PI*2,0,PI/2),['brick',0x8a4430],-.4,.5,-.3);ad(g,B(.18,.16,.04),0x1a1410,-.4,.13,.16);ad(g,B(.06,.06,.03),'win',-.4,.08,.17);ad(g,B(.24,.04,.06),['stone',0x8a8476],-.4,.23,.18);
+    chimney(g,-.15,0,-.55,1.15,{k:'brick',w:.2,col:0x8a3e2c});
+    for(const [x,z] of[[.2,-.65],[.8,-.65],[.2,.1],[.8,.1]])ud(ad(g,B(.05,.5,.05),['wood',0x45342a],x,.25,z),{vg:1});
+    gableRoof(g,{x:.5,z:-.27,r:PI/2,y:.5,len:.95,w:.7,rise:.2,over:.06,th:.07,k:'thatch',col:0xd0ccd0,rag:.03});
+    for(const z of[-.42,-.14])for(let r=0;r<3;r++)ad(g,B(.5,.045,.07),['brick',vary(0xb87a58,.06)],.5,.045+r*.05,z);
+    for(const [x,z,h] of[[-.6,.52,.18],[-.38,.55,.14]])ad(g,B(.2,h,.12),['brick',vary(0xa84a30,.06)],x,h/2+.04,z,bRr(-.2,.2));
+    ud(ad(g,new THREE.IcosahedronGeometry(.18,1).scale(1,.5,1),0x9a5e3a,.55,.07,.55),{j:.25});logs(g,FR(-.82,0,-.05,0),.36,3,{r:.035});
+    const f=FR(.2,0,.6,.3);at(g,f,B(.2,.06,.26),['wood',0x6a5038],0,.12,0,0,0,-.1);at(g,f,CY(.05,.05,.02,8),0x2a2622,.13,.05,0,0,PI/2);for(const s of[-1,1])at(g,f,B(.22,.015,.015),['wood',0x5a4430],-.16,.12,s*.07,0,0,.2);
+    return g;});
+  CHIM.brickworks=[-.15,1.24,-.55];
+  // Schäferei (2x2): Hirtenhütte mit Reet, Pferch, Heuraufe, Tränke, Wollsäcke, Schurbank
+  variants('sheepfarm',1,()=>{const g=new THREE.Group(),F=faces(-.45,-.45,.62,.52);plinth(g,-.45,-.45,.66,.56,.06);ad(g,B(.62,.34,.52),['plaster',0xcbb890],-.45,.23,-.45);
+    frameFace(g,F[0],.62,.34,.06,[[0,.15],[.2,.1]],0x45342a);frameFace(g,F[1],.52,.34,.06,[],0x45342a);
+    bDoor(g,F[0],0,.13,.22,{y0:.06,c:0x4e4436});bWin(g,F[0],.2,.26,.08,.08,{sh:0x5d6e52});
+    gableRoof(g,{x:-.45,z:-.45,y:.4,len:.8,w:.52,rise:.3,over:.1,th:.08,k:'thatch',col:0xd4d0d0,rag:.035,gk:'plaster',gcol:0xcbb890,gl:.62});
+    const e=.85,s0=.05;fence(g,[[s0,.35],[s0,s0],[e,s0],[e,e],[s0,e],[s0,.55]],{step:.27});
+    ud(ad(g,new THREE.IcosahedronGeometry(.13,1).scale(1.1,.6,1),['thatch',0xe0dcd0],.62,.07,.3),{});for(const s of[-1,1])ud(ad(g,B(.03,.3,.03),['wood',0x45342a],.62+s*.14,.15,.42),{vg:1});ad(g,B(.32,.025,.025),['wood',0x45342a],.62,.3,.42);
+    ad(g,B(.3,.07,.1),['wood',0x5e4632],.3,.05,.7);ad(g,B(.26,.012,.07),0x3a4a4c,.3,.085,.7);
+    for(const [x,z] of[[-.72,.1],[-.58,.2],[-.66,.24]])sack(g,x,0,z,1.25,0xe0dace);bench(g,FR(-.25,0,.15,PI/2),0,0,.26);
+    ud(ad(g,B(.04,.6,.04),['wood',0x45342a],-.1,.3,-.78),{vg:1});ad(g,B(.16,.1,.012),['wood',0x8a6a44],-.02,.52,-.78);return g;});
+  // Weberei: Fachwerkhaus, Webstuhl vor der Tür, Stoffbahnen auf der Leine, Garnkörbe
+  variants('weaver',1,()=>{const g=new THREE.Group(),pc=0xd4c8a8,F=faces(0,-.12,.74,.5);plinth(g,0,-.12,.8,.56,.08);ad(g,B(.74,.4,.5),['plaster',pc],0,.28,-.12);
+    frameFace(g,F[0],.74,.4,.08,[[-.18,.16],[.2,.14]],TIMBER);for(const i of[1,3])frameFace(g,F[i],.5,.4,.08,[[0,.1]],TIMBER);
+    bDoor(g,F[0],-.18,.14,.25,{y0:.08,c:0x4e5a46});bWin(g,F[0],.2,.32,.12,.1,{sh:0x56677a,box:1});bWin(g,F[1],0,.32,.08,.09,{});
+    gableRoof(g,{z:-.12,y:.48,len:.9,w:.5,rise:.32,over:.09,th:.035,k:'tileD',boards:1,gk:'plaster',gcol:pc,gl:.74,tc:TIMBER});
+    for(const x of[-.04,.26])for(const z of[.24,.38])ud(ad(g,B(.025,.3,.025),['wood',0x5a4430],x,.15,z),{vg:1});ad(g,B(.34,.025,.025),['wood',0x5a4430],.11,.3,.24);ad(g,B(.34,.025,.025),['wood',0x5a4430],.11,.18,.38);
+    ad(g,B(.28,.18,.004),0xd8ccb0,.11,.22,.3,0,.3);ud(ad(g,CY(.03,.03,.3,6),['wood',0x6a5038],.11,.12,.38,0,0,PI/2),{c2:0x3e5a7a});ad(g,B(.08,.12,.06),['wood',0x5a4430],.11,.06,.5);
+    for(const z of[.4,-.05])ud(ad(g,B(.02,.44,.02),['wood',0x45342a],-.42,.22,z),{vg:1});ad(g,B(.006,.006,.46),0x3a3430,-.42,.42,.18);
+    for(const [z,c,h] of[[.32,0x8a3e32,.18],[.18,0xa0823a,.15],[.04,0x4a5a72,.17]])ad(g,warp(B(.008,h,.12,1,2,1),(p,i)=>{p[i]+=.01*Math.sin(p[i+1]*20+z);}),c,-.42,.41-h/2,z);
+    for(const [x,c] of[[.35,0xd8d0bc],[.42,0x8a3e32]]){ud(ad(g,CY(.06,.045,.06,8),['wood',0x9a7a50],x,.03,.4),{c2:0x5a4430});ad(g,new THREE.IcosahedronGeometry(.03,0),c,x,.07,.4);}
+    return g;});
+  // Speicher (2x2): Ziegel-Erdgeschoss, Fachwerk-Boden, Ladeluke mit Kranbalken und Seil, Säcke, Kisten
+  variants('granary',1,()=>{const g=new THREE.Group(),pc=0xd0c4a4,F=faces(0,0,1.5,1.2);plinth(g,0,0,1.6,1.3,.1);ad(g,B(1.5,.4,1.2),['brick',BRICK],0,.3,0);ad(g,B(1.56,.04,1.26),['wood',TIMBER],0,.52,0);
+    ad(g,B(1.54,.36,1.24),['plaster',pc],0,.72,0);const F1=faces(0,0,1.54,1.24);frameFace(g,F1[0],1.54,.36,.54,[[.35,.22],[-.55,.13]],TIMBER);frameFace(g,F1[2],1.54,.36,.54,[],TIMBER);for(const i of[1,3])frameFace(g,F1[i],1.24,.36,.54,[[0,.14]],TIMBER);
+    gableRoof(g,{y:.9,len:1.72,w:1.24,rise:.66,over:.1,th:.045,k:'tileB',sag:.035,boards:1,gk:'plaster',gcol:pc,gl:1.54,tc:TIMBER});
+    bDoor(g,F[0],-.3,.3,.32,{y0:.1,c:0x5a4030,lin:'stone'});ad(g,B(.22,.2,.02),0x1c1610,.35,.72,.625);ud(at(g,F1[0],B(.11,.2,.02),['wood',0x6a5038],.35+.16,.72,.06,1.2),{vg:1});
+    ad(g,B(.05,.05,.36),['wood',TIMBER],.35,.95,.76);ad(g,B(.008,.3,.008),0x8a7a5a,.35,.79,.92);sack(g,.35,.56,.92,.9);bWin(g,F1[0],-.55,.72,.12,.11,{});bWin(g,F[1],0,.32,.1,.09,{sill:1});
+    for(const p of[[.4,.8],[.56,.76],[.48,.84]])sack(g,p[0],0,p[1],1.3,0xd8d0bc);sack(g,.48,.14,.8,1.2,0xd0c8b0);crate(g,-.62,0,.78,1.2,.2);crate(g,-.42,0,.8,1,-.1);crate(g,-.55,.16,.8,.9,.4);return g;});
+  // Ziegelhaus: Ziegelwände, Eckquader, Gesims, Stürze, dunkles Ziegeldach, Ziegelschornstein
+  variants('house3',3,v=>{const g=new THREE.Group(),F=faces(0,0,.84,.74),bc=[BRICK,0x9a5a44,0xa86650][v],sh=SHUT[(v+2)%5];plinth(g,0,0,.9,.8,.08);ad(g,B(.84,.72,.74),['brick',bc],0,.44,0);
+    ad(g,B(.88,.035,.78),['stone',0xb0a894],0,.44,0);ad(g,B(.88,.04,.78),['stone',0xa8a08c],0,.8,0);
+    for(const sx of[-1,1])for(const sz of[-1,1])for(let k=0;k<4;k++)ad(g,B(k%2?.07:.1,.08,k%2?.1:.07),['stone',vary(0xb0a894,.06)],sx*.42,.14+k*.165,sz*.37);
+    bDoor(g,F[0],0,.18,.3,{y0:.08,c:DOORC[(v+2)%4],lin:'stone',hood:v===1?'tileB':null});
+    for(const x of[-.26,.26]){bWin(g,F[0],x,.3,.13,.11,{sill:1,lin:1,sh});bWin(g,F[0],x,.64,.13,.12,{sill:1,lin:1,box:v!==2});}
+    bWin(g,F[2],0,.64,.13,.12,{sill:1,lin:1});bWin(g,F[2],-.24,.3,.13,.11,{sill:1,lin:1});for(const i of[1,3])bWin(g,F[i],0,.62,.11,.12,{sill:1,lin:1});
+    gableRoof(g,{y:.82,len:1.06,w:.78,rise:.44,over:.08,th:.04,k:'tileB',col:[0xffffff,0xe8e0dc,0xd8d4d0][v],sag:.015,boards:1,gk:'brick',gcol:bc,gl:.84});
+    chimney(g,.26,.5,-.12,.87,{k:'brick',col:0x8a3a2a});
+    if(v===0)barrel(g,-.42,.44);else if(v===1)bush(g,-.42,.42,1);else{crate(g,-.42,0,.43,.9,.3);bucket(g,.42,0,.44);}return g;});
+  CHIM.house3=[.26,1.46,-.12];
 }
 // Schafe (instanziert): Wollkörper (Farbe/Größe je nach Wolle) + Kopf/Beine
 const sheep=[];
@@ -1004,62 +1238,83 @@ function econStock(){return '<br><small>📦 Lagerplatz: '+storeCap()+' je Ware 
 // ================= Ende Wirtschaft (Block 1) =================
 // ---------- Vorlagen: Holzhacker & Kräuterhütte (Bevölkerung) ----------
 {
-  let g=new THREE.Group();g.add(mk(B(.8,.06,.7),0x6b5233,0,.03,0),mk(B(.5,.36,.4),0x8a6a46,-.12,.21,-.12),mk(prism(.34,.62,.5),0x5a4128,-.12,.39+.34*.5*.5,-.12),mk(B(.13,.22,.03),0x3a2818,-.12,.14,.09));
-  for(let r=0;r<3;r++)for(let k=0;k<3-r;k++)g.add(mk(B(.12,.1,.34),0xb08a5a,.22+k*.12+r*.06,.08+r*.1,-.1));
-  g.add(mk(CY(.1,.12,.14,7),0x7a5636,.15,.07,.25),mk(B(.03,.22,.03),0x5a3e26,.17,.22,.25,0,0,.4),mk(B(.08,.05,.02),0xb0b4b8,.21,.31,.25));
-  TEMPL.chopper=bake(g);CHIM.chopper=[-.2,.8,-.2];
-  g=new THREE.Group();g.add(mk(B(.7,.06,.6),0x6b5233,0,.03,0),mk(CY(.28,.3,.4,8),0xd8c8a0,0,.23,-.05),mk(new THREE.ConeGeometry(.42,.42,8),0x5f7d3a,0,.64,-.05),mk(B(.13,.22,.03),0x4a3420,0,.14,.25));
-  for(const [x,z,c] of [[-.25,.24,0x6aa040],[.25,.22,0x9ac060],[.27,-.25,0xb070c0],[-.27,-.24,0x6aa040]])g.add(mk(new THREE.IcosahedronGeometry(.08,0),c,x,.08,z));
-  g.add(mk(B(.03,.35,.03),TIMBER,-.32,.18,.05),mk(B(.03,.35,.03),TIMBER,.32,.18,.05),mk(B(.66,.02,.02),TIMBER,0,.34,.05));
-  for(const x of[-.2,0,.2])g.add(mk(B(.05,.12,.03),0x8aa050,x,.27,.05));
-  TEMPL.herbal=bake(g);
+  const PI=Math.PI;
+  // Holzhacker: Bohlenhütte mit Schornstein, Scheitholz-Stapel, Hackklotz mit Axt, Korb mit Anmachholz
+  variants('chopper',1,()=>{const g=new THREE.Group(),F=faces(-.12,-.12,.5,.4);ad(g,B(.8,.03,.7),0x5e4a34,0,.015,0);plinth(g,-.12,-.12,.54,.44,.05);ud(ad(g,B(.5,.34,.4),['wood',0x7a6650],-.12,.22,-.12),{vg:1});
+    for(const sx of[-1,1])for(const sz of[-1,1])ud(ad(g,B(.04,.36,.04),['wood',0x3e3026],-.12+sx*.25,.22,-.12+sz*.2),{vg:1});
+    bDoor(g,F[0],0,.12,.22,{y0:.05,c:0x4e4436});bWin(g,F[3],0,.26,.08,.08,{sh:0x5e5246});
+    gableRoof(g,{x:-.12,z:-.12,y:.39,len:.64,w:.4,rise:.24,over:.08,th:.035,k:'shingle',sag:.02,boards:1,gk:'wood',gcol:0x7a6650,gl:.5});
+    chimney(g,-.2,.2,-.2,.51,{w:.11});
+    split(g,FR(.3,0,-.12,0),.32,4,3);split(g,FR(.3,.26,-.12,0),.3,1,2);ad(g,B(.28,.025,.4),['shingle'],.3,.36,-.12,0,0,-.15);
+    ud(ad(g,CY(.1,.12,.14,8),['wood',0x6a4c30],.15,.07,.25),{c2:0xb89a70,vg:1});ud(ad(g,B(.025,.22,.025),['wood',0x7a5a3a],.17,.22,.25,0,0,.4),{vg:1});ad(g,B(.08,.05,.015),0x6a6a68,.22,.3,.25,0,0,.4);
+    for(let k=0;k<3;k++)ud(ad(g,CY(.03,.03,.14,3).rotateY(k),['wood',0x9a7a50],.05+k*.04,.03,.36,bR(),PI/2),{c2:0xc8a878});
+    ud(ad(g,CY(.07,.055,.08,8),['wood',0x9a7a50],-.35,.04,.25),{c2:0x6a5038});for(let k=0;k<4;k++)ad(g,B(.012,.012,.12),0xa8885a,-.35+bRr(-.03,.03),.09,.25,bR()*3,.3);
+    return g;});
+  CHIM.chopper=[-.2,.8,-.2];
+  // Kräuterhütte: Rundhütte mit bemoostem Reetkegel, Kräuterbeete, Trockengestell mit Bündeln
+  variants('herbal',1,()=>{const g=new THREE.Group();ad(g,B(.74,.03,.64),0x5e4a34,0,.015,0);ud(ad(g,CY(.31,.32,.05,10),['stone',0x8a8476],0,.025,-.05),{c2:0x9a9486});ad(g,CY(.28,.3,.36,10),['plaster',0xd4c8a4],0,.23,-.05);
+    for(let k=0;k<5;k++){const a=k/5*PI*2+.3;ud(ad(g,B(.025,.36,.025),['wood',0x45342a],Math.sin(a)*.29,.23,-.05+Math.cos(a)*.29,a),{vg:1});}
+    coneRoof(g,0,.41,-.05,.44,.42,{col:0xb8c8a4,rag:.06,th:.07,ccol:0xb8c0a0});
+    bDoor(g,FR(0,0,.24,0),0,.12,.22,{y0:.05,c:0x4f5a46});
+    for(const [x,z] of[[-.24,.24],[.24,.22]]){ad(g,B(.2,.05,.14),['wood',0x6a5038],x,.04,z);ad(g,B(.18,.02,.12),0x3e3024,x,.07,z);for(let k=0;k<4;k++)ud(ad(g,new THREE.IcosahedronGeometry(.035,0).scale(1,1.3,1),bPick([0x5e7040,0x6a7a4a,0x7a6a8a,0x8a8a5a]),x-.06+(k%2)*.12,.1,z+(k<2?-.03:.03),bR()*3),{j:.25});}
+    for(const s of[-1,1])ud(ad(g,B(.03,.34,.03),['wood',0x45342a],s*.33,.17,.0),{vg:1});ad(g,B(.66,.02,.02),['wood',0x45342a],0,.33,.0);
+    for(const x of[-.24,-.12,.12,.24])ad(g,warp(B(.04,.1,.03),(p,i)=>{if(p[i+1]<0){p[i]*=1.5;p[i+2]*=1.5;}}),vary(bPick([0x6a7a40,0x7a8a4a,0x8a7a9a]),.1),x,.27,0);
+    bush(g,.32,-.3,.8,0x56683a);return g;});
 }
 // ---------- Fortschritt: Ausbau-Modelle, neue Stufen-Gebäude, weitere Siedlungsstufen ----------
 {
-  let g=new THREE.Group();
-  // Fachwerkhaus (Ausbau vom Haus): zweigeschossig, Obergeschoss kragt aus
-  g.add(mk(B(.88,.1,.78),STONE,0,.05,0),mk(B(.8,.38,.7),WALL,0,.29,0));
-  timberFront(g,.8,.38,.1,.355,false);timberFront(g,.8,.38,.1,-.355,true);
-  g.add(mk(B(.88,.04,.78),TIMBER,0,.5,0),mk(B(.86,.34,.76),WALL,0,.69,0));
-  timberFront(g,.86,.34,.52,.385,true);timberFront(g,.86,.34,.52,-.385,false);
-  for(const x of[-.43,.43])g.add(mk(B(.03,.34,.78),TIMBER,x,.69,0));
-  g.add(mk(prism(.58,1.04,.8),ROOF,0,.86+.58*.5*.8,0),mk(B(1.06,.05,.06),0x6e2f20,0,.86+.58*1.5*.8-.03,0));
-  g.add(mk(B(.13,.5,.13),STONE,.24,1.2,-.14),mk(B(.17,.05,.17),0x6a655c,.24,1.46,-.14));
-  g.add(mk(B(.17,.27,.03),0x5a3e26,0,.24,.36),mk(B(.13,.11,.03),'win',-.24,.33,.36),mk(B(.13,.11,.03),'win',.24,.33,.36));
-  for(const x of[-.26,0,.26])g.add(mk(B(.12,.12,.03),'win',x,.7,.39),mk(B(.12,.12,.03),'win',x,.7,-.39));
-  g.add(mk(B(.15,.04,.06),0x7a4a2a,-.26,.63,.42),mk(B(.15,.04,.06),0x7a4a2a,.26,.63,.42),mk(B(.04,.04,.04),0xd65a9a,-.29,.66,.42),mk(B(.04,.04,.04),0xf4e04d,.23,.66,.42));
-  TEMPL.house_fw=bake(g);CHIM.house_fw=[.24,1.5,-.14];
-  // Patrizierhaus (Ausbau vom Bürgerhaus): Steinsockel + zwei Fachwerkgeschosse
-  g=new THREE.Group();
-  g.add(mk(B(.92,.08,.84),STONE,0,.04,0),mk(B(.86,.36,.78),STONE,0,.26,0));
-  g.add(mk(B(.9,.3,.82),WALL,0,.59,0),mk(B(.94,.3,.86),WALL,0,.9,0),mk(B(.96,.04,.88),TIMBER,0,.745,0));
-  timberFront(g,.9,.3,.44,.415,false);timberFront(g,.9,.3,.44,-.415,true);timberFront(g,.94,.3,.75,.435,true);timberFront(g,.94,.3,.75,-.435,false);
-  g.add(mk(prism(.62,1.12,.85),0x5e3a5a,0,1.05+.62*.5*.85,0),mk(B(1.14,.05,.06),0x3e2a3a,0,1.05+.62*1.5*.85-.03,0));
-  g.add(mk(B(.14,.5,.14),STONE,-.28,1.45,.14),mk(B(.18,.05,.18),0x6a655c,-.28,1.72,.14));
-  g.add(mk(B(.2,.3,.03),0x5a3e26,0,.23,.4),mk(B(.13,.11,.03),'win',-.27,.3,.4),mk(B(.13,.11,.03),'win',.27,.3,.4));
-  for(const x of[-.27,0,.27])g.add(mk(B(.12,.12,.03),'win',x,.6,.425),mk(B(.12,.12,.03),'win',x,.9,.445),mk(B(.12,.12,.03),'win',x,.9,-.445));
-  g.add(mk(B(.03,.4,.03),TIMBER,.4,1.25,.4),mk(B(.16,.1,.01),0xe0b030,.48,1.4,.4));
-  TEMPL.house2_up=bake(g);CHIM.house2_up=[-.28,1.76,.14];
-  // Kirche (2x2): Schiff + Turm mit Spitzhelm
-  g=new THREE.Group();
-  g.add(mk(B(1.9,.05,1.9),0xb8ae98,0,.025,0),mk(B(1.0,.75,1.25),0xd8d0bc,0,.42,-.25));
-  g.add(mk(prism(.62,1.27,.75),0x6e3a28,0,.8+.62*.5*.75,-.25,Math.PI/2));
-  g.add(mk(B(.5,1.5,.5),0xcfc6b0,0,.8,.6),mk(new THREE.ConeGeometry(.4,.9,4),0x4e6a5a,0,2.0,.6,Math.PI/4),mk(B(.03,.25,.03),0xe0b030,0,2.55,.6),mk(B(.14,.03,.03),0xe0b030,0,2.6,.6));
-  g.add(mk(B(.2,.34,.03),0x4a3420,0,.2,.86),mk(new THREE.CylinderGeometry(.09,.09,.02,10).rotateX(Math.PI/2),0xf0e8d0,0,1.3,.86),mk(B(.08,.16,.03),'win',0,.95,.86));
-  for(const z of[-.7,-.3,.1])g.add(mk(B(.03,.26,.12),'win',.51,.5,z),mk(B(.03,.26,.12),'win',-.51,.5,z));
-  for(const x of[-.75,.75])g.add(mk(new THREE.IcosahedronGeometry(.16,0).scale(1,1.4,1),0x4f7a35,x,.2,.75));
-  TEMPL.church=bake(g);
-  // Denkmal: Stufensockel, Säule, Bronzefigur, Blumen
-  g=new THREE.Group();
-  g.add(mk(B(.8,.08,.8),STONE,0,.04,0),mk(B(.6,.1,.6),0xa8a296,0,.13,0),mk(B(.26,.5,.26),0xbab3a4,0,.43,0));
-  g.add(mk(CY(.07,.1,.32,6),0x4f7a6a,0,.84,0),mk(new THREE.IcosahedronGeometry(.07,0),0x4f7a6a,0,1.06,0),mk(B(.24,.04,.04),0x4f7a6a,.04,.92,0,0,0,.5));
-  {const fc=[0xd65a9a,0xf4e04d,0xf2f2f2,0xe85a3a];for(let k=0;k<8;k++){const a=k/8*Math.PI*2;g.add(mk(new THREE.IcosahedronGeometry(.045,0),fc[k%4],Math.cos(a)*.34,.22,Math.sin(a)*.34));}}
-  TEMPL.statue=bake(g);
+  const PI=Math.PI;
+  // Fachwerkhaus (Ausbau vom Haus): zweigeschossig, Obergeschoss kragt auf Knaggen aus
+  variants('house_fw',3,v=>{const g=new THREE.Group(),pc=PLA[(v+3)%5],tc=TIMB[(v+1)%4],sh=SHUT[(v+2)%5],F0=faces(0,0,.8,.7),F1=faces(0,0,.86,.76);
+    plinth(g,0,0,.86,.76,.1);ad(g,B(.8,.38,.7),['plaster',pc],0,.29,0);
+    frameFace(g,F0[0],.8,.38,.1,[[0,.17],[-.24,.13],[.24,.13]],tc);frameFace(g,F0[2],.8,.38,.1,[[0,.13]],tc);for(const i of[1,3])frameFace(g,F0[i],.7,.38,.1,[[0,.12]],tc);
+    bDoor(g,F0[0],0,.16,.27,{y0:.1,c:DOORC[(v+3)%4],hood:'tile'});bWin(g,F0[0],-.24,.3,.12,.1,{sh});bWin(g,F0[0],.24,.3,.12,.1,{sh});bWin(g,F0[2],0,.3,.12,.1,{});
+    ad(g,B(.9,.04,.8),['wood',tc],0,.5,0);for(let k=-3;k<=3;k++)ad(g,B(.03,.04,.05),['wood',tc],k*.12,.47,.38,0,-.6);
+    ad(g,B(.86,.34,.76),['plaster',pc],0,.69,0);
+    frameFace(g,F1[0],.86,.34,.52,[[-.26,.13],[0,.13],[.26,.13]],tc);frameFace(g,F1[2],.86,.34,.52,[[-.26,.13],[.26,.13]],tc);for(const i of[1,3])frameFace(g,F1[i],.76,.34,.52,[[0,.12]],tc);
+    for(const x of[-.26,0,.26])bWin(g,F1[0],x,.71,.11,.12,{sh,box:x!==0});for(const x of[-.26,.26])bWin(g,F1[2],x,.71,.11,.12,{});for(const i of[1,3])bWin(g,F1[i],0,.71,.1,.11,{});
+    const th=v===2;gableRoof(g,{y:.86,len:1.08,w:.76,rise:.44,over:.1,th:th?.09:.035,k:th?'thatch':'tile',col:th?0xd4d2d8:[0xffffff,0xe4dcd8][v],rag:th?.035:0,sag:.025,boards:!th,gk:'plaster',gcol:pc,gl:.86,tc});
+    chimney(g,.24,.4,-.14,1.01);
+    if(v===0){bench(g,F0[0],-.3,.1,.2);barrel(g,.44,.42,.9);}else if(v===1){logs(g,FR(-.48,0,-.05,0),.44,3,{r:.035});bush(g,.42,.42,.9);}else{cart(g,.52,-.1,PI/2,'hay');bucket(g,-.42,0,.44);}
+    return g;});
+  CHIM.house_fw=[.24,1.5,-.14];
+  // Patrizierhaus (Ausbau vom Bürgerhaus): Steinsockel, zwei auskragende Fachwerkgeschosse, steiles Schieferdach, Gaube, Wappen, Fahne
+  variants('house2_up',3,v=>{const g=new THREE.Group(),pc=PLA[(v+4)%5],tc=TIMB[v%4],sh=SHUT[(v+1)%5],F0=faces(0,0,.86,.78),F1=faces(0,0,.9,.82),F2=faces(0,0,.94,.86);
+    plinth(g,0,0,.92,.84,.08);ad(g,B(.86,.36,.78),['stone',0x9a9282],0,.26,0);
+    bDoor(g,F0[0],0,.2,.3,{y0:.08,c:DOORC[(v+1)%4],lin:'stone'});for(const x of[-.28,.28])bWin(g,F0[0],x,.3,.12,.11,{sill:1,lin:1});bWin(g,F0[2],0,.3,.12,.11,{sill:1,lin:1});
+    ad(g,B(.94,.04,.86),['wood',tc],0,.45,0);ad(g,B(.9,.3,.82),['plaster',pc],0,.61,0);ad(g,B(.98,.04,.9),['wood',tc],0,.77,0);ad(g,B(.94,.3,.86),['plaster',pc],0,.93,0);
+    for(const [Fs,w,d,y] of[[F1,.9,.82,.46],[F2,.94,.86,.78]]){frameFace(g,Fs[0],w,.3,y,[[-.28,.13],[0,.13],[.28,.13]],tc);frameFace(g,Fs[2],w,.3,y,[[-.28,.13],[.28,.13]],tc);for(const i of[1,3])frameFace(g,Fs[i],d,.3,y,[[0,.12]],tc);
+      for(const x of[-.28,0,.28])bWin(g,Fs[0],x,y+.16,.11,.12,{sh,box:y<.5});for(const x of[-.28,.28])bWin(g,Fs[2],x,y+.16,.11,.12,{});if(y<.5)for(const i of[1,3])bWin(g,Fs[i],0,y+.16,.1,.11,{});}
+    gableRoof(g,{y:1.08,len:1.14,w:.86,rise:.56,over:.09,th:.035,k:'slateD',col:[0xffffff,0xe8e4ec,0xdcd8d8][v],sag:.015,boards:1,gk:'plaster',gcol:pc,gl:.94,tc});
+    ad(g,B(.16,.15,.18),['plaster',pc],.24,1.24,.25);bWin(g,FR(.24,0,.34,0),0,1.24,.08,.09,{});gableRoof(g,{x:.24,z:.26,r:PI/2,y:1.31,len:.24,w:.18,rise:.09,over:.03,th:.025,k:'slateD',sag:0});
+    chimney(g,-.28,.8,.14,.87);
+    ad(g,B(.14,.16,.02),['wood',0x6a5038],0,.56,.43);ad(g,B(.1,.12,.01),[0x7a3a32,0x3e4e6a,0x4e5e3a][v],0,.56,.442);ad(g,B(.03,.06,.012),0xb09048,0,.57,.45);
+    ud(ad(g,B(.025,.42,.025),['wood',0x45342a],.52,1.3,.4),{vg:1});ad(g,warp(B(.18,.1,.006,3,1,1),(p,i)=>{p[i+2]+=.012*Math.sin(p[i]*30);}),[0x8a3e32,0xa0823a,0x4a5a72][v],.61,1.44,.4);
+    if(v===2)cart(g,-.55,.2,PI/2,'sack');else{barrel(g,.46,.46,.9);bush(g,-.44,.44,.9);}return g;});
+  CHIM.house2_up=[-.28,1.76,.14];
+  // Kirche (2x2): Steinschiff mit Strebepfeilern, Turm mit Schallluken und Spitzhelm, Rosette, Grabsteine
+  variants('church',1,()=>{const g=new THREE.Group(),sc=0xb0a894;ad(g,B(1.9,.04,1.9),0x6a7a4a,0,.02,0);plinth(g,0,-.25,1.06,1.31,.08,0x8a8476);ad(g,B(1.0,.72,1.25),['stone',sc],0,.44,-.25);
+    gableRoof(g,{z:-.25,r:PI/2,y:.8,len:1.43,w:1.0,rise:.6,over:.09,th:.045,k:'tileB',sag:.03,boards:1,gk:'stone',gcol:sc,gl:1.25});
+    for(const z of[-.75,-.25,.2])for(const s of[-1,1]){ad(g,B(.06,.5,.1),['stone',shade(sc,.92)],s*.53,.27,z+.18,0,0,0);ad(g,B(.04,.28,.12),'win',s*.505,.48,z-.05);ad(g,new THREE.ConeGeometry(.06,.08,4),['stone',sc],s*.505,.66,z-.05,PI/4);}
+    ad(g,B(.5,1.55,.5),['stone',shade(sc,1.04)],0,.8,.6);ad(g,B(.54,.04,.54),['stone',0x9a9282],0,1.4,.6);
+    for(const a of[0,PI/2,PI,-PI/2])ad(g,B(.12,.2,.02),0x14100c,Math.sin(a)*.25,1.28,.6+Math.cos(a)*.25,a);
+    ad(g,new THREE.ConeGeometry(.42,1.05,4),['slateD'],0,1.94,.6,PI/4);ad(g,CY(.01,.01,.22,4),0xa08848,0,2.55,.6);ad(g,B(.12,.016,.016),0xa08848,0,2.6,.6);
+    ud(ad(g,new THREE.CylinderGeometry(.09,.09,.02,12).rotateX(PI/2),'win',0,1.1,.855),{});ad(g,new THREE.CylinderGeometry(.11,.11,.015,12).rotateX(PI/2),['stone',0x9a9282],0,1.1,.85);
+    bDoor(g,FR(0,0,.85,0),0,.2,.3,{y0:.04,c:0x4a3424,lin:'stone'});ad(g,new THREE.CylinderGeometry(.13,.13,.04,8,1,false,0,PI).rotateX(PI/2).rotateZ(PI/2),['stone',0x9a9282],0,.38,.86);
+    for(const [x,z] of[[-.7,.3],[-.55,.55],[-.75,.7],[.6,-.8]]){ad(g,warp(B(.08,.12,.03),(p,i)=>{if(p[i+1]>0)p[i+1]+=.02*(1-(p[i]/.04)**2);}),['stone',vary(0x9a9486,.08)],x,.06,z,bRr(-.2,.2),0,bRr(-.08,.08));}
+    for(const x of[-.75,.75])ud(ad(g,new THREE.IcosahedronGeometry(.17,0).scale(1,1.4,1),vary(0x4e5e34,.1),x,.24,.78),{j:.3});ad(g,B(.04,.3,.04),['wood',0x45342a],.75,.12,.78);
+    return g;});
+  // Denkmal: Stufensockel, Säule mit Kapitell, Bronzefigur mit Grünspan, Blumenkranz, Poller
+  variants('statue',1,()=>{const g=new THREE.Group(),bz=0x5f7f6e;ad(g,B(.82,.07,.82),['stone',0x8a8476],0,.035,0);ad(g,B(.62,.08,.62),['stone',0x9a9282],0,.11,0);ad(g,B(.44,.06,.44),['stone',0xa8a08c],0,.18,0);
+    ad(g,B(.26,.44,.26),['stone',0xb0a894],0,.43,0);ad(g,B(.32,.05,.32),['stone',0x9a9282],0,.67,0);ad(g,B(.14,.1,.01),0xa08848,0,.45,.131);
+    ad(g,CY(.07,.1,.26,7),bz,0,.82,0);ad(g,CY(.05,.07,.1,7),bz,0,.98,0);ad(g,new THREE.IcosahedronGeometry(.055,0),bz,0,1.08,0);ad(g,B(.03,.2,.03),bz,.08,1.05,0,0,0,-.5);ad(g,B(.025,.3,.02),0x8a9a90,.16,1.2,0,0,0,-.2);ad(g,B(.03,.16,.03),bz,-.08,.92,0,0,0,.3);
+    for(let k=0;k<10;k++){const a=k/10*PI*2;ad(g,new THREE.IcosahedronGeometry(.04,0),k%2?bPick(LEAF):bPick(FLW),Math.cos(a)*.3,.17,Math.sin(a)*.3);}
+    for(const sx of[-1,1])for(const sz of[-1,1])ud(ad(g,CY(.03,.04,.14,6),['stone',0x8a8476],sx*.37,.07,sz*.37),{c2:0x9a9486});return g;});
 }
 // Ausbau-Markierung für Werkstätten (Anbau mit Kisten + Wimpel)
-const UPMARK=new THREE.Group();
-UPMARK.add(mk(B(.3,.22,.24),WOOD,0,.11,0),mk(B(.34,.04,.28),0x5a4128,0,.24,0,0,.15),mk(B(.12,.12,.12),0x7a5a33,.2,.06,.1),mk(B(.03,.75,.03),TIMBER,-.14,.37,-.1),mk(B(.2,.12,.01),0xc84a3a,-.03,.66,-.1));
-UPMARK.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+const UPMARK=(()=>{const g=new THREE.Group();bSeed(4242);ud(ad(g,B(.3,.22,.24),['wood',0x7a6650],0,.11,0),{vg:1});ad(g,warp(B(.36,.03,.3),(p,i)=>{p[i+1]-=.01*(1-(2*p[i]/.36)**2);}),['shingle'],0,.25,0,0,.18);
+  crate(g,.2,0,.12,.8,.3);crate(g,.2,.1,.12,.6,-.2);sack(g,-.2,0,.14,.8);ud(ad(g,B(.025,.75,.025),['wood',0x45342a],-.14,.37,-.1),{vg:1});ad(g,warp(B(.2,.1,.006,3,1,1),(p,i)=>{p[i+2]+=.01*Math.sin(p[i]*30);if(p[i]>0)p[i+1]*=.6;}),0x8a3e32,-.03,.67,-.1);
+  return bake(g);})();
 Object.assign(DEF,{
   house_fw:{name:'Fachwerkhaus',icon:'🏘️',cat:'wohnen',c:{wood:10,stone:2},cap:5,base:'house',fancy:1,noBuild:1,info:'Ausgebautes Haus · Wohnraum für 5'},
   house2_up:{name:'Patrizierhaus',icon:'🏛️',cat:'wohnen',c:{planks:10,stone:8},cap:8,base:'house2',fancy:1,noBuild:1,info:'Ausgebautes Bürgerhaus · Wohnraum für 8'},
@@ -1071,11 +1326,16 @@ const UPG={house:{to:'house_fw',c:{planks:6,stone:4},lvl:1},house2:{to:'house2_u
 const UPG_WORK={c:{planks:8,stone:6},lvl:2};
 for(const k in UPG){const u=UPG[k],d=DEF[u.to],c=Object.assign({},DEF[k].c);for(const r in u.c)c[r]=(c[r]||0)+u.c[r];d.c=c;}
 LEVELS.push({n:'Marktflecken',i:'⚖️',art:'ein ',pop:32,hap:60,need:{market:1,bakery:1,house_fw:3}},{n:'Stadt',i:'🏙️',art:'eine ',pop:55,hap:65,need:{church:1,house2_up:2}});
-const SITE=new THREE.Group();
-SITE.add(mk(B(.9,.05,.9),0xb8925a,0,.025,0));
-for(const [x,z] of[[-.4,-.4],[.4,-.4],[-.4,.4],[.4,.4]])SITE.add(mk(B(.05,.7,.05),0x7a5a33,x,.35,z));
-SITE.add(mk(B(.85,.04,.04),0x7a5a33,0,.62,-.4),mk(B(.85,.04,.04),0x7a5a33,0,.62,.4),mk(B(.3,.12,.2),0xc8a26a,.25,.08,.15));
-SITE.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+// Baustelle: Erdplatz, Gerüst mit Riegeln und Laufbohle, Leiter, Bretter- und Steinstapel, Sägebock, Eimer
+const SITE=(()=>{const g=new THREE.Group();bSeed(777);ud(ad(g,warp(B(.92,.04,.92,3,1,3),(p,i)=>{if(p[i+1]>0)p[i+1]+=.008*pn2(p[i]*5,p[i+2]*5);}),0x8a7050,0,.02,0),{j:.25});
+  for(const [x,z] of[[-.4,-.4],[.4,-.4],[-.4,.4],[.4,.4]])ud(ad(g,B(.04,.74,.04),['wood',0x7a6a58],x,.37,z,bR(),bRr(-.04,.04),bRr(-.04,.04)),{vg:1});
+  for(const y of[.3,.62]){ad(g,B(.86,.03,.03),['wood',0x7a6a58],0,y,-.4,0,0,bRr(-.03,.03));ad(g,B(.86,.03,.03),['wood',0x7a6a58],0,y+.02,.4,0,0,bRr(-.03,.03));ad(g,B(.03,.03,.86),['wood',0x7a6a58],-.4,y+.01,0);}
+  ad(g,B(.84,.03,.03),['wood',0x6a5a48],0,.32,-.4,0,0,.6);ad(g,B(.84,.02,.14),['wood',0x9a7a50],0,.33,-.33);
+  const f=FR(.45,0,0,Math.PI/2);for(const s of[-1,1])at(g,f,B(.02,.62,.02),['wood',0x8a6a44],s*.08,.3,0,0,-.15);for(let k=0;k<5;k++){const y=.06+k*.12;at(g,f,B(.16,.015,.015),['wood',0x8a6a44],0,y,-(y-.3)*.151);}
+  for(let k=0;k<5;k++)ad(g,B(.4,.025,.1),['wood',vary(0xc0a070,.08)],.12,.05+k*.03,.22,k%2?.04:-.03);
+  for(const [x,y,z] of[[-.25,.05,.22],[-.12,.05,.25],[-.18,.14,.23]])ad(g,B(.12,.09,.09),['stone',vary(0xa8a090,.08)],x,y,z,bRr(-.3,.3));
+  for(const s of[-1,1])ad(g,B(.02,.14,.02),['wood',0x6a5038],.28+s*.04,.07,-.1,0,0,s*.35);ud(ad(g,CY(.035,.035,.3,6),['wood',0x6a4c30],.28,.15,-.1,0,Math.PI/2),{c2:0xb89a70});
+  bucket(g,-.3,0,-.15);return bake(g);})();
 const ghostMat=new THREE.MeshBasicMaterial({color:0x44ff66,transparent:true,opacity:.5,depthWrite:false});
 const GHOST={};
 const ghostRoot=new THREE.Group();ghostRoot.visible=false;scene.add(ghostRoot);
@@ -1094,8 +1354,12 @@ function popText(txt,x,z){if(floats.length>24)return;const d=document.createElem
 function tintTile(tx,tz,arr,delta){for(let vz=2*tz;vz<=2*tz+2;vz++)for(let vx=2*tx;vx<=2*tx+2;vx++){const i=vz*VN+vx;if(i<0||i>=VC)continue;arr[i]=Math.max(0,arr[i]+delta);recolorV(i,W.wear[i]);}tcolAttr.needsUpdate=true;}
 // Wege: Pflastersteine (4 Platten pro Feld, instanziert)
 const MAXPAVE=1600;
-const paveIM=inst(new THREE.BoxGeometry(.43,.07,.43),lam(0xffffff),MAXPAVE*4,false);paveIM.receiveShadow=true;paveIM.count=0;
-for(let i=0;i<MAXPAVE*4;i++){tmpC.setHSL(.08,.06,.5+hash(i,77)*.16);paveIM.setColorAt(i,tmpC);}
+// Pflaster: je Viertel 2×2 gewölbte, unregelmäßige Steine (Vertexfarbe) × Instanzfarbe
+const paveGeo=(()=>{bSeed(99);const g=new THREE.Group();for(let a=0;a<2;a++)for(let b=0;b<2;b++){const w=bRr(.17,.205),d=bRr(.17,.205);
+  ud(ad(g,warp(B(w,.06,d),(p,i)=>{if(p[i+1]>0){p[i+1]+=.01*pn2(p[i]*9+a*3,p[i+2]*9+b*5);p[i]*=.86;p[i+2]*=.86;}}),vary(0x8f897c,.14),(a-.5)*.215+bRr(-.012,.012),0,(b-.5)*.215+bRr(-.012,.012),bRr(-.18,.18)),{j:.18});}
+  return bakeGeo(g.children,true);})();
+const paveIM=inst(paveGeo,lam(0xffffff,{vertexColors:true}),MAXPAVE*4,false);paveIM.receiveShadow=true;paveIM.count=0;
+for(let i=0;i<MAXPAVE*4;i++){tmpC.setHSL(.08,.08,.72+hash(i,77)*.22);paveIM.setColorAt(i,tmpC);}
 const paveList=[],paveSlot=new Map();
 function setPave(slot,i){const tx=i%N,tz=(i/N)|0;for(let q=0;q<4;q++){const x=tcen(tx)+((q&1)?.24:-.24)+(hash(i,q)-.5)*.04,z=tcen(tz)+((q&2)?.24:-.24)+(hash(q,i)-.5)*.04;setInst(paveIM,slot*4+q,x,heightAt(x,z)+.005,z,(hash(i,q+5)-.5)*.3,1,1,1);}}
 function paveTile(tx,tz,on){
@@ -1107,14 +1371,17 @@ function paveTile(tx,tz,on){
   paveIM.count=paveList.length*4;paveIM.instanceMatrix.needsUpdate=true;pathCache.clear();return true;}
 // Acker-Pflanzen
 const MAXFIELD=40;
-const cropGeo=mergeGeos([[0,0],[.2,.12],[-.18,.15],[.12,-.2],[-.15,-.16],[.28,-.05],[-.27,0],[.03,.27],[.05,-.3]].flatMap(([x,z],k)=>[new THREE.CylinderGeometry(.012,.018,.42,3).translate(x,.21,z),new THREE.IcosahedronGeometry(.035,0).scale(1,2,1).translate(x+.01,.44,z)]));
-const cropIM=inst(cropGeo,windMat(0xffffff,.35),MAXFIELD*9,true);
+// Weizen: drei Reihen Halme mit Ähren und einzelnen Blättern (Vertexfarbe × Instanzfarbe grün→gold)
+const cropGeo=(()=>{bSeed(55);const g=new THREE.Group();let n=0;for(const z of[-.22,0,.22])for(let k=0;k<5;k++){const x=-.28+k*.14+bRr(-.04,.04),zz=z+bRr(-.04,.04),h=bRr(.32,.44),rz=bRr(-.12,.12),ry=bR()*6;
+  ad(g,new THREE.CylinderGeometry(.007,.011,h,3,1,true).translate(0,h/2,0),0xa8a8a0,x,0,zz,ry,0,rz);ad(g,new THREE.CylinderGeometry(.01,.02,.1,3).translate(0,h+.04,0),0xffffff,x,0,zz,ry,0,rz);
+  if(n++%3===0)ad(g,B(.08,.005,.016).translate(.04,h*.4,0),0xb8c0a8,x,0,zz,ry,0,rz-.4);}return bakeGeo(g.children);})();
+const cropIM=inst(cropGeo,windMat(0xffffff,.35,{vertexColors:true}),MAXFIELD*9,true);
 for(let i=0;i<MAXFIELD*9;i++){cropIM.setMatrixAt(i,ZERO);tmpC.setRGB(.4,.6,.2);cropIM.setColorAt(i,tmpC);}
 const cropFree=[];for(let i=MAXFIELD-1;i>=0;i--)cropFree.push(i);
 const cG=new THREE.Color(0x5a9a30),cY=new THREE.Color(0xd8b040);
 function setCrop(p){if(p.slot<0)return;
   if(p.st===0)cropIM.setMatrixAt(p.slot,ZERO);
-  else{const g=p.st===2?1:p.g;setInst(cropIM,p.slot,p.x,p.y,p.z,p.r,.5+.5*g,.12+.88*g,.5+.5*g);tmpC.copy(cG).lerp(cY,sstep(.6,1,g));cropIM.setColorAt(p.slot,tmpC);}
+  else{const g=p.st===2?1:p.g;setInst(cropIM,p.slot,p.x,p.y,p.z,Math.round(p.r/1.5708)*1.5708+(p.r%.4-.2)*.4,.5+.5*g,.12+.88*g,.5+.5*g);tmpC.copy(cG).lerp(cY,sstep(.6,1,g));cropIM.setColorAt(p.slot,tmpC);}
   cropIM.instanceMatrix.needsUpdate=true;if(cropIM.instanceColor)cropIM.instanceColor.needsUpdate=true;}
 
 // ================= Gebäude-Logik =================
@@ -1142,7 +1409,7 @@ function placeBuilding(type,tx,tz,instant,force){
   if(type==='farm'&&!cropFree.length)return null;
   const x=tcen(tx)+(s-1)/2,z=tcen(tz)+(s-1)/2;
   const g=new THREE.Group();g.position.set(x,s>1?fpGround(tx,tz,s):tileGround(tx,tz),z);g.rotation.y=((hash(tx,tz)*4)|0)*Math.PI/2;
-  const body=TEMPL[type].clone();g.add(body);
+  const body=tmplFor(type,tx,tz);g.add(body);
   let site=null;
   if(!instant){site=SITE.clone();if(s>1)site.scale.set(s*.85,1,s*.85);g.add(site);body.scale.set(1,.04,1);body.visible=false;}
   scene.add(g);
@@ -1195,21 +1462,24 @@ const legGeo=mergeC([ng(new THREE.CylinderGeometry(.03,.024,.15,5,1,true).transl
 const armGeo=paint(mergeC([ng(new THREE.CylinderGeometry(.026,.022,.15,5,1,true).translate(0,-.075,0)),ng(new THREE.IcosahedronGeometry(.023,0).translate(0,-.155,.004))]),(x,y)=>{if(y<-.14)mulC(.8);});
 const legL=new THREE.InstancedMesh(legGeo,lam(0x4a3c2c,{vertexColors:true}),MAXNPC),legR=new THREE.InstancedMesh(legGeo,lam(0x4a3c2c,{vertexColors:true}),MAXNPC);
 const armL=new THREE.InstancedMesh(armGeo,npcVC,MAXNPC),armR=new THREE.InstancedMesh(armGeo,npcVC,MAXNPC);
-const carryIM={wood:new THREE.InstancedMesh(mergeGeos([new THREE.CylinderGeometry(.04,.04,.34,6).rotateZ(Math.PI/2).translate(0,.03,0),new THREE.CylinderGeometry(.035,.035,.3,6).rotateZ(Math.PI/2).translate(.02,.09,-.02)]),lam(0x8b5a2b),MAXNPC),
-  stone:new THREE.InstancedMesh(mergeGeos([new THREE.DodecahedronGeometry(.08,0).translate(0,.06,0),new THREE.DodecahedronGeometry(.05,0).translate(.06,.12,0)]),lam(0x9a9a9a),MAXNPC),
-  basket:new THREE.InstancedMesh(mergeGeos([new THREE.CylinderGeometry(.08,.06,.09,7).translate(0,.04,0),new THREE.IcosahedronGeometry(.07,0).scale(1,.5,1).translate(0,.09,0)]),lam(0xa8443e),MAXNPC),
-  planks:new THREE.InstancedMesh(mergeGeos([0,1,2].map(k=>new THREE.BoxGeometry(.36,.03,.12).translate(0,.02+k*.035,0))),lam(0xd8b880),MAXNPC),
-  fish:new THREE.InstancedMesh(mergeGeos([new THREE.IcosahedronGeometry(.06,0).scale(.6,.8,2).translate(0,.05,0),new THREE.IcosahedronGeometry(.05,0).scale(.6,.8,2).translate(.06,.09,0)]),lam(0x9fb4c0),MAXNPC),
-  meat:new THREE.InstancedMesh(mergeGeos([new THREE.IcosahedronGeometry(.09,0).scale(1.2,.8,1).translate(0,.06,0)]),lam(0xa0402e),MAXNPC),
-  sheaf:new THREE.InstancedMesh(mergeGeos([new THREE.CylinderGeometry(.06,.05,.34,6).rotateZ(Math.PI/2).translate(0,.06,0)]),lam(0xd8b850),MAXNPC),
-  sack:new THREE.InstancedMesh(mergeGeos([new THREE.IcosahedronGeometry(.1,0).scale(1,1.2,1).translate(0,.1,0)]),lam(0xe8e0d0),MAXNPC),
-  loaf:new THREE.InstancedMesh(mergeGeos([new THREE.IcosahedronGeometry(.08,0).scale(1.4,.7,.9).translate(0,.05,0),new THREE.IcosahedronGeometry(.07,0).scale(1.4,.7,.9).translate(.02,.11,0)]),lam(0xc08a48),MAXNPC)};
+// Traglasten der Dorfbewohner (Vertexfarben, eine Instanz je NPC)
+function carryMesh(parts){const g=new THREE.Group();bSeed(parts.length*97+3);for(const [geo,c,x,y,z,ry,rx,rz,u] of parts){const m=ad(g,geo,c,x||0,y||0,z||0,ry,rx,rz);if(u)ud(m,u);}return new THREE.InstancedMesh(bakeGeo(g.children,true),bmat(),MAXNPC);}
+const HP=Math.PI/2,EG={c2:0xc0a070};
+const carryIM={wood:carryMesh([[CY(.04,.04,.34,7),0x6a4a2e,0,.03,0,0,0,HP,EG],[CY(.035,.035,.3,7),0x5e4228,.02,.09,-.02,0,0,HP,EG],[CY(.03,.03,.3,7),0x72502f,-.03,.085,.035,0,0,HP,EG]]),
+  stone:carryMesh([[new THREE.DodecahedronGeometry(.08,0),0x8f897c,0,.06,0],[new THREE.DodecahedronGeometry(.05,0),0x9a9486,.06,.12,0],[new THREE.DodecahedronGeometry(.04,0),0x7e786e,-.05,.1,.03]]),
+  basket:carryMesh([[CY(.08,.06,.09,8),0x9a7a50,0,.045,0],[CY(.083,.083,.015,8),0x6a5038,0,.09,0],[new THREE.IcosahedronGeometry(.07,0).scale(1,.45,1),0x7a2e3a,0,.095,0]]),
+  planks:carryMesh([0,1,2].map(k=>[B(.36,.028,.11),[0xc0a070,0xb09060,0xc8aa78][k],(k-1)*.02,.02+k*.032,0,(k-1)*.06])),
+  fish:carryMesh([[new THREE.IcosahedronGeometry(.06,0).scale(.6,.8,2),0x8a9aa0,0,.05,0],[new THREE.IcosahedronGeometry(.05,0).scale(.6,.8,2),0x7a8a90,.06,.09,0],[new THREE.ConeGeometry(.035,.05,3),0x6a7a80,0,.05,-.14,0,HP],[new THREE.ConeGeometry(.03,.045,3),0x6a7a80,.06,.09,-.12,0,HP]]),
+  meat:carryMesh([[new THREE.IcosahedronGeometry(.09,0).scale(1.2,.8,1),0x8a3a2a,0,.06,0],[CY(.014,.014,.09,5),0xe0d8c0,.12,.07,0,0,0,HP]]),
+  sheaf:carryMesh([[CY(.06,.045,.34,7),0xc8a850,0,.06,0,0,0,HP,{c2:0xa89040}],[CY(.063,.063,.03,7),0x7a6030,0,.06,0,0,0,HP]]),
+  sack:carryMesh([[new THREE.IcosahedronGeometry(.1,0).scale(1,1.2,1),0xd8d0bc,0,.1,0],[CY(.02,.03,.04,6),0xb8ae98,0,.22,0]]),
+  loaf:carryMesh([[new THREE.IcosahedronGeometry(.08,0).scale(1.4,.7,.9),0xb07a40,0,.05,0],[new THREE.IcosahedronGeometry(.07,0).scale(1.4,.7,.9),0xa06a34,.02,.11,0]])};
 // Wirtschaft: Traglasten
-Object.assign(carryIM,{ore:new THREE.InstancedMesh(mergeGeos([new THREE.DodecahedronGeometry(.07,0).translate(0,.05,0),new THREE.DodecahedronGeometry(.05,0).translate(.06,.1,0)]),lam(0x8a4a32),MAXNPC),
-  brick:new THREE.InstancedMesh(mergeGeos([0,1,2].map(k=>new THREE.BoxGeometry(.2,.05,.1).translate(0,.03+k*.055,0))),lam(0xb05a3a),MAXNPC),
-  wool:new THREE.InstancedMesh(mergeGeos([new THREE.IcosahedronGeometry(.11,0).translate(0,.08,0)]),lam(0xf2efe6),MAXNPC),
-  cloth:new THREE.InstancedMesh(mergeGeos([new THREE.BoxGeometry(.24,.05,.16).translate(0,.03,0),new THREE.BoxGeometry(.22,.05,.15).translate(0,.08,0)]),lam(0x3a6ab0),MAXNPC),
-  tools:new THREE.InstancedMesh(mergeGeos([new THREE.BoxGeometry(.3,.03,.03).translate(0,.04,0),new THREE.BoxGeometry(.06,.08,.04).translate(.15,.06,0)]),lam(0x8a8a8a),MAXNPC)});
+Object.assign(carryIM,{ore:carryMesh([[CY(.075,.06,.07,7),0x6a5038,0,.035,0],[new THREE.DodecahedronGeometry(.06,0),0x7a4a36,0,.08,0],[new THREE.DodecahedronGeometry(.045,0),0x6a3e30,.04,.1,.02]]),
+  brick:carryMesh([0,1,2].map(k=>[B(.2,.05,.1),[0xa85a40,0x9a5038,0xb06448][k],0,.03+k*.055,0,k%2?.15:0])),
+  wool:carryMesh([[new THREE.IcosahedronGeometry(.11,0),0xe8e2d4,0,.08,0],[new THREE.IcosahedronGeometry(.07,0),0xded8c8,.06,.13,.02]]),
+  cloth:carryMesh([[CY(.05,.05,.24,7),0x4a5a72,0,.05,0,0,0,HP,{c2:0x3a4a60}],[CY(.045,.045,.22,7),0x8a3e32,0,.13,0,0,0,HP,{c2:0x7a3428}]]),
+  tools:carryMesh([[B(.3,.025,.025),0x7a5a3a,0,.04,0],[B(.05,.07,.04),0x5a5a5a,.15,.06,0],[B(.24,.012,.08),0x8a8a88,0,.08,.04],[B(.06,.025,.03),0x7a5a3a,-.13,.08,.04]])});
 const CARRY_OF={wood:'wood',stone:'stone',planks:'planks',berry:'basket',fish:'fish',meat:'meat',wheat:'sheaf',flour:'sack',bread:'loaf'};
 Object.assign(CARRY_OF,{ore:'ore',clay:'basket',bricks:'brick',wool:'wool',cloth:'cloth',tools:'tools'});
 CARRY_OF.firewood='wood';
@@ -2120,7 +2390,7 @@ function addUpMark(b){if(b.upMesh)return;const m=UPMARK.clone(),o=b.s/2-.18;m.po
 function doUpgrade(b){const u=upgOf(b);if(!u||!buildings.includes(b))return false;
   if(level<u.lvl){toast('🔒 Ausbau ab „'+lvlAt(u.lvl).n+'“');return false;}if(!has(u.c)){toast('Zu wenig Rohstoffe: '+cTxt(u.c));return false;}
   addRes(u.c,-1);
-  if(u.to){b.type=u.to;b.mesh.remove(b.body);b.body=TEMPL[u.to].clone();b.mesh.add(b.body);}else{b.up=1;addUpMark(b);}
+  if(u.to){b.type=u.to;b.mesh.remove(b.body);b.body=tmplFor(u.to,b.tx,b.tz);b.mesh.add(b.body);}else{b.up=1;addUpMark(b);}
   popText('⬆',b.x,b.z);toast('⬆ '+DEF[b.type].icon+' '+(u.to?DEF[u.to].name+' fertig!':DEF[b.type].name+' ausgebaut!'));return true;}
 function infoBtns(b){const d=DEF[b.type],out=[];
   if(b.done&&d.work){const w=wantOf(b),s=slotsOf(b);out.push({t:'− 👷',dis:w<=0,f:()=>{setWant(b,w-1);openInfo(b);}},{t:'👷 +',dis:w>=s,f:()=>{setWant(b,w+1);openInfo(b);}});}
