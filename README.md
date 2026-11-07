@@ -4,6 +4,7 @@ Alle Spiele: Single-File HTML, mobil-tauglich. Startseite: [index.html](index.ht
 
 | Spiel | Beschreibung |
 |---|---|
+| [🪰 Libellenjagd](games/libelle/) | Prototyp (Hochformat/Touch): als Libelle mit hoher Geschwindigkeit durch eine große Platzhalter-Welt fliegen und Insekten im Flug fangen |
 | [🪐 Planet – Tierfänger](games/planet/) | Survival à la Valheim auf einem prozeduralen Kugel-Planeten: Tiere fangen, ihre Fähigkeiten nutzen, Biome freischalten |
 | [🛶 Viniland Testlab](games/viniland/) | Valheim-artiges Testlab: Insel, fällbare Bäume mit Physik, 10 Tiere, 2-Spieler-Splitscreen |
 | [🌍 Tier-Testwelt](games/voxel-tiere/welt.html) | Alle Tiere in einer begehbaren Welt |

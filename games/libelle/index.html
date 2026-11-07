@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Libellenjagd</title>
+<style>
+/* Hochformat-Spielbildschirm: 3D-Canvas vollflächig, HUD oben, Steuerung unten (Daumenzone) */
+:root{
+  --sky:#9fd3e6; --ink:#0d2229; --panel:rgba(8,28,36,.58); --txt:#f2fbff;
+  --acc:#7cf5c8; --warn:#ff6b5a; --gold:#ffd25a; --mute:rgba(242,251,255,.7);
+  --f:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--ink);color:var(--txt);font-family:var(--f);
+  touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+#touch{position:fixed;inset:0;z-index:1}
+#vig{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:0;
+  background:radial-gradient(ellipse at center,transparent 45%,rgba(255,255,255,.55) 100%)}
+#hit{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:0;transition:opacity .4s;
+  background:radial-gradient(ellipse at center,transparent 40%,rgba(255,60,40,.7) 100%)}
+
+#hud{position:fixed;left:0;right:0;top:0;z-index:3;pointer-events:none;display:flex;gap:10px;align-items:flex-start;
+  padding:calc(env(safe-area-inset-top,0px) + 10px) max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px))}
+.card{background:var(--panel);border-radius:14px;padding:8px 12px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+#stats{flex:1;display:grid;gap:6px;min-width:0}
+#row1{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+#score{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+#combo{font-size:14px;font-weight:700;color:var(--gold);min-height:1em}
+#spd{font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums;white-space:nowrap}
+#ebar{height:10px;border-radius:6px;background:rgba(255,255,255,.18);overflow:hidden}
+#efill{height:100%;width:100%;background:var(--acc);border-radius:6px;transition:background .3s}
+.lbl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+#radar{width:118px;height:118px;border-radius:50%;background:var(--panel);flex:none}
+#warn{position:fixed;z-index:3;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 140px);
+  background:var(--warn);color:#fff;font-weight:800;padding:6px 14px;border-radius:20px;font-size:14px;pointer-events:none}
+#pops{position:fixed;z-index:3;left:0;right:0;top:40%;display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:none}
+.pop{font-weight:800;font-size:18px;text-shadow:0 2px 6px rgba(0,0,0,.5);animation:up .9s ease-out forwards}
+@keyframes up{from{transform:translateY(0);opacity:1}to{transform:translateY(-50px);opacity:0}}
+
+#joy{position:fixed;z-index:2;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.45);background:rgba(255,255,255,.08);pointer-events:none}
+#knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgba(255,255,255,.55)}
+#joyhint{position:fixed;z-index:2;pointer-events:none;left:max(20px,env(safe-area-inset-left,0px));
+  bottom:calc(env(safe-area-inset-bottom,0px) + 40px);width:55%;text-align:center;color:var(--mute);font-size:13px}
+#btns{position:fixed;z-index:4;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 22px);
+  display:flex;flex-direction:column;gap:14px;align-items:center}
+.btn{width:84px;height:84px;border-radius:50%;border:2px solid rgba(255,255,255,.55);background:var(--panel);color:var(--txt);
+  font:800 12px var(--f);letter-spacing:.06em;display:grid;place-items:center;text-align:center;touch-action:none}
+.btn small{display:block;font-size:22px;line-height:1}
+.btn.on{background:var(--acc);color:var(--ink);border-color:var(--acc)}
+#bBoost{width:96px;height:96px}
+
+.ov{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:rgba(8,28,36,.78);
+  padding:24px max(20px,env(safe-area-inset-right,0px)) 24px max(20px,env(safe-area-inset-left,0px))}
+.box{max-width:360px;width:100%;display:grid;gap:14px;text-align:left}
+.box h1{margin:0;font-size:34px;line-height:1.05;text-wrap:balance}
+.box p{margin:0;line-height:1.45;color:var(--mute)}
+.box ul{margin:0;padding-left:18px;line-height:1.55}
+.box b{color:var(--acc)}
+.go{appearance:none;border:0;border-radius:16px;padding:16px;font:800 18px var(--f);background:var(--acc);color:var(--ink);cursor:pointer}
+.go:focus-visible{outline:3px solid #fff;outline-offset:2px}
+label.opt{display:flex;gap:10px;align-items:center;color:var(--mute)}
+.big{font-size:44px;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums}
+.legend{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;font-size:14px;align-items:center}
+.dot{width:12px;height:12px;border-radius:50%}
+@media (prefers-reduced-motion:reduce){.pop{animation-duration:.01s}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="touch"></div>
+<div id="vig"></div>
+<div id="hit"></div>
+
+<div id="hud">
+  <div id="stats" class="card">
+    <div id="row1"><span id="score">0</span><span id="combo"></span><span id="spd">0 km/h</span></div>
+    <div class="lbl">Energie</div>
+    <div id="ebar"><div id="efill"></div></div>
+  </div>
+  <canvas id="radar" width="236" height="236"></canvas>
+</div>
+<div id="warn" hidden>⚠ Vogel jagt dich – Boost!</div>
+<div id="pops"></div>
+
+<div id="joy" hidden><div id="knob"></div></div>
+<div id="joyhint">Links ziehen = lenken</div>
+<div id="btns">
+  <div id="bHover" class="btn"><span><small>◎</small>SCHWEBEN</span></div>
+  <div id="bBoost" class="btn"><span><small>»</small>BOOST</span></div>
+</div>
+
+<div id="menu" class="ov">
+  <div class="box">
+    <div class="lbl">Prototyp · Platzhalter-Welt</div>
+    <h1>Libellenjagd</h1>
+    <p>Du bist eine Libelle. Fang Insekten im Flug, bevor dir die Energie ausgeht. Die Welt ist groß, nutze deine Geschwindigkeit.</p>
+    <ul>
+      <li><b>Daumen links ziehen:</b> lenken &amp; steigen/sinken</li>
+      <li><b>Boost</b> halten: bis 55 km/h, kostet Energie</li>
+      <li><b>Schweben</b> halten: in der Luft stehen, präzise drehen</li>
+      <li>Rote Vögel jagen dich, mit Boost entkommst du</li>
+    </ul>
+    <div class="legend">
+      <span class="dot" style="background:#f2f2a0"></span><span>Mücke – Schwärme über Wasser</span><span>+1</span>
+      <span class="dot" style="background:#4a4a5e"></span><span>Fliege – flink</span><span>+3</span>
+      <span class="dot" style="background:#ff9ad5"></span><span>Falter – groß, viel Energie</span><span>+5</span>
+      <span class="dot" style="background:#ffd25a"></span><span>Goldbremse – sehr schnell, selten</span><span>+20</span>
+    </div>
+    <label class="opt"><input type="checkbox" id="inv"> Höhensteuerung invertieren</label>
+    <button class="go" id="start">Losfliegen</button>
+  </div>
+</div>
+
+<div id="over" class="ov" hidden>
+  <div class="box">
+    <div class="lbl">Energie leer</div>
+    <h1>Gelandet.</h1>
+    <div class="big" id="final">0</div>
+    <p id="stat"></p>
+    <button class="go" id="again">Nochmal fliegen</button>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+// ---------- Welt-Parameter ----------
+const WORLD = 4400;      // Terrain-Kantenlänge
+const PLAY = 1900;       // spielbarer Radius (|x|,|z|)
+const WATER = 0;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const KMH = 0.9;         // 1 Einheit/s → km/h (Libelle ~3 cm groß gedacht)
+
+function H(x, z) {
+  return Math.sin(x * 0.0021) * Math.cos(z * 0.0017) * 38
+       + Math.sin(x * 0.0063 + 1.3) * Math.sin(z * 0.0051 + 0.7) * 14
+       + Math.sin((x + z) * 0.013) * 4 + 8;
+}
+const floorAt = (x, z) => Math.max(H(x, z), WATER);
+
+// ---------- Renderer ----------
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+const scene = new THREE.Scene();
+const SKY = new THREE.Color(0x9fd3e6);
+scene.background = SKY;
+scene.fog = new THREE.Fog(SKY, 140, 1050);
+const camera = new THREE.PerspectiveCamera(80, 1, 0.1, 1400);
+let baseFov = 80;
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  baseFov = camera.aspect < 1 ? 86 : 66; // Hochformat braucht mehr vertikales FOV
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+scene.add(new THREE.HemisphereLight(0xdff4ff, 0x4a6a3a, 1.0));
+const sun = new THREE.DirectionalLight(0xffffff, 1.1);
+sun.position.set(300, 500, 200); scene.add(sun);
+
+// ---------- Terrain + Wasser (Platzhalter) ----------
+{
+  const g = new THREE.PlaneGeometry(WORLD, WORLD, 200, 200);
+  g.rotateX(-Math.PI / 2);
+  const p = g.attributes.position, col = [], c = new THREE.Color();
+  const sand = new THREE.Color(0xd9c78f), g1 = new THREE.Color(0x76b34e), g2 = new THREE.Color(0x3f7a35),
+        r1 = new THREE.Color(0x7d8a6a), r2 = new THREE.Color(0xc4c4bc);
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), z = p.getZ(i), y = H(x, z);
+    p.setY(i, y);
+    if (y < 1.8) c.copy(sand);
+    else if (y < 32) c.copy(g1).lerp(g2, (y - 1.8) / 30);
+    else c.copy(r1).lerp(r2, Math.min(1, (y - 32) / 28));
+    col.push(c.r, c.g, c.b);
+  }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.computeVertexNormals();
+  scene.add(new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })));
+  const w = new THREE.Mesh(new THREE.PlaneGeometry(WORLD, WORLD).rotateX(-Math.PI / 2),
+    new THREE.MeshLambertMaterial({ color: 0x3b8fb5, transparent: true, opacity: .82 }));
+  w.position.y = WATER; scene.add(w);
+}
+
+// ---------- Bäume (Instanced, mit Kollision) ----------
+const trees = [], grid = new Map(), CELL = 40;
+const ck = (ix, iz) => ix * 100003 + iz;
+{
+  let tries = 0;
+  while (trees.length < 2600 && tries < 60000) {
+    tries++;
+    const x = rnd(-PLAY - 300, PLAY + 300), z = rnd(-PLAY - 300, PLAY + 300), y = H(x, z);
+    if (y < 3 || y > 46) continue;
+    if (Math.sin(x * 0.004 + 2) * Math.sin(z * 0.0035) + Math.random() * 0.7 < 0.25) continue; // Waldflecken
+    const s = rnd(0.7, 1.5);
+    const t = { x, z, y, h: 34 * s, r: 6.5 * s, s };
+    trees.push(t);
+    const k = ck(Math.floor(x / CELL), Math.floor(z / CELL));
+    if (!grid.has(k)) grid.set(k, []);
+    grid.get(k).push(t);
+  }
+  const trunkG = new THREE.CylinderGeometry(0.6, 0.9, 1, 6).translate(0, .5, 0);
+  const crownG = new THREE.ConeGeometry(1, 1, 7).translate(0, .5, 0);
+  const trunk = new THREE.InstancedMesh(trunkG, new THREE.MeshLambertMaterial({ color: 0x7a5534 }), trees.length);
+  const crown = new THREE.InstancedMesh(crownG, new THREE.MeshLambertMaterial({ color: 0x2f6b3a, flatShading: true }), trees.length);
+  const m = new THREE.Matrix4();
+  trees.forEach((t, i) => {
+    m.makeScale(1.6 * t.s, t.h * 0.4, 1.6 * t.s).setPosition(t.x, t.y - 1, t.z); trunk.setMatrixAt(i, m);
+    m.makeScale(t.r, t.h * 0.75, t.r).setPosition(t.x, t.y + t.h * 0.3, t.z); crown.setMatrixAt(i, m);
+  });
+  scene.add(trunk, crown);
+}
+
+// ---------- Schilf, Felsen, Wegmarken ----------
+{
+  const N = 4000, reed = new THREE.InstancedMesh(new THREE.BoxGeometry(.3, 1, .3).translate(0, .5, 0),
+    new THREE.MeshLambertMaterial({ color: 0x5d8f3a }), N);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s = new THREE.Vector3(), v = new THREE.Vector3();
+  let n = 0, tries = 0;
+  while (n < N && tries < 400000) {
+    tries++;
+    const x = rnd(-PLAY - 200, PLAY + 200), z = rnd(-PLAY - 200, PLAY + 200), y = H(x, z);
+    if (y < -1.5 || y > 1.6) continue;
+    e.set(rnd(-.15, .15), 0, rnd(-.15, .15)); q.setFromEuler(e);
+    m.compose(v.set(x, y - .5, z), q, s.set(1, rnd(3, 8), 1)); reed.setMatrixAt(n++, m);
+  }
+  reed.count = n; scene.add(reed);
+
+  const R = 500, rock = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0),
+    new THREE.MeshLambertMaterial({ color: 0x8b8f92, flatShading: true }), R);
+  for (let i = 0; i < R; i++) {
+    const x = rnd(-PLAY, PLAY), z = rnd(-PLAY, PLAY), sc = rnd(1.5, 6);
+    e.set(rnd(0, 3), rnd(0, 3), 0); q.setFromEuler(e);
+    m.compose(v.set(x, H(x, z), z), q, s.set(sc, sc * .7, sc)); rock.setMatrixAt(i, m);
+  }
+  scene.add(rock);
+}
+const landmarks = [[-1200, -1200, 0xe74c3c], [1300, -900, 0x3498db], [0, 1400, 0xf1c40f], [-1500, 700, 0x9b59b6], [900, 900, 0xecf0f1], [200, -1600, 0xe67e22]]
+  .map(([x, z, c]) => {
+    const y = H(x, z), g = new THREE.Group();
+    const col = new THREE.Mesh(new THREE.BoxGeometry(8, 150, 8), new THREE.MeshLambertMaterial({ color: 0xdedede }));
+    col.position.y = 75; g.add(col);
+    const top = new THREE.Mesh(new THREE.SphereGeometry(12, 10, 8), new THREE.MeshLambertMaterial({ color: c, emissive: c, emissiveIntensity: .35 }));
+    top.position.y = 158; g.add(top);
+    g.position.set(x, y, z); scene.add(g);
+    return { x, z, c, y, h: 170 };
+  });
+
+// ---------- Libelle (Platzhalter-Modell) ----------
+const fly = new THREE.Group();
+const wings = [];
+{
+  const bodyM = new THREE.MeshLambertMaterial({ color: 0x1fb5a8 });
+  const eyeM = new THREE.MeshLambertMaterial({ color: 0x0b5d6b });
+  const abd = new THREE.Mesh(new THREE.BoxGeometry(.18, .18, 2.4), bodyM); abd.position.z = 1.4; fly.add(abd);
+  const tho = new THREE.Mesh(new THREE.BoxGeometry(.42, .42, .6), bodyM); fly.add(tho);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.22, 8, 6), bodyM); head.position.z = -.45; fly.add(head);
+  for (const sx of [-1, 1]) { const eye = new THREE.Mesh(new THREE.SphereGeometry(.2, 8, 6), eyeM); eye.position.set(sx * .17, .06, -.5); fly.add(eye); }
+  const wingM = new THREE.MeshLambertMaterial({ color: 0xe8fbff, transparent: true, opacity: .55, side: THREE.DoubleSide });
+  const wg = new THREE.PlaneGeometry(1.9, .38).rotateX(-Math.PI / 2).translate(.95, 0, 0);
+  for (const [zOff, ph] of [[-.1, 0], [.2, 1.6]]) for (const side of [-1, 1]) {
+    const piv = new THREE.Group(); piv.position.set(0, .2, zOff);
+    const w = new THREE.Mesh(wg, wingM); w.scale.x = side; piv.add(w); fly.add(piv);
+    wings.push({ piv, side, ph });
+  }
+}
+fly.rotation.order = 'YXZ';
+fly.scale.setScalar(1.25);
+scene.add(fly);
+
+// ---------- Fahrtwind-Partikel (Geschwindigkeitsgefühl) ----------
+const DUST = 700, DB = 90;
+const dustG = new THREE.BufferGeometry();
+const dustP = new Float32Array(DUST * 3);
+for (let i = 0; i < DUST * 3; i++) dustP[i] = rnd(-DB / 2, DB / 2);
+dustG.setAttribute('position', new THREE.BufferAttribute(dustP, 3));
+const dust = new THREE.Points(dustG, new THREE.PointsMaterial({ color: 0xffffff, size: .18, transparent: true, opacity: .7 }));
+dust.frustumCulled = false; scene.add(dust);
+
+// ---------- Insekten ----------
+const TYPES = [
+  { name: 'Mücke',      color: 0xf2f2a0, size: .5, speed: 7,  flee: 9,  energy: 3,  pts: 1,  swarms: 34, per: 14 },
+  { name: 'Fliege',     color: 0x4a4a5e, size: .65, speed: 14, flee: 16, energy: 6,  pts: 3,  swarms: 24, per: 7 },
+  { name: 'Falter',     color: 0xff9ad5, size: 1.1, speed: 6,  flee: 11, energy: 12, pts: 5,  swarms: 16, per: 4, flutter: true },
+  { name: 'Goldbremse', color: 0xffd25a, size: .8,  speed: 36, flee: 45, energy: 30, pts: 20, swarms: 8,  per: 1, glow: true, roam: true },
+];
+const swarms = [], insects = [];
+const insMeshes = TYPES.map(t => {
+  const mat = new THREE.MeshLambertMaterial({ color: t.color, emissive: t.glow ? t.color : 0x000000, emissiveIntensity: t.glow ? .8 : 0 });
+  const mesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(t.size, 0), mat, t.swarms * t.per);
+  mesh.frustumCulled = false; scene.add(mesh); return mesh;
+});
+TYPES.forEach((t, ti) => {
+  let idx = 0;
+  for (let s = 0; s < t.swarms; s++) {
+    const sw = { t: ti, c: new THREE.Vector3(), base: new THREE.Vector3(), list: [], alive: 0, respawn: 0, ang: rnd(0, 6.28), active: false };
+    for (let k = 0; k < t.per; k++) {
+      const ins = { s: sw, t: ti, idx: idx++, p: new THREE.Vector3(), v: new THREE.Vector3(), alive: true, ph: rnd(0, 100) };
+      sw.list.push(ins); insects.push(ins);
+    }
+    swarms.push(sw);
+  }
+});
+function placeSwarm(sw, avoid) {
+  const t = TYPES[sw.t];
+  for (let i = 0; i < 200; i++) {
+    const x = rnd(-PLAY, PLAY), z = rnd(-PLAY, PLAY), h = H(x, z);
+    if (!t.roam && h > 8 && Math.random() > .3) continue; // Mücken & Co. lieben Wasser
+    if (avoid && Math.hypot(x - avoid.x, z - avoid.z) < 250) continue;
+    sw.base.set(x, floorAt(x, z) + (t.roam ? rnd(14, 30) : rnd(3, 14)), z);
+    break;
+  }
+  sw.c.copy(sw.base);
+  sw.alive = sw.list.length; sw.respawn = 0;
+  for (const ins of sw.list) {
+    ins.alive = true;
+    ins.p.copy(sw.c).add(new THREE.Vector3(rnd(-6, 6), rnd(-3, 3), rnd(-6, 6)));
+    ins.v.set(0, 0, 0);
+  }
+}
+
+// ---------- Vögel (Gefahr) ----------
+const birds = [];
+{
+  const mat = new THREE.MeshLambertMaterial({ color: 0xc0392b, flatShading: true });
+  for (let i = 0; i < 10; i++) {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.ConeGeometry(1.4, 7, 6).rotateX(Math.PI / 2), mat); g.add(body);
+    const wl = new THREE.Group(), wr = new THREE.Group();
+    const wgeo = new THREE.BoxGeometry(6, .25, 2.4);
+    const a = new THREE.Mesh(wgeo, mat); a.position.x = -3; wl.add(a);
+    const b = new THREE.Mesh(wgeo, mat); b.position.x = 3; wr.add(b);
+    g.add(wl, wr); scene.add(g);
+    birds.push({ g, wl, wr, home: new THREE.Vector3(), pos: new THREE.Vector3(), vel: new THREE.Vector3(), state: 'patrol', ang: rnd(0, 6.28), cd: 0 });
+  }
+}
+function placeBirds() {
+  for (const b of birds) {
+    let x, z;
+    do { x = rnd(-PLAY, PLAY); z = rnd(-PLAY, PLAY); } while (Math.hypot(x, z) < 350);
+    b.home.set(x, 0, z); b.pos.set(x, floorAt(x, z) + 60, z); b.vel.set(0, 0, 0); b.state = 'patrol'; b.cd = 0;
+  }
+}
+
+// ---------- Spieler ----------
+const P = { pos: new THREE.Vector3(), prev: new THREE.Vector3(), vel: new THREE.Vector3(), yaw: 0, pitch: 0, roll: 0, speed: 0,
+  energy: 100, score: 0, caught: 0, inv: 0, combo: 0, lastCatch: -9, time: 0, best: 0, shake: 0 };
+const fwd = new THREE.Vector3();
+function forwardOf(yaw, pitch, out) {
+  return out.set(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
+}
+
+// ---------- Eingabe ----------
+const input = { x: 0, y: 0, boost: false, hover: false, invert: false };
+const touch = document.getElementById('touch'), joy = document.getElementById('joy'), knob = document.getElementById('knob');
+const JR = 60; let joyId = null, jx0 = 0, jy0 = 0;
+const dz = v => Math.sign(v) * Math.max(0, Math.abs(v) - .08) / .92;
+touch.addEventListener('pointerdown', e => {
+  if (joyId !== null) return;
+  joyId = e.pointerId; jx0 = e.clientX; jy0 = e.clientY;
+  touch.setPointerCapture(e.pointerId);
+  joy.style.left = jx0 + 'px'; joy.style.top = jy0 + 'px'; joy.hidden = false;
+  knob.style.transform = ''; document.getElementById('joyhint').hidden = true;
+});
+touch.addEventListener('pointermove', e => {
+  if (e.pointerId !== joyId) return;
+  let dx = e.clientX - jx0, dy = e.clientY - jy0;
+  const l = Math.hypot(dx, dy); if (l > JR) { dx *= JR / l; dy *= JR / l; }
+  input.x = dz(dx / JR); input.y = dz(dy / JR);
+  knob.style.transform = `translate(${dx}px,${dy}px)`;
+});
+const joyEnd = e => { if (e.pointerId !== joyId) return; joyId = null; input.x = input.y = 0; joy.hidden = true; };
+touch.addEventListener('pointerup', joyEnd); touch.addEventListener('pointercancel', joyEnd);
+function holdBtn(id, key) {
+  const el = document.getElementById(id);
+  const on = e => { e.preventDefault(); input[key] = true; el.classList.add('on'); try { el.setPointerCapture(e.pointerId); } catch (_) {} };
+  const off = () => { input[key] = false; el.classList.remove('on'); };
+  el.addEventListener('pointerdown', on);
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => el.addEventListener(t, off));
+}
+holdBtn('bBoost', 'boost'); holdBtn('bHover', 'hover');
+const keys = new Set();
+addEventListener('keydown', e => { keys.add(e.code); if (e.code === 'Space') e.preventDefault(); });
+addEventListener('keyup', e => keys.delete(e.code));
+function keyInput() {
+  if (!keys.size) return;
+  const k = c => keys.has(c);
+  if (joyId === null) {
+    input.x = (k('ArrowRight') || k('KeyD') ? 1 : 0) - (k('ArrowLeft') || k('KeyA') ? 1 : 0);
+    input.y = (k('ArrowDown') || k('KeyS') ? 1 : 0) - (k('ArrowUp') || k('KeyW') ? 1 : 0);
+  }
+  input.boost = k('ShiftLeft') || k('ShiftRight') || document.getElementById('bBoost').classList.contains('on');
+  input.hover = k('Space') || document.getElementById('bHover').classList.contains('on');
+}
+addEventListener('contextmenu', e => e.preventDefault());
+
+// ---------- HUD ----------
+const $ = id => document.getElementById(id);
+const rc = $('radar').getContext('2d');
+const RADAR_RANGE = 700;
+function pop(text, color) {
+  const d = document.createElement('div'); d.className = 'pop'; d.textContent = text; d.style.color = color;
+  $('pops').appendChild(d); setTimeout(() => d.remove(), 900);
+}
+const hex = c => '#' + c.toString(16).padStart(6, '0');
+function drawRadar() {
+  const W = 236, C = W / 2, S = (C - 8) / RADAR_RANGE;
+  rc.clearRect(0, 0, W, W);
+  rc.strokeStyle = 'rgba(255,255,255,.18)'; rc.lineWidth = 2;
+  rc.beginPath(); rc.arc(C, C, C - 4, 0, 7); rc.stroke();
+  rc.beginPath(); rc.arc(C, C, (C - 4) / 2, 0, 7); rc.stroke();
+  const cs = Math.cos(P.yaw), sn = Math.sin(P.yaw);
+  const plot = (x, z, r, col, sq) => {
+    const dx = x - P.pos.x, dz = z - P.pos.z;
+    // Kurs zeigt nach oben
+    let rx = (dx * cs - dz * sn) * S, ry = (dx * sn + dz * cs) * S;
+    const d = Math.hypot(rx, ry);
+    if (d > C - 8) { const f = (C - 8) / d; rx *= f; ry *= f; r *= .7; }
+    rc.fillStyle = col; rc.beginPath();
+    if (sq) rc.rect(C + rx - r, C + ry - r, r * 2, r * 2); else rc.arc(C + rx, C + ry, r, 0, 7);
+    rc.fill();
+  };
+  for (const l of landmarks) plot(l.x, l.z, 6, hex(l.c), true);
+  for (const s of swarms) if (s.alive > 0) plot(s.c.x, s.c.z, s.t === 3 ? 6 : 4.5, hex(TYPES[s.t].color));
+  for (const b of birds) if (b.pos.distanceTo(P.pos) < RADAR_RANGE * 1.5) plot(b.pos.x, b.pos.z, b.state === 'chase' ? 7 : 5, b.state === 'chase' ? '#ff3b2f' : '#b0302a');
+  rc.fillStyle = '#7cf5c8'; rc.beginPath(); rc.moveTo(C, C - 10); rc.lineTo(C - 7, C + 8); rc.lineTo(C + 7, C + 8); rc.closePath(); rc.fill();
+}
+let hudT = 0;
+function updateHud(dt) {
+  hudT += dt; if (hudT < 1 / 15) return; hudT = 0;
+  $('score').textContent = P.score;
+  $('spd').textContent = Math.round(P.speed * KMH) + ' km/h';
+  const mult = Math.min(P.combo, 5);
+  $('combo').textContent = (P.time - P.lastCatch < 2.5 && mult > 1) ? 'Combo ×' + mult : '';
+  $('efill').style.width = clamp(P.energy, 0, 100) + '%';
+  $('efill').style.background = P.energy < 25 ? 'var(--warn)' : 'var(--acc)';
+  $('warn').hidden = !birds.some(b => b.state === 'chase');
+  drawRadar();
+}
+
+// ---------- Spielzustand ----------
+let state = 'menu';
+try { P.best = +localStorage.getItem('libelle-best') || 0; } catch (_) {}
+function reset() {
+  let x = 0, z = 0;
+  for (let i = 0; i < 400; i++) { x = rnd(-300, 300); z = rnd(-300, 300); if (H(x, z) < 4) break; } // Start nahe Wasser
+  P.pos.set(x, floorAt(x, z) + 12, z); P.prev.copy(P.pos);
+  P.yaw = rnd(0, 6.28); P.pitch = 0; P.roll = 0; P.speed = 20; P.energy = 100; P.score = 0; P.caught = 0;
+  P.inv = 1; P.combo = 0; P.lastCatch = -9; P.time = 0;
+  swarms.forEach(s => placeSwarm(s));
+  // ein paar Schwärme in Startnähe, damit man sofort etwas zu jagen hat
+  [0, 1, 34, 58].forEach((si, k) => {
+    const sw = swarms[si], a = P.yaw + (k - 1.5) * .5, r = 70 + k * 45;
+    const sx = x - Math.sin(a) * r, sz = z - Math.cos(a) * r;
+    sw.base.set(sx, floorAt(sx, sz) + rnd(4, 9), sz); sw.c.copy(sw.base);
+    for (const ins of sw.list) ins.p.copy(sw.c).add(new THREE.Vector3(rnd(-5, 5), rnd(-2, 2), rnd(-5, 5)));
+  });
+  placeBirds();
+  camPos.copy(P.pos).add(new THREE.Vector3(0, 4, 10));
+}
+function startGame() {
+  input.invert = $('inv').checked;
+  reset(); state = 'play'; $('menu').hidden = true; $('over').hidden = true;
+  try { navigator.wakeLock?.request('screen').catch(() => {}); } catch (_) {}
+}
+$('start').onclick = startGame; $('again').onclick = startGame;
+function gameOver() {
+  state = 'over';
+  if (P.score > P.best) { P.best = P.score; try { localStorage.setItem('libelle-best', P.best); } catch (_) {} }
+  $('final').textContent = P.score + ' Punkte';
+  $('stat').textContent = `${P.caught} Insekten in ${Math.round(P.time)} s gefangen · Rekord: ${P.best}`;
+  $('over').hidden = false;
+}
+
+// ---------- Update ----------
+const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), mtx = new THREE.Matrix4(), ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
+const camPos = new THREE.Vector3(), lookAt = new THREE.Vector3();
+const SPEED_CRUISE = 28, SPEED_BOOST = 62;
+
+function treeCollide() {
+  const ix = Math.floor(P.pos.x / CELL), iz = Math.floor(P.pos.z / CELL);
+  for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+    const list = grid.get(ck(ix + a, iz + b)); if (!list) continue;
+    for (const t of list) {
+      const dx = P.pos.x - t.x, dzz = P.pos.z - t.z, d = Math.hypot(dx, dzz);
+      if (d > t.r + 1 || P.pos.y > t.y + t.h * 1.05) continue;
+      const cb = t.y + t.h * 0.3;
+      const rad = P.pos.y < cb ? 1.3 * t.s : t.r * (1 - (P.pos.y - cb) / (t.h * 0.75)) + .6;
+      if (d < rad) {
+        const k = (rad - d + .1) / (d || 1);
+        P.pos.x += dx * k; P.pos.z += dzz * k;
+        if (P.speed > 15) { P.energy -= 2; P.shake = .3; pop('Ast!', '#ffb199'); }
+        P.speed *= .35;
+      }
+    }
+  }
+}
+
+function update(dt) {
+  P.time += dt;
+  keyInput();
+  const hovering = input.hover;
+  const canBoost = input.boost && !hovering && P.energy > 3;
+
+  // Lenken
+  const turn = hovering ? 2.6 : 1.9;
+  P.yaw -= input.x * turn * dt;
+  const iy = input.invert ? -input.y : input.y;
+  const tPitch = hovering ? 0 : -iy * 1.05;
+  P.pitch += (tPitch - P.pitch) * Math.min(1, dt * 3);
+  P.roll += (-input.x * (hovering ? .3 : .8) - P.roll) * Math.min(1, dt * 5);
+
+  // Tempo
+  const tSpeed = hovering ? 0 : canBoost ? SPEED_BOOST : SPEED_CRUISE;
+  P.speed += (tSpeed - P.speed) * Math.min(1, dt * (hovering ? 4 : canBoost ? 2.2 : 1.4));
+
+  P.prev.copy(P.pos);
+  forwardOf(P.yaw, P.pitch, fwd);
+  P.vel.copy(fwd).multiplyScalar(P.speed);
+  if (hovering) P.vel.y += -iy * 14;
+  P.pos.addScaledVector(P.vel, dt);
+
+  // Boden, Decke, Weltgrenze
+  const fl = floorAt(P.pos.x, P.pos.z) + 1.4;
+  if (P.pos.y < fl) { P.pos.y = fl; if (P.pitch < 0) P.pitch *= .5; }
+  if (P.pos.y > 240) P.pos.y = 240;
+  const edge = Math.max(Math.abs(P.pos.x), Math.abs(P.pos.z));
+  if (edge > PLAY) {
+    P.pos.x = clamp(P.pos.x, -PLAY, PLAY); P.pos.z = clamp(P.pos.z, -PLAY, PLAY);
+    const back = Math.atan2(P.pos.x, P.pos.z); // Richtung Weltmitte
+    P.yaw += ((back - P.yaw + Math.PI * 3) % (Math.PI * 2) - Math.PI) * Math.min(1, dt * 2);
+  }
+  treeCollide();
+
+  // Energie
+  P.energy -= dt * (hovering ? .7 : 1.1) + (canBoost ? dt * 5 : 0);
+  P.inv = Math.max(0, P.inv - dt);
+  P.shake = Math.max(0, P.shake - dt);
+
+  // Insekten
+  const time = P.time;
+  for (const sw of swarms) {
+    const t = TYPES[sw.t];
+    if (sw.alive === 0) {
+      sw.respawn += dt;
+      if (sw.respawn > 10) { placeSwarm(sw, P.pos); sw.active = true; }
+      else if (sw.active) { sw.list.forEach(i => insMeshes[sw.t].setMatrixAt(i.idx, ZERO)); sw.active = false; }
+      continue;
+    }
+    if (t.roam) {
+      sw.ang += dt * .15;
+      sw.c.set(sw.base.x + Math.cos(sw.ang) * 160, 0, sw.base.z + Math.sin(sw.ang * 1.3) * 160);
+      sw.c.y = floorAt(sw.c.x, sw.c.z) + 18;
+    }
+    const dSw = sw.c.distanceTo(P.pos);
+    const near = dSw < 600;
+    if (!near && !sw.active) continue;
+    sw.active = near;
+    for (const ins of sw.list) {
+      if (!ins.alive) { insMeshes[sw.t].setMatrixAt(ins.idx, ZERO); continue; }
+      tmp.subVectors(sw.c, ins.p).multiplyScalar(t.roam ? 1.2 : .6);
+      tmp.x += Math.sin(time * 2.3 + ins.ph) * t.speed * .6;
+      tmp.y += Math.sin(time * 3.1 + ins.ph * 2) * t.speed * .35;
+      tmp.z += Math.cos(time * 1.9 + ins.ph) * t.speed * .6;
+      const d = ins.p.distanceTo(P.pos);
+      if (d < t.flee) { tmp2.subVectors(ins.p, P.pos).normalize().multiplyScalar(t.speed * 2.4 * (1 - d / t.flee)); tmp.add(tmp2); }
+      ins.v.lerp(tmp, Math.min(1, dt * 3));
+      const vl = ins.v.length(), vmax = t.speed * 1.6; if (vl > vmax) ins.v.multiplyScalar(vmax / vl);
+      ins.p.addScaledVector(ins.v, dt);
+      const gy = floorAt(ins.p.x, ins.p.z) + .8; if (ins.p.y < gy) ins.p.y = gy;
+
+      // Fangen: Abstand zur Flugbahn dieses Frames
+      if (dSw < 80) {
+        tmp2.subVectors(P.pos, P.prev);
+        const L2 = tmp2.lengthSq();
+        let u = L2 > 0 ? tmp.subVectors(ins.p, P.prev).dot(tmp2) / L2 : 0; u = clamp(u, 0, 1);
+        tmp.copy(P.prev).addScaledVector(tmp2, u);
+        if (tmp.distanceTo(ins.p) < 2.0 + t.size) { catchIt(ins, t); insMeshes[sw.t].setMatrixAt(ins.idx, ZERO); continue; }
+      }
+      if (t.flutter) { const f = .35 + .65 * Math.abs(Math.sin(time * 9 + ins.ph)); mtx.makeScale(1, f, 1); }
+      else mtx.identity();
+      mtx.setPosition(ins.p); insMeshes[sw.t].setMatrixAt(ins.idx, mtx);
+    }
+  }
+  insMeshes.forEach(m => m.instanceMatrix.needsUpdate = true);
+
+  // Vögel
+  for (const b of birds) {
+    b.cd = Math.max(0, b.cd - dt);
+    const d = b.pos.distanceTo(P.pos);
+    if (b.state === 'patrol' && d < 150 && b.cd === 0 && P.inv === 0) b.state = 'chase';
+    if (b.state === 'chase' && (d > 280 || P.inv > 0)) b.state = 'patrol';
+    let sp;
+    if (b.state === 'chase') {
+      tmp.copy(P.pos).addScaledVector(P.vel, .35).sub(b.pos); sp = 46;
+    } else {
+      b.ang += dt * .3;
+      tmp.set(b.home.x + Math.cos(b.ang) * 90, 0, b.home.z + Math.sin(b.ang) * 90);
+      tmp.y = floorAt(tmp.x, tmp.z) + 55; tmp.sub(b.pos); sp = 22;
+    }
+    tmp.normalize().multiplyScalar(sp);
+    b.vel.lerp(tmp, Math.min(1, dt * (b.state === 'chase' ? 1.6 : 1)));
+    b.pos.addScaledVector(b.vel, dt);
+    const by = floorAt(b.pos.x, b.pos.z) + 3; if (b.pos.y < by) b.pos.y = by;
+    b.g.position.copy(b.pos);
+    b.g.lookAt(tmp.copy(b.pos).add(b.vel));
+    const fa = Math.sin(time * (b.state === 'chase' ? 14 : 7) + b.ang * 10) * .5;
+    b.wl.rotation.z = fa; b.wr.rotation.z = -fa;
+    if (b.state === 'chase' && d < 3.6) {
+      P.energy -= 20; P.inv = 2.5; P.shake = .5; P.speed *= .3; b.cd = 8; b.state = 'patrol';
+      $('hit').style.opacity = 1; setTimeout(() => $('hit').style.opacity = 0, 250);
+      pop('Erwischt! −20', '#ff6b5a');
+    }
+  }
+
+  if (P.energy <= 0) { P.energy = 0; gameOver(); }
+}
+
+function catchIt(ins, t) {
+  ins.alive = false; ins.s.alive--;
+  P.combo = (P.time - P.lastCatch < 2.5) ? P.combo + 1 : 1; P.lastCatch = P.time;
+  const mult = Math.min(P.combo, 5);
+  P.score += t.pts * mult; P.caught++;
+  P.energy = Math.min(100, P.energy + t.energy);
+  pop(`+${t.pts * mult} ${t.name}${mult > 1 ? ' ×' + mult : ''}`, hex(t.color === 0x4a4a5e ? 0xdfe3ff : t.color));
+}
+
+// ---------- Render ----------
+function place(dt) {
+  fly.position.copy(P.pos);
+  fly.rotation.set(P.pitch, P.yaw, P.roll);
+  fly.visible = !(P.inv > 0 && state === 'play' && Math.floor(P.time * 10) % 2 === 0 && P.inv < 2.4);
+  const freq = input.hover ? 55 : 32 + P.speed * .3;
+  for (const w of wings) w.piv.rotation.z = w.side * Math.sin(P.time * freq + w.ph) * .55;
+
+  // Kamera hinter der Libelle
+  forwardOf(P.yaw, P.pitch * .6, tmp);
+  const back = 5.5 + (P.speed / SPEED_BOOST) * 3;
+  tmp2.copy(P.pos).addScaledVector(tmp, -back); tmp2.y += 2;
+  const camFloor = floorAt(tmp2.x, tmp2.z) + 1.2; if (tmp2.y < camFloor) tmp2.y = camFloor;
+  camPos.lerp(tmp2, 1 - Math.exp(-dt * 7));
+  camera.position.copy(camPos);
+  if (P.shake > 0) camera.position.add(tmp2.set(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).multiplyScalar(P.shake * .8));
+  forwardOf(P.yaw, P.pitch, tmp);
+  lookAt.copy(P.pos).addScaledVector(tmp, 8);
+  camera.lookAt(lookAt);
+  const sf = clamp((P.speed - SPEED_CRUISE) / (SPEED_BOOST - SPEED_CRUISE), 0, 1);
+  camera.fov += (baseFov + sf * 16 - camera.fov) * Math.min(1, dt * 4);
+  camera.updateProjectionMatrix();
+  $('vig').style.opacity = sf * .6;
+
+  // Staub um die Kamera herum mitwandern lassen
+  const a = dustG.attributes.position.array, h = DB / 2;
+  for (let i = 0; i < DUST * 3; i += 3) {
+    for (let k = 0; k < 3; k++) {
+      const c = k === 0 ? P.pos.x : k === 1 ? P.pos.y : P.pos.z;
+      let v = a[i + k];
+      if (v - c > h) v -= DB; else if (v - c < -h) v += DB;
+      a[i + k] = v;
+    }
+  }
+  dustG.attributes.position.needsUpdate = true;
+}
+
+// Menü-Hintergrund: Libelle kreist langsam
+function idle(dt) {
+  P.time += dt;
+  P.yaw += dt * .25; P.pitch = 0; P.roll = .25; P.speed = 20;
+  forwardOf(P.yaw, 0, fwd);
+  P.pos.addScaledVector(fwd, P.speed * dt);
+  const fl = floorAt(P.pos.x, P.pos.z) + 14; P.pos.y += (fl - P.pos.y) * Math.min(1, dt);
+}
+
+window.__libelle = { P, swarms, input }; // Debug-Zugriff für Tests
+reset();
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (state === 'play') { update(dt); updateHud(dt); }
+  else if (state === 'menu') idle(dt);
+  place(dt);
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+document.addEventListener('visibilitychange', () => { last = performance.now(); });
+</script>
+</body>
+</html>
