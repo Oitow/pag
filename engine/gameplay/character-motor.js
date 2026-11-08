@@ -1,7 +1,7 @@
 /**
  * @modul    character-motor
  * @zweck    Kinematischer Figuren-Controller ohne THREE: Beschleunigung, Coyote-Time, Jump-Buffer, variable Sprunghöhe, Stufen, Ground-Snap, Hang-Rutschen, Hindernisse, Schwimmen
- * @api      createMotor({welt,pos,yaw,radius,hoehe,tuning}) -> {zustand,tuning,update(dt,absicht),teleport(pos,yaw?),stoss(x,y,z),setTuning(teil),springeJetzt(),dispose()} ; MOTOR_TUNING
+ * @api      createMotor({welt,pos,yaw,radius,hoehe,tuning}) -> {zustand,tuning,radius,hoehe,update(dt,absicht),teleport(pos,yaw?),stoss(x,y,z),setTuning(teil),springeJetzt(),dispose()} ; MOTOR_TUNING
  * @beispiel
  *   import { createMotor } from '../../engine/gameplay/character-motor.js';
  *   const motor = createMotor({ welt: { bodenHoehe: (x, z) => 0 }, pos: { x: 0, y: 0, z: 0 } });
@@ -42,7 +42,7 @@ export const MOTOR_TUNING = {
   wasserTiefeSchwimmen: 0.75, // schwimmen ab Wassertiefe = Anteil von hoehe
   schwimmLage: 0.68,          // Anteil von hoehe unter der Oberfläche beim Schwimmen (Kopf bleibt oben)
   auftrieb: 30,               // Federkonstante zur Schwimmlage (1/s²)
-  schwimmSprungHoehe: 1.0,    // m, Sprung aus dem Wasser (Ufer erklimmen)
+  schwimmSprungHoehe: 1.2,    // m, Sprung aus dem Wasser (Ufer erklimmen)
   stossDaempfung: 7,          // Abklingen horizontaler Stöße (1/s)
 };
 
@@ -62,7 +62,7 @@ export function createMotor({ welt, pos = { x: 0, y: NaN, z: 0 }, yaw = 0, radiu
   // interner Zustand
   let coyote = 0, puffer = 0, gehaltenVorher = false, volleHoehe = false, erzwungen = false;
   let stossX = 0, stossZ = 0;
-  const n = { x: 0, y: 1, z: 0 }; // Bodennormale (Scratch)
+  const n = { x: 0, y: 1, z: 0 }, sicher = { x: 0, y: 0, z: 0 }; // Scratch: Bodennormale, letzte gültige Position
 
   function normale(x, zz) {
     const hL = boden(x - NORMAL_E, zz), hR = boden(x + NORMAL_E, zz), hD = boden(x, zz - NORMAL_E), hU = boden(x, zz + NORMAL_E);
@@ -222,10 +222,10 @@ export function createMotor({ welt, pos = { x: 0, y: NaN, z: 0 }, yaw = 0, radiu
     gehaltenVorher = gehalten;
     if (dt > 0) {
       const anzahl = Math.ceil(dt / SCHRITT - 1e-9), h = dt / anzahl;
-      const ax0 = { x: z.pos.x, y: z.pos.y, z: z.pos.z };
+      sicher.x = z.pos.x; sicher.y = z.pos.y; sicher.z = z.pos.z;
       for (let i = 0; i < anzahl; i++) { schritt(h, ax, az, mag, ab, gedrueckt); gedrueckt = false; }
       if (!Number.isFinite(z.pos.x + z.pos.y + z.pos.z + z.vel.x + z.vel.y + z.vel.z)) {
-        teleport(ax0, z.yaw); // Notbremse bei kaputten Welt-Werten
+        teleport(sicher, z.yaw); // Notbremse bei kaputten Welt-Werten
       }
     } else if (gedrueckt) puffer = T.sprungPuffer;
     z.tempo = Math.hypot(z.vel.x, z.vel.z);
@@ -244,6 +244,8 @@ export function createMotor({ welt, pos = { x: 0, y: NaN, z: 0 }, yaw = 0, radiu
 
   return {
     zustand: z, tuning: T, update, teleport, stoss,
+    get radius() { return radius; }, set radius(v) { radius = Math.max(0.01, numOr(v, radius)); },
+    get hoehe() { return hoehe; }, set hoehe(v) { hoehe = Math.max(0.1, numOr(v, hoehe)); },
     setTuning(teil) { Object.assign(T, teil); },
     springeJetzt() { erzwungen = true; },
     dispose() { welt = null; },

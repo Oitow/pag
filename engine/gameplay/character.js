@@ -60,7 +60,6 @@ export function createCharacter(opts = {}) {
     stoppe: (name) => animator.stoppe(name),
     setLook(teil) {
       model.setLook(teil);
-      motor.setTuning?.({});                      // Tuning unverändert; Maße unten
       if ('radius' in motor) motor.radius = model.masse.radius;
       if ('hoehe' in motor) motor.hoehe = model.masse.hoehe;
       return model.look;
