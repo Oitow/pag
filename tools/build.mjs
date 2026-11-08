@@ -24,6 +24,7 @@ let fehler = 0;
 for (const spiel of spiele) {
   const dir = path.join(ROOT, 'games', spiel);
   const cfg = JSON.parse(fs.readFileSync(path.join(dir, 'spiel.json'), 'utf8'));
+  if (cfg.eintrag === false) { console.log(`– ${spiel}: kein Build (eintrag: false)`); continue; }
   const eintrag = cfg.eintrag || 'js/main.js';
   const skriptTag = cfg.skript || `<script type="module" src="${eintrag}"></script>`;
   try {

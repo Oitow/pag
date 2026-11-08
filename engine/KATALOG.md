@@ -11,30 +11,84 @@
 | noise | `engine/core/noise.js` | Seedbares Simplex-Rauschen 2D/3D plus fBm, Grat-Rauschen und Domain-Warp für Terrain, Biome und Texturen | stabil |
 | rng | `engine/core/rng.js` | Deterministischer Zufall (mulberry32), Seeds aus Text, Gitter-Hash und Würfel-Helfer | stabil |
 | fake-dom | `engine/test/fake-dom.mjs` | Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame | stabil |
+| worldgen-biomes | `engine/world/worldgen/worldgen-biomes.js` | Biome nach Whittaker (Temperatur × Feuchte, als schnelle Nachschlagetabelle) plus Prioritätsregeln (Wasser, Schnee, Fels, Strand, Sumpf); Biomliste per Spiel erweiterbar | entwurf |
+| worldgen-chunks | `engine/world/worldgen/worldgen-chunks.js` | Unendlicher/gestreamter Modus: Höhe, Klima, Biome, Rauschflüsse und Objekte punktweise und pro Chunk – nahtlos über Chunkgrenzen (ohne globale Erosion/Hydrologie) | entwurf |
+| worldgen-climate | `engine/world/worldgen/worldgen-climate.js` | Klima für den Weltgenerator: Temperatur nach Höhe/Breitengrad, Feuchte aus Wassernähe, Rauschen und Regenschatten (Windrichtung) | entwurf |
+| worldgen-erosion | `engine/world/worldgen/worldgen-erosion.js` | Schnelle hydraulische Tropfen-Erosion (mit Pinsel-Abtrag) und thermische Erosion auf einem Float32-Höhenfeld; Qualitätsstufen schnell/normal/hoch | entwurf |
 | worldgen-grid | `engine/world/worldgen/worldgen-grid.js` | Gitter-Helfer für den Weltgenerator: typisierter Min-Heap, Chamfer-Abstand, Regionen-Markierung, bilineares Abtasten, Array-Hash | entwurf |
+| worldgen-height | `engine/world/worldgen/worldgen-height.js` | Höhenfeld aus fBm, Grat-Gebirgen, Domain-Warp, Klippen und Terrassen; punktweise abtastbar (für Chunks) oder als ganzes Gitter | entwurf |
+| worldgen-hydrology | `engine/world/worldgen/worldgen-hydrology.js` | Wasserhaushalt: Ozean vom Rand fluten, Senken per Priority-Flood füllen, Seen erkennen, Abflussrichtung (D8) und Abflussmenge berechnen | entwurf |
+| worldgen-path | `engine/world/worldgen/worldgen-path.js` | A*-Wegsuche auf dem Weltgitter (8 Richtungen) mit Kosten nach Hang, Wasser und Flüssen; wiederverwendbare typisierte Puffer | entwurf |
+| worldgen-presets | `engine/world/worldgen/worldgen-presets.js` | Standardoptionen und benannte Voreinstellungen (insel, archipel, kontinent, gebirge, wueste, tundra, sumpfland, vulkaninsel, canyon, flachland, kueste, hochebene, unendlich) plus tiefes Zusammenführen von Optionen | entwurf |
+| worldgen-query | `engine/world/worldgen/worldgen-query.js` | Abfragen auf einer erzeugten Welt (Weltkoordinaten): Höhe bilinear, Hang, Normale, Biom, Wasser; hängt Methoden auch an Welt-Daten aus einem Worker an | entwurf |
+| worldgen-rivers | `engine/world/worldgen/worldgen-rivers.js` | Flüsse aus der Abflussmenge: Flusszellen mit Breite, Flussbett eingraben, Ufer abflachen, geglättete Flusslinien (Quelle → Meer/See) erzeugen | entwurf |
+| worldgen-scatter | `engine/world/worldgen/worldgen-scatter.js` | Blue-Noise-Verteilung von Objekten (Bäume, Büsche, Felsen, Kakteen, Schilf, Blumen …) mit Dichte pro Biom, Lichtungen und Hangregeln; reihenfolgeunabhängig und dadurch nahtlos über Chunks | entwurf |
+| worldgen-shape | `engine/world/worldgen/worldgen-shape.js` | Landform-Masken für den Weltgenerator (Insel, Archipel, Kontinent, Küste, Vulkan, Canyon, Plateau, unendlich) plus formspezifische Nachbearbeitung der Höhe | entwurf |
+| worldgen-sites | `engine/world/worldgen/worldgen-sites.js` | Orte finden: Startplatz (flach, nah an Wasser und Wald, eingeebnet), Dorfplätze mit Mindestabstand und Sehenswürdigkeiten (Gipfel, Quellen, Mündungen, Seen) | entwurf |
+| worldgen | `engine/world/worldgen/worldgen.js` | Weltgenerator-Einstieg: createWorld(optionen) führt die Stufen-Pipeline (Höhe → Erosion → Hydrologie → Flüsse → Klima → Biome → Orte → Objekte) per Preset aus; Spiele können Stufen einfügen/ersetzen; Ergebnis in typisierten Arrays | entwurf |
 
 ## Tags
 
 | Tag | Module |
 |---|---|
+| abfluss | worldgen-hydrology, worldgen-rivers |
+| abfrage | worldgen-query |
 | abstand | worldgen-grid |
+| astar | worldgen-path |
 | attrappe | fake-dom |
+| baeume | worldgen-scatter |
+| biome | worldgen-biomes, worldgen-query |
+| blue-noise | worldgen-scatter |
+| chunks | worldgen-chunks |
 | dom | fake-dom |
+| dorf | worldgen-sites |
+| erosion | worldgen-erosion |
+| fbm | worldgen-height |
+| feuchte | worldgen-climate |
+| fluss | worldgen-rivers |
+| form | worldgen-shape |
+| gebirge | worldgen-height |
+| generator | worldgen |
 | gitter | worldgen-grid |
 | hash | rng |
 | heap | worldgen-grid |
+| hoehe | worldgen-height, worldgen-query |
+| hydraulik | worldgen-erosion |
+| insel | worldgen-presets, worldgen-shape, worldgen |
 | interpolation | math |
 | kamera | math |
+| karte | worldgen |
+| klima | worldgen-biomes, worldgen-climate |
+| maske | worldgen-shape |
 | mathe | math |
 | node | fake-dom |
 | noise | noise |
-| prozedural | noise |
+| normale | worldgen-query |
+| objekte | worldgen-scatter |
+| optionen | worldgen-presets |
+| orte | worldgen-sites |
+| pfad | worldgen-path |
+| poi | worldgen-sites |
+| poisson | worldgen-scatter |
+| presets | worldgen-presets |
+| priority-flood | worldgen-hydrology |
+| prozedural | noise, worldgen |
 | rauschen | noise |
+| regen | worldgen-climate |
 | seed | rng |
-| terrain | noise |
+| seen | worldgen-hydrology |
+| start | worldgen-sites |
+| streaming | worldgen-chunks |
+| temperatur | worldgen-climate |
+| terrain | noise, worldgen-chunks, worldgen-erosion, worldgen-height, worldgen-shape, worldgen |
 | test | fake-dom |
-| welt | noise, rng, worldgen-grid |
-| worldgen | worldgen-grid |
+| unendlich | worldgen-chunks |
+| verteilung | worldgen-scatter |
+| wasser | worldgen-hydrology, worldgen-rivers |
+| wegfindung | worldgen-path |
+| welt | noise, rng, worldgen-biomes, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
+| whittaker | worldgen-biomes |
+| worldgen | worldgen-biomes, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
 | zufall | rng |
 
 ## Module
@@ -115,6 +169,67 @@ dom.tick(16); // führt alle angefragten Animation-Frames aus
 
 Genutzt von: – · Tags: test, dom, node, attrappe · THREE: nein
 
+### worldgen-biomes · `engine/world/worldgen/worldgen-biomes.js` · v1.0.0 · entwurf
+Biome nach Whittaker (Temperatur × Feuchte, als schnelle Nachschlagetabelle) plus Prioritätsregeln (Wasser, Schnee, Fels, Strand, Sumpf); Biomliste per Spiel erweiterbar
+
+- `STANDARD_BIOME`
+- `erstelleBiomTabelle(biomOpts) -> {liste,idVon(key)}`
+- `klassifiziere(tab,h,hang,temp,feuchte,wasserDist,meerDist,flags) -> id`
+- `berechneHang(H,b,t,aus?) -> Float32Array`
+- `stufeBiome(welt, opts) -> void`
+- `biomId(welt,key) -> id`
+
+```js
+import { erstelleBiomTabelle } from '../../engine/world/worldgen/worldgen-biomes.js';
+const tab = erstelleBiomTabelle({ extra: [{ key: 'pilzhain', name: 'Pilzhain', farbe: 0x8a5cc0, temp: [0.4, 0.6], feuchte: [0.8, 1] }] });
+const id = tab.idVon('pilzhain');
+```
+
+Genutzt von: – · Tags: welt, worldgen, biome, klima, whittaker · THREE: nein
+
+### worldgen-chunks · `engine/world/worldgen/worldgen-chunks.js` · v1.0.0 · entwurf
+Unendlicher/gestreamter Modus: Höhe, Klima, Biome, Rauschflüsse und Objekte punktweise und pro Chunk – nahtlos über Chunkgrenzen (ohne globale Erosion/Hydrologie)
+
+- `createChunkGenerator(optionen) -> {opts, sampleHeight(x,y)->number, samplePunkt(x,y,aus)->bool, generateChunk(cx,cy,groesse)->chunk, biome}`
+
+```js
+import { createChunkGenerator } from '../../engine/world/worldgen/worldgen-chunks.js';
+const gen = createChunkGenerator({ preset: 'unendlich', seed: 5 });
+const c = gen.generateChunk(3, -2, 64);   // c.hoehe hat (64+1)² Werte, Randzeilen identisch mit den Nachbarn
+```
+
+Genutzt von: – · Tags: welt, worldgen, chunks, unendlich, streaming, terrain · THREE: nein
+
+### worldgen-climate · `engine/world/worldgen/worldgen-climate.js` · v1.0.0 · entwurf
+Klima für den Weltgenerator: Temperatur nach Höhe/Breitengrad, Feuchte aus Wassernähe, Rauschen und Regenschatten (Windrichtung)
+
+- `regenSchatten(H,ozean,b,t,windGrad,staerke) -> Float32Array`
+- `boxBlur(arr,b,t,r,iter) -> arr`
+- `stufeKlima(welt, opts) -> void`
+
+```js
+import { stufeKlima } from '../../engine/world/worldgen/worldgen-climate.js';
+stufeKlima(welt, { seed: 1, klima: { wind: 270, regenschatten: 1 } });
+const warm = welt.temperatur[i] > 0.7, nass = welt.feuchte[i] > 0.6;
+```
+
+Genutzt von: – · Tags: welt, worldgen, klima, temperatur, feuchte, regen · THREE: nein
+
+### worldgen-erosion · `engine/world/worldgen/worldgen-erosion.js` · v1.0.0 · entwurf
+Schnelle hydraulische Tropfen-Erosion (mit Pinsel-Abtrag) und thermische Erosion auf einem Float32-Höhenfeld; Qualitätsstufen schnell/normal/hoch
+
+- `erodiereHydraulisch(H,b,t,p) -> void`
+- `erodiereThermisch(H,b,t,iterationen,talus,rate) -> void`
+- `stufeErosion(welt, opts) -> void`
+- `QUALITAET`
+
+```js
+import { erodiereHydraulisch } from '../../engine/world/worldgen/worldgen-erosion.js';
+erodiereHydraulisch(hoehe, 256, 256, { tropfen: 40000, seed: 3 });
+```
+
+Genutzt von: – · Tags: welt, worldgen, erosion, terrain, hydraulik · THREE: nein
+
 ### worldgen-grid · `engine/world/worldgen/worldgen-grid.js` · v1.0.0 · entwurf
 Gitter-Helfer für den Weltgenerator: typisierter Min-Heap, Chamfer-Abstand, Regionen-Markierung, bilineares Abtasten, Array-Hash
 
@@ -126,6 +241,8 @@ Gitter-Helfer für den Weltgenerator: typisierter Min-Heap, Chamfer-Abstand, Reg
 - `DX8`
 - `DY8`
 - `DL8`
+- `FLAG`
+- `WASSER`
 
 ```js
 import { chamferDistanz, hashArrays } from '../../engine/world/worldgen/worldgen-grid.js';
@@ -134,3 +251,163 @@ console.log(hashArrays(welt.hoehe, welt.biom));      // Schnappschuss-Hash für 
 ```
 
 Genutzt von: – · Tags: welt, worldgen, gitter, heap, abstand · THREE: nein
+
+### worldgen-height · `engine/world/worldgen/worldgen-height.js` · v1.0.0 · entwurf
+Höhenfeld aus fBm, Grat-Gebirgen, Domain-Warp, Klippen und Terrassen; punktweise abtastbar (für Chunks) oder als ganzes Gitter
+
+- `createHeightSampler(opts) -> {sample(x,y)->number}`
+- `stufeHoehe(welt, opts) -> void`
+
+```js
+import { createHeightSampler } from '../../engine/world/worldgen/worldgen-height.js';
+const hs = createHeightSampler({ seed: 7, breite: 256, tiefe: 256, form: { typ: 'insel' }, hoehe: {} });
+const h = hs.sample(128, 128);   // normiert, Meeresspiegel = 0
+```
+
+Genutzt von: – · Tags: welt, worldgen, hoehe, terrain, fbm, gebirge · THREE: nein
+
+### worldgen-hydrology · `engine/world/worldgen/worldgen-hydrology.js` · v1.0.0 · entwurf
+Wasserhaushalt: Ozean vom Rand fluten, Senken per Priority-Flood füllen, Seen erkennen, Abflussrichtung (D8) und Abflussmenge berechnen
+
+- `fuelleSenken(H,b,t,saat,eps?) -> {F,reihenfolge}`
+- `abflussRichtung(F,b,t,istSaat) -> Int32Array`
+- `abflussMenge(ziel,reihenfolge,regen?) -> Float32Array`
+- `stufeHydrologie(welt, opts) -> void`
+
+```js
+import { stufeHydrologie } from '../../engine/world/worldgen/worldgen-hydrology.js';
+stufeHydrologie(welt, opts);   // setzt welt.flags (OZEAN/SEE/KUESTE), welt.wasserstand, welt.ziel, welt.abfluss, welt.seen
+```
+
+Genutzt von: – · Tags: welt, worldgen, wasser, seen, abfluss, priority-flood · THREE: nein
+
+### worldgen-path · `engine/world/worldgen/worldgen-path.js` · v1.0.0 · entwurf
+A*-Wegsuche auf dem Weltgitter (8 Richtungen) mit Kosten nach Hang, Wasser und Flüssen; wiederverwendbare typisierte Puffer
+
+- `createPathfinder(welt, opts) -> {finde(ax,ay,bx,by)->Float32Array|null, kosten(i)->number}`
+
+```js
+import { createPathfinder } from '../../engine/world/worldgen/worldgen-path.js';
+const pf = createPathfinder(welt, { hangKosten: 12, wasser: Infinity });
+const weg = pf.finde(10, 10, 200, 180);   // [x0,y0,x1,y1,…] in Weltkoordinaten oder null
+```
+
+Genutzt von: – · Tags: welt, worldgen, wegfindung, astar, pfad · THREE: nein
+
+### worldgen-presets · `engine/world/worldgen/worldgen-presets.js` · v1.0.0 · entwurf
+Standardoptionen und benannte Voreinstellungen (insel, archipel, kontinent, gebirge, wueste, tundra, sumpfland, vulkaninsel, canyon, flachland, kueste, hochebene, unendlich) plus tiefes Zusammenführen von Optionen
+
+- `STANDARD_OPTIONEN`
+- `PRESETS`
+- `mischeOptionen(...quellen) -> opts`
+- `aufloesen(optionen) -> opts`
+
+```js
+import { aufloesen } from '../../engine/world/worldgen/worldgen-presets.js';
+const opts = aufloesen({ preset: 'vulkaninsel', seed: 9, klima: { feuchte: 0.8 } });
+```
+
+Genutzt von: – · Tags: welt, worldgen, presets, optionen, insel · THREE: nein
+
+### worldgen-query · `engine/world/worldgen/worldgen-query.js` · v1.0.0 · entwurf
+Abfragen auf einer erzeugten Welt (Weltkoordinaten): Höhe bilinear, Hang, Normale, Biom, Wasser; hängt Methoden auch an Welt-Daten aus einem Worker an
+
+- `heightAt(welt,x,y) -> number`
+- `slopeAt(welt,x,y) -> number`
+- `normalAt(welt,x,y,aus?) -> [nx,ny,nz]`
+- `biomeAt(welt,x,y) -> id`
+- `isWater(welt,x,y) -> bool`
+- `waterDepthAt(welt,x,y) -> number`
+- `mitAbfragen(welt) -> welt`
+
+```js
+import { mitAbfragen } from '../../engine/world/worldgen/worldgen-query.js';
+const welt = mitAbfragen(datenAusWorker);
+const y = welt.heightAt(10.5, 20.25), n = welt.normalAt(10.5, 20.25);
+```
+
+Genutzt von: – · Tags: welt, worldgen, abfrage, hoehe, normale, biome · THREE: nein
+
+### worldgen-rivers · `engine/world/worldgen/worldgen-rivers.js` · v1.0.0 · entwurf
+Flüsse aus der Abflussmenge: Flusszellen mit Breite, Flussbett eingraben, Ufer abflachen, geglättete Flusslinien (Quelle → Meer/See) erzeugen
+
+- `stufeFluesse(welt, opts) -> void`
+- `flussLinien(welt, schwelle, glaetten?) -> [{punkte,breite,muendung}]`
+- `chaikin(punkte, breite, iterationen) -> {punkte,breite}`
+
+```js
+import { stufeFluesse } from '../../engine/world/worldgen/worldgen-rivers.js';
+stufeFluesse(welt, { wasser: { flussMenge: 0.6, flussTiefe: 0.02 } });
+for (const f of welt.fluesse) console.log(f.muendung, f.punkte.length / 2);
+```
+
+Genutzt von: – · Tags: welt, worldgen, fluss, wasser, abfluss · THREE: nein
+
+### worldgen-scatter · `engine/world/worldgen/worldgen-scatter.js` · v1.0.0 · entwurf
+Blue-Noise-Verteilung von Objekten (Bäume, Büsche, Felsen, Kakteen, Schilf, Blumen …) mit Dichte pro Biom, Lichtungen und Hangregeln; reihenfolgeunabhängig und dadurch nahtlos über Chunks
+
+- `STANDARD_OBJEKTE`
+- `verteile(quelle, arten, opts, bereich) -> objekte`
+- `weltQuelle(welt) -> quelle`
+- `stufeObjekte(welt, opts) -> void`
+
+```js
+import { stufeObjekte } from '../../engine/world/worldgen/worldgen-scatter.js';
+stufeObjekte(welt, opts);
+const o = welt.objekte;   // { anzahl, x, y, art, typ, skala, drehung, arten:[…], typen:[…] }
+for (let i = 0; i < o.anzahl; i++) if (o.arten[o.art[i]] === 'baum') pflanze(o.typen[o.typ[i]], o.x[i], o.y[i]);
+```
+
+Genutzt von: – · Tags: welt, worldgen, objekte, baeume, verteilung, poisson, blue-noise · THREE: nein
+
+### worldgen-shape · `engine/world/worldgen/worldgen-shape.js` · v1.0.0 · entwurf
+Landform-Masken für den Weltgenerator (Insel, Archipel, Kontinent, Küste, Vulkan, Canyon, Plateau, unendlich) plus formspezifische Nachbearbeitung der Höhe
+
+- `createShape(form, seed) -> {typ, endlich, maske(u,v)->number, nach(h,u,v,wx,wy)->number}`
+- `FORMEN`
+
+```js
+import { createShape } from '../../engine/world/worldgen/worldgen-shape.js';
+const f = createShape({ typ: 'insel', kuestenRauschen: 0.5 }, 42);
+const landNeigung = f.maske(0, 0);   // u,v in [-1,1]; >0 = Land-Tendenz
+```
+
+Genutzt von: – · Tags: welt, worldgen, insel, form, maske, terrain · THREE: nein
+
+### worldgen-sites · `engine/world/worldgen/worldgen-sites.js` · v1.0.0 · entwurf
+Orte finden: Startplatz (flach, nah an Wasser und Wald, eingeebnet), Dorfplätze mit Mindestabstand und Sehenswürdigkeiten (Gipfel, Quellen, Mündungen, Seen)
+
+- `bewerteOrt(welt, x, y, gewichte) -> number`
+- `ebneEin(welt, x, y, radius) -> void`
+- `stufeOrte(welt, opts) -> void`
+
+```js
+import { stufeOrte } from '../../engine/world/worldgen/worldgen-sites.js';
+stufeOrte(welt, { orte: { start: true, doerfer: 3 } });
+const { start, doerfer, poi } = welt.orte;   // Weltkoordinaten
+```
+
+Genutzt von: – · Tags: welt, worldgen, orte, start, dorf, poi · THREE: nein
+
+### worldgen · `engine/world/worldgen/worldgen.js` · v1.0.0 · entwurf
+Weltgenerator-Einstieg: createWorld(optionen) führt die Stufen-Pipeline (Höhe → Erosion → Hydrologie → Flüsse → Klima → Biome → Orte → Objekte) per Preset aus; Spiele können Stufen einfügen/ersetzen; Ergebnis in typisierten Arrays
+
+- `createWorld(optionen) -> welt`
+- `STANDARD_STUFEN`
+- `transferierbar(welt) -> {daten, puffer}`
+- `createChunkGenerator(optionen) -> {sampleHeight,generateChunk}`
+- `PRESETS`
+- `aufloesen(optionen)`
+- `mitAbfragen(welt)`
+- `createPathfinder(welt,opts)`
+- `biomId(welt,key)`
+- `FLAG`
+- `hashArrays(...arrays)`
+
+```js
+import { createWorld } from '../../engine/world/worldgen/worldgen.js';
+const welt = createWorld({ preset: 'insel', seed: 42, breite: 256, tiefe: 256, qualitaet: 'normal' });
+const h = welt.heightAt(100.5, 80.2), wasser = welt.isWater(100, 80), start = welt.orte.start;
+```
+
+Genutzt von: weltlabor · Tags: welt, worldgen, insel, terrain, generator, prozedural, karte · THREE: nein
