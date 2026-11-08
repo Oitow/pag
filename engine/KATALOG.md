@@ -11,14 +11,18 @@
 | noise | `engine/core/noise.js` | Seedbares Simplex-Rauschen 2D/3D plus fBm, Grat-Rauschen und Domain-Warp für Terrain, Biome und Texturen | stabil |
 | rng | `engine/core/rng.js` | Deterministischer Zufall (mulberry32), Seeds aus Text, Gitter-Hash und Würfel-Helfer | stabil |
 | fake-dom | `engine/test/fake-dom.mjs` | Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame | stabil |
+| worldgen-grid | `engine/world/worldgen/worldgen-grid.js` | Gitter-Helfer für den Weltgenerator: typisierter Min-Heap, Chamfer-Abstand, Regionen-Markierung, bilineares Abtasten, Array-Hash | entwurf |
 
 ## Tags
 
 | Tag | Module |
 |---|---|
+| abstand | worldgen-grid |
 | attrappe | fake-dom |
 | dom | fake-dom |
+| gitter | worldgen-grid |
 | hash | rng |
+| heap | worldgen-grid |
 | interpolation | math |
 | kamera | math |
 | mathe | math |
@@ -29,7 +33,8 @@
 | seed | rng |
 | terrain | noise |
 | test | fake-dom |
-| welt | noise, rng |
+| welt | noise, rng, worldgen-grid |
+| worldgen | worldgen-grid |
 | zufall | rng |
 
 ## Module
@@ -109,3 +114,23 @@ dom.tick(16); // führt alle angefragten Animation-Frames aus
 ```
 
 Genutzt von: – · Tags: test, dom, node, attrappe · THREE: nein
+
+### worldgen-grid · `engine/world/worldgen/worldgen-grid.js` · v1.0.0 · entwurf
+Gitter-Helfer für den Weltgenerator: typisierter Min-Heap, Chamfer-Abstand, Regionen-Markierung, bilineares Abtasten, Array-Hash
+
+- `createMinHeap(kapazitaet) -> {push(i,prio),pop()->i,size,clear()}`
+- `chamferDistanz(maske,b,t,aus?) -> Float32Array`
+- `markiereRegionen(maske,b,t,aus?) -> anzahl`
+- `bilinear(arr,b,t,x,y) -> number`
+- `hashArrays(...arrays) -> string`
+- `DX8`
+- `DY8`
+- `DL8`
+
+```js
+import { chamferDistanz, hashArrays } from '../../engine/world/worldgen/worldgen-grid.js';
+const dist = chamferDistanz(wasserMaske, 256, 256);   // Abstand (Zellen) zum nächsten Wasser
+console.log(hashArrays(welt.hoehe, welt.biom));      // Schnappschuss-Hash für Tests
+```
+
+Genutzt von: – · Tags: welt, worldgen, gitter, heap, abstand · THREE: nein
