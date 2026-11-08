@@ -80,7 +80,8 @@ export function createFollowCamera(opts = {}) {
     kamera.lookAt(blick);
   }
 
-  function update(dt, ziel, info = {}) {
+  function update(dt, ziel, info) {
+    info = info || {};
     dt = clamp(numOr(dt, 0), 0, 0.1);
     const tx = numOr(ziel?.x, z.x), tz = numOr(ziel?.z, z.z), ty = numOr(ziel?.y, z.y - o.hoehe) + o.hoehe;
     const tempo = numOr(info.tempo, 0);
