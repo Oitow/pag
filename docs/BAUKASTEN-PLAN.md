@@ -260,5 +260,6 @@ Schreiben (Ausgabe) kostet etwa 5× so viel wie Lesen (Eingabe) – deshalb wirk
 
 ## 7. Nächster Schritt
 
-**Phase 0** umsetzen: `package.json`, `CLAUDE.md`, `engine/three.js`, `core/rng+noise+math`, `katalog.mjs`, `build.mjs`, Fake-THREE, Smoke-Test, CI.
-Prompt: „Setze Phase 0 vom Baukasten-Plan um.“
+**Phase 0 ist umgesetzt.** Abweichung vom Plan: Tests nutzen echtes THREE aus `node_modules` (läuft in Node ohne Rendern) statt Fake-THREE; `engine/test/fake-dom.mjs` liefert nur die Browser-Attrappe. Die Three-Version steht in der Import-Map jedes Spiels (0.170.0).
+Nächster Schritt: Phase 1 (Voxel-Tiere, Speichern, Toasts, Optionen).
+Prompt: „Setze Phase 1 vom Baukasten-Plan um.“

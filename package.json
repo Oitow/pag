@@ -1,0 +1,17 @@
+{
+  "name": "pag",
+  "private": true,
+  "type": "module",
+  "description": "PAG – Spiele + gemeinsamer Baukasten (engine/)",
+  "scripts": {
+    "test": "node tools/katalog.mjs --check && node --test \"engine/**/*.test.mjs\" \"tests/*.test.mjs\" && node tests/smoke.mjs",
+    "test:schnell": "node tools/katalog.mjs --check && node --test \"engine/**/*.test.mjs\"",
+    "smoke": "node tests/smoke.mjs",
+    "build": "node tools/build.mjs",
+    "katalog": "node tools/katalog.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12",
+    "three": "0.170.0"
+  }
+}

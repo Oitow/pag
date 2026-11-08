@@ -12,4 +12,16 @@ Alle Spiele: Single-File HTML, mobil-tauglich. Startseite: [index.html](index.ht
 | [🏘️ Siedlung](games/siedlung/) | Aufbauspiel mit prozeduraler Welt und Trampelpfaden |
 | [🌳 Wurzelwerk](games/wurzelwerk/) | Baum-Roguelite: Wurzeln, Äste, Schädlingswellen |
 
-Tests liegen in `tests/`.
+## 🧰 Baukasten (Engine)
+
+Gemeinsame Bausteine für alle Spiele liegen in [`engine/`](engine/) – Übersicht im [Katalog](engine/KATALOG.md), Plan in [docs/BAUKASTEN-PLAN.md](docs/BAUKASTEN-PLAN.md), Regeln für die KI in [CLAUDE.md](CLAUDE.md).
+
+```
+npm install            # einmalig
+npm run test:schnell   # Engine-Tests + Katalog-Prüfung
+npm test               # alles inkl. Smoke-Test im Browser
+npm run build          # Einzeldateien nach dist/<spiel>.html (Doppelklick-Start)
+npm run katalog        # Katalog neu erzeugen
+```
+
+Tests liegen in `tests/` und neben den Engine-Modulen (`*.test.mjs`).
