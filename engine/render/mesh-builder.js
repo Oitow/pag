@@ -18,7 +18,7 @@ import { rng } from '../core/rng.js';
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(),
   _p = new THREE.Vector3(), _s = new THREE.Vector3(), _c = new THREE.Color();
 
-/** t = { x,y,z, rx,ry,rz (Radiant), s (gleichmäßig), sx,sy,sz } → neue Matrix4. */
+/** t = { x,y,z, rx,ry,rz (Radiant), s (gleichmäßig), sx,sy,sz } → neue Matrix4. (add() kennt zusätzlich t.jitter, t.innen) */
 export function tMatrix(t = {}) {
   _p.set(t.x || 0, t.y || 0, t.z || 0);
   _e.set(t.rx || 0, t.ry || 0, t.rz || 0);
@@ -60,7 +60,8 @@ export function createMeshBuilder({ seed = 1, jitter = 0.06 } = {}) {
       // Gespiegelte Transformation (negative Determinante) → Dreiecke umdrehen, damit Vorderseiten außen bleiben
       const pos = g.attributes.position.array.slice();
       const n = pos.length / 3;
-      if ((t.sx ?? 1) * (t.sy ?? 1) * (t.sz ?? 1) * (t.s ?? 1) ** 3 < 0) {
+      // t.innen = true dreht zusätzlich um (Innenseite einer offenen Schale sichtbar machen)
+      if (((t.sx ?? 1) * (t.sy ?? 1) * (t.sz ?? 1) * (t.s ?? 1) ** 3 < 0) !== !!t.innen) {
         for (let i = 0; i + 2 < n; i += 3) for (let k = 0; k < 3; k++) {
           const a = (i + 1) * 3 + k, c = (i + 2) * 3 + k, tmp = pos[a]; pos[a] = pos[c]; pos[c] = tmp;
         }
