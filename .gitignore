@@ -1,2 +1,5 @@
 games/siedlung/tests/run.mjs
 .claude/worktrees/
+node_modules/
+dist/
+test-results/

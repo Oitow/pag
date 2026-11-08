@@ -1,0 +1,5 @@
+{
+  "eintrag": false,
+  "html": "index.html",
+  "smoke": { "query": "", "warte": 4000 }
+}
