@@ -114,3 +114,59 @@ test('Blick, Gewicht, dispose', () => {
   assert.equal(anim.pose.knieL.x, 0);
   anim.dispose();
 });
+
+test('1.1: Idle-Variante nach Ruhe, bricht beim Loslaufen ab; aus per Option', () => {
+  const { anim } = neu({}, { idleNach: [2, 3] });
+  let name = null;
+  for (let t = 0; t < 6 && !name; t += DT) { anim.update(DT, {}); name = anim.idleVariante; }
+  assert.ok(name, 'Variante gestartet');
+  assert.equal(anim.aktion, null, 'keine Aktion');
+  for (let t = 0; t < 0.6; t += DT) anim.update(DT, { tempo: 2 });
+  assert.equal(anim.idleVariante, null);
+  const aus = neu({}, { idleVarianten: false, idleNach: [0.5, 0.5] }).anim;
+  for (let t = 0; t < 3; t += DT) aus.update(DT, {});
+  assert.equal(aus.idleVariante, null);
+});
+
+test('1.1: Treffer klingt ab, Umfallen liegt bis aufstehen, Mimik-Hook + Modell-Duck-Typing', () => {
+  const infos = [], gesetzt = [];
+  const { model, anim } = neu({}, { mimik: (i) => infos.push(i.ausdruck) });
+  model.setAusdruck = (a) => gesetzt.push(a);
+  for (let t = 0; t < 0.5; t += DT) anim.update(DT, {});
+  const ruhe = anim.pose.torso.x;
+  anim.treffer({ x: 0, z: 1 }, 1);
+  let max = -1;
+  for (let t = 0; t < 0.3; t += DT) max = Math.max(max, anim.update(DT, {}).torso.x);
+  assert.ok(max > ruhe + 0.1, 'kippt nach vorn');
+  assert.ok(infos.includes('schmerz') && gesetzt.includes('schmerz'));
+  anim.spiele('winken');
+  anim.umfallen({ x: 0, z: -1 });
+  assert.equal(anim.aktion, null, 'Aktion gestoppt');
+  for (let t = 0; t < 3; t += DT) assert.equal(endlich(anim.update(DT, {})), null);
+  assert.ok(anim.liegt && anim.pose.basis.x < -1.3 && anim.mimik.ausdruck === 'bewusstlos');
+  anim.aufstehen(0.3);
+  for (let t = 0; t < 1; t += DT) anim.update(DT, {});
+  assert.ok(!anim.faellt && Math.abs(anim.pose.basis.x) < 0.05);
+  anim.ausdruck = 'wuetend'; anim.update(DT, {}); assert.equal(anim.mimik.ausdruck, 'wuetend');
+});
+
+test('1.1: Hang aus bodenHoehe, Anhalten läuft den Schritt aus, Umhang-Sockel schwingt, Motor-Sonderfelder', () => {
+  const { model, anim } = neu({}, { bodenHoehe: (x, z) => 0.4 * z });
+  for (let t = 0; t < 1; t += DT) anim.update(DT, { pos: { x: 0, y: 0, z: 0 }, yaw: 0 });
+  assert.ok(anim.hang.vor > 0.39 && anim.pose.torso.x > 0.1, 'lehnt bergauf');
+  const b = neu().anim;
+  for (let t = 0; t < 2; t += DT) b.update(DT, { tempo: 1.8 });
+  const ph = b.phase;
+  for (let t = 0; t < 1; t += DT) b.update(DT, { tempo: 0 });
+  assert.ok(b.phase > ph + 0.05, 'Schritt zu Ende');
+  const { model: m2, anim: c } = neu();
+  for (let t = 0; t < 2; t += DT) c.update(DT, { tempo: 6 });
+  assert.ok(m2.rig.sockel.umhang.rotation.x > 0.2, 'Umhang weht nach hinten');
+  for (const z of [{ rollt: true, rollAnteil: 0.5 }, { amBoden: false, doppelSprung: true }, { amBoden: false, gleitet: true },
+    { schleicht: true, tempo: 1 }, { anKante: true }, { betaeubt: 1 }, { getroffen: true, vel: { x: 3, y: 0, z: 0 } },
+    { imWasser: true, eintauchen: 0.9, taucht: true, tauchTiefe: 1, amBoden: false }]) {
+    for (let t = 0; t < 0.5; t += DT) assert.equal(endlich(c.update(DT, z)), null, JSON.stringify(z));
+  }
+  assert.ok(model && CLIPS.schlagen && CLIPS.winken, 'NPC-Brain braucht schlagen + winken');
+  c.dispose();
+});

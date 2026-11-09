@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CLIPS, CLIP_NAMEN, clipPose, clipZeit, registriereClip } from './character-clips.js';
+import { CLIPS, CLIP_NAMEN, IDLE_VARIANTEN, clipPose, clipZeit, clipMaske, registriereClip } from './character-clips.js';
 import { GANZ } from './character-pose.js';
 
 const PFLICHT = ['winken', 'schlagen', 'stossen', 'hacken', 'werfen', 'aufheben', 'jubeln', 'treffer', 'tod', 'ausweichrolle', 'trinken', 'sitzen', 'tanzen'];
@@ -55,4 +55,34 @@ test('registriereClip: eigener Clip, Arrays → Vektoren, unbekannt → Ruhe', (
   const p = clipPose('testVerbeugen', 0.5);
   assert.ok(p.torso.x > 0.4 && p.torso.x < 0.6);
   assert.equal(clipPose('gibtsNicht', 0.3).torso.x, 0);
+});
+
+test('neue Clips (1.1): vorhanden, Masken gültig, Felder einblenden/ausblenden/ausdruck/idle', async () => {
+  const { MASKEN } = await import('./character-pose.js');
+  const NEU = ['verbeugen', 'zaubern', 'bogenSchiessen', 'schildBlocken', 'essen', 'schlafen', 'hinlegen', 'sitzenBoden', 'trefferVorn',
+    'trefferHinten', 'ausweichenL', 'ausweichenR', 'ausweichenZurueck', 'fegen', 'graben', 'haemmern', 'tragen', 'klatschen', 'zeigen',
+    'nicken', 'kopfschuetteln', 'winkenBeide', 'siegespose', 'kampfbereit', 'strecken', 'gaehnen', 'umschauen', 'kratzen'];
+  for (const n of NEU) {
+    const c = CLIPS[n];
+    assert.ok(c, n);
+    assert.ok(MASKEN[c.maske], n);
+    assert.ok(c.einblenden >= 0 && c.ausblenden >= 0 && (c.ausdruck === null || typeof c.ausdruck === 'string'), n);
+  }
+  assert.equal(CLIPS.nicken.maske, 'kopf');
+  assert.ok(CLIPS.tragen.schleife && CLIPS.schildBlocken.schleife && CLIPS.kampfbereit.schleife && CLIPS.schlafen.schleife);
+  assert.ok(IDLE_VARIANTEN.length >= 3 && IDLE_VARIANTEN.every((n) => CLIPS[n].idle));
+  assert.equal(CLIPS.treffer.ausdruck, 'schmerz');
+  const l = clipPose('ausweichenL', 0.2), r = clipPose('ausweichenR', 0.2);
+  assert.ok(l.basisPos.x > 0.1 && Math.abs(l.basisPos.x + r.basisPos.x) < 1e-9 && Math.abs(l.torso.z + r.torso.z) < 1e-9, 'gespiegelt');
+  assert.ok(clipPose('schlafen', 99).basis.x < -1.4, 'liegt');
+  assert.ok(clipPose('zeigen', 0.8).schulterR.x < -1.3, 'Arm zeigt nach vorn');
+});
+
+test('Schleife erzwingen/abschalten über clipZeit/clipPose', () => {
+  assert.equal(clipZeit(CLIPS.klatschen, CLIPS.klatschen.dauer + 0.3), CLIPS.klatschen.dauer);
+  assert.ok(Math.abs(clipZeit(CLIPS.klatschen, CLIPS.klatschen.dauer + 0.3, true) - 0.3) < 1e-9);
+  assert.equal(clipZeit(CLIPS.tanzen, 2.5, false), CLIPS.tanzen.dauer);
+  assert.deepEqual(clipMaske(CLIPS.nicken), ['hals', 'kopf']);
+  const c = registriereClip('testMaske', { maske: 'quatsch', keys: [{ t: 0, pose: {} }] });
+  assert.equal(c.maske, 'ganz'); assert.equal(c.einblenden, 0.12); assert.equal(c.ausblenden, 0.12);
 });

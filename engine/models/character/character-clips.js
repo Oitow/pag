@@ -1,22 +1,26 @@
 /**
  * @modul    character-clips
- * @zweck    Aktions-Clips einer Figur als Keyframe-Daten (winken, schlagen, hacken, werfen, aufheben, tod, rolle, sitzen, tanzen …) und ihr Abtaster
- * @api      CLIPS ; CLIP_NAMEN ; clipPose(name,t,out) -> pose ; clipZeit(clip,t) -> t ; registriereClip(name,def) -> clip
+ * @zweck    Aktions-Clips einer Figur als Keyframe-Daten (winken, schlagen, hacken, werfen, aufheben, tod, rolle, sitzen, tanzen … + character-clips-mehr) und ihr Abtaster
+ * @api      CLIPS ; CLIP_NAMEN ; IDLE_VARIANTEN ; clipPose(name,t,out) -> pose ; clipZeit(clip,t,schleife?) -> t ; registriereClip(name,def) -> clip ; clipMaske(clip) -> kanalliste
  * @beispiel
  *   import { CLIPS, clipPose, registriereClip } from '../../engine/models/character/character-clips.js';
  *   const p = clipPose('schlagen', CLIPS.schlagen.trefferBei);   // Pose im Treffer-Moment
  *   registriereClip('verbeugen', { dauer: 1.2, maske: 'ganz', fuesseFest: true,
  *     keys: [{ t: 0, pose: {} }, { t: 0.5, pose: { torso: [1.0, 0, 0] } }, { t: 1.2, pose: {} }] });
  * @tags     figur, charakter, animation, clip, keyframe, aktion, angriff, emote
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
 import { clamp } from '../../core/math.js';
-import { mischePose, kopierePose, leerePose } from './character-pose.js';
+import { mischePose, kopierePose, leerePose, MASKEN, maskeVon } from './character-pose.js';
+import { MEHR_CLIPS, IDLE_VARIANTEN } from './character-clips-mehr.js';
+
+export { IDLE_VARIANTEN };
 
 /*
- * Clip = { dauer (s), trefferBei (s), maske: 'ganz'|'oben', schleife, schleifeAb (s), halten, fuesseFest, ease, keys }
+ * Clip = { dauer (s), trefferBei (s), maske: 'ganz'|'oben'|'arme'|'armL'|'armR'|'kopf'|'rumpf', schleife, schleifeAb (s), halten, fuesseFest, ease, keys,
+ *          einblenden (s, Standard 0.12), ausblenden (s, Standard = einblenden), ausdruck (Mimik-Name|null), idle (Idle-Variante) }
  *   keys: [{ t, pose: { <knochen>: [x,y,z] | {x,y,z}, basisPos: [x,y,z] }, ease? }] – fehlende Kanäle = 0 (Ruhe).
  *   ease (Clip-Standard oder je Key für das Stück davor): 'weich' | 'linear' | 'rein' (beschleunigt, für Schläge) | 'raus'.
  *   schleife: nach dauer ab schleifeAb wiederholen (schleifeAb = dauer → letzte Pose halten, bis gestoppt).
@@ -73,7 +77,7 @@ function tanzenKeys() {
 }
 
 const ROH = {
-  winken: { dauer: 1.65, trefferBei: 0.5, maske: 'oben', keys: winkenKeys() },
+  winken: { dauer: 1.65, trefferBei: 0.5, maske: 'oben', ausdruck: 'freundlich', keys: winkenKeys() },
   schlagen: { dauer: 0.55, trefferBei: 0.25, maske: 'oben', fuesseFest: true, keys: [
     K(0, HALTUNG),
     K(0.17, { schulterR: [-2.5, 0, -0.75], ellbogenR: [-1.3], handR: [2.0], torso: [-0.1, -0.55, 0], hals: [0, 0.25], kopf: [0, 0.2],
@@ -122,7 +126,7 @@ const ROH = {
       schulterL: [-0.5, 0, 0.15], ellbogenL: [-0.6], basisPos: [0, -0.32, -0.05] }),
     K(1.1, { schulterR: [-0.5, 0, -0.05], ellbogenR: [-1.2] }),
   ] },
-  jubeln: { dauer: 1.4, trefferBei: 0.3, maske: 'ganz', fuesseFest: true, keys: [
+  jubeln: { dauer: 1.4, trefferBei: 0.3, maske: 'ganz', fuesseFest: true, ausdruck: 'freude', keys: [
     K(0, {}),
     K(0.15, { schulterL: [-1.6, 0, 0.5], schulterR: [-1.6, 0, -0.5], ellbogenL: [-1.4], ellbogenR: [-1.4], torso: [0.2], basisPos: [0, -0.12, 0] }),
     K(0.3, { schulterL: [-2.95, 0, 0.35], schulterR: [-2.95, 0, -0.35], ellbogenL: [-0.1], ellbogenR: [-0.1], torso: [-0.15], hals: [-0.1], kopf: [-0.25],
@@ -133,7 +137,7 @@ const ROH = {
     K(0.9, { schulterL: [-2.8, 0, 0.4], schulterR: [-2.8, 0, -0.4], ellbogenL: [-0.3], ellbogenR: [-0.3], basisPos: [0, -0.03, 0] }, 'rein'),
     K(1.4, {}),
   ] },
-  treffer: { dauer: 0.45, trefferBei: 0, maske: 'oben', fuesseFest: true, keys: [
+  treffer: { dauer: 0.45, trefferBei: 0, maske: 'oben', fuesseFest: true, ausdruck: 'schmerz', keys: [
     K(0, {}),
     K(0.07, { torso: [-0.45, 0.25, 0.05], hals: [-0.3], kopf: [-0.2, 0.15], schulterL: [-1.0, 0, 0.9], ellbogenL: [-1.1],
       schulterR: [-1.0, 0, -0.9], ellbogenR: [-1.1], basisPos: [0, -0.05, -0.04] }, 'raus'),
@@ -141,7 +145,7 @@ const ROH = {
       basisPos: [0, -0.03, 0] }),
     K(0.45, {}),
   ] },
-  tod: { dauer: 1.3, trefferBei: 0.75, maske: 'ganz', halten: true, keys: [
+  tod: { dauer: 1.3, trefferBei: 0.75, maske: 'ganz', halten: true, ausdruck: 'tot', keys: [
     K(0, {}),
     K(0.12, { torso: [-0.35, 0.2], hals: [-0.3], schulterL: [-1.1, 0, 0.7], schulterR: [-1.1, 0, -0.7], ellbogenL: [-1.0], ellbogenR: [-1.0],
       huefteL: [-0.2], huefteR: [-0.2], knieL: [0.4], knieR: [0.4], basisPos: [0, -0.04, 0] }, 'raus'),
@@ -176,7 +180,7 @@ const ROH = {
     K(0.7, { huefteL: [-1.5, 0, 0.05], huefteR: [-1.5, 0, -0.05], knieL: [1.5], knieR: [1.5], torso: [0.05], schulterL: [-0.55, 0, 0.1],
       schulterR: [-0.55, 0, -0.1], ellbogenL: [-0.9], ellbogenR: [-0.9], basisPos: [0, -0.4, 0] }),
   ] },
-  tanzen: { dauer: 2, trefferBei: 0, maske: 'ganz', schleife: true, schleifeAb: 0, fuesseFest: true, keys: tanzenKeys() },
+  tanzen: { dauer: 2, trefferBei: 0, maske: 'ganz', schleife: true, schleifeAb: 0, fuesseFest: true, ausdruck: 'freude', keys: tanzenKeys() },
   // Für den Animator (Schwimmen im Körper-Raum, Rumpf wird dort gekippt); Spiele dürfen sie auch abspielen.
   schwimmen: { dauer: 1, trefferBei: 0, maske: 'ganz', schleife: true, schleifeAb: 0, keys: [
     K(0, { schulterL: [-2.95, 0, 0.12], schulterR: [-2.95, 0, -0.12], ellbogenL: [-0.1], ellbogenR: [-0.1], handL: [0, 0, -0.2], handR: [0, 0, 0.2] }),
@@ -218,31 +222,39 @@ export function registriereClip(name, def) {
   if (!keys.length) keys.push({ t: 0, pose: {}, ease: null });
   const dauer = Math.max(+def.dauer || keys[keys.length - 1].t, 1e-3);
   const clip = {
-    name, dauer, trefferBei: clamp(+def.trefferBei || 0, 0, dauer), maske: def.maske === 'oben' ? 'oben' : 'ganz',
+    name, dauer, trefferBei: clamp(+def.trefferBei || 0, 0, dauer), maske: MASKEN[def.maske] ? def.maske : 'ganz',
     schleife: !!def.schleife, schleifeAb: clamp(+def.schleifeAb || 0, 0, dauer), halten: !!def.halten,
     fuesseFest: !!def.fuesseFest, ease: EASE[def.ease] ? def.ease : 'weich', keys,
+    einblenden: Math.max(0, Number.isFinite(+def.einblenden) && def.einblenden != null ? +def.einblenden : 0.12),
+    ausdruck: typeof def.ausdruck === 'string' ? def.ausdruck : null, idle: !!def.idle,
   };
+  clip.ausblenden = Math.max(0, def.ausblenden != null && Number.isFinite(+def.ausblenden) ? +def.ausblenden : clip.einblenden);
   if (!CLIPS[name]) CLIP_NAMEN.push(name);
   CLIPS[name] = clip;
   return clip;
 }
 for (const [n, d] of Object.entries(ROH)) registriereClip(n, d);
+for (const [n, d] of Object.entries(MEHR_CLIPS)) registriereClip(n, d);
 
-/** Bildet eine Laufzeit t (s) auf die Clip-Zeit ab (Schleife bzw. Halten am Ende). */
-export function clipZeit(clip, t) {
+/** Kanalliste der Clip-Maske (character-pose MASKEN). */
+export const clipMaske = (clip) => maskeVon(clip?.maske);
+
+/** Bildet eine Laufzeit t (s) auf die Clip-Zeit ab (Schleife bzw. Halten am Ende). schleife (optional) überstimmt clip.schleife. */
+export function clipZeit(clip, t, schleife = clip.schleife) {
   t = Math.max(0, +t || 0);
   if (t <= clip.dauer) return t;
   const lang = clip.dauer - clip.schleifeAb;
-  if (!clip.schleife || lang <= 1e-6) return clip.dauer;
+  if (schleife && lang <= 1e-6 && !clip.schleife) return t % clip.dauer;   // erzwungene Schleife über den ganzen Clip
+  if (!schleife || lang <= 1e-6) return clip.dauer;
   return clip.schleifeAb + ((t - clip.schleifeAb) % lang);
 }
 
-/** Pose des Clips name zur Zeit t (Sekunden) → out (neu, falls nicht übergeben). Unbekannt → Ruhepose. */
-export function clipPose(name, t, out) {
+/** Pose des Clips name zur Zeit t (Sekunden) → out (neu, falls nicht übergeben). Unbekannt → Ruhepose. schleife siehe clipZeit. */
+export function clipPose(name, t, out, schleife) {
   const clip = typeof name === 'string' ? CLIPS[name] : name;
   out = out || leerePose();
   if (!clip) return kopierePose(null, out);
-  t = clipZeit(clip, t);
+  t = clipZeit(clip, t, schleife ?? clip.schleife);
   const ks = clip.keys;
   if (ks.length === 1 || t <= ks[0].t) return kopierePose(ks[0].pose, out);
   let i = 0;

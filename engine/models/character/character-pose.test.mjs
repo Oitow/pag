@@ -49,3 +49,12 @@ test('wendeAn setzt Rotationen und basis-Position am Rig', () => {
   wendeAn(rig, {});                                   // Teil-Pose → Ruhe
   assert.equal(rig.knochen.schulterR.rotation.x, 0);
 });
+
+test('Masken (1.1): Namen → Listen, teilMaske, skalierePose', async () => {
+  const { MASKEN, maskeVon, teilMaske, skalierePose, ARME, KOPF } = await import('./character-pose.js');
+  assert.equal(maskeVon('oben'), OBERKOERPER); assert.equal(maskeVon('gibtsNicht'), GANZ); assert.equal(maskeVon(KOPF), KOPF);
+  assert.deepEqual([...MASKEN.arme], [...ARME]);
+  assert.ok(teilMaske('oben') && teilMaske('kopf') && !teilMaske('ganz'));
+  const p = skalierePose({ torso: { x: 2, y: 0, z: -1 } }, 0.5);
+  assert.equal(p.torso.x, 1); assert.equal(p.torso.z, -0.5); assert.equal(p.knieL.x, 0);
+});

@@ -1,14 +1,14 @@
 /**
  * @modul    character-pose
  * @zweck    Posen einer Figur als reine Daten: leere Pose, kopieren, mischen, addieren, maskieren (Ober-/Unterkörper, Arme) und aufs Rig anwenden
- * @api      POSE_KNOCHEN ; GANZ ; OBERKOERPER ; UNTERKOERPER ; BEINE ; ARM_L ; ARM_R ; KOPF ; leerePose() -> pose ; kopierePose(a,out) -> out ; mischePose(a,b,t,out,maske) -> out ; addierePose(a,b,gewicht,out) -> out ; maskiere(pose,maske) -> pose ; wendeAn(rig,pose) -> rig
+ * @api      POSE_KNOCHEN ; GANZ ; OBERKOERPER ; UNTERKOERPER ; BEINE ; ARM_L ; ARM_R ; ARME ; KOPF ; RUMPF ; MASKEN ; maskeVon(name|liste) -> liste ; teilMaske(name) -> bool ; leerePose() -> pose ; kopierePose(a,out) -> out ; mischePose(a,b,t,out,maske) -> out ; addierePose(a,b,gewicht,out) -> out ; maskiere(pose,maske) -> pose ; skalierePose(pose,f,out) -> out ; wendeAn(rig,pose) -> rig
  * @beispiel
  *   import { leerePose, mischePose, wendeAn, OBERKOERPER } from '../../engine/models/character/character-pose.js';
  *   const p = leerePose();
  *   mischePose(gangPose, schlagPose, 0.8, p, OBERKOERPER);   // nur Oberkörper überblenden
  *   wendeAn(rig, p);
  * @tags     figur, charakter, pose, animation, mischen, maske, rig
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
@@ -29,6 +29,21 @@ export const KOPF = Object.freeze(['hals', 'kopf']);
 export const OBERKOERPER = Object.freeze(['torso', ...KOPF, ...ARM_L, ...ARM_R]);
 export const BEINE = Object.freeze(['huefteL', 'knieL', 'fussL', 'huefteR', 'knieR', 'fussR']);
 export const UNTERKOERPER = Object.freeze(['basis', 'becken', ...BEINE, 'basisPos']);
+export const ARME = Object.freeze([...ARM_L, ...ARM_R]);
+/** Rumpf ohne Arme (Torso + Kopf) – z. B. Nicken, Kopfschütteln, Umsehen. */
+export const RUMPF = Object.freeze(['torso', ...KOPF]);
+
+/** Benannte Masken für Clips: 'ganz' übernimmt auch Beine/Hüfte, alle anderen lassen die Beine weiterlaufen. */
+export const MASKEN = Object.freeze({
+  ganz: GANZ, oben: OBERKOERPER, unten: UNTERKOERPER, beine: BEINE, arme: ARME, armL: ARM_L, armR: ARM_R, kopf: KOPF, rumpf: RUMPF,
+});
+/** Masken-Name (oder Liste) → Kanalliste; Unbekanntes → GANZ. */
+export function maskeVon(m) {
+  if (Array.isArray(m)) return m;
+  return MASKEN[m] || GANZ;
+}
+/** true, wenn die Maske die Beine NICHT übernimmt (Figur darf dabei weiterlaufen). */
+export const teilMaske = (name) => name !== 'ganz' && name !== 'unten' && name !== 'beine';
 
 const NULL = Object.freeze({ x: 0, y: 0, z: 0 });
 const wert = (v) => (Number.isFinite(v) ? v : 0);
@@ -95,6 +110,16 @@ export function maskiere(pose, maske) {
     pose[k].x = 0; pose[k].y = 0; pose[k].z = 0;
   }
   return pose;
+}
+
+/** out = pose·f (alle Kanäle), z. B. eine additive Schicht abschwächen. */
+export function skalierePose(pose, f, out) {
+  out = sicher(out);
+  for (const k of KANAELE) {
+    const s = (pose && pose[k]) || NULL, o = out[k];
+    o.x = wert(s.x) * f; o.y = wert(s.y) * f; o.z = wert(s.z) * f;
+  }
+  return out;
 }
 
 /** Schreibt die Pose ins Rig (Duck-Typing: rig.knochen[k].rotation.set, basis.position.set). */

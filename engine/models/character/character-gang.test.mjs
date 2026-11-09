@@ -50,3 +50,17 @@ test('Gang-, Luft- und Schwimmposen sind endlich', () => {
     for (const k of GANZ) assert.ok(Number.isFinite(l[k].x + s[k].x + s[k].y + s[k].z), k);
   }
 });
+
+test('naechsteRuhePhase: ≥ phase, auf dem Raster beta/2 + k/2; roll kippt die Sohle', async () => {
+  const { naechsteRuhePhase } = await import('./character-gang.js');
+  for (const ph of [0, 0.1, 0.31, 0.77, 3.2]) {
+    const n = naechsteRuhePhase(ph, 0, 0), b = stuetzAnteil(0) / 2;
+    assert.ok(n >= ph - 1e-9 && n - ph <= 0.5 + 1e-9);
+    assert.ok(Math.abs(((n - b) * 2) - Math.round((n - b) * 2)) < 1e-9);
+  }
+  const m = koerperMasse({}), pose = leerePose();
+  loeseBein(m, pose, 'L', { x: m.beckenBreite, y: m.fussHoehe, z: 0, neig: 0, roll: 0.3 });
+  const mitRoll = pose.fussL.z;
+  loeseBein(m, pose, 'L', { x: m.beckenBreite, y: m.fussHoehe, z: 0, neig: 0 });
+  assert.ok(Math.abs(mitRoll - pose.fussL.z - 0.3) < 1e-9);
+});

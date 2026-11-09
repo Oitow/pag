@@ -1,13 +1,13 @@
 /**
  * @modul    character-gang
  * @zweck    Fortbewegungs-Posen einer Figur (rein): Fußziele aus Gangphase (gehen/laufen/sprinten ohne Fußrutschen), Bein-IK, Rumpf/Arme, Luft- und Schwimm-Pose
- * @api      schrittWeite(masse,tempo,opts) -> m ; stuetzAnteil(laufW,sprintW) -> 0…1 ; fussZiele(masse,g,ziele) -> ziele ; loeseBein(masse,pose,seite,ziel) ; loeseBeine(masse,pose,ziele) -> pose ; gangPose(masse,g,ziele,out) -> pose ; luftPose(steigen,out) -> pose ; schwimmPose(masse,phase,zug,eintauchen,out) -> pose
+ * @api      schrittWeite(masse,tempo,opts) -> m ; stuetzAnteil(laufW,sprintW) -> 0…1 ; fussZiele(masse,g,ziele) -> ziele ; loeseBein(masse,pose,seite,ziel{x,y,z,neig,roll?}) ; naechsteRuhePhase(phase,laufW,sprintW) -> phase ; loeseBeine(masse,pose,ziele) -> pose ; gangPose(masse,g,ziele,out) -> pose ; luftPose(steigen,out) -> pose ; schwimmPose(masse,phase,zug,eintauchen,out) -> pose
  * @beispiel
  *   import { fussZiele, gangPose } from '../../engine/models/character/character-gang.js';
  *   const g = { phase, tempo: 1.8, laufW: 0, sprintW: 0, idleW: 0, duckW: 0, rutschW: 0 };
  *   gangPose(masse, g, fussZiele(masse, g, ziele), pose);   // meist über character-animator benutzt
  * @tags     figur, charakter, animation, gang, laufen, ik, fuesse, schwimmen
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
@@ -100,7 +100,7 @@ export function fussZiele(m, g, z = {}) {
   return z;
 }
 
-/** Analytische 2-Gelenk-IK eines Beins: setzt huefte/knie/fuss so, dass der Knöchel auf ziel {x,y,z,neig} liegt. */
+/** Analytische 2-Gelenk-IK eines Beins: setzt huefte/knie/fuss so, dass der Knöchel auf ziel {x,y,z,neig,roll?} liegt (roll = Seitkippung der Sohle, Hang). */
 export function loeseBein(m, pose, seite, f) {
   const s = skala(m), sg = seite === 'L' ? 1 : -1, L1 = m.oberschenkel, L2 = m.unterschenkel;
   const bp = pose.basisPos, nick = pose.basis.x + pose.becken.x, roll = pose.becken.z;
@@ -117,7 +117,16 @@ export function loeseBein(m, pose, seite, f) {
   const h = pose['huefte' + seite], k = pose['knie' + seite], fu = pose['fuss' + seite];
   h.x = a; h.y = 0; h.z = c - roll;
   k.x = knie; k.y = 0; k.z = 0;
-  fu.x = -(f.neig || 0) - nick - a - knie; fu.y = 0; fu.z = -c;   // fuss.x + kippt die Zehen nach unten (neig + = Zehen hoch)
+  fu.x = -(f.neig || 0) - nick - a - knie; fu.y = 0; fu.z = -c + (f.roll || 0);   // fuss.x + kippt die Zehen nach unten (neig + = Zehen hoch); roll + = Sohle links (+X) hoch
+}
+
+/**
+ * Nächste Gangphase ≥ phase, in der beide Füße nahe der Körpermitte sind (Standfuß bei z ≈ 0, anderer in der Schwungmitte)
+ * – dorthin läuft der Animator beim Anhalten den angefangenen Schritt zu Ende.
+ */
+export function naechsteRuhePhase(phase, laufW = 0, sprintW = 0) {
+  const b = stuetzAnteil(laufW, sprintW) / 2;
+  return b + Math.ceil((phase - b) * 2 - 1e-9) / 2;
 }
 
 /** Beide Beine auf ziele.L / ziele.R lösen (nutzt basisPos/basis/becken der Pose). */
