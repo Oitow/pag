@@ -1,7 +1,7 @@
 /**
  * @modul    totholz-form
  * @zweck    Reine Röhren-Geometrie (ohne THREE) für Totholz/Äste: Ringe entlang eines Pfads, Enden zu/Spitze/Jahresring-Scheibe, Markierung je Dreieck
- * @api      createRoehrenNetz() -> { roehre(pfad, radien, segmente, opts), punkte, dreiecke, marken } ; Marken: 'rinde' | 'ring0'..'ringN' | 'spitze'
+ * @api      createRoehrenNetz() -> { roehre(pfad, radien, segmente, opts), punkte, dreiecke, marken }  (marken je Dreieck: 'rinde' | 'ring0'..'ringN' | 'spitze')
  * @beispiel
  *   import { createRoehrenNetz } from '../../engine/models/natur/totholz-form.js';
  *   const n = createRoehrenNetz();

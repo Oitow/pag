@@ -59,7 +59,10 @@ function faerber(gestein, seed, o, hoehe, form) {
   const grund = pal.grund.map(rgb), schicht = pal.schicht.map(rgb), fleck = rgb(pal.fleck);
   const r = rng(hashSeed('fels-farbe', seed));
   const n3 = createNoise3D(hashSeed('fels-flecken', seed));
-  const bandH = Math.max(0.12, hoehe / (form.schichten ? form.schichten * 1.5 : 4)), phase = r() * bandH;
+  // Farbbänder: bei Säulen genau auf den geometrischen Schichten, sonst frei
+  const saeule = form.form === 'saeule' && form.schichten > 0;
+  const bandH = saeule ? form.groesse[1] / form.schichten : Math.max(0.12, hoehe / (form.schichten ? form.schichten * 1.5 : 4));
+  const phase = saeule ? form.versenkt * form.groesse[1] + bandH * 0.03 : r() * bandH;
   return (n, m) => {
     // Facettenfarbe: gleiche Ebene (gerundete Normale) → gleiche Farbe, damit Bruchflächen als eine Facette lesen
     const fh = hash3(Math.round(n[0] * 6), Math.round(n[1] * 6), Math.round(n[2] * 6), seed);
