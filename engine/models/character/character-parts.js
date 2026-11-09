@@ -42,8 +42,8 @@ export function teilKontext(look, m) {
   return {
     L, m, g, w, R: m.kopfRadius, f, aermel,
     stil: { haar: L.haar.stil, bart: L.bart.stil, ober, hose, schuhe: L.schuhe.stil, hut: L.kopfbedeckung.stil, umhang: L.umhang.stil },
-    taille: (0.135 + 0.025 * m.bauch) * g * w, brust: 0.17 * g * w, tiefe: 0.68,
-    armR: 0.047 * g * (0.8 + 0.2 * w), beinR: 0.074 * g * Math.sqrt(w),
+    taille: (0.125 + 0.03 * m.bauch) * g * w, brust: 0.148 * g * w, tiefe: 0.68,
+    armR: 0.051 * g ** 0.75 * (0.8 + 0.2 * w), beinR: 0.08 * g ** 0.75 * Math.sqrt(w),
     // Rock am Becken: Länge (ab Becken) und unterer Radius
     rock: ober === 'robe' || hose === 'rock' ? 'lang' : ober === 'kleid' ? 'knie' : null,
   };
@@ -52,42 +52,56 @@ export function teilKontext(look, m) {
 /** Torso: von 0 (Taille) bis torsoLaenge (Halsansatz). */
 export function baueTorso(b, K) {
   const { m, g, w, f, taille: rw, brust: rc, tiefe: sz } = K, L = m.torsoLaenge, st = K.stil.ober;
-  const ruest = st === 'ruestung', zv = (y) => (y < 0.55 * L ? rw + (rc * 0.95 - rw) * y / (0.55 * L) : rc * 0.92) * sz;
-  b.cyl(rc * 0.95, rw, L * 0.55, f.ober, { y: L * 0.275, sz }, 10);
-  b.cyl(rc * 0.9, rc * 0.95, L * 0.3, f.ober, { y: L * 0.7, sz }, 10);
-  b.sphere(rc * 0.9, f.ober, { y: L * 0.85, sx: (m.schulterX + K.armR * 0.6) / (rc * 0.9), sy: 0.42, sz }, 10, 6);
-  if (m.bauch > 0) b.sphere(rw, f.ober, { y: L * 0.3, z: m.bauch * 0.04 * g, sz: sz + m.bauch * 0.3, sy: 1.1 }, 10, 7);
-  for (const s of [-1, 1]) b.sphere(K.armR * 1.3, K.aermel[0], { x: s * m.schulterX, y: m.schulterY, sy: 0.9 }, 8, 6);
+  const zv = (y) => (y < 0.55 * L ? rw + (rc - rw) * y / (0.55 * L) : rc * 0.97) * sz;
+  const weste = st === 'weste', basis = weste ? f.haut : f.ober;
+  const rumpf = (fak, farbe, offen) => {               // offen = Winkel der Front-Öffnung (Weste)
+    const t = offen ? { thetaStart: offen / 2, thetaLength: 2 * Math.PI - offen } : null;
+    const zyl = (r1, r2, h, y) => {
+      const geo = new THREE.CylinderGeometry(r1 * fak, r2 * fak, h, 10, 1, !!t, t?.thetaStart, t?.thetaLength);
+      b.add(geo, farbe, { y, sz }); geo.dispose();
+    };
+    zyl(rc, rw, L * 0.55, L * 0.275);
+    zyl(rc * 0.96, rc, L * 0.31, L * 0.705);
+  };
+  rumpf(1, basis);
+  b.sphere(rc, f.ober, { y: L * 0.86, sx: (m.schulterX + K.armR * 0.3) / rc, sy: 0.55, sz }, 10, 6);   // Schulterpartie
+  b.sphere(rc * 0.55, ['kittel', 'kleid', 'weste'].includes(st) ? f.haut : f.ober, { y: L * 0.97, sy: 0.6, sz: 0.85 }, 9, 5);  // Nacken
+  if (m.bauch > 0) {
+    const t = { y: L * 0.3, z: m.bauch * 0.03 * g, sz: sz + m.bauch * 0.3 };
+    b.sphere(rw * 1.1, basis, t, 10, 7);
+    if (weste) { const geo = new THREE.SphereGeometry(rw * 1.16, 10, 7, Math.PI / 2 + 0.45, 2 * Math.PI - 0.9); b.add(geo, f.ober, t); geo.dispose(); }
+  }
+  if (st !== 'ruestung') for (const s of [-1, 1]) b.sphere(K.armR * 1.2, K.aermel[0], { x: s * m.schulterX, y: m.schulterY, sy: 0.9 }, 7, 5);
   const zt = zv(L * 0.9);
   if (st === 'kittel') {
-    b.cone(0.05 * g, 0.16 * g, f.haut, { y: L * 0.9, z: zt - 0.004, rx: Math.PI, sz: 0.2 }, 3);           // V-Ausschnitt
-    b.add(new THREE.TorusGeometry(rc * 0.62, 0.012 * g, 4, 12), f.akzent, { y: L * 0.97, rx: Math.PI / 2, sy: 0.75 });
-    for (let i = 0; i < 3; i++) b.box(0.05 * g, 0.008 * g, 0.01 * g, f.akzent, { y: L * (0.72 + i * 0.06), z: zv(L * 0.75) + 0.004, rz: (i % 2 ? 0.5 : -0.5) });
+    b.add(new THREE.TorusGeometry(rc * 0.5, 0.016 * g, 4, 12), f.akzent, { y: L * 0.98, rx: Math.PI / 2 + 0.2, sy: 0.8 });
+    for (let i = 0; i < 3; i++) b.box(0.035 * g, 0.008 * g, 0.01 * g, f.akzent, { y: L * (0.74 + i * 0.05), z: zv(L * 0.75) + 0.003 });
   } else if (st === 'hemd') {
-    for (const s of [-1, 1]) b.box(0.07 * g, 0.045 * g, 0.012 * g, heller(f.ober, 0.25), { x: s * 0.035 * g, y: L * 0.93, z: zt + 0.003, rz: s * 0.7 });
+    for (const s of [-1, 1]) b.box(0.06 * g, 0.04 * g, 0.012 * g, heller(f.ober, 0.25), { x: s * 0.03 * g, y: L * 0.98, z: zt + 0.01 * g, rz: s * 0.7, rx: -0.4 });
     for (let i = 0; i < 4; i++) b.sphere(0.008 * g, f.akzent, { y: L * (0.3 + i * 0.17), z: zv(L * (0.3 + i * 0.17)) + 0.002 }, 4, 3);
-    b.box(0.06 * g, 0.06 * g, 0.01 * g, dunkler(f.ober, 0.12), { x: 0.07 * g * w, y: L * 0.68, z: zv(L * 0.68) - 0.004 });
+    b.box(0.05 * g, 0.05 * g, 0.01 * g, dunkler(f.ober, 0.12), { x: 0.06 * g * w, y: L * 0.66, z: zv(L * 0.66) - 0.002 });
   } else if (st === 'robe') {
-    b.box(0.06 * g, L * 0.95, 0.012 * g, f.akzent, { y: L * 0.47, z: zv(L * 0.5) + 0.006, sz: 1 });
-    b.add(new THREE.TorusGeometry(rc * 0.7, 0.025 * g, 5, 12), f.akzent, { y: L * 0.95, rx: Math.PI / 2, sy: 0.75 });
+    b.box(0.06 * g, L * 0.95, 0.012 * g, f.akzent, { y: L * 0.47, z: zv(L * 0.5) + 0.004 });
+    b.add(new THREE.TorusGeometry(rc * 0.55, 0.025 * g, 5, 12), f.akzent, { y: L * 1.0, rx: Math.PI / 2 + 0.15, sy: 0.75 });
   } else if (st === 'ruestung') {
-    b.sphere(rc * 0.85, heller(f.ober, 0.12), { y: L * 0.6, z: 0.03 * g, sy: 1.05, sz: sz * 0.85 }, 10, 7);  // Brustplatte
+    b.sphere(rc * 0.9, heller(f.ober, 0.12), { y: L * 0.62, z: 0.02 * g, sy: 1.05, sz: sz * 0.9 }, 9, 6);  // Brustplatte
     for (let i = 0; i < 3; i++) b.cyl(rw + 0.012 * g + i * 0.008 * g, rw + 0.008 * g + i * 0.008 * g, 0.05 * g, dunkler(f.ober, 0.08 * i), { y: L * (0.08 + i * 0.1), sz }, 10);
-    b.box(0.13 * g * w, L * 0.7, 0.012 * g, f.akzent, { y: L * 0.38, z: zv(L * 0.4) + 0.04 * g });             // Wappenrock
-    b.sphere(0.03 * g, GOLD, { y: L * 0.55, z: zv(L * 0.55) + 0.05 * g, sz: 0.4 }, 6, 4);
+    b.box(0.12 * g * w, L * 0.7, 0.012 * g, f.akzent, { y: L * 0.4, z: zv(L * 0.45) + 0.035 * g });             // Wappenrock
+    b.sphere(0.028 * g, GOLD, { y: L * 0.58, z: zv(L * 0.55) + 0.045 * g, sz: 0.4 }, 6, 4);
     for (const s of [-1, 1]) {                                                                            // Schulterplatten
-      b.sphere(K.armR * 2.1, f.ober, { x: s * m.schulterX * 1.02, y: m.schulterY + 0.02 * g, sy: 0.7 }, 10, 6);
-      b.sphere(K.armR * 1.9, dunkler(f.ober, 0.1), { x: s * m.schulterX * 1.08, y: m.schulterY - 0.015 * g, sy: 0.55 }, 10, 6);
+      b.sphere(K.armR * 1.65, f.ober, { x: s * m.schulterX, y: m.schulterY + 0.01 * g, sy: 0.75 }, 8, 5);
+      b.sphere(K.armR * 1.5, dunkler(f.ober, 0.12), { x: s * m.schulterX * 1.05, y: m.schulterY - 0.025 * g, sy: 0.6 }, 8, 4);
     }
-  } else if (st === 'weste') {
-    b.box(0.07 * g * w, L * 0.75, 0.02, f.haut, { y: L * 0.6, z: zv(L * 0.6) - 0.004, rx: -0.1 });           // offene Front
-    for (const s of [-1, 1]) for (let i = 0; i < 4; i++)
-      b.sphere(0.009 * g, f.akzent, { x: s * 0.045 * g * w, y: L * (0.3 + i * 0.16), z: zv(L * (0.3 + i * 0.16)) + 0.003 }, 4, 3);
-    b.cyl(rw * 1.03, rw * 1.03, 0.04 * g, f.akzent, { y: 0.02 * g, sz }, 10);
+  } else if (weste) {
+    rumpf(1.05, f.ober, 0.75);
+    for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
+      const y = L * (0.18 + i * 0.17), r = (y < 0.55 * L ? rw + (rc - rw) * y / (0.55 * L) : rc * 0.97) * 1.05;
+      b.sphere(0.009 * g, f.akzent, { x: s * Math.sin(0.4) * r, y, z: Math.cos(0.4) * r * sz }, 4, 3);
+    }
   } else if (st === 'kleid') {
-    b.box(0.13 * g * w, 0.06 * g, 0.012 * g, f.haut, { y: L * 0.93, z: zt - 0.006 });                       // eckiger Ausschnitt
-    b.box(0.15 * g * w, 0.02 * g, 0.014 * g, f.akzent, { y: L * 0.88, z: zt - 0.001 });
-    for (let i = 0; i < 3; i++) b.box(0.07 * g, 0.008 * g, 0.012 * g, f.akzent, { y: L * (0.25 + i * 0.15), z: zv(L * (0.25 + i * 0.15)) + 0.003, rz: i % 2 ? 0.6 : -0.6 });
+    b.box(0.12 * g * w, 0.05 * g, 0.012 * g, f.haut, { y: L * 0.95, z: zt + 0.004 });                       // eckiger Ausschnitt
+    b.box(0.14 * g * w, 0.018 * g, 0.014 * g, f.akzent, { y: L * 0.91, z: zt + 0.004 });
+    for (let i = 0; i < 3; i++) b.box(0.05 * g, 0.008 * g, 0.012 * g, f.akzent, { y: L * (0.25 + i * 0.15), z: zv(L * (0.25 + i * 0.15)) + 0.003, rz: i % 2 ? 0.6 : -0.6 });
   }
   return b;
 }
@@ -111,10 +125,10 @@ export function baueBecken(b, K) {
     const rUnten = (lang ? 0.27 : 0.22) * g * Math.sqrt(w), farbe = st === 'robe' || (st === 'kleid' && !lang) || K.stil.hose !== 'rock' ? f.ober : f.hose;
     b.cyl(rw * 1.08, rUnten, hRock, farbe, { y: 0.06 * g - hRock / 2, sz: 0.85 }, 12);
     b.cyl(rUnten * 1.02, rUnten * 1.02, 0.03 * g, st === 'robe' || st === 'kleid' ? f.akzent : dunkler(farbe, 0.2), { y: 0.06 * g - hRock + 0.015 * g, sz: 0.85 }, 12);
-    if (st === 'kleid' && lang) {                                    // Überrock + Schürze über langem Rock
+    if (st === 'kleid' && lang) {                                    // Überrock + Schürze (mit Umhang: edle Vorderbahn) über langem Rock
       const h2 = hRock * 0.62, r2 = rw * 1.1 + (rUnten - rw * 1.08) * 0.62 + 0.012 * g;
       b.cyl(rw * 1.12, r2, h2, f.ober, { y: 0.06 * g - h2 / 2, sz: 0.85 }, 12);
-      b.box(0.17 * g * w, h2 * 0.9, 0.01 * g, f.akzent, { y: 0.04 * g - h2 * 0.45, z: (rw * 1.1 + r2) / 2 * 0.85 + 0.004, rx: -Math.atan((r2 - rw * 1.1) * 0.85 / h2) });
+      b.box((K.stil.umhang === 'kein' ? 0.17 : 0.06) * g * w, h2 * 0.9, 0.01 * g, f.akzent, { y: 0.04 * g - h2 * 0.45, z: (rw * 1.1 + r2) / 2 * 0.85 + 0.004, rx: -Math.atan((r2 - rw * 1.1) * 0.85 / h2) });
     }
     saum = 0.06 * g;
   } else if (st === 'kittel' || st === 'ruestung') {
@@ -139,18 +153,17 @@ export function baueBecken(b, K) {
 /** Oberarm (Knochen schulter*): Schulterkugel + Ärmel nach −Y. */
 export function baueOberarm(b, K) {
   const { m, f, armR: r } = K, [farbe] = K.aermel, st = K.stil.ober;
-  b.sphere(r * 1.15, farbe, {}, 8, 6);
+  b.sphere(r * 1.15, farbe, {}, 7, 5);
   b.cyl(r * 1.08, r * 0.95, m.oberarm, farbe, { y: -m.oberarm / 2 }, 8);
   if (st === 'kleid') b.sphere(r * 1.7, farbe, { y: -0.035 * K.g, sy: 1.1 }, 8, 6);                          // Puffärmel
   if (st === 'hemd') b.cyl(r * 1.1, r * 1.1, 0.035 * K.g, dunkler(farbe, 0.1), { y: -m.oberarm + 0.02 * K.g }, 8);
-  if (st === 'weste') b.sphere(r * 1.25, f.ober, { y: 0.01, sy: 0.6 }, 8, 5);
   return b;
 }
 
 /** Unterarm (Knochen ellbogen*): Ellbogenkugel + Unterarm, Manschette/weiter Robenärmel. */
 export function baueUnterarm(b, K) {
   const { m, g, armR: r } = K, [, farbe, rand] = K.aermel, st = K.stil.ober, U = m.unterarm;
-  b.sphere(r * 1.0, farbe, {}, 8, 6);
+  b.sphere(r * 1.0, farbe, {}, 7, 5);
   b.cyl(r * 0.95, r * 0.8, U, farbe, { y: -U / 2 }, 8);
   if (st === 'robe') {
     b.cyl(r * 1.1, r * 1.9, U * 0.85, farbe, { y: -U * 0.48 }, 9);
@@ -164,9 +177,9 @@ export function baueUnterarm(b, K) {
 /** Hand (Knochen hand*): Fäustling mit Daumen nach vorn (+Z). */
 export function baueHand(b, K) {
   const { g, m, f } = K, farbe = K.stil.ober === 'ruestung' ? dunkler(f.ober, 0.3) : f.haut, h = m.hand;
-  b.sphere(K.armR * 0.85, farbe, { y: -0.005 }, 6, 5);
-  b.sphere(0.036 * g, farbe, { y: -h * 0.5, sx: 0.75, sy: 1.3, sz: 1.05 }, 7, 6);
-  b.sphere(0.016 * g, farbe, { y: -h * 0.35, z: 0.03 * g, sy: 1.4, rx: 0.4 }, 5, 4);
+  b.sphere(K.armR * 0.85, farbe, { y: -0.005 }, 6, 4);
+  b.sphere(0.042 * g, farbe, { y: -h * 0.5, sx: 0.75, sy: 1.25, sz: 1.05 }, 6, 5);
+  b.sphere(0.018 * g, farbe, { y: -h * 0.35, z: 0.035 * g, sy: 1.4, rx: 0.4 }, 4, 3);
   return b;
 }
 
@@ -175,7 +188,7 @@ const hoseFarbe = (K, unten) => (K.stil.hose === 'kurz' && unten ? K.f.haut : K.
 /** Oberschenkel (Knochen huefte*). */
 export function baueOberschenkel(b, K) {
   const { m, g, beinR: r } = K, O = m.oberschenkel, farbe = hoseFarbe(K, false);
-  b.sphere(r * 1.08, farbe, {}, 8, 6);
+  b.sphere(r * 1.08, farbe, {}, 7, 5);
   if (K.stil.hose === 'kurz') {
     b.cyl(r * 1.12, r * 1.02, O * 0.6, farbe, { y: -O * 0.3 }, 8);
     b.cyl(r * 0.95, r * 0.78, O * 0.45, K.f.haut, { y: -O * 0.75 }, 8);
@@ -186,9 +199,9 @@ export function baueOberschenkel(b, K) {
 /** Unterschenkel (Knochen knie*): Knie, Wade, Stiefelschaft. */
 export function baueUnterschenkel(b, K) {
   const { m, g, f, beinR: r } = K, U = m.unterschenkel, farbe = hoseFarbe(K, true);
-  b.sphere(r * 0.84, farbe, {}, 8, 6);
+  b.sphere(r * 0.84, farbe, {}, 7, 5);
   b.cyl(r * 0.82, r * 0.6, U, farbe, { y: -U / 2 }, 8);
-  b.sphere(r * 0.75, farbe, { y: -U * 0.3, z: -0.012 * g, sy: 1.6 }, 7, 5);                                // Wade
+  b.sphere(r * 0.75, farbe, { y: -U * 0.3, z: -0.012 * g, sy: 1.6 }, 6, 4);                                // Wade
   if (K.stil.schuhe === 'stiefel') {
     b.cyl(r * 0.82, r * 0.72, U * 0.5, f.schuh, { y: -U * 0.75 }, 8);
     b.cyl(r * 0.92, r * 0.88, 0.05 * g, dunkler(f.schuh, 0.15), { y: -U * 0.5 }, 8);
@@ -200,9 +213,9 @@ export function baueUnterschenkel(b, K) {
 export function baueFuss(b, K) {
   const { m, g, f } = K, h = m.fussHoehe - 0.02 * m.hoehe / 1.75, Lf = m.fussLaenge, st = K.stil.schuhe;
   const breit = 0.085 * g * Math.sqrt(K.w), zMitte = Lf * 0.22;
-  b.sphere(K.beinR * 0.65, f.schuh, { y: 0 }, 7, 5);
+  b.sphere(K.beinR * 0.65, f.schuh, { y: 0 }, 6, 4);
   b.box(breit, h * 0.9, Lf * 0.75, f.schuh, { y: -h * 0.5, z: zMitte - Lf * 0.1 });
-  b.sphere(breit * 0.55, f.schuh, { y: -h * 0.55, z: zMitte + Lf * 0.3, sy: h / breit * 0.9, sz: 1.3 }, 8, 5);
+  b.sphere(breit * 0.55, f.schuh, { y: -h * 0.55, z: zMitte + Lf * 0.3, sy: h / breit * 0.9, sz: 1.3 }, 7, 4);
   if (st === 'barfuss') {
     for (let i = 0; i < 4; i++) b.sphere(0.011 * g, f.haut, { x: (i - 1.5) * breit * 0.24, y: -h * 0.8, z: zMitte + Lf * 0.48 - Math.abs(i - 1.5) * 0.008 * g }, 4, 3);
   } else {
