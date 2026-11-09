@@ -28,6 +28,10 @@
   .knopf { position: fixed; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 26px; background: rgba(20,26,34,.55); border: 2px solid rgba(255,255,255,.25); z-index: 3; }
   #stick { position: fixed; width: 112px; height: 112px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); background: rgba(20,26,34,.25); pointer-events: none; z-index: 3; }
   #stick i { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px; border-radius: 50%; background: rgba(255,255,255,.45); }
+  #zeitLeiste { display: inline-flex; align-items: center; gap: 6px; }
+  #zeitText { min-width: 3.2em; font-variant-numeric: tabular-nums; color: var(--dim); }
+  #zeit { width: 140px; min-height: 48px; padding: 0; accent-color: var(--akzent); }
+  button.gross { min-width: 48px; min-height: 48px; font-size: 20px; }
   .nurTouch { display: none; }
   body.touch .nurTouch { display: grid; }
   body.touch #stick[hidden] { display: none; }
@@ -46,6 +50,7 @@
   <button id="zumStart" title="Zum Startplatz">🚩</button>
   <button id="zumDorf" title="Zum nächsten Dorf">🏘</button>
   <button id="zumGipfel" title="Zum nächsten Gipfel">▲</button>
+  <span id="zeitLeiste"><label for="zeit" id="zeitText">10:00</label><input id="zeit" type="range" min="0" max="24" step="0.05" value="10" aria-label="Tageszeit"><button id="zeitLauf" class="gross" title="Zeit anhalten/weiterlaufen lassen">⏸</button><button id="wetter" class="gross" title="Wetter: klar, Regen, Sturm">☀</button></span>
 </div>
 <canvas id="karte" width="128" height="128" title="Karte – antippen zum Hinspringen"></canvas>
 <div id="info" class="panel">…</div>
