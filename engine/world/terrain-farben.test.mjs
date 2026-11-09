@@ -23,3 +23,15 @@ test('Geländefarben: Schnee in kalter Welt, abschaltbar', () => {
   const mit = hell(gelaendeFarben(welt, { hoehenSkala: 40 })), ohne = hell(gelaendeFarben(welt, { hoehenSkala: 40, schnee: false }));
   assert.ok(mit > 50 && mit > ohne * 2, `Schnee fehlt (${mit} / ${ohne})`);
 });
+
+test('Geländefarben: Wege färben den Boden, ohne Wege bleibt alles gleich', () => {
+  const o = { preset: 'kontinent', seed: 11, breite: 96, tiefe: 96, qualitaet: 'schnell' };
+  const welt = createWorld({ ...o, wege: { aktiv: true } });
+  const mit = gelaendeFarben(welt, { hoehenSkala: 40, meterProZelle: 2 }), ohne = gelaendeFarben(welt, { hoehenSkala: 40, meterProZelle: 2, wege: false });
+  let anders = 0, wegZellen = 0;
+  for (let i = 0; i < welt.flags.length; i++) {
+    const d = Math.abs(mit[i * 3] - ohne[i * 3]) + Math.abs(mit[i * 3 + 1] - ohne[i * 3 + 1]) + Math.abs(mit[i * 3 + 2] - ohne[i * 3 + 2]);
+    if (welt.flags[i] & 128 && !(welt.flags[i] & 7)) { wegZellen++; if (d > 0.01) anders++; }
+  }
+  assert.ok(wegZellen > 10 && anders > wegZellen * 0.6, `nur ${anders} von ${wegZellen} Wegzellen gefärbt`);
+});

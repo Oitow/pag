@@ -4,6 +4,8 @@ Begehbare 3D-Welt zum Ausprobieren der Engine-Bausteine. Hier landet alles, was 
 
 - **Welt:** Weltgenerator (`engine/world/worldgen`) – alle Presets, Seed (🎲), Größe 128/256. Ergebnis wird als 3D-Gelände
   (`engine/world/terrain-mesh`) mit Seen, Flüssen und Meer gezeichnet, Bäume/Büsche/Felsen als Instanzen (`engine/world/scatter-mesh`).
+- **Wege:** Wegenetz zwischen Start und Dörfern (`worldgen-wege`), als Erdweg im Gelände eingefärbt und auf der Karte eingezeichnet.
+  Über Flüsse führen Holzbrücken (`engine/world/wege-mesh`), die Figur läuft darüber (`engine/world/wege-lage`: `mitBruecken`).
 - **Natur:** prozedurale Natur-Assets (`engine/models/natur/natur-assets.js`, 4 Varianten je Typ, echte Meter) mit
   Wind-Material (`engine/render/natur-material.js`, `objekte.update(zeit, { kamera })` je Bild). Instanzen in 128-m-Kacheln,
   weiter als 160 m → Detailstufe 0, Bodendecker blenden ab 110 m aus. Felsen × 1,4 / Felsbrocken × 1,8 (`typSkala`).

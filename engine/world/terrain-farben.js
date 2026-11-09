@@ -1,13 +1,13 @@
 /**
  * @modul    terrain-farben
- * @zweck    Geländefarben je Gitterzelle aus einer erzeugten Welt: weiche Biom-Übergänge mit ausgefransten Grenzen, Wiesenflecken und trockene Grastöne, Mikrovariation, Hangfels mit Gesteinsbändern, nasser Sand, Flusskies und Seeschlamm, Meeresgrund nach Tiefe, Schnee mit Rauschgrenze (an Nordhängen tiefer), Mulden dunkler
+ * @zweck    Geländefarben je Gitterzelle aus einer erzeugten Welt: weiche Biom-Übergänge mit ausgefransten Grenzen, Wiesenflecken und trockene Grastöne, Mikrovariation, Hangfels mit Gesteinsbändern, nasser Sand, Flusskies und Seeschlamm, festgetretene Wege (FLAG.WEG), Meeresgrund nach Tiefe, Schnee mit Rauschgrenze (an Nordhängen tiefer), Mulden dunkler
  * @api      GELAENDE_FARBEN ; gelaendeFarben(welt, opts) -> Float32Array (B×T×3, linear 0…1) ; srgbZuLinear(v) -> number
  * @beispiel
  *   import { gelaendeFarben } from '../../engine/world/terrain-farben.js';
  *   const f = gelaendeFarben(welt, { hoehenSkala: 60, meterProZelle: 2 });   // f[(y*B+x)*3] = Rot (linear)
  *   const nurBiome = gelaendeFarben(welt, { hoehenSkala: 60, meterProZelle: 2, details: false });
  * @tags     welt, terrain, gelaende, farben, biome, schnee, ufer, vertexfarben
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
@@ -30,7 +30,7 @@ export const GELAENDE_FARBEN = {
 
 const rgb = (hex) => [(hex >> 16 & 255) / 255, (hex >> 8 & 255) / 255, (hex & 255) / 255];
 const TROCKEN = rgb(0xb5a862), SATT = rgb(0x5a8436), HELLGRAS = rgb(0x9fb45a), FELS = rgb(0x847b6f), FELS_WARM = rgb(0xa47f5e);
-const FELS_DUNKEL = rgb(0x5f5850), NASSSAND = rgb(0xa39468), KIES = rgb(0x9b9282), SCHLAMM = rgb(0x5e5a40), SCHNEE = rgb(0xf1f4f7);
+const FELS_DUNKEL = rgb(0x5f5850), NASSSAND = rgb(0xa39468), KIES = rgb(0x9b9282), SCHLAMM = rgb(0x5e5a40), SCHNEE = rgb(0xf1f4f7), WEG_ERDE = rgb(0xa58c62);
 const MEERSAND = rgb(0xc4b488), MEERTIEF = rgb(0x2c4a52);
 
 /** sRGB-Komponente (0…1) → linear. */
@@ -115,6 +115,13 @@ export function gelaendeFarben(welt, opts = {}) {
     weich3(flussNah, B, T, 2, tmp); weich3(seeNah, B, T, 2, tmp);
   }
 
+  // Wege: nur wenn die Welt welche hat (sonst bleiben alle Farben wie bisher)
+  let wegNah = null;
+  if (details && opts.wege !== false) {
+    for (let i = 0; i < N; i++) if (FL[i] & FLAG.WEG && !(FL[i] & FLAG.FLUSS)) (wegNah ||= new Float32Array(N))[i] = 1;
+    if (wegNah) weich3(wegNah, B, T, 1, tmp);
+  }
+
   const aus = new Float32Array(N * 3), c = [0, 0, 0];
   const schneeAn = opts.schnee !== false && details, schneeT = opts.schneeTemp ?? 0.08;
   const felsAb = opts.felsAb ?? 0.6, mulden = opts.mulden ?? 1;
@@ -165,6 +172,8 @@ export function gelaendeFarben(welt, opts = {}) {
         c[0] += (fr * d - c[0]) * fs; c[1] += (fg * d - c[1]) * fs; c[2] += (fb * d - c[2]) * fs;
         if (steig > 1.4) mische(c, FELS_DUNKEL, smoothstep(1.4, 2.4, steig) * 0.35);
       }
+      // festgetretener Weg: Erde, am Rand ausgefranst
+      if (wegNah && wegNah[i] > 0) mische(c, WEG_ERDE, smoothstep(0.1, 0.42, wegNah[i] + fein * 0.08) * 0.88);
       // Schnee: Temperaturgrenze mit Rauschen, an Nordhängen (Hang fällt nach −y ab) tiefer, steile Wände bleiben Fels
       if (schneeAn) {
         let sn;
