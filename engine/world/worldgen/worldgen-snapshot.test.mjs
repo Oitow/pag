@@ -14,10 +14,10 @@ const hashWelt = w => hashArrays(w.hoehe, w.biom, w.flags, w.objekte.x, w.objekt
 const hashChunk = c => hashArrays(c.hoehe, c.biom, c.flags, c.wasser, c.objekte.x, c.objekte.y, c.objekte.art, c.objekte.typ);
 
 const WELTEN = {
-  insel: '6359d48b', archipel: '83c25d53', gebirge: 'f4f3ea07', wueste: 'ca25b15a',
-  sumpfland: '26b17cfc', vulkaninsel: '391b1a95', canyon: 'b544632b', unendlich: 'fa6758fc',
+  insel: 'e8ff6de2', archipel: '1dec644f', gebirge: 'a36d76a9', wueste: 'd0cc4c57',
+  sumpfland: 'bf755884', vulkaninsel: '3d489daa', canyon: '5fa19f08', unendlich: '7a88ad9d',
 };
-const CHUNKS = { netz: 'ff436929', rauschen: 'e1abdb22' };
+const CHUNKS = { netz: 'de106f71', rauschen: '5941d05d' };
 
 const neu = {};
 for (const [preset, erwartet] of Object.entries(WELTEN)) {

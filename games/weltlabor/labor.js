@@ -17,7 +17,7 @@ const REGLER = {
   dichte: [['objekte', 'dichte'], 0, 2, 0.1, '🌲 Objektdichte'],
 };
 const EBENEN = ['biome', 'hoehe', 'feuchte', 'temperatur', 'schatten', 'fluesse', 'objekte', 'orte'];
-const OBJ_FARBE = { baum: '#1d4a22', busch: '#4d7a32', fels: '#6e6e6e', kaktus: '#2f8a5a', schilf: '#a8a46a', blume: '#e6a8d8' };
+const OBJ_FARBE = { baum: '#1d4a22', busch: '#4d7a32', fels: '#6e6e6e', kaktus: '#2f8a5a', schilf: '#a8a46a', blume: '#e6a8d8', totholz: '#6b4a2f', unterholz: '#3f6a2c', geroell: '#8a857a', seerose: '#7fbf6a', bodendecker: '#7a9a4a' };
 
 let welt = null, worker = null, auftragNr = 0, wartend = null;
 

@@ -7,7 +7,7 @@
  *   const adapter = createWeltAdapter(createWorld({ preset: 'insel', seed: 42 }), { hoehenSkala: 60, meterProZelle: 2 });
  *   const s = adapter.startPunkt(); const y = adapter.bodenHoehe(s.x, s.z);
  * @tags     welt, worldgen, adapter, boden, wasser, kollision, figur
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
@@ -17,8 +17,9 @@ import { FLAG } from './worldgen-grid.js';
 
 /** Stamm-/Kollisionsradius in Gitterzellen bei skala 1, je Objekttyp (sonst je Art). 0 = begehbar. */
 export const HINDERNIS_RADIEN = {
-  typ: { eiche: 0.28, buche: 0.26, birke: 0.16, kiefer: 0.22, tanne: 0.24, weide: 0.3, toterBaum: 0.2, fels: 0.55, felsbrocken: 0.9 },
-  art: { baum: 0.22, fels: 0.6, kaktus: 0.2, busch: 0, schilf: 0, blume: 0 },
+  typ: { eiche: 0.28, buche: 0.26, birke: 0.16, kiefer: 0.22, tanne: 0.24, weide: 0.3, toterBaum: 0.2, fels: 0.55, felsbrocken: 0.9,
+    fichte: 0.24, ahorn: 0.26, palme: 0.16, findling: 0.85, felsnadel: 0.5, felsplatte: 0, geroell: 0, baumstumpf: 0.22, agave: 0 },
+  art: { baum: 0.22, fels: 0.6, kaktus: 0.2, busch: 0, schilf: 0, blume: 0, totholz: 0, unterholz: 0, geroell: 0, seerose: 0, bodendecker: 0 },
 };
 
 const WASSER = FLAG.OZEAN | FLAG.SEE | FLAG.FLUSS;

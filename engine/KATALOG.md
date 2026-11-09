@@ -47,11 +47,29 @@
 | character-reaktion | `engine/models/character/character-reaktion.js` | Prozedurale Treffer-Reaktion (rein): Stoß aus Richtung + Stärke als abklingende additive Pose; Umfallen als Ragdoll-Ersatz ohne Physik-Engine (Kippen, Aufprall, schlaffe Glieder) | entwurf |
 | character-rig | `engine/models/character/character-rig.js` | Prozedurales Skelett einer Menschen-Figur aus Gruppen (keine Skinning-Knochen): feste Gelenknamen, Ruhepose, Sockel für Hut/Waffe/Rucksack | entwurf |
 | character-sekundaer | `engine/models/character/character-sekundaer.js` | Sekundäre Bewegung (rein): Feder-Dämpfer für Kopf-Nachschwingen, Gewichtsverlagerung beim Anhalten/Anfahren, Umhang- und Haar-Winkel – additiv auf eine Pose | entwurf |
+| baum-arten | `engine/models/natur/baum-arten.js` | Reine Parameter-Daten der Baumarten (Wuchs, Verzweigung, Laubform, Farben, Jahreszeiten) für baum-skelett/baum | entwurf |
+| baum-skelett | `engine/models/natur/baum-skelett.js` | Ast-Skelett eines Baums aus Art-Parametern + Seed: rekursive Verzweigung mit Tropismus, Krümmung, Verjüngung, Laub-Knoten und Nadel-Etagen (reine Logik) | entwurf |
+| baum | `engine/models/natur/baum.js` | Prozedurale Low-Poly-Bäume (14 Arten) als EINE Geometrie mit Vertexfarben + Wind-Attribut; Jahreszeit, Alter, Detailstufe | entwurf |
+| fels-basis | `engine/models/natur/fels-basis.js` | Kleine Helfer für Felsen/Totholz: Dreiecke mit Flächenfarben sammeln → nicht-indizierte BufferGeometry (position, normal, color, wind=0), Farb-Mischen | neu |
+| fels-form | `engine/models/natur/fels-form.js` | Reine Fels-Grundform (ohne THREE): Ico- oder Säulen-Netz, verformt mit fBm/Grat, planare Bruchkanten, Schichtung, Erosion oben, flacher Boden | neu |
+| fels | `engine/models/natur/fels.js` | Prozedurale Low-Poly-Felsen (Vertrag NATUR-ASSETS): fels, felsbrocken, findling, geroell, felsplatte, felsnadel – mit Gesteinsfarben, Schichtung, Moos, Schnee | neu |
+| natur-assets | `engine/models/natur/natur-assets.js` | Registry der Natur-Generatoren (Bäume, Felsen, Totholz, Büsche, Bodendecker, Wüste): Typname → Generator, Asset bauen, Varianten-Cache mit gemeinsamen Geometrien | entwurf |
+| natur-basis | `engine/models/natur/natur-basis.js` | Gemeinsame Helfer für Natur-Assets: Dreiecke sammeln → nicht-indizierte Geometrie (position/normal/color/wind), Farben, Fake-AO, Schnee, Ast-Röhre, Laub-Blob, Kegel-Lage, Wedel | entwurf |
+| pflanze-basis | `engine/models/natur/pflanze-basis.js` | Sammler für Pflanzen-Geometrie: Dreiecke (ein-/zweiseitig, nach außen ausgerichtet), Bänder, Rohre, verformte Laubballen → EINE BufferGeometry mit position, normal, color, wind | entwurf |
+| pflanze-blume | `engine/models/natur/pflanze-blume.js` | Bauteile für Bodendecker: Blume (Stängel + Blüte je Sorte: Stern, Schale, Glocke, Pompon, Ähre) und Pilze (Fliegenpilz, Steinpilz, Hexenring) in einen Pflanzen-Sammler | entwurf |
+| pflanze-boden | `engine/models/natur/pflanze-boden.js` | Prozedurale Low-Poly-Bodendecker: farn (gefiederte Wedel), grasbueschel (Halm-Fächer), blume (Sorten per Seed), pilz (Fliegenpilz/Steinpilz/Hexenring), schilf (Halme + Rohrkolben), seerose (liegt auf y≈0) | entwurf |
+| pflanze-busch | `engine/models/natur/pflanze-busch.js` | Prozedurale Low-Poly-Büsche: busch (Laubballen + Zweige), beerenbusch (rote/blaue Beeren), ginster (Ruten mit gelben Blüten), zwergstrauch (flach, heidekrautig) | entwurf |
+| pflanze-formen | `engine/models/natur/pflanze-formen.js` | Reine Form-Logik für Pflanzen (ohne THREE): Bögen für Halme/Wedel/Blätter, Rosetten-Layouts, Blüten- und Pilzsorten, Kaktusarme, Farbhelfer mit Jahreszeit | entwurf |
+| pflanze-wueste | `engine/models/natur/pflanze-wueste.js` | Prozedurale Low-Poly-Wüstenpflanzen: kaktus (Kandelaber mit Armen), saeulenkaktus (gerippte Säule, evtl. Blüte), agave (Rosette spitzer, gekielter Blätter) | entwurf |
+| totholz-form | `engine/models/natur/totholz-form.js` | Reine Röhren-Geometrie (ohne THREE) für Totholz/Äste: Ringe entlang eines Pfads, Enden zu/Spitze/Jahresring-Scheibe, Markierung je Dreieck | neu |
+| totholz | `engine/models/natur/totholz.js` | Prozedurales Low-Poly-Totholz (Vertrag NATUR-ASSETS): baumstumpf (Jahresringe, Wurzelansätze), liegenderStamm (Aststummel), ast | neu |
 | mesh-builder | `engine/render/mesh-builder.js` | Low-Poly-Modelle aus Primitiven (Box, Kugel, Zylinder …) mit Vertexfarben zu EINER Geometrie verschmelzen; Farbvariation pro Dreieck per Seed | entwurf |
+| natur-material | `engine/render/natur-material.js` | Gemeinsames Material für Natur-Assets: MeshStandardMaterial (Vertexfarben, flatShading) mit Wind-Schwingen im Vertex-Shader über das Attribut 'wind' (0 starr … 1 voll); Phase je Instanz aus der Weltposition; passendes Schatten-Material; optional Ausblenden ab Kamera-Entfernung | entwurf |
 | fake-dom | `engine/test/fake-dom.mjs` | Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame | stabil |
 | figur-schild | `engine/ui/figur-schild.js` | Namensschild + Sprechblase + Lebensbalken über Figuren (DOM-Overlay): folgt dem Kopf, skaliert und blendet nach Abstand aus, verschwindet hinter der Kamera | entwurf |
-| scatter-mesh | `engine/world/scatter-mesh.js` | Zeichnet die Objekte einer erzeugten Welt (welt.objekte: Bäume, Büsche, Felsen, Kakteen, Schilf, Blumen) als InstancedMesh je Typ mit einfachen Low-Poly-Formen; eigene Formen je Typ überschreibbar | entwurf |
-| terrain-mesh | `engine/world/terrain-mesh.js` | Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit Biomfarben, Hangfels und Farbrauschen, Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont | entwurf |
+| scatter-mesh | `engine/world/scatter-mesh.js` | Zeichnet die Objekte einer erzeugten Welt (welt.objekte) als InstancedMesh je (Typ, Variante): mit Asset-Cache prozedurale Natur-Assets in Metern (Bäume, Felsen, Büsche, Bodendecker …) mit Wind, sonst einfache Low-Poly-FORMEN; unbekannte Typen → Ersatz nach Art oder weglassen; Seerosen auf dem Wasser | entwurf |
+| terrain-farben | `engine/world/terrain-farben.js` | Geländefarben je Gitterzelle aus einer erzeugten Welt: weiche Biom-Übergänge mit ausgefransten Grenzen, Wiesenflecken und trockene Grastöne, Mikrovariation, Hangfels mit Gesteinsbändern, nasser Sand, Flusskies und Seeschlamm, Meeresgrund nach Tiefe, Schnee mit Rauschgrenze (an Nordhängen tiefer), Mulden dunkler | entwurf |
+| terrain-mesh | `engine/world/terrain-mesh.js` | Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit weich gemischten Biomfarben, Wiesenflecken, Hangfels, Ufern (Sand/Kies/Schlamm) und Schnee (terrain-farben), Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont | entwurf |
 | worldgen-adapter | `engine/world/worldgen/worldgen-adapter.js` | Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md | entwurf |
 | worldgen-biomes | `engine/world/worldgen/worldgen-biomes.js` | Biome nach Whittaker (Temperatur × Feuchte, als schnelle Nachschlagetabelle) plus Prioritätsregeln (Wasser, Schnee, Fels, Strand, Sumpf); Biomliste per Spiel erweiterbar | entwurf |
 | worldgen-chunkfluss | `engine/world/worldgen/worldgen-chunkfluss.js` | Chunk-lokale Flussnetze und kleine Seen für den unendlichen Modus: grobes Knotengitter aus Seed + Position, Abfluss zum tiefsten Nachbarn, begrenzter Zufluss, Senken werden Seen – nahtlos ohne globale Stufen | entwurf |
@@ -59,7 +77,7 @@
 | worldgen-climate | `engine/world/worldgen/worldgen-climate.js` | Klima für den Weltgenerator: Temperatur nach Höhe/Breitengrad, Feuchte aus Wassernähe, Rauschen und Regenschatten (Windrichtung) | entwurf |
 | worldgen-erosion | `engine/world/worldgen/worldgen-erosion.js` | Schnelle hydraulische Tropfen-Erosion (mit Pinsel-Abtrag) und thermische Erosion auf einem Float32-Höhenfeld; Qualitätsstufen schnell/normal/hoch | entwurf |
 | worldgen-grid | `engine/world/worldgen/worldgen-grid.js` | Gitter-Helfer für den Weltgenerator: typisierter Min-Heap, Chamfer-Abstand, Regionen-Markierung, bilineares Abtasten, Array-Hash | entwurf |
-| worldgen-height | `engine/world/worldgen/worldgen-height.js` | Höhenfeld aus fBm, Grat-Gebirgen, Domain-Warp, Klippen und Terrassen; punktweise abtastbar (für Chunks) oder als ganzes Gitter | entwurf |
+| worldgen-height | `engine/world/worldgen/worldgen-height.js` | Höhenfeld aus fBm, Grat-Gebirgen, Domain-Warp, Klippen, Terrassen und optionalen Felsstufen im Gebirge (hoehe.gebirge.felsStufen: { stufen, staerke }); punktweise abtastbar (für Chunks) oder als ganzes Gitter | entwurf |
 | worldgen-hydrology | `engine/world/worldgen/worldgen-hydrology.js` | Wasserhaushalt: Ozean vom Rand fluten, Senken per Priority-Flood füllen, Seen erkennen, Abflussrichtung (D8) und Abflussmenge berechnen | entwurf |
 | worldgen-path | `engine/world/worldgen/worldgen-path.js` | A*-Wegsuche auf dem Weltgitter (8 Richtungen) mit Kosten nach Hang, Wasser und Flüssen; wiederverwendbare typisierte Puffer | entwurf |
 | worldgen-presets | `engine/world/worldgen/worldgen-presets.js` | Standardoptionen und benannte Voreinstellungen (insel, archipel, kontinent, gebirge, wueste, tundra, sumpfland, vulkaninsel, canyon, flachland, kueste, hochebene, unendlich) plus tiefes Zusammenführen von Optionen | entwurf |
@@ -68,6 +86,7 @@
 | worldgen-scatter | `engine/world/worldgen/worldgen-scatter.js` | Blue-Noise-Verteilung von Objekten (Bäume, Büsche, Felsen, Kakteen, Schilf, Blumen …) mit Dichte pro Biom, Lichtungen und Hangregeln; reihenfolgeunabhängig und dadurch nahtlos über Chunks | entwurf |
 | worldgen-shape | `engine/world/worldgen/worldgen-shape.js` | Landform-Masken für den Weltgenerator (Insel, Archipel, Kontinent, Küste, Vulkan, Canyon, Plateau, unendlich) plus formspezifische Nachbearbeitung der Höhe | entwurf |
 | worldgen-sites | `engine/world/worldgen/worldgen-sites.js` | Orte finden: Startplatz (flach, nah an Wasser und Wald, eingeebnet), Dorfplätze mit Mindestabstand und Sehenswürdigkeiten (Gipfel, Quellen, Mündungen, Seen) | entwurf |
+| worldgen-vegetation | `engine/world/worldgen/worldgen-vegetation.js` | Standard-Objektarten des Weltgenerators als reine Daten: Kronendach, Totholz, Unterholz, Büsche (Waldrand), Felsen/Findlinge, Geröll am Hangfuß, Kakteen, Schilf, Seerosen, Blumen und Bodendecker – mit gewichteten Typen je Biom und Typmischung nach Höhe/Feuchte/Temperatur | entwurf |
 | worldgen | `engine/world/worldgen/worldgen.js` | Weltgenerator-Einstieg: createWorld(optionen) führt die Stufen-Pipeline (Höhe → Erosion → Hydrologie → Flüsse → Klima → Biome → Orte → Objekte) per Preset aus; Spiele können Stufen einfügen/ersetzen; Ergebnis in typisierten Arrays | entwurf |
 
 ## Tags
@@ -80,11 +99,14 @@
 | accessoire | character-parts-zubehoer |
 | accessoires | character-look |
 | adapter | worldgen-adapter |
+| agave | pflanze-wueste |
 | aktion | character-animator, character-clips |
 | amulett | character-parts-zubehoer |
 | angriff | character-clips |
 | animation | character, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-clips-mehr, character-clips, character-gang, character-pose, character-reaktion, character-rig, character-sekundaer |
 | arbeit | character-clips-mehr |
+| art | baum-arten |
+| ast | totholz-form, totholz |
 | astar | worldgen-path |
 | attrappe | fake-dom |
 | augen | character-anim-blick, character-parts-gesicht |
@@ -95,24 +117,32 @@
 | auswahl | ziel-wahl |
 | avatar | character, character-look, character-model |
 | axt | character-ausruestung |
-| baeume | scatter-mesh, worldgen-scatter |
+| baeume | scatter-mesh, worldgen-scatter, worldgen-vegetation |
 | bart | character-parts-haar, character-parts-kopf |
+| baum | baum-arten, baum-skelett, baum, natur-assets, natur-basis |
+| baumstumpf | totholz |
+| beeren | pflanze-busch |
 | betaeubt | character-anim-zustand |
 | bewegung | character-motor-tuning, character-motor, character-steering, character |
-| biome | terrain-mesh, worldgen-biomes, worldgen-query |
+| biome | terrain-farben, terrain-mesh, worldgen-biomes, worldgen-query |
 | blick | character-anim-blick, character-parts-gesicht |
 | blinzeln | character-anim-blick, character-parts-gesicht |
 | blue-noise | worldgen-scatter |
+| blume | pflanze-blume, pflanze-boden, pflanze-formen |
 | boden | worldgen-adapter |
+| bodendecker | pflanze-blume, pflanze-boden, worldgen-vegetation |
 | bogen | character-ausruestung |
 | boids | character-gruppe |
 | brille | character-parts-kopf, character-parts-zubehoer |
+| busch | natur-assets, pflanze-busch |
+| cache | natur-assets |
 | cape | character-parts-ruecken |
 | charakter | character, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips, character-gang, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer |
 | chunks | worldgen-chunkfluss, worldgen-chunks |
 | clip | character-animator, character-clips-mehr, character-clips |
 | controller | character-motor, character |
 | dash | character-motor, character-anim-zustand |
+| daten | baum-arten, worldgen-vegetation |
 | dialog | figur-schild |
 | dom | fake-dom |
 | dorf | worldgen-sites |
@@ -124,15 +154,18 @@
 | erosion | worldgen-erosion |
 | fackel | character-ausruestung |
 | farbe | character-parts-basis |
+| farben | terrain-farben |
+| farn | pflanze-boden |
 | fbm | worldgen-height |
 | feder | character-sekundaer |
-| felsen | scatter-mesh |
+| fels | fels-basis, fels-form, fels, natur-assets |
+| felsen | scatter-mesh, worldgen-vegetation |
 | feuchte | worldgen-climate |
 | figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips, character-gang, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-schild, worldgen-adapter |
 | first-person | follow-camera |
 | fluss | worldgen-chunkfluss, worldgen-rivers |
 | folgen | follow-camera |
-| form | worldgen-shape |
+| form | pflanze-formen, worldgen-shape |
 | frisur | character-parts-haar, character-parts-kopf |
 | fuesse | character-anim-hang, character-gang |
 | gamepad | move-input |
@@ -140,20 +173,25 @@
 | gang | character-animator, character-gang |
 | gebirge | worldgen-height |
 | gedaechtnis | character-sinne |
-| gelaende | character-anim-hang, terrain-mesh |
+| gelaende | character-anim-hang, terrain-farben, terrain-mesh |
 | gelenke | character-rig |
 | generator | worldgen |
-| geometrie | mesh-builder |
+| geometrie | fels-basis, fels-form, natur-basis, pflanze-basis, totholz-form, mesh-builder |
+| geroell | fels |
 | gesicht | character-model, character-parts-gesicht, character-parts-kopf |
 | gewicht | character-sekundaer |
+| ginster | pflanze-busch |
 | gitter | worldgen-grid |
 | gleiten | character-motor, character-anim-zustand |
+| gras | pflanze-boden |
 | gürtel | character-parts-becken |
 | haar | character-parts-haar, character-parts-kopf, character-sekundaer |
+| halm | pflanze-formen |
 | handy | touch-stick |
 | hang | character-anim-hang |
 | hash | rng |
 | heap | worldgen-grid |
+| heide | pflanze-busch |
 | helm | character-parts-hut, character-parts-kopf |
 | herde | character-gruppe |
 | hilfen | character-parts-basis |
@@ -167,9 +205,11 @@
 | idle | character-anim-idle, character-clips-mehr |
 | ik | character-anim-hang, character-gang |
 | insel | worldgen-presets, worldgen-shape, worldgen |
-| instanzen | scatter-mesh |
+| instanzen | natur-material, scatter-mesh |
 | interpolation | math |
+| jahreszeit | baum |
 | joystick | move-input, touch-stick |
+| kaktus | pflanze-wueste |
 | kamera | follow-camera, ziel-wahl, math |
 | kamerafahrt | follow-camera |
 | kampf | ziel-wahl, character-steering-extra, character-steering, character-clips-mehr, character-reaktion |
@@ -187,19 +227,22 @@
 | korb | character-ausruestung |
 | krone | character-parts-hut, character-parts-kopf |
 | körper | character-parts |
+| l-system | baum-skelett |
 | laterne | character-ausruestung |
 | laufen | character-animator, character-gang |
 | lebensbalken | figur-schild |
 | lock-on | follow-camera, ziel-wahl |
 | locken | character-parts-haar |
+| logik | pflanze-formen |
 | look | character-look |
-| lowpoly | character-parts, mesh-builder |
+| lowpoly | character-parts, baum, fels-form, fels, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-wueste, totholz-form, totholz, mesh-builder |
 | mantel | character-parts-becken, character-parts-torso |
 | maske | character-pose, worldgen-shape |
+| material | natur-material |
 | mathe | math |
 | maus | move-input |
 | meer | terrain-mesh |
-| merge | mesh-builder |
+| merge | natur-basis, mesh-builder |
 | mesh | character-model, character-parts-basis, character-parts, mesh-builder, scatter-mesh, terrain-mesh |
 | mimik | character-anim-blick, character-look, character-model, character-parts-gesicht |
 | mischen | character-pose |
@@ -208,20 +251,24 @@
 | motor | character-anim-zustand |
 | nachschwingen | character-sekundaer |
 | namensschild | figur-schild |
+| natur | baum-arten, baum-skelett, baum, fels-basis, fels-form, fels, natur-assets, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-wueste, totholz-form, totholz, natur-material, scatter-mesh |
 | node | fake-dom |
 | noise | noise |
 | normale | worldgen-query |
 | npc | character-brain, character-gruppe, character-sinne, character-steering-extra, character-steering, character, character-anim-idle, character-animator, character-look, character-model, figur-schild |
 | oberteil | character-parts-torso |
-| objekte | scatter-mesh, worldgen-scatter |
+| objekte | scatter-mesh, worldgen-scatter, worldgen-vegetation |
 | ohrringe | character-parts-zubehoer |
 | optionen | worldgen-presets |
 | orbit | follow-camera |
 | orte | worldgen-sites |
 | overlay | figur-schild |
+| parameter | baum-arten |
 | patrouille | character-steering-extra, character-steering |
 | pfad | character-steering, worldgen-path |
+| pflanze | pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-wueste |
 | physik | character-motor |
+| pilz | pflanze-blume, pflanze-boden |
 | pinch | touch-stick |
 | poi | worldgen-sites |
 | poisson | worldgen-scatter |
@@ -230,22 +277,27 @@
 | presets | worldgen-presets |
 | primitive | mesh-builder |
 | priority-flood | worldgen-hydrology |
-| prozedural | noise, worldgen |
+| prozedural | noise, baum-skelett, baum, fels-form, fels, natur-assets, natur-basis, totholz, worldgen |
 | ragdoll | character-reaktion |
 | rauschen | noise |
 | reaktion | character-reaktion |
 | regen | worldgen-climate |
+| registry | natur-assets |
+| render | natur-material |
 | rig | character-pose, character-rig |
 | rock | character-parts-becken |
 | rolle | character-motor, character-anim-zustand |
+| rosette | pflanze-formen |
 | rucksack | character-parts-ruecken, character-parts |
 | ruhe | character-anim-idle |
 | rüstung | character-parts-torso |
 | salto | character-anim-zustand |
 | schal | character-parts-zubehoer |
 | schild | character-ausruestung |
+| schilf | pflanze-boden |
 | schleichen | character-sinne |
 | schmuck | character-parts-zubehoer |
+| schnee | terrain-farben |
 | schuetteln | follow-camera |
 | schuhe | character-parts |
 | schwarm | character-gruppe, character-steering |
@@ -255,50 +307,64 @@
 | see | worldgen-chunkfluss |
 | seed | rng |
 | seen | worldgen-hydrology |
+| seerose | pflanze-boden |
 | sekundaer | character-sekundaer |
+| shader | natur-material |
 | sicht | character-sinne |
-| skelett | character-rig |
+| skelett | character-rig, baum-skelett |
 | sockel | character-ausruestung, character-rig |
 | speichern | character-look |
 | spieler | character, character-animator, character-look, character-model |
 | sprechblase | figur-schild |
 | springen | character-animator |
 | sprung | character-motor |
+| stamm | totholz-form, totholz |
 | start | worldgen-sites |
 | steering | character-gruppe, character-steering-extra, character-steering |
+| stein | fels-form, fels |
 | steuerung | move-input |
+| strauch | pflanze-busch |
 | streaming | worldgen-chunks |
+| sukkulente | pflanze-wueste |
 | tagesablauf | character-brain |
 | tasche | character-parts-becken |
 | tastatur | move-input |
 | temperatur | worldgen-climate |
-| terrain | noise, terrain-mesh, worldgen-chunks, worldgen-erosion, worldgen-height, worldgen-shape, worldgen |
+| terrain | noise, terrain-farben, terrain-mesh, worldgen-chunks, worldgen-erosion, worldgen-height, worldgen-shape, worldgen |
 | test | fake-dom |
 | third-person | follow-camera |
 | tod | character-reaktion |
+| totholz | totholz-form, totholz |
 | touch | move-input, touch-stick |
 | treffer | character-reaktion |
 | tuning | character-motor-tuning |
 | turban | character-parts-hut |
+| ufer | terrain-farben |
 | ui | figur-schild |
 | umfallen | character-reaktion |
 | umhang | character-parts-ruecken, character-parts, character-sekundaer |
 | unendlich | worldgen-chunkfluss, worldgen-chunks |
+| varianten | natur-assets |
 | variation | character-anim-idle |
-| vegetation | scatter-mesh |
+| vegetation | baum, natur-assets, natur-material, scatter-mesh, worldgen-vegetation |
 | verhalten | character-brain |
 | verstecken | character-steering-extra |
 | verteilung | worldgen-scatter |
-| vertexfarben | mesh-builder |
+| vertexfarben | fels-basis, fels, natur-basis, pflanze-basis, totholz, mesh-builder, terrain-farben |
+| verzweigung | baum-skelett |
 | waffe | character-ausruestung |
 | wahrnehmung | character-sinne |
+| wald | baum |
 | wandern | character-steering |
 | wasser | terrain-mesh, worldgen-adapter, worldgen-hydrology, worldgen-rivers |
+| wedel | pflanze-formen |
 | wegfindung | worldgen-path |
-| welt | noise, rng, scatter-mesh, terrain-mesh, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
+| welt | noise, rng, scatter-mesh, terrain-farben, terrain-mesh, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen |
 | werkzeug | character-ausruestung |
 | whittaker | worldgen-biomes |
-| worldgen | worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
+| wind | baum, natur-basis, pflanze-basis, pflanze-boden, pflanze-busch, natur-material, scatter-mesh |
+| worldgen | worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen |
+| wueste | pflanze-wueste |
 | zauberhut | character-parts-hut |
 | ziel | ziel-wahl |
 | zielen | ziel-wahl |
@@ -1033,6 +1099,264 @@ umhang.rotation.x = sek.werte.umhangX;      // Umhang/Haar-Teile selbst drehen
 
 Genutzt von: – · Tags: figur, charakter, animation, feder, sekundaer, nachschwingen, umhang, haar, gewicht · THREE: nein
 
+### baum-arten · `engine/models/natur/baum-arten.js` · v1.0.0 · entwurf
+Reine Parameter-Daten der Baumarten (Wuchs, Verzweigung, Laubform, Farben, Jahreszeiten) für baum-skelett/baum
+
+- `ARTEN { typ: art }`
+- `ART_NAMEN [typ…]`
+- `art(typ) -> art (wirft bei unbekanntem Typ)`
+
+```js
+import { art } from '../../engine/models/natur/baum-arten.js';
+const birke = art('birke');   // { stamm, ordnungen, aeste, winkel, laub, rinde, … }
+```
+
+Genutzt von: – · Tags: natur, baum, daten, parameter, art · THREE: nein
+
+### baum-skelett · `engine/models/natur/baum-skelett.js` · v1.0.0 · entwurf
+Ast-Skelett eines Baums aus Art-Parametern + Seed: rekursive Verzweigung mit Tropismus, Krümmung, Verjüngung, Laub-Knoten und Nadel-Etagen (reine Logik)
+
+- `baueSkelett(art, seed, opts) -> { aeste[{punkte,radien,wind,ordnung,laenge}], laub[{pos,richtung,groesse,wind,ordnung}], etagen[{pos,radius,hoehe}], spitze, stammRadius, maxOrdnung, groesse }`
+- `maxOrdnung(art, detail, opts) -> int`
+
+```js
+import { art } from '../../engine/models/natur/baum-arten.js';
+import { baueSkelett } from '../../engine/models/natur/baum-skelett.js';
+const sk = baueSkelett(art('eiche'), 42, { detail: 1, alter: 1 });
+sk.aeste.length; sk.laub.length;
+```
+
+Genutzt von: – · Tags: natur, baum, skelett, verzweigung, prozedural, l-system · THREE: nein
+
+### baum · `engine/models/natur/baum.js` · v1.0.0 · entwurf
+Prozedurale Low-Poly-Bäume (14 Arten) als EINE Geometrie mit Vertexfarben + Wind-Attribut; Jahreszeit, Alter, Detailstufe
+
+- `TYPEN [typ…]`
+- `erzeuge(typ, seed, opts) -> { geometrie, hoehe, radius, stammRadius }  (opts: detail 0|1|2, jahreszeit sommer|herbst|winter, alter 0..1)`
+
+```js
+import { erzeuge } from '../../engine/models/natur/baum.js';
+import { standardMaterial } from '../../engine/render/mesh-builder.js';
+const { geometrie, hoehe } = erzeuge('birke', 7, { detail: 1, jahreszeit: 'herbst' });
+szene.add(new THREE.Mesh(geometrie, standardMaterial()));
+```
+
+Genutzt von: – · Tags: natur, baum, wald, vegetation, lowpoly, prozedural, wind, jahreszeit · THREE: ja
+
+### fels-basis · `engine/models/natur/fels-basis.js` · v1.0.0 · neu
+Kleine Helfer für Felsen/Totholz: Dreiecke mit Flächenfarben sammeln → nicht-indizierte BufferGeometry (position, normal, color, wind=0), Farb-Mischen
+
+- `createSammler() -> { netz(punkte, dreiecke, farbFn), dreieck(a,b,c,rgb), anzahl(), geometrie(), dispose() }`
+- `rgb(hex)`
+- `mische(a,b,t)`
+- `hell(c,f)`
+- `glatt(a,b,x)`
+
+```js
+import { createSammler, rgb } from '../../engine/models/natur/fels-basis.js';
+const s = createSammler();
+s.netz(punkte, dreiecke, (n, m) => rgb(0x888880));   // n = Flächennormale, m = Mittelpunkt
+const geo = s.geometrie();
+```
+
+Genutzt von: – · Tags: natur, fels, geometrie, vertexfarben · THREE: ja
+
+### fels-form · `engine/models/natur/fels-form.js` · v1.0.0 · neu
+Reine Fels-Grundform (ohne THREE): Ico- oder Säulen-Netz, verformt mit fBm/Grat, planare Bruchkanten, Schichtung, Erosion oben, flacher Boden
+
+- `felsForm(opts) -> { punkte: Float32Array(xyz), dreiecke: Uint32Array, hoehe, radius }`
+- `icoNetz(frequenz)`
+- `saeulenNetz(segmente, ringe, r)`
+
+```js
+import { felsForm } from '../../engine/models/natur/fels-form.js';
+const f = felsForm({ seed: 7, groesse: [1.2, 0.8, 1], schnitte: 5, schichten: 3 });
+// f.punkte (x,y,z je Ecke), f.dreiecke (Indizes, außen gegen den Uhrzeigersinn)
+```
+
+Genutzt von: – · Tags: natur, fels, stein, prozedural, geometrie, lowpoly · THREE: nein
+
+### fels · `engine/models/natur/fels.js` · v1.0.0 · neu
+Prozedurale Low-Poly-Felsen (Vertrag NATUR-ASSETS): fels, felsbrocken, findling, geroell, felsplatte, felsnadel – mit Gesteinsfarben, Schichtung, Moos, Schnee
+
+- `TYPEN`
+- `GESTEINE`
+- `erzeuge(typ, seed, opts) -> { geometrie, hoehe, radius, stammRadius }  opts: { detail 0|1|2, gestein, moos 0..1, schnee 0..1, skala }`
+
+```js
+import { erzeuge } from '../../engine/models/natur/fels.js';
+import { standardMaterial } from '../../engine/render/mesh-builder.js';
+const { geometrie } = erzeuge('felsbrocken', 42, { gestein: 'granit', moos: 0.4 });
+scene.add(new THREE.Mesh(geometrie, standardMaterial()));
+```
+
+Genutzt von: – · Tags: natur, fels, stein, geroell, prozedural, lowpoly, vertexfarben · THREE: ja
+
+### natur-assets · `engine/models/natur/natur-assets.js` · v1.0.0 · entwurf
+Registry der Natur-Generatoren (Bäume, Felsen, Totholz, Büsche, Bodendecker, Wüste): Typname → Generator, Asset bauen, Varianten-Cache mit gemeinsamen Geometrien
+
+- `TYP_ZU_GENERATOR { typ: erzeuge }`
+- `FAMILIEN { familie: [typ…] }`
+- `familieVon(typ) -> string|null`
+- `alleTypen() -> [typ…]`
+- `erzeugeAsset(typ, seed, opts) -> { geometrie, hoehe, radius, stammRadius } | null`
+- `varianteOpts(typ, variante, opts) -> opts`
+- `createAssetCache({ varianten, detail, jahreszeit, seed, opts }) -> { holen(typ, variante), hat(typ), varianten, detail, jahreszeit, anzahl(), dispose() }`
+
+```js
+import { createAssetCache } from '../../engine/models/natur/natur-assets.js';
+const cache = createAssetCache({ varianten: 4, jahreszeit: 'herbst' });
+const { geometrie, hoehe } = cache.holen('eiche', 2);   // gleiche Geometrie bei jedem Aufruf
+cache.dispose();
+```
+
+Genutzt von: natur-labor, testwelt · Tags: natur, vegetation, baum, fels, busch, registry, cache, varianten, prozedural · THREE: ja
+
+### natur-basis · `engine/models/natur/natur-basis.js` · v1.0.0 · entwurf
+Gemeinsame Helfer für Natur-Assets: Dreiecke sammeln → nicht-indizierte Geometrie (position/normal/color/wind), Farben, Fake-AO, Schnee, Ast-Röhre, Laub-Blob, Kegel-Lage, Wedel
+
+- `farbe(wert) -> [r,g,b]`
+- `mische(a,b,t)`
+- `variiere(f,r,staerke)`
+- `abdunkeln(f,k)`
+- `createTeile(opts) -> teile (dreieck, quad, anzahl, geometrie, dispose)`
+- `roehre(teile,punkte,radien,opts)`
+- `blob(teile,mitte,radius,opts)`
+- `kegel(teile,basis,radius,hoehe,opts)`
+- `wedel(teile,basis,richtung,laenge,opts)`
+
+```js
+import { createTeile, roehre, blob, farbe } from '../../engine/models/natur/natur-basis.js';
+const t = createTeile({ seed: 5 });
+roehre(t, [[0,0,0],[0,2,0]], [0.2, 0.1], { farbe: farbe('#6b4a2f'), wind: [0, 0.2] });
+blob(t, [0, 2.6, 0], 1, { farbe: farbe('#4f8a3a'), wind: 0.8 });
+const geo = t.geometrie();   // BufferGeometry mit position, normal, color, wind
+```
+
+Genutzt von: – · Tags: natur, baum, geometrie, lowpoly, vertexfarben, wind, merge, prozedural · THREE: ja
+
+### pflanze-basis · `engine/models/natur/pflanze-basis.js` · v1.0.0 · entwurf
+Sammler für Pflanzen-Geometrie: Dreiecke (ein-/zweiseitig, nach außen ausgerichtet), Bänder, Rohre, verformte Laubballen → EINE BufferGeometry mit position, normal, color, wind
+
+- `createSammler({seed, jitter}) -> s (dreieck, dreieckAussen, dreieckZwei, band, rohr, ballen, geometrie, masse, ergebnis, dreiecke, r)`
+- `bogen3(pkt, winkel, basis) -> [[x,y,z]…]`
+- `seiteZu(winkel) -> [x,0,z]`
+
+```js
+import { createSammler, bogen3 } from '../../engine/models/natur/pflanze-basis.js';
+const s = createSammler({ seed: 3 });
+s.ballen([0, 0.5, 0], [0.5, 0.4, 0.5], 7, 4, () => [0.3, 0.6, 0.2], (y) => y);
+const { geometrie, hoehe } = s.ergebnis({ stammRadius: 0.2 });
+```
+
+Genutzt von: – · Tags: natur, pflanze, geometrie, lowpoly, vertexfarben, wind · THREE: ja
+
+### pflanze-blume · `engine/models/natur/pflanze-blume.js` · v1.0.0 · entwurf
+Bauteile für Bodendecker: Blume (Stängel + Blüte je Sorte: Stern, Schale, Glocke, Pompon, Ähre) und Pilze (Fliegenpilz, Steinpilz, Hexenring) in einen Pflanzen-Sammler
+
+- `baueBlume(s, r, { detail, jahreszeit, sorte, farbe })`
+- `baueEinenPilz(s, r, pos, sorte, skala, detail)`
+- `bauePilz(s, r, { detail, sorte })`
+
+```js
+import { createSammler } from '../../engine/models/natur/pflanze-basis.js';
+import { baueBlume } from '../../engine/models/natur/pflanze-blume.js';
+const s = createSammler({ seed: 4 }); baueBlume(s, rng(4), { detail: 1, sorte: 'mohn' });
+```
+
+Genutzt von: – · Tags: natur, pflanze, blume, pilz, bodendecker, lowpoly · THREE: ja
+
+### pflanze-boden · `engine/models/natur/pflanze-boden.js` · v1.0.0 · entwurf
+Prozedurale Low-Poly-Bodendecker: farn (gefiederte Wedel), grasbueschel (Halm-Fächer), blume (Sorten per Seed), pilz (Fliegenpilz/Steinpilz/Hexenring), schilf (Halme + Rohrkolben), seerose (liegt auf y≈0)
+
+- `TYPEN`
+- `erzeuge(typ, seed, { detail = 1, jahreszeit = 'sommer', sorte (blume/pilz), farbe (Blüte), groesse = 1 }) -> { geometrie, hoehe, radius, stammRadius }`
+
+```js
+import { erzeuge } from '../../engine/models/natur/pflanze-boden.js';
+const gras = erzeuge('grasbueschel', 9);
+const mohn = erzeuge('blume', 3, { sorte: 'mohn' });   // Sorten: BLUMEN_SORTEN in pflanze-formen.js
+```
+
+Genutzt von: – · Tags: natur, pflanze, gras, farn, blume, pilz, schilf, seerose, bodendecker, lowpoly, wind · THREE: ja
+
+### pflanze-busch · `engine/models/natur/pflanze-busch.js` · v1.0.0 · entwurf
+Prozedurale Low-Poly-Büsche: busch (Laubballen + Zweige), beerenbusch (rote/blaue Beeren), ginster (Ruten mit gelben Blüten), zwergstrauch (flach, heidekrautig)
+
+- `TYPEN`
+- `erzeuge(typ, seed, { detail = 1, jahreszeit = 'sommer', beere: 'rot'|'blau', groesse = 1 }) -> { geometrie, hoehe, radius, stammRadius }`
+
+```js
+import { erzeuge } from '../../engine/models/natur/pflanze-busch.js';
+const { geometrie } = erzeuge('beerenbusch', 42, { jahreszeit: 'herbst' });
+szene.add(new THREE.Mesh(geometrie, standardMaterial()));
+```
+
+Genutzt von: – · Tags: natur, pflanze, busch, strauch, beeren, ginster, heide, lowpoly, wind · THREE: ja
+
+### pflanze-formen · `engine/models/natur/pflanze-formen.js` · v1.0.0 · entwurf
+Reine Form-Logik für Pflanzen (ohne THREE): Bögen für Halme/Wedel/Blätter, Rosetten-Layouts, Blüten- und Pilzsorten, Kaktusarme, Farbhelfer mit Jahreszeit
+
+- `bogen(laenge, startWinkel, biegung, n) -> [[h,y],…]`
+- `rosette(r, anzahl, opts) -> [{winkel,neigung,laenge}]`
+- `blumenSorte(r, name?) -> sorte`
+- `BLUMEN_SORTEN`
+- `PILZ_SORTEN`
+- `kaktusArme(r, hoehe, anzahl) -> [{ansatz,winkel,aus,hoch}]`
+- `farbe(hex) -> [r,g,b]`
+- `mische(a,b,t)`
+- `hell(f,k)`
+- `laubFarben(jahreszeit) -> {grund,hell,dunkel}`
+
+```js
+import { bogen, rosette, blumenSorte } from '../../engine/models/natur/pflanze-formen.js';
+const halm = bogen(0.5, 1.4, 0.8, 4);           // 5 Punkte [horizontal, hoch]
+const sorte = blumenSorte(rng(7));               // z. B. { name: 'mohn', form: 'schale', … }
+```
+
+Genutzt von: – · Tags: natur, pflanze, form, blume, halm, wedel, rosette, logik · THREE: nein
+
+### pflanze-wueste · `engine/models/natur/pflanze-wueste.js` · v1.0.0 · entwurf
+Prozedurale Low-Poly-Wüstenpflanzen: kaktus (Kandelaber mit Armen), saeulenkaktus (gerippte Säule, evtl. Blüte), agave (Rosette spitzer, gekielter Blätter)
+
+- `TYPEN`
+- `erzeuge(typ, seed, { detail = 1, jahreszeit = 'sommer', bluete (true/false, sonst Zufall), groesse = 1 }) -> { geometrie, hoehe, radius, stammRadius }`
+
+```js
+import { erzeuge } from '../../engine/models/natur/pflanze-wueste.js';
+const { geometrie, stammRadius } = erzeuge('kaktus', 12, { detail: 1 });
+```
+
+Genutzt von: – · Tags: natur, pflanze, wueste, kaktus, agave, sukkulente, lowpoly · THREE: ja
+
+### totholz-form · `engine/models/natur/totholz-form.js` · v1.0.0 · neu
+Reine Röhren-Geometrie (ohne THREE) für Totholz/Äste: Ringe entlang eines Pfads, Enden zu/Spitze/Jahresring-Scheibe, Markierung je Dreieck
+
+- `createRoehrenNetz() -> { roehre(pfad, radien, segmente, opts), punkte, dreiecke, marken }  (marken je Dreieck: 'rinde' | 'ring0'..'ringN' | 'spitze')`
+
+```js
+import { createRoehrenNetz } from '../../engine/models/natur/totholz-form.js';
+const n = createRoehrenNetz();
+n.roehre([[0,0,0],[0,1,0]], [0.3, 0.25], 8, { ende: 'ringe', ringe: 3 });
+// n.punkte (xyz), n.dreiecke (Indizes, außen gegen den Uhrzeigersinn), n.marken[dreieckNr]
+```
+
+Genutzt von: – · Tags: natur, totholz, ast, stamm, geometrie, lowpoly · THREE: nein
+
+### totholz · `engine/models/natur/totholz.js` · v1.0.0 · neu
+Prozedurales Low-Poly-Totholz (Vertrag NATUR-ASSETS): baumstumpf (Jahresringe, Wurzelansätze), liegenderStamm (Aststummel), ast
+
+- `TYPEN`
+- `erzeuge(typ, seed, opts) -> { geometrie, hoehe, radius, stammRadius }  opts: { detail 0|1|2, moos 0..1, schnee 0..1, skala }`
+
+```js
+import { erzeuge } from '../../engine/models/natur/totholz.js';
+const { geometrie } = erzeuge('liegenderStamm', 5, { moos: 0.5 });
+scene.add(new THREE.Mesh(geometrie, standardMaterial()));
+```
+
+Genutzt von: – · Tags: natur, totholz, baumstumpf, stamm, ast, prozedural, lowpoly, vertexfarben · THREE: ja
+
 ### mesh-builder · `engine/render/mesh-builder.js` · v1.1.0 · entwurf
 Low-Poly-Modelle aus Primitiven (Box, Kugel, Zylinder …) mit Vertexfarben zu EINER Geometrie verschmelzen; Farbvariation pro Dreieck per Seed
 
@@ -1048,6 +1372,22 @@ szene.add(b.mesh());   // THREE.Mesh mit standardMaterial()
 ```
 
 Genutzt von: – · Tags: mesh, geometrie, lowpoly, vertexfarben, modell, primitive, merge · THREE: ja
+
+### natur-material · `engine/render/natur-material.js` · v1.0.0 · entwurf
+Gemeinsames Material für Natur-Assets: MeshStandardMaterial (Vertexfarben, flatShading) mit Wind-Schwingen im Vertex-Shader über das Attribut 'wind' (0 starr … 1 voll); Phase je Instanz aus der Weltposition; passendes Schatten-Material; optional Ausblenden ab Kamera-Entfernung
+
+- `createNaturMaterial({ wind, weite, staerke, richtung, amplitude, grund, roughness }) -> MeshStandardMaterial & { update(zeit, { staerke, richtung }), tiefenMaterial, uniforms }`
+- `patcheShader(shader, uniforms, { wind, weite }) -> shader`
+
+```js
+import { createNaturMaterial } from '../../engine/render/natur-material.js';
+const mat = createNaturMaterial({ wind: true });
+const baum = new THREE.InstancedMesh(geometrie, mat, 100);
+baum.customDepthMaterial = mat.tiefenMaterial;   // Schatten schwingt mit
+// je Bild: mat.update(zeit, { staerke: 1, richtung: [1, 0.3] });
+```
+
+Genutzt von: natur-labor · Tags: natur, material, wind, shader, vegetation, instanzen, render · THREE: ja
 
 ### fake-dom · `engine/test/fake-dom.mjs` · v1.0.0 · stabil
 Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame
@@ -1078,23 +1418,42 @@ schilder.update(kamera, dt);   // jedes Bild nach der Kamera, vor/nach dem Rende
 
 Genutzt von: figuren-labor, testwelt · Tags: ui, namensschild, sprechblase, dialog, lebensbalken, hp, figur, npc, overlay, hud · THREE: ja
 
-### scatter-mesh · `engine/world/scatter-mesh.js` · v1.0.0 · entwurf
-Zeichnet die Objekte einer erzeugten Welt (welt.objekte: Bäume, Büsche, Felsen, Kakteen, Schilf, Blumen) als InstancedMesh je Typ mit einfachen Low-Poly-Formen; eigene Formen je Typ überschreibbar
+### scatter-mesh · `engine/world/scatter-mesh.js` · v2.0.0 · entwurf
+Zeichnet die Objekte einer erzeugten Welt (welt.objekte) als InstancedMesh je (Typ, Variante): mit Asset-Cache prozedurale Natur-Assets in Metern (Bäume, Felsen, Büsche, Bodendecker …) mit Wind, sonst einfache Low-Poly-FORMEN; unbekannte Typen → Ersatz nach Art oder weglassen; Seerosen auf dem Wasser
 
-- `createScatterMesh(adapter, opts) -> {gruppe,anzahl,typen,dispose}`
+- `createScatterMesh(adapter, opts) -> {gruppe,anzahl,dreiecke,meshes,typen,update(zeit, { staerke, richtung, kamera }),dispose}`
 - `FORMEN`
+- `ERSATZ`
+- `BODENDECKER`
 - `baueForm(teile) -> BufferGeometry`
 
 ```js
 import { createScatterMesh } from '../../engine/world/scatter-mesh.js';
-const pflanzen = createScatterMesh(adapter, { schatten: true });
+import { createAssetCache } from '../../engine/models/natur/natur-assets.js';
+const pflanzen = createScatterMesh(adapter, { assets: createAssetCache, jahreszeit: 'herbst', bodendeckerWeite: 110 });
 szene.add(pflanzen.gruppe);
+// je Bild: pflanzen.update(zeit);
 ```
 
-Genutzt von: testwelt · Tags: welt, objekte, baeume, felsen, instanzen, vegetation, mesh · THREE: ja
+Genutzt von: testwelt · Tags: welt, objekte, baeume, felsen, instanzen, vegetation, mesh, wind, natur · THREE: ja
 
-### terrain-mesh · `engine/world/terrain-mesh.js` · v1.0.0 · entwurf
-Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit Biomfarben, Hangfels und Farbrauschen, Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont
+### terrain-farben · `engine/world/terrain-farben.js` · v1.0.0 · entwurf
+Geländefarben je Gitterzelle aus einer erzeugten Welt: weiche Biom-Übergänge mit ausgefransten Grenzen, Wiesenflecken und trockene Grastöne, Mikrovariation, Hangfels mit Gesteinsbändern, nasser Sand, Flusskies und Seeschlamm, Meeresgrund nach Tiefe, Schnee mit Rauschgrenze (an Nordhängen tiefer), Mulden dunkler
+
+- `GELAENDE_FARBEN`
+- `gelaendeFarben(welt, opts) -> Float32Array (B×T×3, linear 0…1)`
+- `srgbZuLinear(v) -> number`
+
+```js
+import { gelaendeFarben } from '../../engine/world/terrain-farben.js';
+const f = gelaendeFarben(welt, { hoehenSkala: 60, meterProZelle: 2 });   // f[(y*B+x)*3] = Rot (linear)
+const nurBiome = gelaendeFarben(welt, { hoehenSkala: 60, meterProZelle: 2, details: false });
+```
+
+Genutzt von: – · Tags: welt, terrain, gelaende, farben, biome, schnee, ufer, vertexfarben · THREE: nein
+
+### terrain-mesh · `engine/world/terrain-mesh.js` · v1.1.0 · entwurf
+Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit weich gemischten Biomfarben, Wiesenflecken, Hangfels, Ufern (Sand/Kies/Schlamm) und Schnee (terrain-farben), Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont
 
 - `createTerrainMesh(adapter, opts) -> {gruppe,boden,wasser,meer,dispose}`
 - `biomFarben(welt) -> Float32Array`
@@ -1107,7 +1466,7 @@ szene.add(gelaende.gruppe);
 
 Genutzt von: testwelt · Tags: welt, terrain, gelaende, wasser, meer, mesh, biome · THREE: ja
 
-### worldgen-adapter · `engine/world/worldgen/worldgen-adapter.js` · v1.0.0 · entwurf
+### worldgen-adapter · `engine/world/worldgen/worldgen-adapter.js` · v1.1.0 · entwurf
 Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md
 
 - `createWeltAdapter(welt, opts) -> {bodenHoehe,wasserHoehe,hindernisse,normale,biomBei,zuGitter,zuWelt,startPunkt,groesse,hoehenSkala,meterProZelle,dispose}`
@@ -1152,7 +1511,7 @@ const h = netz.praege(x, y, hs.sample(x, y));   // netz.fluss < 1 → im Flussbe
 
 Genutzt von: – · Tags: welt, worldgen, chunks, unendlich, fluss, see, hydrologie · THREE: nein
 
-### worldgen-chunks · `engine/world/worldgen/worldgen-chunks.js` · v1.1.0 · entwurf
+### worldgen-chunks · `engine/world/worldgen/worldgen-chunks.js` · v1.2.0 · entwurf
 Unendlicher/gestreamter Modus: Höhe, Klima, Biome, chunk-lokale Flussnetze + kleine Seen (oder Rauschflüsse) und Objekte punktweise und pro Chunk – nahtlos über Chunkgrenzen (ohne globale Erosion/Hydrologie)
 
 - `createChunkGenerator(optionen) -> {opts, sampleHeight(x,y)->number, samplePunkt(x,y,aus)->bool, generateChunk(cx,cy,groesse)->chunk (+wasser, seen), seenIn(x0,y0,x1,y1), biome, dispose()}`
@@ -1217,8 +1576,8 @@ console.log(hashArrays(welt.hoehe, welt.biom));      // Schnappschuss-Hash für 
 
 Genutzt von: – · Tags: welt, worldgen, gitter, heap, abstand · THREE: nein
 
-### worldgen-height · `engine/world/worldgen/worldgen-height.js` · v1.0.0 · entwurf
-Höhenfeld aus fBm, Grat-Gebirgen, Domain-Warp, Klippen und Terrassen; punktweise abtastbar (für Chunks) oder als ganzes Gitter
+### worldgen-height · `engine/world/worldgen/worldgen-height.js` · v1.1.0 · entwurf
+Höhenfeld aus fBm, Grat-Gebirgen, Domain-Warp, Klippen, Terrassen und optionalen Felsstufen im Gebirge (hoehe.gebirge.felsStufen: { stufen, staerke }); punktweise abtastbar (für Chunks) oder als ganzes Gitter
 
 - `createHeightSampler(opts) -> {sample(x,y)->number}`
 - `stufeHoehe(welt, opts) -> void`
@@ -1308,10 +1667,10 @@ for (const f of welt.fluesse) console.log(f.muendung, f.punkte.length / 2);
 
 Genutzt von: – · Tags: welt, worldgen, fluss, wasser, abfluss · THREE: nein
 
-### worldgen-scatter · `engine/world/worldgen/worldgen-scatter.js` · v1.0.0 · entwurf
+### worldgen-scatter · `engine/world/worldgen/worldgen-scatter.js` · v1.1.0 · entwurf
 Blue-Noise-Verteilung von Objekten (Bäume, Büsche, Felsen, Kakteen, Schilf, Blumen …) mit Dichte pro Biom, Lichtungen und Hangregeln; reihenfolgeunabhängig und dadurch nahtlos über Chunks
 
-- `STANDARD_OBJEKTE`
+- `STANDARD_OBJEKTE (Daten aus worldgen-vegetation)`
 - `verteile(quelle, arten, opts, bereich) -> objekte`
 - `weltQuelle(welt) -> quelle`
 - `stufeObjekte(welt, opts) -> void`
@@ -1353,6 +1712,21 @@ const { start, doerfer, poi } = welt.orte;   // Weltkoordinaten
 ```
 
 Genutzt von: – · Tags: welt, worldgen, orte, start, dorf, poi · THREE: nein
+
+### worldgen-vegetation · `engine/world/worldgen/worldgen-vegetation.js` · v1.0.0 · entwurf
+Standard-Objektarten des Weltgenerators als reine Daten: Kronendach, Totholz, Unterholz, Büsche (Waldrand), Felsen/Findlinge, Geröll am Hangfuß, Kakteen, Schilf, Seerosen, Blumen und Bodendecker – mit gewichteten Typen je Biom und Typmischung nach Höhe/Feuchte/Temperatur
+
+- `STANDARD_OBJEKTE`
+- `VEGETATION_TYPEN`
+- `typenVon(art) -> string[]`
+
+```js
+import { STANDARD_OBJEKTE, VEGETATION_TYPEN } from '../../engine/world/worldgen/worldgen-vegetation.js';
+createWorld({ preset: 'insel', objekte: { arten: STANDARD_OBJEKTE.filter(a => a.key !== 'bodendecker') } });
+VEGETATION_TYPEN.includes('fichte');   // true
+```
+
+Genutzt von: – · Tags: welt, worldgen, objekte, vegetation, baeume, felsen, bodendecker, daten · THREE: nein
 
 ### worldgen · `engine/world/worldgen/worldgen.js` · v1.0.0 · entwurf
 Weltgenerator-Einstieg: createWorld(optionen) führt die Stufen-Pipeline (Höhe → Erosion → Hydrologie → Flüsse → Klima → Biome → Orte → Objekte) per Preset aus; Spiele können Stufen einfügen/ersetzen; Ergebnis in typisierten Arrays

@@ -1,13 +1,13 @@
 /**
  * @modul    worldgen-height
- * @zweck    Höhenfeld aus fBm, Grat-Gebirgen, Domain-Warp, Klippen und Terrassen; punktweise abtastbar (für Chunks) oder als ganzes Gitter
+ * @zweck    Höhenfeld aus fBm, Grat-Gebirgen, Domain-Warp, Klippen, Terrassen und optionalen Felsstufen im Gebirge (hoehe.gebirge.felsStufen: { stufen, staerke }); punktweise abtastbar (für Chunks) oder als ganzes Gitter
  * @api      createHeightSampler(opts) -> {sample(x,y)->number} ; stufeHoehe(welt, opts) -> void
  * @beispiel
  *   import { createHeightSampler } from '../../engine/world/worldgen/worldgen-height.js';
  *   const hs = createHeightSampler({ seed: 7, breite: 256, tiefe: 256, form: { typ: 'insel' }, hoehe: {} });
  *   const h = hs.sample(128, 128);   // normiert, Meeresspiegel = 0
  * @tags     welt, worldgen, hoehe, terrain, fbm, gebirge
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
@@ -45,6 +45,7 @@ export function createHeightSampler(opts) {
   const gMenge = G.menge ?? 0.5, gHoehe = G.hoehe ?? 0.9, gSchaerfe = G.schaerfe ?? 1.5;
   const fM = G.frequenz ?? 2.2, fR = G.gratFrequenz ?? 5, gOkt = Math.max(1, (G.oktaven ?? 5) + qd);
   const gSchwelle = 0.3 - gMenge * 0.7;
+  const fsStufen = G.felsStufen?.stufen ?? 0, fsStaerke = fsStufen > 0 ? G.felsStufen?.staerke ?? 0.6 : 0;
   const klippen = H.klippen ?? 0.3;
   const tStufen = H.terrassen?.stufen ?? 0, tStaerke = H.terrassen?.staerke ?? 0;
   const kont = H.kontinente ?? 0, fG = H.kontinentFrequenz ?? 0.35;
@@ -72,7 +73,14 @@ export function createHeightSampler(opts) {
         const mm = smoothstep(gSchwelle - 0.2, gSchwelle + 0.2, fbm2(nM, px * fM + 200, py * fM - 120, 3));
         if (mm > 0) {
           const rg = ridged2(nR, px * fR, py * fR, gOkt);
-          h += gHoehe * mm * Math.pow(rg, gSchaerfe) * land * (0.5 + 0.5 * smoothstep(0.05, 0.5, e));
+          let g = gHoehe * mm * Math.pow(rg, gSchaerfe) * land * (0.5 + 0.5 * smoothstep(0.05, 0.5, e));
+          if (fsStaerke > 0 && g > 0.02) {
+            // Felsstufen: nur der Gebirgsanteil wird gestuft (Absätze/Mikroklippen), Stufenhöhe leicht verrauscht
+            const st = g * fsStufen + fbm2(nK, px * 9 - 40, py * 9 + 13, 2) * 0.6, f = Math.floor(st);
+            const gs = (f + smoothstep(0.25, 0.85, st - f)) / fsStufen - fbm2(nK, px * 9 - 40, py * 9 + 13, 2) * 0.6 / fsStufen;
+            g += (gs - g) * fsStaerke * smoothstep(0.02, 0.12, g);
+          }
+          h += g;
         }
       }
       if (klippen > 0 && h < 0.2) {

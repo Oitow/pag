@@ -5,6 +5,7 @@ import { createWorld, PRESETS } from '../../../engine/world/worldgen/worldgen.js
 import { createWeltAdapter } from '../../../engine/world/worldgen/worldgen-adapter.js';
 import { createTerrainMesh, biomFarben } from '../../../engine/world/terrain-mesh.js';
 import { createScatterMesh } from '../../../engine/world/scatter-mesh.js';
+import { createAssetCache } from '../../../engine/models/natur/natur-assets.js';
 import { createFigurSchilder } from '../../../engine/ui/figur-schild.js';
 import { createSpielerFigur } from './figur.js';
 import { createDorf } from './dorf.js';
@@ -70,7 +71,9 @@ async function erzeuge() {
   welt = neu;
   adapter = createWeltAdapter(welt, { hoehenSkala: HOEHEN_SKALA, meterProZelle: METER_PRO_ZELLE });
   gelaende = createTerrainMesh(adapter, { schatten: true });
-  objekte = createScatterMesh(adapter, { schatten: true, unterWasser: false });
+  const t1 = performance.now();
+  objekte = createScatterMesh(adapter, { schatten: true, unterWasser: false, assets: createAssetCache, bodendeckerWeite: 110, kachel: 128, fernWeite: 160,
+    typSkala: { fels: 1.4, felsbrocken: 1.8 } });   // Felsen etwas größer → passt zu den Hindernis-Radien des Adapters
   szene.add(gelaende.gruppe, objekte.gruppe);
   szene.fog.far = Math.max(300, adapter.groesse.x * 1.1);
   zeichneKarte();
@@ -83,7 +86,7 @@ async function erzeuge() {
   dorfNr = gipfelNr = 0;
   const neueUrl = `?preset=${presetEl.value}&seed=${seedEl.value}&groesse=${g}`;
   history.replaceState(null, '', neueUrl);
-  statistik = `Welt ${msWelt.toFixed(0)} ms · ${objekte.anzahl} Objekte`;
+  statistik = `Welt ${msWelt.toFixed(0)} ms · ${objekte.anzahl} Objekte (${(performance.now() - t1).toFixed(0)} ms)`;
   $('lade').hidden = true;
 }
 
@@ -150,6 +153,7 @@ function bild(jetzt) {
   // Schattenkamera folgt der Figur
   sonne.position.set(p.x + 60, p.y + 120, p.z + 40);
   sonne.target.position.set(p.x, p.y, p.z);
+  objekte?.update(jetzt / 1000, { kamera });
   renderer.render(szene, kamera);
 
   fpsBilder++; fpsZeit += echt;
@@ -164,4 +168,4 @@ function bild(jetzt) {
   }
 }
 
-erzeuge().then(() => { requestAnimationFrame(bild); if (url.has("debug")) window.testwelt = { get figur() { return figur; }, get adapter() { return adapter; }, get dorf() { return dorf; } }; });
+erzeuge().then(() => { requestAnimationFrame(bild); if (url.has("debug")) window.testwelt = { renderer, szene, kamera, get figur() { return figur; }, get adapter() { return adapter; }, get dorf() { return dorf; }, get objekte() { return objekte; } }; });

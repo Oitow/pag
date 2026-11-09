@@ -1,20 +1,20 @@
 /**
  * @modul    terrain-mesh
- * @zweck    Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit Biomfarben, Hangfels und Farbrauschen, Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont
+ * @zweck    Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit weich gemischten Biomfarben, Wiesenflecken, Hangfels, Ufern (Sand/Kies/Schlamm) und Schnee (terrain-farben), Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont
  * @api      createTerrainMesh(adapter, opts) -> {gruppe,boden,wasser,meer,dispose} ; biomFarben(welt) -> Float32Array
  * @beispiel
  *   import { createTerrainMesh } from '../../engine/world/terrain-mesh.js';
  *   const gelaende = createTerrainMesh(adapter, { schritt: 1, schatten: true });
  *   szene.add(gelaende.gruppe);
  * @tags     welt, terrain, gelaende, wasser, meer, mesh, biome
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    ja
  */
 
 import * as THREE from 'three';
-import { hash2 } from '../core/rng.js';
 import { FLAG } from './worldgen/worldgen-grid.js';
+import { gelaendeFarben } from './terrain-farben.js';
 
 const SEE_FLUSS = FLAG.SEE | FLAG.FLUSS;
 
@@ -27,17 +27,22 @@ export function biomFarben(welt) {
 
 /**
  * opts: schritt (Gitterzellen je Vertex, 1 = volle Auflösung), schatten, meerGroesse (Vielfaches der Karte),
- * farbRauschen (0…1), felsFarbe, wasserFarbe, meerFarbe, wasserDeckkraft.
+ * farbRauschen (0…1, Stärke der Mikrovariation), wasserFarbe, meerFarbe, wasserDeckkraft.
+ * Ab 1.1 (Farben aus terrain-farben): farben {biomKey: 0xRRGGBB}, details (false = nur weich gemischte Biomfarben),
+ * schnee (false = kein Temperatur-Schnee), felsAb (Steigung für Hangfels), mulden, weich (Mischradius in Zellen),
+ * weichesUfer (false = Wasserfläche endet an Zellkanten wie in 1.0).
  */
 export function createTerrainMesh(adapter, opts = {}) {
   const welt = adapter.welt;
   const schritt = Math.max(1, opts.schritt | 0 || 1);
-  const rauschen = opts.farbRauschen ?? 0.08;
-  const fels = new THREE.Color(opts.felsFarbe ?? 0x7d7468);
   const B = welt.breite, T = welt.tiefe, z = welt.zelle, hs = adapter.hoehenSkala;
   const nx = Math.floor((B - 1) / schritt) + 1, nz = Math.floor((T - 1) / schritt) + 1;
-  const farben = biomFarben(welt);
   const gruppe = new THREE.Group(); gruppe.name = 'gelaende';
+  // Farben je Zelle (weiche Biome, Flecken, Fels, Ufer, Schnee …) aus terrain-farben
+  const zf = gelaendeFarben(welt, {
+    hoehenSkala: hs, meterProZelle: adapter.meterProZelle, farben: opts.farben, details: opts.details, schnee: opts.schnee,
+    felsAb: opts.felsAb, mulden: opts.mulden, weich: opts.weich, rauschen: (opts.farbRauschen ?? 0.08) / 0.08,
+  });
 
   // ---- Boden ----
   const pos = new Float32Array(nx * nz * 3), col = new Float32Array(nx * nz * 3);
@@ -45,13 +50,7 @@ export function createTerrainMesh(adapter, opts = {}) {
     const gx = Math.min(B - 1, i * schritt), gy = Math.min(T - 1, j * schritt), s = gy * B + gx, v = (j * nx + i) * 3;
     const p = adapter.zuWelt(gx * z, gy * z);
     pos[v] = p.x; pos[v + 1] = welt.hoehe[s] * hs; pos[v + 2] = p.z;
-    const b = welt.biom[s] * 3;
-    let r = farben[b], g = farben[b + 1], bl = farben[b + 2];
-    // Steile Hänge werden Fels, ein wenig Rauschen bricht die Flächen auf
-    const hang = welt.hang ? Math.min(1, Math.max(0, (welt.hang[s] * hs / adapter.meterProZelle - 0.7) * 1.4)) : 0;
-    r += (fels.r - r) * hang; g += (fels.g - g) * hang; bl += (fels.b - bl) * hang;
-    const f = 1 + (hash2(gx, gy, welt.seed | 0) - 0.5) * 2 * rauschen;
-    col[v] = r * f; col[v + 1] = g * f; col[v + 2] = bl * f;
+    col[v] = zf[s * 3]; col[v + 1] = zf[s * 3 + 1]; col[v + 2] = zf[s * 3 + 2];
   }
   const idx = [];
   for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {
@@ -85,9 +84,12 @@ export function createTerrainMesh(adapter, opts = {}) {
     const k = j * nx + i;
     if (vNr[k] >= 0) return vNr[k];
     const gx = Math.min(B - 1, i * schritt), gy = Math.min(T - 1, j * schritt);
-    const p = adapter.zuWelt(gx * z, gy * z), h = spiegel(gx, gy) ?? welt.hoehe[gy * B + gx];
+    const p = adapter.zuWelt(gx * z, gy * z), boden = welt.hoehe[gy * B + gx] * hs;
+    let y = (spiegel(gx, gy) ?? welt.hoehe[gy * B + gx]) * hs + 0.04;
+    // Ufer-Vertex (trocken): Wasser knapp unter den Boden ziehen → Uferlinie schneidet schräg durchs Dreieck statt Treppenkante
+    if (opts.weichesUfer !== false && !istWasser(gx, gy)) y = Math.min(y, boden - 0.06);
     vNr[k] = wpos.length / 3;
-    wpos.push(p.x, h * hs + 0.04, p.z);
+    wpos.push(p.x, y, p.z);
     return vNr[k];
   }
   for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {

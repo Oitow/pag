@@ -1,0 +1,6 @@
+{
+  "eintrag": "js/main.js",
+  "html": "index.html",
+  "entfernen": ["<a id=\"back\" href=\"../../\">← Spiele</a>"],
+  "smoke": { "query": "?raster=1&test=1", "warte": 5000 }
+}

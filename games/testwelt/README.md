@@ -4,6 +4,10 @@ Begehbare 3D-Welt zum Ausprobieren der Engine-Bausteine. Hier landet alles, was 
 
 - **Welt:** Weltgenerator (`engine/world/worldgen`) – alle Presets, Seed (🎲), Größe 128/256. Ergebnis wird als 3D-Gelände
   (`engine/world/terrain-mesh`) mit Seen, Flüssen und Meer gezeichnet, Bäume/Büsche/Felsen als Instanzen (`engine/world/scatter-mesh`).
+- **Natur:** prozedurale Natur-Assets (`engine/models/natur/natur-assets.js`, 4 Varianten je Typ, echte Meter) mit
+  Wind-Material (`engine/render/natur-material.js`, `objekte.update(zeit, { kamera })` je Bild). Instanzen in 128-m-Kacheln,
+  weiter als 160 m → Detailstufe 0, Bodendecker blenden ab 110 m aus. Felsen × 1,4 / Felsbrocken × 1,8 (`typSkala`).
+  Einzelne Assets ansehen: [🌿 Natur-Labor](../natur-labor/).
 - **Maßstab:** 2 m je Gitterzelle, Höhe × 60 m → die Standard-Insel ist ca. 512 × 512 m.
 - **Figur:** `js/figur.js` – Engine-Figurensystem (`docs/FIGUREN-SYSTEM.md`): `gameplay/character` (Motor + Modell + Animator),
   `input/move-input`, `camera/follow-camera` (Kollision mit Gelände/Bäumen, Ich-Sicht beim Reinzoomen, Presets, Lock-On).

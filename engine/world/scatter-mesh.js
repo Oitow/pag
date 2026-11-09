@@ -1,18 +1,22 @@
 /**
  * @modul    scatter-mesh
- * @zweck    Zeichnet die Objekte einer erzeugten Welt (welt.objekte: Bäume, Büsche, Felsen, Kakteen, Schilf, Blumen) als InstancedMesh je Typ mit einfachen Low-Poly-Formen; eigene Formen je Typ überschreibbar
- * @api      createScatterMesh(adapter, opts) -> {gruppe,anzahl,typen,dispose} ; FORMEN ; baueForm(teile) -> BufferGeometry
+ * @zweck    Zeichnet die Objekte einer erzeugten Welt (welt.objekte) als InstancedMesh je (Typ, Variante): mit Asset-Cache prozedurale Natur-Assets in Metern (Bäume, Felsen, Büsche, Bodendecker …) mit Wind, sonst einfache Low-Poly-FORMEN; unbekannte Typen → Ersatz nach Art oder weglassen; Seerosen auf dem Wasser
+ * @api      createScatterMesh(adapter, opts) -> {gruppe,anzahl,dreiecke,meshes,typen,update(zeit, { staerke, richtung, kamera }),dispose} ; FORMEN ; ERSATZ ; BODENDECKER ; baueForm(teile) -> BufferGeometry
  * @beispiel
  *   import { createScatterMesh } from '../../engine/world/scatter-mesh.js';
- *   const pflanzen = createScatterMesh(adapter, { schatten: true });
+ *   import { createAssetCache } from '../../engine/models/natur/natur-assets.js';
+ *   const pflanzen = createScatterMesh(adapter, { assets: createAssetCache, jahreszeit: 'herbst', bodendeckerWeite: 110 });
  *   szene.add(pflanzen.gruppe);
- * @tags     welt, objekte, baeume, felsen, instanzen, vegetation, mesh
- * @version  1.0.0
+ *   // je Bild: pflanzen.update(zeit);
+ * @tags     welt, objekte, baeume, felsen, instanzen, vegetation, mesh, wind, natur
+ * @version  2.0.0
  * @status   entwurf
  * @three    ja
  */
 
 import * as THREE from 'three';
+import { hash2 } from '../core/rng.js';
+import { createNaturMaterial } from '../render/natur-material.js';
 
 // Teile: [form, farbe, sx, sy, sz, y, x?, z?] – form: 'zyl' | 'kegel' | 'kugel' | 'fels' | 'box'. Maße in Metern bei skala 1.
 const STAMM = 0x6b4a2f, DUNKEL = 0x2f5a2a, LAUB = 0x4f8a3a, HELL = 0x7fae4a;
@@ -33,7 +37,11 @@ export const FORMEN = {
   schilf: [['kegel', 0x8fa65a, 0.5, 1.4, 0.5, 0.7]],
   blume: [['zyl', 0x4f8a3a, 0.04, 0.35, 0.04, 0.17], ['kugel', 0xffffff, 0.18, 0.12, 0.18, 0.36]],
 };
-const ERSATZ = { baum: 'eiche', busch: 'busch', fels: 'fels', kaktus: 'kaktus', schilf: 'schilf', blume: 'blume' };
+// Art → Ersatz-Typ, wenn ein Typ weder Asset noch Form hat. Unbekannte Art → Objekt wird übersprungen.
+export const ERSATZ = { baum: 'eiche', busch: 'busch', fels: 'fels', kaktus: 'kaktus', schilf: 'schilf', blume: 'blume', totholz: 'baumstumpf',
+  unterholz: 'farn', geroell: 'geroell', seerose: 'seerose', bodendecker: 'grasbueschel' };
+/** Flache Typen: kein Schattenwurf, bei opts.bodendeckerWeite Ausblenden mit der Entfernung. */
+export const BODENDECKER = new Set(['grasbueschel', 'blume', 'pilz', 'farn', 'seerose', 'schilf', 'ast', 'geroell', 'zwergstrauch']);
 const BLUMEN = [0xe2c94a, 0xd96aa0, 0xf0f0f0, 0x8f7ad8, 0xe0703a];
 
 function grundForm(form) {
@@ -71,51 +79,109 @@ export function baueForm(teile) {
   return geo;
 }
 
-/** opts: formen (eigene Teile je Typ), schatten, groesse (Gesamtfaktor), nurArten (Liste), unterWasser (false = weglassen). */
+/**
+ * opts: assets (Asset-Cache aus engine/models/natur/natur-assets.js ODER die Fabrik createAssetCache – dann baut und entsorgt
+ *       scatter-mesh den Cache selbst mit varianten/detail/jahreszeit/seed), varianten (4), detail (1), jahreszeit ('sommer'),
+ *       variantenBoden (2: weniger Varianten für BODENDECKER → weniger Draw-Calls),
+ *       wind (true), bodendeckerWeite (0 = aus, Meter), typSkala {typ: Faktor}, formen (eigene Teile je Typ, gehen vor Assets),
+ *       kachel (0 = eine Instanz-Gruppe für alles; Meter → Instanzen je Kachel, damit Frustum-/Schatten-Culling greift),
+ *       fernWeite (0 = aus; mit kachel: Kacheln weiter weg als fernWeite zeigen fernDetail (0) – braucht die Fabrik oder fernAssets),
+ *       schatten, groesse (Gesamtfaktor), nurArten (Liste), unterWasser (false = weglassen; Seerosen liegen immer auf dem Wasser).
+ * Ohne assets: alte Low-Poly-FORMEN (Maße × √meterProZelle). Assets sind in Metern → nur skala × groesse × typSkala.
+ */
 export function createScatterMesh(adapter, opts = {}) {
   const welt = adapter.welt, o = welt.objekte;
   const formen = { ...FORMEN, ...opts.formen };
-  const faktor = (opts.groesse ?? 1) * Math.sqrt(adapter.meterProZelle);
+  const eigeneFormen = opts.formen || {};
+  const groesse = opts.groesse ?? 1, faktor = groesse * Math.sqrt(adapter.meterProZelle);
+  const fabrik = typeof opts.assets === 'function' ? opts.assets : null;
+  const cOpts = { varianten: opts.varianten ?? 4, jahreszeit: opts.jahreszeit ?? 'sommer', seed: welt.seed ?? 1 };
+  const assets = fabrik ? fabrik({ ...cOpts, detail: opts.detail ?? 1 }) : opts.assets || null;
+  const kachel = opts.kachel ?? 0;
+  const fernWeite = assets && kachel > 0 ? opts.fernWeite ?? 0 : 0;
+  const fern = fernWeite > 0 ? opts.fernAssets || (fabrik ? fabrik({ ...cOpts, detail: opts.fernDetail ?? 0 }) : null) : null;
+  const nVar = assets ? assets.varianten : 1, nVarBoden = Math.min(nVar, opts.variantenBoden ?? 2);
+  const typSkala = opts.typSkala || {};
   const gruppe = new THREE.Group(); gruppe.name = 'objekte';
-  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true });
-  const proTyp = new Map();
+  const wind = opts.wind !== false, weite = opts.bodendeckerWeite ?? 0;
+  const mat = createNaturMaterial({ wind });
+  const matBoden = weite > 0 ? createNaturMaterial({ wind, weite }) : mat;
+
+  // Typ auflösen: eigene Form → Asset → alte Form → Ersatz nach Art → null (überspringen)
+  const aufloesen = (typ) => eigeneFormen[typ] ? ['form', typ] : assets?.hat(typ) ? ['asset', typ] : FORMEN[typ] ? ['form', typ] : null;
+  const aufgeloest = new Map();
+  const proGruppe = new Map();
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), achse = new THREE.Vector3(0, 1, 0);
   if (o) for (let i = 0; i < o.anzahl; i++) {
     const typ = o.typen[o.typ[i]], art = o.arten[o.art[i]];
     if (opts.nurArten && !opts.nurArten.includes(art)) continue;
-    const name = formen[typ] ? typ : ERSATZ[art] || 'busch';
-    let l = proTyp.get(name); if (!l) proTyp.set(name, l = []); l.push(i);
+    const k0 = typ + '|' + art;
+    let ziel = aufgeloest.get(k0);
+    if (ziel === undefined) { ziel = aufloesen(typ) || (ERSATZ[art] && aufloesen(ERSATZ[art])) || null; aufgeloest.set(k0, ziel); }
+    if (!ziel) continue;
+    const [form, name] = ziel, asset = form === 'asset', wasser = name === 'seerose';
+    const w = adapter.zuWelt(o.x[i], o.y[i]);
+    const y = adapter.bodenHoehe(w.x, w.z), wh = adapter.wasserHoehe(w.x, w.z);
+    if (wasser) { if (wh === null || wh === undefined || wh < y) continue; }
+    else if (opts.unterWasser === false && wh > y + 0.3) continue;
+    const v = asset ? Math.floor(hash2(Math.round(o.x[i] * 8), Math.round(o.y[i] * 8), 7331) * (BODENDECKER.has(name) ? nVarBoden : nVar)) : 0;
+    const kx = kachel > 0 ? Math.floor(w.x / kachel) : 0, kz = kachel > 0 ? Math.floor(w.z / kachel) : 0;
+    const key = `${name}#${v}#${form}#${kx},${kz}`;
+    let g = proGruppe.get(key);
+    if (!g) proGruppe.set(key, g = { asset, name, v, mitte: [(kx + 0.5) * kachel, (kz + 0.5) * kachel], m: [], idx: [] });
+    const sk = (o.skala[i] || 1) * (asset ? groesse * (typSkala[name] ?? 1) : faktor);
+    p.set(w.x, wasser ? wh + 0.02 : y - (asset ? 0.02 : 0.05 * sk), w.z); s.set(sk, sk, sk); q.setFromAxisAngle(achse, o.drehung ? o.drehung[i] : 0);
+    g.m.push(...m4.compose(p, q, s).elements); g.idx.push(i);
   }
-  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), achse = new THREE.Vector3(0, 1, 0);
   const farbe = new THREE.Color();
-  let anzahl = 0;
-  for (const [name, liste] of proTyp) {
-    const geo = baueForm(formen[name]);
-    const im = new THREE.InstancedMesh(geo, mat, liste.length);
-    im.name = name;
-    let k = 0;
-    for (const i of liste) {
-      const w = adapter.zuWelt(o.x[i], o.y[i]);
-      const y = adapter.bodenHoehe(w.x, w.z);
-      if (opts.unterWasser === false && adapter.wasserHoehe(w.x, w.z) > y + 0.3) continue;
-      const sk = (o.skala[i] || 1) * faktor;
-      p.set(w.x, y - 0.05 * sk, w.z); s.set(sk, sk, sk); q.setFromAxisAngle(achse, o.drehung ? o.drehung[i] : 0);
-      im.setMatrixAt(k, m4.compose(p, q, s));
-      if (name === 'blume') im.setColorAt(k, farbe.setHex(BLUMEN[i % BLUMEN.length]).multiplyScalar(1.2));
-      k++;
-    }
-    im.count = k;
-    im.castShadow = opts.schatten !== false && name !== 'blume' && name !== 'schilf';
+  const geos = new Map();   // eigene Formen: eine Geometrie je Name
+  const lod = [];           // [nah, fern, mitte]
+  let anzahl = 0, dreiecke = 0;
+  const typen = new Set();
+  const baue = (geo, material, g, matrix) => {
+    const im = new THREE.InstancedMesh(geo, material, g.idx.length);
+    if (matrix) im.instanceMatrix = matrix; else im.instanceMatrix.array.set(g.m);
+    im.castShadow = opts.schatten !== false && !BODENDECKER.has(g.name) && g.name !== 'blume';
     im.receiveShadow = opts.schatten !== false;
-    im.instanceMatrix.needsUpdate = true;
+    if (wind && im.castShadow) im.customDepthMaterial = mat.tiefenMaterial;
     im.computeBoundingSphere();
     gruppe.add(im);
-    anzahl += k;
+    return im;
+  };
+  for (const g of proGruppe.values()) {
+    const { asset, name, v } = g;
+    let geo;
+    if (asset) geo = assets.holen(name, v).geometrie;
+    else { geo = geos.get(name); if (!geo) geos.set(name, geo = baueForm(formen[name])); }
+    const material = BODENDECKER.has(name) ? matBoden : mat;
+    const im = baue(geo, material, g);
+    im.name = asset ? `${name}#${v}` : name;
+    if (!asset && name === 'blume') g.idx.forEach((i, k) => im.setColorAt(k, farbe.setHex(BLUMEN[i % BLUMEN.length]).multiplyScalar(1.2)));
+    const f = asset && !(BODENDECKER.has(name) && weite > 0 && weite <= fernWeite) && fern?.holen(name, v);
+    if (f) {
+      const imF = baue(f.geometrie, material, g, im.instanceMatrix);
+      imF.name = im.name + '#fern'; imF.visible = false;
+      lod.push([im, imF, g.mitte]);
+    }
+    typen.add(name);
+    anzahl += g.idx.length; dreiecke += g.idx.length * geo.attributes.position.count / 3;
   }
   return {
-    gruppe, anzahl, typen: [...proTyp.keys()],
+    gruppe, anzahl, dreiecke, typen: [...typen], meshes: gruppe.children.length,
+    /** Wind animieren + Detailstufen je Kachel: zeit in Sekunden; extra { staerke, richtung [x,z], kamera (Object3D oder {x,z}) }. */
+    update(zeit, extra = {}) {
+      mat.update(zeit, extra); if (matBoden !== mat) matBoden.update(zeit, extra);
+      const k = extra.kamera?.position || extra.kamera;
+      if (k && lod.length) {
+        const w2 = fernWeite * fernWeite;
+        for (const [nah, weit, [mx, mz]] of lod) { const nahDran = (k.x - mx) ** 2 + (k.z - mz) ** 2 < w2; nah.visible = nahDran; weit.visible = !nahDran; }
+      }
+    },
     dispose() {
-      gruppe.traverse(x => { if (x.isMesh) x.geometry.dispose(); });
-      mat.dispose();
+      for (const g of geos.values()) g.dispose();
+      for (const m of gruppe.children) m.dispose();
+      mat.dispose(); if (matBoden !== mat) matBoden.dispose();
+      if (fabrik) { assets.dispose(); if (fern && !opts.fernAssets) fern.dispose(); }
       gruppe.removeFromParent();
     },
   };
