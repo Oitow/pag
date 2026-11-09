@@ -12,7 +12,7 @@ Alle Spiele: Single-File HTML, mobil-tauglich. Startseite: [index.html](index.ht
 | [🏘️ Siedlung](games/siedlung/) | Aufbauspiel mit prozeduraler Welt und Trampelpfaden |
 | [🌳 Wurzelwerk](games/wurzelwerk/) | Baum-Roguelite: Wurzeln, Äste, Schädlingswellen |
 | [🧪 Weltlabor](games/weltlabor/) | Weltgenerator der Engine: 13 Presets, Seed, Regler, Ebenen (Höhe, Biome, Flüsse …) |
-| [🌍 Testwelt](games/testwelt/) | Begehbare 3D-Welt aus Weltgenerator + Figur: Engine-Bausteine ausprobieren |
+| [🌍 Testwelt](games/testwelt/) | Begehbare 3D-Welt aus Weltgenerator + Figur: Engine-Bausteine ausprobieren (bis 512er und unendlich, Gelände mit LOD) |
 
 ## 🧰 Baukasten (Engine)
 
