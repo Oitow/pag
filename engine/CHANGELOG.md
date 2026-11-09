@@ -1,5 +1,11 @@
 # Engine-Changelog
 
+## 2026-11 – Wasser
+- world/water-field 1.0.0 (neu, ohne THREE): Wasserart je Zelle, Strömungsfeld der Flüsse (D8-Abfluss, geglättet), Uferabstand, Vertex-Gitter in Metern
+- world/water-mesh 1.0.0 (neu): Meer/Seen/Flüsse mit eigenem Shader – Wellen, Tiefenfärbung, Uferschaum, Flussströmung, Meeresring bis zum Horizont; update(dt), setSonne, setHimmel
+- world/terrain-mesh 1.1.0: neue Option `wasser: false` (keine Seen/Flüsse/Meer, Meeresgrund bleibt; `wasser`/`meer` sind dann null)
+- games/testwelt: nutzt water-mesh statt des alten Terrain-Wassers
+
 ## 2026-11 – Testwelt
 - world/worldgen/worldgen-adapter 1.0.0: Welt in Metern für Figuren/Kamera (bodenHoehe, wasserHoehe, hindernisse, Startpunkt) – passt zu docs/FIGUREN-SYSTEM.md
 - world/terrain-mesh 1.0.0: Gelände mit Biomfarben, Seen/Flüsse, Meer

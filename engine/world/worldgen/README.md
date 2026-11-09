@@ -26,6 +26,10 @@ welt.objekte;                // { anzahl, x, y, art, typ, skala, drehung, arten,
 
 Dazu kommen `worldgen-query` (Abfragen, `mitAbfragen` nach einem Worker), `worldgen-path` (A* mit Hang- und Wasserkosten), `worldgen-chunks` (unendlicher Modus) und `worldgen-grid` (Heap, Abstände, Flags).
 
+**Wasser darstellen:** `engine/world/water-mesh.js` macht aus `wasserstand`, `flussBreite`, `flags` und `ziel` animiertes Wasser
+(Wellen, Tiefenfärbung, Uferschaum, Strömung): `createWaterMesh({ adapter })`, in der Schleife `update(dt)`. Die Rechenlogik dazu
+liegt ohne THREE in `engine/world/water-field.js`. Mit `createTerrainMesh(adapter, { wasser: false })` zeichnet das Gelände kein eigenes Wasser.
+
 ## Presets
 
 `insel`, `archipel`, `kontinent`, `gebirge`, `wueste`, `tundra`, `sumpfland`, `vulkaninsel`, `canyon`, `flachland`, `kueste`, `hochebene`, `unendlich`.

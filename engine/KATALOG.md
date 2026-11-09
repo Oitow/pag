@@ -13,6 +13,8 @@
 | fake-dom | `engine/test/fake-dom.mjs` | Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame | stabil |
 | scatter-mesh | `engine/world/scatter-mesh.js` | Zeichnet die Objekte einer erzeugten Welt (welt.objekte: Bäume, Büsche, Felsen, Kakteen, Schilf, Blumen) als InstancedMesh je Typ mit einfachen Low-Poly-Formen; eigene Formen je Typ überschreibbar | entwurf |
 | terrain-mesh | `engine/world/terrain-mesh.js` | Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit Biomfarben, Hangfels und Farbrauschen, Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont | entwurf |
+| water-field | `engine/world/water-field.js` | Reine Rechenlogik fürs Wasser (ohne THREE): Wasserart je Zelle, Strömungsfeld der Flüsse in Abflussrichtung, Uferabstand und ein Vertex-Gitter mit Spiegel, Tiefe, Uferabstand, Strömung und Wellenstärke in Metern – Grundlage für water-mesh | entwurf |
+| water-mesh | `engine/world/water-mesh.js` | Handytaugliches Wasser für Meer, Seen und Flüsse aus den worldgen-Daten: ein Netz auf dem Wasserspiegel plus Meeresring bis zum Horizont, eigener leichter Shader mit animierten Wellen, Tiefenfärbung (flach türkis → tief dunkel), Uferschaum und Flussströmung in Abflussrichtung – alles prozedural, ohne Texturen | entwurf |
 | worldgen-adapter | `engine/world/worldgen/worldgen-adapter.js` | Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md | entwurf |
 | worldgen-biomes | `engine/world/worldgen/worldgen-biomes.js` | Biome nach Whittaker (Temperatur × Feuchte, als schnelle Nachschlagetabelle) plus Prioritätsregeln (Wasser, Schnee, Fels, Strand, Sumpf); Biomliste per Spiel erweiterbar | entwurf |
 | worldgen-chunks | `engine/world/worldgen/worldgen-chunks.js` | Unendlicher/gestreamter Modus: Höhe, Klima, Biome, Rauschflüsse und Objekte punktweise und pro Chunk – nahtlos über Chunkgrenzen (ohne globale Erosion/Hydrologie) | entwurf |
@@ -52,7 +54,7 @@
 | felsen | scatter-mesh |
 | feuchte | worldgen-climate |
 | figur | worldgen-adapter |
-| fluss | worldgen-rivers |
+| fluss | water-field, water-mesh, worldgen-rivers |
 | form | worldgen-shape |
 | gebirge | worldgen-height |
 | gelaende | terrain-mesh |
@@ -71,7 +73,7 @@
 | kollision | worldgen-adapter |
 | maske | worldgen-shape |
 | mathe | math |
-| meer | terrain-mesh |
+| meer | terrain-mesh, water-field, water-mesh |
 | mesh | scatter-mesh, terrain-mesh |
 | node | fake-dom |
 | noise | noise |
@@ -87,19 +89,26 @@
 | prozedural | noise, worldgen |
 | rauschen | noise |
 | regen | worldgen-climate |
+| schaum | water-mesh |
+| see | water-field, water-mesh |
 | seed | rng |
 | seen | worldgen-hydrology |
+| shader | water-mesh |
 | start | worldgen-sites |
 | streaming | worldgen-chunks |
+| stroemung | water-field, water-mesh |
 | temperatur | worldgen-climate |
 | terrain | noise, terrain-mesh, worldgen-chunks, worldgen-erosion, worldgen-height, worldgen-shape, worldgen |
 | test | fake-dom |
+| tiefe | water-field |
+| ufer | water-field |
 | unendlich | worldgen-chunks |
 | vegetation | scatter-mesh |
 | verteilung | worldgen-scatter |
-| wasser | terrain-mesh, worldgen-adapter, worldgen-hydrology, worldgen-rivers |
+| wasser | terrain-mesh, water-field, water-mesh, worldgen-adapter, worldgen-hydrology, worldgen-rivers |
 | wegfindung | worldgen-path |
-| welt | noise, rng, scatter-mesh, terrain-mesh, worldgen-adapter, worldgen-biomes, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
+| wellen | water-mesh |
+| welt | noise, rng, scatter-mesh, terrain-mesh, water-field, water-mesh, worldgen-adapter, worldgen-biomes, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
 | whittaker | worldgen-biomes |
 | worldgen | worldgen-adapter, worldgen-biomes, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
 | zufall | rng |
@@ -197,10 +206,10 @@ szene.add(pflanzen.gruppe);
 
 Genutzt von: testwelt · Tags: welt, objekte, baeume, felsen, instanzen, vegetation, mesh · THREE: ja
 
-### terrain-mesh · `engine/world/terrain-mesh.js` · v1.0.0 · entwurf
+### terrain-mesh · `engine/world/terrain-mesh.js` · v1.1.0 · entwurf
 Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit Biomfarben, Hangfels und Farbrauschen, Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont
 
-- `createTerrainMesh(adapter, opts) -> {gruppe,boden,wasser,meer,dispose}`
+- `createTerrainMesh(adapter, opts) -> {gruppe,boden,wasser,meer,dispose} (wasser/meer = null bei opts.wasser === false)`
 - `biomFarben(welt) -> Float32Array`
 
 ```js
@@ -210,6 +219,36 @@ szene.add(gelaende.gruppe);
 ```
 
 Genutzt von: testwelt · Tags: welt, terrain, gelaende, wasser, meer, mesh, biome · THREE: ja
+
+### water-field · `engine/world/water-field.js` · v1.0.0 · entwurf
+Reine Rechenlogik fürs Wasser (ohne THREE): Wasserart je Zelle, Strömungsfeld der Flüsse in Abflussrichtung, Uferabstand und ein Vertex-Gitter mit Spiegel, Tiefe, Uferabstand, Strömung und Wellenstärke in Metern – Grundlage für water-mesh
+
+- `wasserArt(welt) -> Uint8Array`
+- `stroemungsFeld(welt, opts) -> {x,y}`
+- `uferAbstand(welt) -> Float32Array`
+- `wasserGitter(welt, opts) -> {nx,nz,schritt,spiegel,tiefe,ufer,stroemX,stroemZ,welle,quads,anzahlQuads}`
+- `ART`
+
+```js
+import { wasserGitter } from '../../engine/world/water-field.js';
+const g = wasserGitter(welt, { schritt: 1, hoehenSkala: 60, meterProZelle: 2 });
+g.tiefe[k];  g.stroemX[k];  // Meter bzw. m/s am Vertex k = j * g.nx + i
+```
+
+Genutzt von: – · Tags: welt, wasser, fluss, see, meer, stroemung, tiefe, ufer · THREE: nein
+
+### water-mesh · `engine/world/water-mesh.js` · v1.0.0 · entwurf
+Handytaugliches Wasser für Meer, Seen und Flüsse aus den worldgen-Daten: ein Netz auf dem Wasserspiegel plus Meeresring bis zum Horizont, eigener leichter Shader mit animierten Wellen, Tiefenfärbung (flach türkis → tief dunkel), Uferschaum und Flussströmung in Abflussrichtung – alles prozedural, ohne Texturen
+
+- `createWaterMesh(opts) -> {gruppe,mesh,material,uniforms,gitter,update(dt),setSonne(richtung,farbe?),setHimmel(farbe),dispose}`
+
+```js
+import { createWaterMesh } from '../../engine/world/water-mesh.js';
+const wasser = createWaterMesh({ adapter, sonne: new THREE.Vector3(60, 120, 40) });
+szene.add(wasser.gruppe);  // in der Schleife: wasser.update(dt)
+```
+
+Genutzt von: testwelt · Tags: welt, wasser, meer, see, fluss, shader, wellen, schaum, stroemung · THREE: ja
 
 ### worldgen-adapter · `engine/world/worldgen/worldgen-adapter.js` · v1.0.0 · entwurf
 Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md

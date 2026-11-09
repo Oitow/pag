@@ -3,7 +3,9 @@
 Begehbare 3D-Welt zum Ausprobieren der Engine-Bausteine. Hier landet alles, was neu in den Baukasten kommt.
 
 - **Welt:** Weltgenerator (`engine/world/worldgen`) – alle Presets, Seed (🎲), Größe 128/256. Ergebnis wird als 3D-Gelände
-  (`engine/world/terrain-mesh`) mit Seen, Flüssen und Meer gezeichnet, Bäume/Büsche/Felsen als Instanzen (`engine/world/scatter-mesh`).
+  (`engine/world/terrain-mesh`, hier mit `wasser: false`) gezeichnet, Bäume/Büsche/Felsen als Instanzen (`engine/world/scatter-mesh`).
+- **Wasser:** `engine/world/water-mesh` – Meer, Seen und Flüsse mit Wellen, Tiefenfärbung (flach türkis → tief dunkel),
+  Uferschaum und Flussströmung in Abflussrichtung; eigener leichter Shader, keine Texturen.
 - **Maßstab:** 2 m je Gitterzelle, Höhe × 60 m → die Standard-Insel ist ca. 512 × 512 m.
 - **Figur:** Steckplatz `js/figur.js`. Liegt das Engine-Figurensystem (`docs/FIGUREN-SYSTEM.md`: move-input, character-motor,
   character-model, character-animator, follow-camera) im Repo, wird es automatisch geladen. Sonst läuft ein Platzhalter
