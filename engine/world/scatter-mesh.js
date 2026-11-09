@@ -1,13 +1,13 @@
 /**
  * @modul    scatter-mesh
  * @zweck    Zeichnet die Objekte einer erzeugten Welt (welt.objekte: Bäume, Büsche, Felsen, Kakteen, Schilf, Blumen) als InstancedMesh je Typ mit einfachen Low-Poly-Formen; eigene Formen je Typ überschreibbar
- * @api      createScatterMesh(adapter, opts) -> {gruppe,anzahl,typen,dispose} ; FORMEN ; baueForm(teile) -> BufferGeometry
+ * @api      createScatterMesh(adapter, opts) -> {gruppe,anzahl,typen,dispose} ; FORMEN ; BLUMEN_FARBEN ; baueForm(teile) -> BufferGeometry ; formName(formen,typ,art) -> string
  * @beispiel
  *   import { createScatterMesh } from '../../engine/world/scatter-mesh.js';
  *   const pflanzen = createScatterMesh(adapter, { schatten: true });
  *   szene.add(pflanzen.gruppe);
  * @tags     welt, objekte, baeume, felsen, instanzen, vegetation, mesh
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    ja
  */
@@ -34,7 +34,11 @@ export const FORMEN = {
   blume: [['zyl', 0x4f8a3a, 0.04, 0.35, 0.04, 0.17], ['kugel', 0xffffff, 0.18, 0.12, 0.18, 0.36]],
 };
 const ERSATZ = { baum: 'eiche', busch: 'busch', fels: 'fels', kaktus: 'kaktus', schilf: 'schilf', blume: 'blume' };
-const BLUMEN = [0xe2c94a, 0xd96aa0, 0xf0f0f0, 0x8f7ad8, 0xe0703a];
+export const BLUMEN_FARBEN = [0xe2c94a, 0xd96aa0, 0xf0f0f0, 0x8f7ad8, 0xe0703a];
+const BLUMEN = BLUMEN_FARBEN;
+
+/** Name der Form für ein Objekt: eigener Typ, sonst Ersatz nach Art (baum → eiche …), sonst busch. */
+export const formName = (formen, typ, art) => (formen[typ] ? typ : ERSATZ[art] || 'busch');
 
 function grundForm(form) {
   switch (form) {
@@ -82,7 +86,7 @@ export function createScatterMesh(adapter, opts = {}) {
   if (o) for (let i = 0; i < o.anzahl; i++) {
     const typ = o.typen[o.typ[i]], art = o.arten[o.art[i]];
     if (opts.nurArten && !opts.nurArten.includes(art)) continue;
-    const name = formen[typ] ? typ : ERSATZ[art] || 'busch';
+    const name = formName(formen, typ, art);
     let l = proTyp.get(name); if (!l) proTyp.set(name, l = []); l.push(i);
   }
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), achse = new THREE.Vector3(0, 1, 0);

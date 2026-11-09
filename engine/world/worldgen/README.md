@@ -62,6 +62,10 @@ const c = gen.generateChunk(cx, cy, 64);  // (64+1)² Ecken: hoehe, biom, flags,
 gen.sampleHeight(x, y);                   // punktweise, identisch mit den Chunk-Werten
 ```
 
+Zum Rendern und Begehen: `createChunkAdapter(gen, { hoehenSkala, meterProZelle, kachel: 32 })` aus `engine/world/chunk-adapter.js`
+(gleiche Schnittstelle wie der Welt-Adapter) und `createTerrainChunks({ adapter })` aus `engine/world/terrain-chunks.js`
+(LOD-Kacheln mit Streaming – funktioniert genauso mit dem Welt-Adapter einer endlichen Welt).
+
 Kanten und Objekte sind nahtlos, weil alles nur von Seed und Position abhängt. Ohne globale Stufen gibt es hier keine Erosion, Seen oder echten Flüsse. Stattdessen gibt es Rauschflüsse.
 `kachelbar: true` macht das Höhenfeld einer endlichen Welt periodisch.
 

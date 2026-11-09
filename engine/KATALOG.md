@@ -11,8 +11,12 @@
 | noise | `engine/core/noise.js` | Seedbares Simplex-Rauschen 2D/3D plus fBm, Grat-Rauschen und Domain-Warp für Terrain, Biome und Texturen | stabil |
 | rng | `engine/core/rng.js` | Deterministischer Zufall (mulberry32), Seeds aus Text, Gitter-Hash und Würfel-Helfer | stabil |
 | fake-dom | `engine/test/fake-dom.mjs` | Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame | stabil |
+| chunk-adapter | `engine/world/chunk-adapter.js` | Welt-Adapter für den unendlichen Modus: macht einen Chunk-Generator (worldgen-chunks) in Metern abfragbar – gleiche Schnittstelle wie worldgen-adapter (bodenHoehe, wasserHoehe, hindernisse, normale, biomBei, startPunkt) plus Chunk-Cache für Gelände und Objekte | entwurf |
 | scatter-mesh | `engine/world/scatter-mesh.js` | Zeichnet die Objekte einer erzeugten Welt (welt.objekte: Bäume, Büsche, Felsen, Kakteen, Schilf, Blumen) als InstancedMesh je Typ mit einfachen Low-Poly-Formen; eigene Formen je Typ überschreibbar | entwurf |
+| terrain-chunks | `engine/world/terrain-chunks.js` | Gekacheltes Gelände mit LOD (3–4 Stufen nach Kameraabstand, Skirts gegen Risse), Frustum-Culling und Streaming um die Kamera mit Zeitbudget pro Frame; Objekte (Bäume, Felsen …) nur in nahen Kacheln. Für endliche Welten (worldgen-adapter) und den unendlichen Modus (chunk-adapter) | entwurf |
+| terrain-lod | `engine/world/terrain-lod.js` | Reine Logik für gekacheltes Gelände: LOD-Wahl nach Abstand (mit Hysterese), Index-Puffer je LOD inkl. Skirts gegen Risse, Kachel-Planung um die Kamera und eine Arbeits-Warteschlange mit Zeitbudget pro Frame | entwurf |
 | terrain-mesh | `engine/world/terrain-mesh.js` | Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit Biomfarben, Hangfels und Farbrauschen, Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont | entwurf |
+| terrain-quelle | `engine/world/terrain-quelle.js` | Datenquelle für gekacheltes Gelände ohne THREE: liest Höhen/Biome/Objekte je Kachel aus einer endlichen Welt (worldgen-adapter) oder dem unendlichen Modus (chunk-adapter) und füllt Vertex-Puffer (Position, Normale, Farbe inkl. Skirts) für eine LOD | entwurf |
 | worldgen-adapter | `engine/world/worldgen/worldgen-adapter.js` | Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md | entwurf |
 | worldgen-biomes | `engine/world/worldgen/worldgen-biomes.js` | Biome nach Whittaker (Temperatur × Feuchte, als schnelle Nachschlagetabelle) plus Prioritätsregeln (Wasser, Schnee, Fels, Strand, Sumpf); Biomliste per Spiel erweiterbar | entwurf |
 | worldgen-chunks | `engine/world/worldgen/worldgen-chunks.js` | Unendlicher/gestreamter Modus: Höhe, Klima, Biome, Rauschflüsse und Objekte punktweise und pro Chunk – nahtlos über Chunkgrenzen (ohne globale Erosion/Hydrologie) | entwurf |
@@ -37,25 +41,26 @@
 | abfluss | worldgen-hydrology, worldgen-rivers |
 | abfrage | worldgen-query |
 | abstand | worldgen-grid |
-| adapter | worldgen-adapter |
+| adapter | chunk-adapter, worldgen-adapter |
 | astar | worldgen-path |
 | attrappe | fake-dom |
 | baeume | scatter-mesh, worldgen-scatter |
 | biome | terrain-mesh, worldgen-biomes, worldgen-query |
 | blue-noise | worldgen-scatter |
 | boden | worldgen-adapter |
-| chunks | worldgen-chunks |
+| chunks | chunk-adapter, terrain-chunks, terrain-lod, terrain-quelle, worldgen-chunks |
+| culling | terrain-chunks, terrain-lod |
 | dom | fake-dom |
 | dorf | worldgen-sites |
 | erosion | worldgen-erosion |
 | fbm | worldgen-height |
 | felsen | scatter-mesh |
 | feuchte | worldgen-climate |
-| figur | worldgen-adapter |
+| figur | chunk-adapter, worldgen-adapter |
 | fluss | worldgen-rivers |
 | form | worldgen-shape |
 | gebirge | worldgen-height |
-| gelaende | terrain-mesh |
+| gelaende | terrain-chunks, terrain-lod, terrain-mesh, terrain-quelle |
 | generator | worldgen |
 | gitter | worldgen-grid |
 | hash | rng |
@@ -69,6 +74,7 @@
 | karte | worldgen |
 | klima | worldgen-biomes, worldgen-climate |
 | kollision | worldgen-adapter |
+| lod | terrain-chunks, terrain-lod, terrain-quelle |
 | maske | worldgen-shape |
 | mathe | math |
 | meer | terrain-mesh |
@@ -76,7 +82,7 @@
 | node | fake-dom |
 | noise | noise |
 | normale | worldgen-query |
-| objekte | scatter-mesh, worldgen-scatter |
+| objekte | scatter-mesh, terrain-chunks, worldgen-scatter |
 | optionen | worldgen-presets |
 | orte | worldgen-sites |
 | pfad | worldgen-path |
@@ -90,16 +96,17 @@
 | seed | rng |
 | seen | worldgen-hydrology |
 | start | worldgen-sites |
-| streaming | worldgen-chunks |
+| streaming | chunk-adapter, terrain-chunks, terrain-lod, worldgen-chunks |
 | temperatur | worldgen-climate |
-| terrain | noise, terrain-mesh, worldgen-chunks, worldgen-erosion, worldgen-height, worldgen-shape, worldgen |
+| terrain | noise, terrain-chunks, terrain-lod, terrain-mesh, terrain-quelle, worldgen-chunks, worldgen-erosion, worldgen-height, worldgen-shape, worldgen |
 | test | fake-dom |
-| unendlich | worldgen-chunks |
+| unendlich | chunk-adapter, terrain-chunks, worldgen-chunks |
 | vegetation | scatter-mesh |
 | verteilung | worldgen-scatter |
+| vertex | terrain-quelle |
 | wasser | terrain-mesh, worldgen-adapter, worldgen-hydrology, worldgen-rivers |
 | wegfindung | worldgen-path |
-| welt | noise, rng, scatter-mesh, terrain-mesh, worldgen-adapter, worldgen-biomes, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
+| welt | noise, rng, chunk-adapter, scatter-mesh, terrain-chunks, terrain-lod, terrain-mesh, terrain-quelle, worldgen-adapter, worldgen-biomes, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
 | whittaker | worldgen-biomes |
 | worldgen | worldgen-adapter, worldgen-biomes, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
 | zufall | rng |
@@ -182,12 +189,28 @@ dom.tick(16); // führt alle angefragten Animation-Frames aus
 
 Genutzt von: – · Tags: test, dom, node, attrappe · THREE: nein
 
-### scatter-mesh · `engine/world/scatter-mesh.js` · v1.0.0 · entwurf
+### chunk-adapter · `engine/world/chunk-adapter.js` · v1.0.0 · entwurf
+Welt-Adapter für den unendlichen Modus: macht einen Chunk-Generator (worldgen-chunks) in Metern abfragbar – gleiche Schnittstelle wie worldgen-adapter (bodenHoehe, wasserHoehe, hindernisse, normale, biomBei, startPunkt) plus Chunk-Cache für Gelände und Objekte
+
+- `createChunkAdapter(gen, opts) -> {gen,unendlich,kachel,chunk(cx,cy),hatChunk(cx,cy),bodenHoehe,wasserHoehe,hindernisse,normale,biomBei,zuGitter,zuWelt,startPunkt,groesse,hoehenSkala,meterProZelle,dispose}`
+
+```js
+import { createChunkGenerator } from '../../engine/world/worldgen/worldgen-chunks.js';
+import { createChunkAdapter } from '../../engine/world/chunk-adapter.js';
+const adapter = createChunkAdapter(createChunkGenerator({ preset: 'unendlich', seed: 5 }), { hoehenSkala: 60, meterProZelle: 2 });
+adapter.bodenHoehe(10, -40);   // Meter
+```
+
+Genutzt von: testwelt · Tags: welt, chunks, unendlich, adapter, figur, streaming · THREE: nein
+
+### scatter-mesh · `engine/world/scatter-mesh.js` · v1.1.0 · entwurf
 Zeichnet die Objekte einer erzeugten Welt (welt.objekte: Bäume, Büsche, Felsen, Kakteen, Schilf, Blumen) als InstancedMesh je Typ mit einfachen Low-Poly-Formen; eigene Formen je Typ überschreibbar
 
 - `createScatterMesh(adapter, opts) -> {gruppe,anzahl,typen,dispose}`
 - `FORMEN`
+- `BLUMEN_FARBEN`
 - `baueForm(teile) -> BufferGeometry`
+- `formName(formen,typ,art) -> string`
 
 ```js
 import { createScatterMesh } from '../../engine/world/scatter-mesh.js';
@@ -195,7 +218,41 @@ const pflanzen = createScatterMesh(adapter, { schatten: true });
 szene.add(pflanzen.gruppe);
 ```
 
-Genutzt von: testwelt · Tags: welt, objekte, baeume, felsen, instanzen, vegetation, mesh · THREE: ja
+Genutzt von: – · Tags: welt, objekte, baeume, felsen, instanzen, vegetation, mesh · THREE: ja
+
+### terrain-chunks · `engine/world/terrain-chunks.js` · v1.0.0 · entwurf
+Gekacheltes Gelände mit LOD (3–4 Stufen nach Kameraabstand, Skirts gegen Risse), Frustum-Culling und Streaming um die Kamera mit Zeitbudget pro Frame; Objekte (Bäume, Felsen …) nur in nahen Kacheln. Für endliche Welten (worldgen-adapter) und den unendlichen Modus (chunk-adapter)
+
+- `createTerrainChunks(opts) -> {gruppe,update(kamera,budgetMs),vorladen(kamera,maxMs),debug()->{kacheln,sichtbar,dreiecke,drawCalls,warteschlange,lod,objekte},stufen,sichtweite,dispose}`
+
+```js
+import { createTerrainChunks } from '../../engine/world/terrain-chunks.js';
+const gelaende = createTerrainChunks({ adapter, kachel: 32, budgetMs: 4 });
+szene.add(gelaende.gruppe); gelaende.vorladen(kamera);
+// je Frame: gelaende.update(kamera); gelaende.debug().dreiecke
+```
+
+Genutzt von: testwelt · Tags: welt, terrain, gelaende, lod, chunks, streaming, culling, unendlich, objekte · THREE: ja
+
+### terrain-lod · `engine/world/terrain-lod.js` · v1.0.0 · entwurf
+Reine Logik für gekacheltes Gelände: LOD-Wahl nach Abstand (mit Hysterese), Index-Puffer je LOD inkl. Skirts gegen Risse, Kachel-Planung um die Kamera und eine Arbeits-Warteschlange mit Zeitbudget pro Frame
+
+- `kachelIndizes(seg) -> Uint16Array|Uint32Array`
+- `vertexAnzahl(seg) -> int`
+- `dreieckAnzahl(seg) -> int`
+- `waehleLod(abstand,stufen,alt,hysterese) -> int`
+- `abstandZuRechteck(px,pz,x0,z0,x1,z1) -> number`
+- `kachelSchluessel(kx,ky) -> int`
+- `planeKacheln(p) -> {soll,auftraege,entfernen}`
+- `abarbeiten(auftraege,ausfuehren,opts) -> int`
+
+```js
+import { planeKacheln, abarbeiten, kachelIndizes } from '../../engine/world/terrain-lod.js';
+const plan = planeKacheln({ kamX: 0, kamZ: 0, kachelMeter: 64, sichtweite: 600, stufen: [96, 192, 384], vorhanden });
+abarbeiten(plan.auftraege, (a) => baueKachel(a), { budgetMs: 4 });
+```
+
+Genutzt von: – · Tags: welt, terrain, gelaende, lod, chunks, streaming, culling · THREE: nein
 
 ### terrain-mesh · `engine/world/terrain-mesh.js` · v1.0.0 · entwurf
 Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit Biomfarben, Hangfels und Farbrauschen, Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont
@@ -210,6 +267,20 @@ szene.add(gelaende.gruppe);
 ```
 
 Genutzt von: testwelt · Tags: welt, terrain, gelaende, wasser, meer, mesh, biome · THREE: ja
+
+### terrain-quelle · `engine/world/terrain-quelle.js` · v1.0.0 · entwurf
+Datenquelle für gekacheltes Gelände ohne THREE: liest Höhen/Biome/Objekte je Kachel aus einer endlichen Welt (worldgen-adapter) oder dem unendlichen Modus (chunk-adapter) und füllt Vertex-Puffer (Position, Normale, Farbe inkl. Skirts) für eine LOD
+
+- `quelleAusAdapter(adapter, opts) -> {endlich,kachel,bereich,seed,biome,feld(kx,ky,schritt,aus),objekte(kx,ky),teuer(kx,ky,lod),kachelRechteck(kx,ky)}`
+- `fuelleKachel(quelle,kx,ky,lod,ziel,stil) -> {minY,maxY}`
+
+```js
+import { quelleAusAdapter, fuelleKachel } from '../../engine/world/terrain-quelle.js';
+const q = quelleAusAdapter(adapter, { kachel: 32 });
+const box = fuelleKachel(q, 0, 0, 1, { pos, nor, col }, { farben, fels: [0.5, 0.45, 0.4] });
+```
+
+Genutzt von: – · Tags: welt, terrain, gelaende, lod, chunks, vertex · THREE: nein
 
 ### worldgen-adapter · `engine/world/worldgen/worldgen-adapter.js` · v1.0.0 · entwurf
 Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md
