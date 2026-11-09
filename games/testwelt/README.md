@@ -17,6 +17,10 @@ Begehbare 3D-Welt zum Ausprobieren der Engine-Bausteine. Hier landet alles, was 
 - **Dorfbewohner:** `js/dorf.js` – am Start und in bis zu 4 Dörfern je 2–4 NPCs mit `gameplay/character-brain` (wandern,
   vormittags arbeiten, untereinander plaudern), Namensschildern und Sprechblasen (`engine/ui/figur-schild`).
   Sie schauen dich an, wenn du nahe kommst; ansprechen mit E / 💬. Spielzeit: 1 Stunde je 30 s (Anzeige unten links).
+- **Himmel & Wetter:** Tag/Nacht mit Sonne, Mond (Phasen), Sternen und Wolken (`engine/world/himmel`, `himmel-stand`), Wetter nach
+  Biom-Klima und Jahreszeit (`engine/world/wetter`), Regen/Schnee (`engine/render/niederschlag`). ⏩ = 3 Stunden vor, Wetterknopf = nächstes Wetter.
+- **Zeit & Spielstand:** Spieluhr mit Tagen und Jahreszeiten (`engine/core/zeit`), Schleife (`engine/core/schleife`), Uhr, Wetter und
+  Position werden alle 10 s gespeichert (`engine/core/speicher`); `&frisch` in der URL ignoriert den Spielstand.
 - **Steuerung:** WASD/Pfeile, Shift = rennen, Leertaste = springen, Q = Rolle/Dash, V = gleiten, E = ansprechen,
   T = Ziel erfassen/wechseln (Lock-On), Maus ziehen = Kamera, Mausrad = Zoom (ganz rein = Ich-Sicht), 🎥 = Kamera-Ansicht.
   Handy: Stick links (erscheint unter dem Finger), rechte Hälfte ziehen = Kamera, zwei Finger = Zoom, Knöpfe unten rechts

@@ -12,6 +12,9 @@
 | math | `engine/core/math.js` | Kleine Mathe-Helfer: clamp, lerp, smoothstep, framerate-unabhängiges Dämpfen, Winkel | stabil |
 | noise | `engine/core/noise.js` | Seedbares Simplex-Rauschen 2D/3D plus fBm, Grat-Rauschen und Domain-Warp für Terrain, Biome und Texturen | stabil |
 | rng | `engine/core/rng.js` | Deterministischer Zufall (mulberry32), Seeds aus Text, Gitter-Hash und Würfel-Helfer | stabil |
+| schleife | `engine/core/schleife.js` | Spielschleife mit variablem oder festem Zeitschritt, dt-Begrenzung, FPS-Anzeige und Tab-Pause | entwurf |
+| speicher | `engine/core/speicher.js` | Spielstände sicher speichern/laden (localStorage mit Arbeitsspeicher-Fallback), Versionen, Migration, Autospeichern, Export/Import als Text, TypedArrays | entwurf |
+| zeit | `engine/core/zeit.js` | Spieluhr: Tageszeit, Tage, Jahreszeiten und Jahre mit Ereignissen, Pause, Tempo und Speicherstand | entwurf |
 | character-brain | `engine/gameplay/character-brain.js` | NPC-Verhaltensplaner (Zustandsautomat) über Steering + Sinne: idle, wandern, patrouille, arbeiten, folgen, fliehen, angreifen, suchen, plaudern; Tagesablauf nach Stunde; liefert Absicht + Aktions-Clip | entwurf |
 | character-gruppe | `engine/gameplay/character-gruppe.js` | Schwarm-/Herdenverhalten für NPCs (Boids in x/z): Separation, Kohäsion, Ausrichtung – liefert eine Zusatzkraft für die Absicht | entwurf |
 | character-motor-tuning | `engine/gameplay/character-motor-tuning.js` | Standard-Tuning des Figuren-Motors (Tempo, Sprung, Rolle/Dash, Gleiten, Tauchen, Kantenschutz) – reine Daten | entwurf |
@@ -65,13 +68,17 @@
 | totholz | `engine/models/natur/totholz.js` | Prozedurales Low-Poly-Totholz (Vertrag NATUR-ASSETS): baumstumpf (Jahresringe, Wurzelansätze), liegenderStamm (Aststummel), ast | neu |
 | mesh-builder | `engine/render/mesh-builder.js` | Low-Poly-Modelle aus Primitiven (Box, Kugel, Zylinder …) mit Vertexfarben zu EINER Geometrie verschmelzen; Farbvariation pro Dreieck per Seed | entwurf |
 | natur-material | `engine/render/natur-material.js` | Gemeinsames Material für Natur-Assets: MeshStandardMaterial (Vertexfarben, flatShading) mit Wind-Schwingen im Vertex-Shader über das Attribut 'wind' (0 starr … 1 voll); Phase je Instanz aus der Weltposition; passendes Schatten-Material; optional Ausblenden ab Kamera-Entfernung | entwurf |
+| niederschlag | `engine/render/niederschlag.js` | Regen/Schnee als ein Points-Objekt um die Kamera; Bewegung komplett im Vertex-Shader (kein CPU-Aufwand je Partikel) | entwurf |
 | fake-dom | `engine/test/fake-dom.mjs` | Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame | stabil |
 | figur-schild | `engine/ui/figur-schild.js` | Namensschild + Sprechblase + Lebensbalken über Figuren (DOM-Overlay): folgt dem Kopf, skaliert und blendet nach Abstand aus, verschwindet hinter der Kamera | entwurf |
+| himmel-stand | `engine/world/himmel-stand.js` | Himmel als reine Daten: Sonnen- und Mondbahn aus Stunde/Jahreszeit/Breitengrad, Mondphase, Himmels-, Nebel- und Lichtfarben über den Tag (Nacht, Dämmerung, goldene Stunde, Mittag), Sterne, Einfluss von Wolken/Nebel/Regen/Blitz | entwurf |
+| himmel | `engine/world/himmel.js` | Zeichnet den Himmel aus einem himmel-stand: Himmelskuppel mit Farbverlauf, Sonnenscheibe mit Schein, Mond mit Phase, ziehende Wolken, Sterne; steuert Sonnen-/Mondlicht mit mitlaufendem Schatten, Umgebungslicht und Nebel der Szene | entwurf |
 | scatter-mesh | `engine/world/scatter-mesh.js` | Zeichnet die Objekte einer erzeugten Welt (welt.objekte) als InstancedMesh je (Typ, Variante): mit Asset-Cache prozedurale Natur-Assets in Metern (Bäume, Felsen, Büsche, Bodendecker …) mit Wind, sonst einfache Low-Poly-FORMEN; unbekannte Typen → Ersatz nach Art oder weglassen; Seerosen auf dem Wasser | entwurf |
 | terrain-farben | `engine/world/terrain-farben.js` | Geländefarben je Gitterzelle aus einer erzeugten Welt: weiche Biom-Übergänge mit ausgefransten Grenzen, Wiesenflecken und trockene Grastöne, Mikrovariation, Hangfels mit Gesteinsbändern, nasser Sand, Flusskies und Seeschlamm, festgetretene Wege (FLAG.WEG), Meeresgrund nach Tiefe, Schnee mit Rauschgrenze (an Nordhängen tiefer), Mulden dunkler | entwurf |
 | terrain-mesh | `engine/world/terrain-mesh.js` | Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit weich gemischten Biomfarben, Wiesenflecken, Hangfels, Ufern (Sand/Kies/Schlamm) und Schnee (terrain-farben), Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont | entwurf |
 | wege-lage | `engine/world/wege-lage.js` | Lage der Brücken einer Welt in Metern (Mitte, Richtung, Länge, Höhe an beiden Enden) und ein Adapter, auf dem Figuren über die Brücken laufen statt durch den Fluss | entwurf |
 | wege-mesh | `engine/world/wege-mesh.js` | Holzbrücken für die Wege einer Welt als Three-Meshes: Bohlendeck, Längsbalken, Geländer und Pfeiler bis zum Flussgrund, passend geneigt zwischen beiden Ufern (Lage aus wege-lage) | entwurf |
+| wetter | `engine/world/wetter.js` | Wetter-Zustand: Wetterarten wechseln per Seed nach Klima (Feuchte/Temperatur), Werte laufen weich, Wind, Blitz, Nässe | entwurf |
 | worldgen-adapter | `engine/world/worldgen/worldgen-adapter.js` | Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md | entwurf |
 | worldgen-biomes | `engine/world/worldgen/worldgen-biomes.js` | Biome nach Whittaker (Temperatur × Feuchte, als schnelle Nachschlagetabelle) plus Prioritätsregeln (Wasser, Schnee, Fels, Strand, Sumpf); Biomliste per Spiel erweiterbar | entwurf |
 | worldgen-chunkfluss | `engine/world/worldgen/worldgen-chunkfluss.js` | Chunk-lokale Flussnetze und kleine Seen für den unendlichen Modus: grobes Knotengitter aus Seed + Position, Abfluss zum tiefsten Nachbarn, begrenzter Zufluss, Senken werden Seen – nahtlos ohne globale Stufen | entwurf |
@@ -118,6 +125,7 @@
 | ausrüstung | character-ausruestung, character-model |
 | aussehen | character-look |
 | auswahl | ziel-wahl |
+| autosave | speicher |
 | avatar | character, character-look, character-model |
 | axt | character-ausruestung |
 | baeume | scatter-mesh, worldgen-scatter, worldgen-vegetation |
@@ -151,14 +159,16 @@
 | dom | fake-dom |
 | dorf | worldgen-sites, worldgen-wege |
 | dreispitz | character-parts-hut |
+| dämmerung | himmel-stand |
 | editor | character-look, character-model |
 | eingabe | move-input, touch-stick |
 | emote | character-clips-mehr, character-clips |
 | emotion | character-parts-gesicht |
 | erosion | worldgen-erosion |
+| export | speicher |
 | fackel | character-ausruestung |
 | farbe | character-parts-basis |
-| farben | terrain-farben |
+| farben | himmel-stand, terrain-farben |
 | farn | pflanze-boden |
 | fbm | worldgen-height |
 | feder | character-sekundaer |
@@ -170,6 +180,7 @@
 | fluss | worldgen-chunkfluss, worldgen-rivers |
 | folgen | follow-camera |
 | form | pflanze-formen, worldgen-shape |
+| fps | schleife |
 | frisur | character-parts-haar, character-parts-kopf |
 | fuesse | character-anim-hang, character-gang |
 | gamepad | move-input |
@@ -184,6 +195,7 @@
 | geroell | fels |
 | gesicht | character-model, character-parts-gesicht, character-parts-kopf |
 | gewicht | character-sekundaer |
+| gewitter | wetter |
 | ginster | pflanze-busch |
 | gitter | worldgen-grid |
 | gleiten | character-motor, character-anim-zustand |
@@ -199,6 +211,7 @@
 | helm | character-parts-hut, character-parts-kopf |
 | herde | character-gruppe |
 | hilfen | character-parts-basis |
+| himmel | himmel-stand, himmel |
 | hoehe | worldgen-height, worldgen-query |
 | hoeren | character-sinne |
 | holz | wege-mesh |
@@ -212,9 +225,10 @@
 | insel | worldgen-presets, worldgen-shape, worldgen |
 | instanzen | natur-material, scatter-mesh |
 | interpolation | math |
-| jahreszeit | baum |
+| jahreszeit | zeit, baum |
 | joystick | move-input, touch-stick |
 | kaktus | pflanze-wueste |
+| kalender | zeit |
 | kamera | follow-camera, ziel-wahl, math |
 | kamerafahrt | follow-camera |
 | kampf | ziel-wahl, character-steering-extra, character-steering, character-clips-mehr, character-reaktion |
@@ -225,7 +239,7 @@
 | keyframe | character-clips-mehr, character-clips |
 | ki | character-brain, character-gruppe, character-sinne, character-steering-extra, character-steering |
 | kleidung | character-parts-becken, character-parts-torso, character-parts |
-| klima | worldgen-biomes, worldgen-climate |
+| klima | wetter, worldgen-biomes, worldgen-climate |
 | knoepfe | touch-stick |
 | kollision | follow-camera, worldgen-adapter |
 | kopf | character-anim-blick, character-parts-haar, character-parts-hut, character-parts-kopf |
@@ -236,10 +250,13 @@
 | laterne | character-ausruestung |
 | laufen | character-animator, character-gang |
 | lebensbalken | figur-schild |
+| licht | himmel-stand, himmel |
+| localStorage | speicher |
 | lock-on | follow-camera, ziel-wahl |
 | locken | character-parts-haar |
 | logik | pflanze-formen |
 | look | character-look |
+| loop | schleife |
 | lowpoly | character-parts, baum, fels-form, fels, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-wueste, totholz-form, totholz, mesh-builder |
 | mantel | character-parts-becken, character-parts-torso |
 | maske | character-pose, worldgen-shape |
@@ -249,14 +266,18 @@
 | meer | terrain-mesh |
 | merge | natur-basis, mesh-builder |
 | mesh | character-model, character-parts-basis, character-parts, mesh-builder, scatter-mesh, terrain-mesh, wege-mesh |
+| migration | speicher |
 | mimik | character-anim-blick, character-look, character-model, character-parts-gesicht |
 | mischen | character-pose |
 | modell | character-model, mesh-builder |
+| mond | himmel-stand, himmel |
 | monokel | character-parts-zubehoer |
 | motor | character-anim-zustand |
 | nachschwingen | character-sekundaer |
+| nacht | himmel-stand, himmel |
 | namensschild | figur-schild |
 | natur | baum-arten, baum-skelett, baum, fels-basis, fels-form, fels, natur-assets, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-wueste, totholz-form, totholz, natur-material, scatter-mesh |
+| nebel | himmel, wetter |
 | netz | worldgen-wege |
 | node | fake-dom |
 | noise | noise |
@@ -270,7 +291,9 @@
 | orte | worldgen-sites |
 | overlay | figur-schild |
 | parameter | baum-arten |
+| partikel | niederschlag |
 | patrouille | character-steering-extra, character-steering |
+| persistenz | speicher |
 | pfad | character-steering, worldgen-path, worldgen-wege |
 | pflanze | pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-wueste |
 | physik | character-motor |
@@ -284,10 +307,11 @@
 | primitive | mesh-builder |
 | priority-flood | worldgen-hydrology |
 | prozedural | noise, baum-skelett, baum, fels-form, fels, natur-assets, natur-basis, totholz, worldgen |
+| raf | schleife |
 | ragdoll | character-reaktion |
 | rauschen | noise |
 | reaktion | character-reaktion |
-| regen | worldgen-climate |
+| regen | niederschlag, wetter, worldgen-climate |
 | registry | natur-assets |
 | render | natur-material |
 | rig | character-pose, character-rig |
@@ -299,11 +323,13 @@
 | rüstung | character-parts-torso |
 | salto | character-anim-zustand |
 | schal | character-parts-zubehoer |
+| schatten | himmel |
 | schild | character-ausruestung |
 | schilf | pflanze-boden |
 | schleichen | character-sinne |
+| schleife | schleife |
 | schmuck | character-parts-zubehoer |
-| schnee | terrain-farben |
+| schnee | niederschlag, terrain-farben, wetter |
 | schuetteln | follow-camera |
 | schuhe | character-parts |
 | schwarm | character-gruppe, character-steering |
@@ -311,16 +337,18 @@
 | schwimmen | character-motor, character-animator, character-gang |
 | schürze | character-parts-becken, character-parts-torso |
 | see | worldgen-chunkfluss |
-| seed | rng |
+| seed | rng, wetter |
 | seen | worldgen-hydrology |
 | seerose | pflanze-boden |
 | sekundaer | character-sekundaer |
-| shader | natur-material |
+| shader | natur-material, niederschlag, himmel |
 | sicht | character-sinne |
 | skelett | character-rig, baum-skelett |
 | sockel | character-ausruestung, character-rig |
-| speichern | character-look |
+| sonne | himmel-stand, himmel |
+| speichern | speicher, zeit, character-look |
 | spieler | character, character-animator, character-look, character-model |
+| spielstand | speicher |
 | sprechblase | figur-schild |
 | springen | character-animator |
 | sprung | character-motor |
@@ -328,12 +356,15 @@
 | start | worldgen-sites |
 | steering | character-gruppe, character-steering-extra, character-steering |
 | stein | fels-form, fels |
+| sterne | himmel-stand, himmel |
 | steuerung | move-input |
 | strassen | worldgen-wege |
 | strauch | pflanze-busch |
 | streaming | worldgen-chunks |
 | sukkulente | pflanze-wueste |
+| tag | himmel-stand, himmel |
 | tagesablauf | character-brain |
+| tageszeit | zeit |
 | tasche | character-parts-becken |
 | tastatur | move-input |
 | temperatur | worldgen-climate |
@@ -347,6 +378,7 @@
 | tuning | character-motor-tuning |
 | turban | character-parts-hut |
 | ufer | terrain-farben |
+| uhr | zeit |
 | ui | figur-schild |
 | umfallen | character-reaktion |
 | umhang | character-parts-ruecken, character-parts, character-sekundaer |
@@ -369,11 +401,15 @@
 | wegfindung | worldgen-path |
 | welt | noise, rng, scatter-mesh, terrain-farben, terrain-mesh, wege-lage, wege-mesh, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | werkzeug | character-ausruestung |
+| wetter | niederschlag, himmel-stand, wetter |
 | whittaker | worldgen-biomes |
-| wind | baum, natur-basis, pflanze-basis, pflanze-boden, pflanze-busch, natur-material, scatter-mesh |
+| wind | baum, natur-basis, pflanze-basis, pflanze-boden, pflanze-busch, natur-material, scatter-mesh, wetter |
+| wolken | himmel |
 | worldgen | worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | wueste | pflanze-wueste |
 | zauberhut | character-parts-hut |
+| zeit | zeit |
+| zeitschritt | schleife |
 | ziel | ziel-wahl |
 | zielen | ziel-wahl |
 | zoom | follow-camera, touch-stick |
@@ -478,6 +514,51 @@ const baum = pick(r, ['eiche', 'tanne']);
 ```
 
 Genutzt von: figuren-labor, testwelt · Tags: zufall, seed, hash, welt · THREE: nein
+
+### schleife · `engine/core/schleife.js` · v1.0.0 · entwurf
+Spielschleife mit variablem oder festem Zeitschritt, dt-Begrenzung, FPS-Anzeige und Tab-Pause
+
+- `createSchleife({update(dt,zeit),render(alpha,dt),fest,maxDt,maxSchritte,pausiereVersteckt,raf,caf,jetzt,fehler}) -> {start(),stop(),tick(jetztMs),laeuft,fps,zeit,dispose()}`
+
+```js
+import { createSchleife } from '../../engine/core/schleife.js';
+const loop = createSchleife({ update: (dt) => welt.step(dt), render: () => renderer.render(szene, kamera), fest: 1 / 60 });
+loop.start();
+```
+
+Genutzt von: testwelt · Tags: schleife, loop, zeitschritt, raf, fps · THREE: nein
+
+### speicher · `engine/core/speicher.js` · v1.0.0 · entwurf
+Spielstände sicher speichern/laden (localStorage mit Arbeitsspeicher-Fallback), Versionen, Migration, Autospeichern, Export/Import als Text, TypedArrays
+
+- `createSpeicher({schluessel,version,migriere,storage,jetzt}) -> {speichere(slot,daten), lade(slot), hat(slot), loesche(slot), slots(), exportText(slot), importText(slot,text), auto(slot,holeDaten,sekunden), update(dt), jetztSpeichern(), fluechtig, dispose()}`
+- `packe(typedArray) -> {$ta,b64}`
+- `entpacke(obj) -> TypedArray`
+
+```js
+import { createSpeicher } from '../../engine/core/speicher.js';
+const sp = createSpeicher({ schluessel: 'meinspiel', version: 2 });
+sp.speichere('slot1', { punkte: 12, karte: new Uint8Array(64) });
+const stand = sp.lade('slot1');          // null, wenn nichts da
+sp.auto('auto', () => ({ punkte }), 30); // dann pro Frame: sp.update(dt)
+```
+
+Genutzt von: testwelt · Tags: speichern, spielstand, localStorage, autosave, export, migration, persistenz · THREE: nein
+
+### zeit · `engine/core/zeit.js` · v1.0.0 · entwurf
+Spieluhr: Tageszeit, Tage, Jahreszeiten und Jahre mit Ereignissen, Pause, Tempo und Speicherstand
+
+- `createSpielzeit({stunde,tag,sekundenProStunde,tageProJahreszeit,tempo}) -> {stunde,tag,jahr,jahreszeit,jahreszeitName,jahresAnteil,istNacht,tempo,pause,update(dt),vor(h),setze({stunde,tag}),on(name,fn),uhrText(),zustand(),lade(z),dispose()}`
+- `JAHRESZEITEN`
+
+```js
+import { createSpielzeit } from '../../engine/core/zeit.js';
+const uhr = createSpielzeit({ stunde: 8, sekundenProStunde: 30 });
+uhr.on('tag', (tag) => console.log('Neuer Tag', tag));
+uhr.update(dt); // je Bild, dt in echten Sekunden
+```
+
+Genutzt von: testwelt · Tags: zeit, tageszeit, jahreszeit, kalender, uhr, speichern · THREE: nein
 
 ### character-brain · `engine/gameplay/character-brain.js` · v1.0.0 · entwurf
 NPC-Verhaltensplaner (Zustandsautomat) über Steering + Sinne: idle, wandern, patrouille, arbeiten, folgen, fliehen, angreifen, suchen, plaudern; Tagesablauf nach Stunde; liefert Absicht + Aktions-Clip
@@ -1397,6 +1478,20 @@ baum.customDepthMaterial = mat.tiefenMaterial;   // Schatten schwingt mit
 
 Genutzt von: natur-labor · Tags: natur, material, wind, shader, vegetation, instanzen, render · THREE: ja
 
+### niederschlag · `engine/render/niederschlag.js` · v1.0.0 · entwurf
+Regen/Schnee als ein Points-Objekt um die Kamera; Bewegung komplett im Vertex-Shader (kein CPU-Aufwand je Partikel)
+
+- `createNiederschlag({anzahl,radius,hoehe,seed}) -> {objekt, update(dt,{kamera|mitte,regen,schnee,wind,windRichtung,hoehePx}), dispose()}`
+
+```js
+import { createNiederschlag } from '../../engine/render/niederschlag.js';
+const ns = createNiederschlag({ seed: 3 });
+scene.add(ns.objekt);
+ns.update(dt, { kamera, regen: wetter.regen, schnee: wetter.schnee, wind: wetter.wind, windRichtung: wetter.windRichtung });
+```
+
+Genutzt von: testwelt · Tags: wetter, regen, schnee, partikel, shader · THREE: ja
+
 ### fake-dom · `engine/test/fake-dom.mjs` · v1.0.0 · stabil
 Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame
 
@@ -1425,6 +1520,36 @@ schilder.update(kamera, dt);   // jedes Bild nach der Kamera, vor/nach dem Rende
 ```
 
 Genutzt von: figuren-labor, testwelt · Tags: ui, namensschild, sprechblase, dialog, lebensbalken, hp, figur, npc, overlay, hud · THREE: ja
+
+### himmel-stand · `engine/world/himmel-stand.js` · v1.0.0 · entwurf
+Himmel als reine Daten: Sonnen- und Mondbahn aus Stunde/Jahreszeit/Breitengrad, Mondphase, Himmels-, Nebel- und Lichtfarben über den Tag (Nacht, Dämmerung, goldene Stunde, Mittag), Sterne, Einfluss von Wolken/Nebel/Regen/Blitz
+
+- `himmelStand({ stunde, jahresAnteil=0.25, tag=1, breite=48, wetter? }, ziel?) -> { sonneRichtung, mondRichtung, lichtRichtung, sonneHoehe, mondHoehe, mondPhase, mondHell, tag, sterne, lichtStaerke, lichtFarbe, umgebungStaerke, sichtweite, wolken, farben: { zenit, horizont, nebel, sonne, umgebungHimmel, umgebungBoden } }`
+- `sonnenRichtung(stunde, jahresAnteil, breite, ziel?) -> [x,y,z]`
+- `MOND_UMLAUF`
+
+```js
+import { himmelStand } from '../../engine/world/himmel-stand.js';
+const stand = himmelStand({ stunde: uhr.stunde, jahresAnteil: uhr.jahresAnteil, tag: uhr.tag, wetter });
+himmel.update(stand, { kamera, mitte: figur.position });
+```
+
+Genutzt von: testwelt · Tags: himmel, tag, nacht, sonne, mond, sterne, licht, farben, dämmerung, wetter · THREE: nein
+
+### himmel · `engine/world/himmel.js` · v1.0.0 · entwurf
+Zeichnet den Himmel aus einem himmel-stand: Himmelskuppel mit Farbverlauf, Sonnenscheibe mit Schein, Mond mit Phase, ziehende Wolken, Sterne; steuert Sonnen-/Mondlicht mit mitlaufendem Schatten, Umgebungslicht und Nebel der Szene
+
+- `createHimmel({ szene, schatten=true, schattenWeite=45, schattenAufloesung=2048, schattenAbstand=150, radius=900, sterne=900, seed=1, nebel={nah:120,fern:520}, wolken=true }) -> { gruppe, licht, umgebung, uniforms, update(stand, { kamera, mitte?, zeit?, wind?, windRichtung? }), setNebel(nah, fern), dispose() }`
+
+```js
+import { createHimmel } from '../../engine/world/himmel.js';
+import { himmelStand } from '../../engine/world/himmel-stand.js';
+const himmel = createHimmel({ szene });
+// je Bild:
+himmel.update(himmelStand({ stunde, wetter }, stand), { kamera, mitte: figur.position, zeit });
+```
+
+Genutzt von: testwelt · Tags: himmel, sonne, mond, sterne, wolken, licht, schatten, nebel, tag, nacht, shader · THREE: ja
 
 ### scatter-mesh · `engine/world/scatter-mesh.js` · v2.0.0 · entwurf
 Zeichnet die Objekte einer erzeugten Welt (welt.objekte) als InstancedMesh je (Typ, Variante): mit Asset-Cache prozedurale Natur-Assets in Metern (Bäume, Felsen, Büsche, Bodendecker …) mit Wind, sonst einfache Low-Poly-FORMEN; unbekannte Typen → Ersatz nach Art oder weglassen; Seerosen auf dem Wasser
@@ -1503,6 +1628,22 @@ const begehbar = mitBruecken(adapter, wege.lagen);   // diesen Adapter der Figur
 ```
 
 Genutzt von: testwelt · Tags: welt, wege, bruecke, holz, mesh · THREE: ja
+
+### wetter · `engine/world/wetter.js` · v1.0.0 · entwurf
+Wetter-Zustand: Wetterarten wechseln per Seed nach Klima (Feuchte/Temperatur), Werte laufen weich, Wind, Blitz, Nässe
+
+- `createWetter({seed,art,wechselStunden,uebergangStunden}) -> {update(dtStunden,klima), blitzUpdate(dtSekunden), setze(art,sofort), zustand(), lade(z), on('wechsel',fn(art,vorher)), art, wolken, regen, schnee, nebel, wind, windRichtung, blitz, nass, dispose()}`
+- `WETTER_ARTEN`
+
+```js
+import { createWetter } from '../../engine/world/wetter.js';
+const w = createWetter({ seed: 7 });
+w.update(dtSpielStunden, { temperatur: 0.6, feuchte: 0.7 }); // Klima z. B. aus dem Biom
+w.blitzUpdate(dtEchtSekunden);                               // nur für den Blitz-Flash nötig
+if (w.regen > 0.1) { … }
+```
+
+Genutzt von: testwelt · Tags: wetter, regen, schnee, nebel, wind, gewitter, klima, seed · THREE: nein
 
 ### worldgen-adapter · `engine/world/worldgen/worldgen-adapter.js` · v1.1.0 · entwurf
 Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md
