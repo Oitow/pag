@@ -31,5 +31,14 @@ Plan & Abläufe: `docs/BAUKASTEN-PLAN.md`. Three.js überall **0.170.0** (Import
 - Testausgaben kürzen: `npm test 2>&1 | tail -30`.
 - Keine Zusammenfassungen von Code, den du nicht änderst. Kurze Abschlussberichte.
 
+## Arbeitsteilung (Limit schonen)
+Das Hauptmodell plant, entscheidet und löst den schwierigen Kern. Alles andere wird delegiert (`.claude/agents/`):
+- `sucher` (Haiku) – Stellen finden, bevor irgendwas Großes gelesen wird.
+- `bauer` (Sonnet) – klar beschriebene Aufgaben umsetzen. Auftrag immer mit Dateien, Ziel, Abnahmekriterium.
+- `tester` (Haiku) – Tests/Build laufen lassen, meldet nur GRÜN/ROT.
+- `pruefer` (Sonnet) – Diff-Review, nur bei großen Änderungen.
+Selbst machen: Architektur, neue Algorithmen, Performance-Probleme, Fehlersuche mit unklarer Ursache.
+Sitzungen: `/start` liest `docs/STAND.md`, `/ende` schreibt sie. Ein Thema pro Sitzung.
+
 ## Vor jedem Commit
 `npm run test:schnell` (Engine) bzw. `npm test` (inkl. Smoke). README des Spiels + Spielliste in `/README.md` aktualisieren.
