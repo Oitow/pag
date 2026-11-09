@@ -68,8 +68,10 @@
 | fake-dom | `engine/test/fake-dom.mjs` | Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame | stabil |
 | figur-schild | `engine/ui/figur-schild.js` | Namensschild + Sprechblase + Lebensbalken über Figuren (DOM-Overlay): folgt dem Kopf, skaliert und blendet nach Abstand aus, verschwindet hinter der Kamera | entwurf |
 | scatter-mesh | `engine/world/scatter-mesh.js` | Zeichnet die Objekte einer erzeugten Welt (welt.objekte) als InstancedMesh je (Typ, Variante): mit Asset-Cache prozedurale Natur-Assets in Metern (Bäume, Felsen, Büsche, Bodendecker …) mit Wind, sonst einfache Low-Poly-FORMEN; unbekannte Typen → Ersatz nach Art oder weglassen; Seerosen auf dem Wasser | entwurf |
-| terrain-farben | `engine/world/terrain-farben.js` | Geländefarben je Gitterzelle aus einer erzeugten Welt: weiche Biom-Übergänge mit ausgefransten Grenzen, Wiesenflecken und trockene Grastöne, Mikrovariation, Hangfels mit Gesteinsbändern, nasser Sand, Flusskies und Seeschlamm, Meeresgrund nach Tiefe, Schnee mit Rauschgrenze (an Nordhängen tiefer), Mulden dunkler | entwurf |
+| terrain-farben | `engine/world/terrain-farben.js` | Geländefarben je Gitterzelle aus einer erzeugten Welt: weiche Biom-Übergänge mit ausgefransten Grenzen, Wiesenflecken und trockene Grastöne, Mikrovariation, Hangfels mit Gesteinsbändern, nasser Sand, Flusskies und Seeschlamm, festgetretene Wege (FLAG.WEG), Meeresgrund nach Tiefe, Schnee mit Rauschgrenze (an Nordhängen tiefer), Mulden dunkler | entwurf |
 | terrain-mesh | `engine/world/terrain-mesh.js` | Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit weich gemischten Biomfarben, Wiesenflecken, Hangfels, Ufern (Sand/Kies/Schlamm) und Schnee (terrain-farben), Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont | entwurf |
+| wege-lage | `engine/world/wege-lage.js` | Lage der Brücken einer Welt in Metern (Mitte, Richtung, Länge, Höhe an beiden Enden) und ein Adapter, auf dem Figuren über die Brücken laufen statt durch den Fluss | entwurf |
+| wege-mesh | `engine/world/wege-mesh.js` | Holzbrücken für die Wege einer Welt als Three-Meshes: Bohlendeck, Längsbalken, Geländer und Pfeiler bis zum Flussgrund, passend geneigt zwischen beiden Ufern (Lage aus wege-lage) | entwurf |
 | worldgen-adapter | `engine/world/worldgen/worldgen-adapter.js` | Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md | entwurf |
 | worldgen-biomes | `engine/world/worldgen/worldgen-biomes.js` | Biome nach Whittaker (Temperatur × Feuchte, als schnelle Nachschlagetabelle) plus Prioritätsregeln (Wasser, Schnee, Fels, Strand, Sumpf); Biomliste per Spiel erweiterbar | entwurf |
 | worldgen-chunkfluss | `engine/world/worldgen/worldgen-chunkfluss.js` | Chunk-lokale Flussnetze und kleine Seen für den unendlichen Modus: grobes Knotengitter aus Seed + Position, Abfluss zum tiefsten Nachbarn, begrenzter Zufluss, Senken werden Seen – nahtlos ohne globale Stufen | entwurf |
@@ -99,7 +101,7 @@
 | abstand | worldgen-grid |
 | accessoire | character-parts-zubehoer |
 | accessoires | character-look |
-| adapter | worldgen-adapter |
+| adapter | wege-lage, worldgen-adapter |
 | agave | pflanze-wueste |
 | aktion | character-animator, character-clips |
 | amulett | character-parts-zubehoer |
@@ -130,12 +132,12 @@
 | blinzeln | character-anim-blick, character-parts-gesicht |
 | blue-noise | worldgen-scatter |
 | blume | pflanze-blume, pflanze-boden, pflanze-formen |
-| boden | worldgen-adapter |
+| boden | wege-lage, worldgen-adapter |
 | bodendecker | pflanze-blume, pflanze-boden, worldgen-vegetation |
 | bogen | character-ausruestung |
 | boids | character-gruppe |
 | brille | character-parts-kopf, character-parts-zubehoer |
-| bruecke | worldgen-wege |
+| bruecke | wege-lage, wege-mesh, worldgen-wege |
 | busch | natur-assets, pflanze-busch |
 | cache | natur-assets |
 | cape | character-parts-ruecken |
@@ -163,7 +165,7 @@
 | fels | fels-basis, fels-form, fels, natur-assets |
 | felsen | scatter-mesh, worldgen-vegetation |
 | feuchte | worldgen-climate |
-| figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips, character-gang, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-schild, worldgen-adapter |
+| figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips, character-gang, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-schild, wege-lage, worldgen-adapter |
 | first-person | follow-camera |
 | fluss | worldgen-chunkfluss, worldgen-rivers |
 | folgen | follow-camera |
@@ -199,6 +201,7 @@
 | hilfen | character-parts-basis |
 | hoehe | worldgen-height, worldgen-query |
 | hoeren | character-sinne |
+| holz | wege-mesh |
 | hp | figur-schild |
 | hud | figur-schild |
 | hut | character-parts-hut, character-parts-kopf |
@@ -245,7 +248,7 @@
 | maus | move-input |
 | meer | terrain-mesh |
 | merge | natur-basis, mesh-builder |
-| mesh | character-model, character-parts-basis, character-parts, mesh-builder, scatter-mesh, terrain-mesh |
+| mesh | character-model, character-parts-basis, character-parts, mesh-builder, scatter-mesh, terrain-mesh, wege-mesh |
 | mimik | character-anim-blick, character-look, character-model, character-parts-gesicht |
 | mischen | character-pose |
 | modell | character-model, mesh-builder |
@@ -362,9 +365,9 @@
 | wandern | character-steering |
 | wasser | terrain-mesh, worldgen-adapter, worldgen-hydrology, worldgen-rivers |
 | wedel | pflanze-formen |
-| wege | worldgen-wege |
+| wege | wege-lage, wege-mesh, worldgen-wege |
 | wegfindung | worldgen-path |
-| welt | noise, rng, scatter-mesh, terrain-farben, terrain-mesh, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
+| welt | noise, rng, scatter-mesh, terrain-farben, terrain-mesh, wege-lage, wege-mesh, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | werkzeug | character-ausruestung |
 | whittaker | worldgen-biomes |
 | wind | baum, natur-basis, pflanze-basis, pflanze-boden, pflanze-busch, natur-material, scatter-mesh |
@@ -1442,8 +1445,8 @@ szene.add(pflanzen.gruppe);
 
 Genutzt von: testwelt · Tags: welt, objekte, baeume, felsen, instanzen, vegetation, mesh, wind, natur · THREE: ja
 
-### terrain-farben · `engine/world/terrain-farben.js` · v1.0.0 · entwurf
-Geländefarben je Gitterzelle aus einer erzeugten Welt: weiche Biom-Übergänge mit ausgefransten Grenzen, Wiesenflecken und trockene Grastöne, Mikrovariation, Hangfels mit Gesteinsbändern, nasser Sand, Flusskies und Seeschlamm, Meeresgrund nach Tiefe, Schnee mit Rauschgrenze (an Nordhängen tiefer), Mulden dunkler
+### terrain-farben · `engine/world/terrain-farben.js` · v1.1.0 · entwurf
+Geländefarben je Gitterzelle aus einer erzeugten Welt: weiche Biom-Übergänge mit ausgefransten Grenzen, Wiesenflecken und trockene Grastöne, Mikrovariation, Hangfels mit Gesteinsbändern, nasser Sand, Flusskies und Seeschlamm, festgetretene Wege (FLAG.WEG), Meeresgrund nach Tiefe, Schnee mit Rauschgrenze (an Nordhängen tiefer), Mulden dunkler
 
 - `GELAENDE_FARBEN`
 - `gelaendeFarben(welt, opts) -> Float32Array (B×T×3, linear 0…1)`
@@ -1470,6 +1473,36 @@ szene.add(gelaende.gruppe);
 ```
 
 Genutzt von: testwelt · Tags: welt, terrain, gelaende, wasser, meer, mesh, biome · THREE: ja
+
+### wege-lage · `engine/world/wege-lage.js` · v1.0.0 · entwurf
+Lage der Brücken einer Welt in Metern (Mitte, Richtung, Länge, Höhe an beiden Enden) und ein Adapter, auf dem Figuren über die Brücken laufen statt durch den Fluss
+
+- `brueckenLagen(adapter, opts) -> [{x,z,y1,y2,laenge,breite,winkel,rx,rz}]`
+- `deckHoehe(lage, x, z) -> number|null`
+- `mitBruecken(adapter, lagen) -> adapter`
+
+```js
+import { brueckenLagen, mitBruecken } from '../../engine/world/wege-lage.js';
+const lagen = brueckenLagen(adapter, { breite: 2.4 });
+const begehbar = mitBruecken(adapter, lagen);   // bodenHoehe liefert auf der Brücke die Deckhöhe
+```
+
+Genutzt von: testwelt · Tags: welt, wege, bruecke, adapter, boden, figur · THREE: nein
+
+### wege-mesh · `engine/world/wege-mesh.js` · v1.0.0 · entwurf
+Holzbrücken für die Wege einer Welt als Three-Meshes: Bohlendeck, Längsbalken, Geländer und Pfeiler bis zum Flussgrund, passend geneigt zwischen beiden Ufern (Lage aus wege-lage)
+
+- `createWegeMesh(adapter, opts) -> {gruppe,lagen,anzahl,dispose}`
+
+```js
+import { createWegeMesh } from '../../engine/world/wege-mesh.js';
+import { mitBruecken } from '../../engine/world/wege-lage.js';
+const wege = createWegeMesh(adapter, { schatten: true });
+szene.add(wege.gruppe);
+const begehbar = mitBruecken(adapter, wege.lagen);   // diesen Adapter der Figur geben
+```
+
+Genutzt von: testwelt · Tags: welt, wege, bruecke, holz, mesh · THREE: ja
 
 ### worldgen-adapter · `engine/world/worldgen/worldgen-adapter.js` · v1.1.0 · entwurf
 Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md
@@ -1733,7 +1766,7 @@ VEGETATION_TYPEN.includes('fichte');   // true
 
 Genutzt von: – · Tags: welt, worldgen, objekte, vegetation, baeume, felsen, bodendecker, daten · THREE: nein
 
-### worldgen-wege · `engine/world/worldgen/worldgen-wege.js` · v1.0.0 · entwurf
+### worldgen-wege · `engine/world/worldgen/worldgen-wege.js` · v1.1.0 · entwurf
 Wegenetz zwischen Startplatz, Dörfern und ausgewählten Sehenswürdigkeiten: Spannbaum plus Abkürzungen, A* um Steilhänge herum, Wege teilen sich Strecken, Flüsse werden kurz per Brücke gequert; markiert Zellen als WEG und hält sie frei von Objekten
 
 - `planeNetz(knoten, schleifen) -> [[a,b],…]`

@@ -8,7 +8,7 @@
  *   for (const w of welt.wege) zeichneLinie(w.punkte);        // [x0,y0,x1,y1,…] in Weltkoordinaten
  *   const aufWeg = welt.flags[y * welt.breite + x] & FLAG.WEG;
  * @tags     welt, worldgen, wege, strassen, pfad, bruecke, dorf, netz
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
@@ -75,7 +75,7 @@ function glaette(p, runden) {
  * Pipeline-Stufe Wege (nach „orte“, vor „objekte“). opts.wege:
  * { aktiv (false), poi: ['gipfel', …] (Arten aus welt.orte.poi, die angebunden werden), schleifen (1),
  *   hangKosten (22), bruecke (14, Zusatzkosten je Flusszelle; Infinity = keine Brücken), rabatt (0.35, Kostenfaktor auf vorhandenen Wegen), glaetten (2) }
- * Ergebnis: welt.wege = [{ von, nach, punkte: Float32Array, laenge, bruecken: [{x, y, laenge}] }]; von/nach sind Indizes in welt.wegKnoten
+ * Ergebnis: welt.wege = [{ von, nach, punkte: Float32Array, laenge, bruecken: [{x, y, laenge, dx, dy}] }] (dx/dy = Richtung der Brücke, Länge 1); von/nach sind Indizes in welt.wegKnoten
  * ({ x, y, art: 'start' | 'dorf' | <poi-Art> }). Wegzellen bekommen FLAG.WEG, an Land zusätzlich FLAG.FREI (keine Objekte).
  */
 export function stufeWege(welt, opts) {
@@ -108,8 +108,10 @@ export function stufeWege(welt, opts) {
       FL[i] |= nass ? FLAG.WEG : FLAG.WEG | FLAG.FREI;
       if (nass) lauf++;
       if (lauf && (!nass || k === m - 1)) {
-        const ende = nass ? k : k - 1, mitte = ende - ((lauf - 1) >> 1);
-        bruecken.push({ x: roh[2 * mitte], y: roh[2 * mitte + 1], laenge: lauf * z });
+        // Brücke von der letzten trockenen Zelle davor bis zur ersten danach
+        const ende = nass ? k : k - 1, a = Math.max(0, ende - lauf), e = Math.min(m - 1, ende + 1);
+        const dx = roh[2 * e] - roh[2 * a], dy = roh[2 * e + 1] - roh[2 * a + 1], l = Math.hypot(dx, dy) || 1;
+        bruecken.push({ x: (roh[2 * a] + roh[2 * e]) / 2, y: (roh[2 * a + 1] + roh[2 * e + 1]) / 2, laenge: l, dx: dx / l, dy: dy / l });
         lauf = 0;
       }
     }

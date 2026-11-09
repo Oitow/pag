@@ -5,6 +5,8 @@ import { createWorld, PRESETS } from '../../../engine/world/worldgen/worldgen.js
 import { createWeltAdapter } from '../../../engine/world/worldgen/worldgen-adapter.js';
 import { createTerrainMesh, biomFarben } from '../../../engine/world/terrain-mesh.js';
 import { createScatterMesh } from '../../../engine/world/scatter-mesh.js';
+import { createWegeMesh } from '../../../engine/world/wege-mesh.js';
+import { mitBruecken } from '../../../engine/world/wege-lage.js';
 import { createAssetCache } from '../../../engine/models/natur/natur-assets.js';
 import { createFigurSchilder } from '../../../engine/ui/figur-schild.js';
 import { createSpielerFigur } from './figur.js';
@@ -54,7 +56,7 @@ seedEl.value = url.get('seed') ?? 42;
 if (['128', '256'].includes(url.get('groesse'))) groesseEl.value = url.get('groesse');
 
 // ---- Welt ----
-let welt = null, adapter = null, gelaende = null, objekte = null, figur = null, dorf = null;
+let welt = null, adapter = null, gelaende = null, objekte = null, wege = null, figur = null, dorf = null;
 const schilder = createFigurSchilder();
 let stunde = 9;                                   // Spielzeit: 1 Stunde je 30 s (Tagesplan der Bewohner)
 let dorfNr = 0, gipfelNr = 0;
@@ -65,28 +67,30 @@ async function erzeuge() {
   await pause();
   const t0 = performance.now();
   const g = +groesseEl.value;
-  const neu = createWorld({ preset: presetEl.value, seed: +seedEl.value | 0, breite: g, tiefe: g, qualitaet: 'normal' });
+  const neu = createWorld({ preset: presetEl.value, seed: +seedEl.value | 0, breite: g, tiefe: g, qualitaet: 'normal', wege: { aktiv: true } });
   const msWelt = performance.now() - t0;
-  gelaende?.dispose(); objekte?.dispose(); adapter?.dispose();
+  gelaende?.dispose(); objekte?.dispose(); wege?.dispose(); adapter?.dispose();
   welt = neu;
   adapter = createWeltAdapter(welt, { hoehenSkala: HOEHEN_SKALA, meterProZelle: METER_PRO_ZELLE });
   gelaende = createTerrainMesh(adapter, { schatten: true });
   const t1 = performance.now();
   objekte = createScatterMesh(adapter, { schatten: true, unterWasser: false, assets: createAssetCache, bodendeckerWeite: 110, kachel: 128, fernWeite: 160,
     typSkala: { fels: 1.4, felsbrocken: 1.8 } });   // Felsen etwas größer → passt zu den Hindernis-Radien des Adapters
-  szene.add(gelaende.gruppe, objekte.gruppe);
+  wege = createWegeMesh(adapter, { schatten: true });
+  const begehbar = mitBruecken(adapter, wege.lagen);   // Figur läuft über die Brücken
+  szene.add(gelaende.gruppe, objekte.gruppe, wege.gruppe);
   szene.fog.far = Math.max(300, adapter.groesse.x * 1.1);
   zeichneKarte();
   const start = adapter.startPunkt();
-  if (!figur) figur = createSpielerFigur({ szene, kamera, adapter, element: canvas, start, seed: welt.seed, schilder, npcs: () => dorf?.bewohner || [] });
-  else figur.setAdapter(adapter);
+  if (!figur) figur = createSpielerFigur({ szene, kamera, adapter: begehbar, element: canvas, start, seed: welt.seed, schilder, npcs: () => dorf?.bewohner || [] });
+  else figur.setAdapter(begehbar);
   figur.teleport(start.x, start.z);
   dorf?.dispose();
-  dorf = createDorf({ szene, adapter, welt, schilder, spieler: () => figur.figur, seed: welt.seed });
+  dorf = createDorf({ szene, adapter: begehbar, welt, schilder, spieler: () => figur.figur, seed: welt.seed });
   dorfNr = gipfelNr = 0;
   const neueUrl = `?preset=${presetEl.value}&seed=${seedEl.value}&groesse=${g}`;
   history.replaceState(null, '', neueUrl);
-  statistik = `Welt ${msWelt.toFixed(0)} ms · ${objekte.anzahl} Objekte (${(performance.now() - t1).toFixed(0)} ms)`;
+  statistik = `Welt ${msWelt.toFixed(0)} ms · ${welt.wege.length} Wege · ${wege.anzahl} Brücken · ${objekte.anzahl} Objekte (${(performance.now() - t1).toFixed(0)} ms)`;
   $('lade').hidden = true;
 }
 
@@ -105,6 +109,13 @@ function zeichneKarte() {
     img.data[i * 4] = f[b] * 255 * l; img.data[i * 4 + 1] = f[b + 1] * 255 * l; img.data[i * 4 + 2] = f[b + 2] * 255 * l; img.data[i * 4 + 3] = 255;
   }
   kctx.putImageData(img, 0, 0);
+  kctx.strokeStyle = '#ecd9a8'; kctx.lineWidth = Math.max(1, B / 160); kctx.lineJoin = 'round';
+  for (const w of welt.wege) {
+    const P = w.punkte;
+    kctx.beginPath(); kctx.moveTo(P[0] / welt.zelle, P[1] / welt.zelle);
+    for (let k = 2; k < P.length; k += 2) kctx.lineTo(P[k] / welt.zelle, P[k + 1] / welt.zelle);
+    kctx.stroke();
+  }
   kartenBild = kctx.getImageData(0, 0, B, T);
 }
 function karteMarker() {

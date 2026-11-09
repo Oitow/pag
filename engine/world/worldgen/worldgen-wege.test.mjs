@@ -58,8 +58,10 @@ test('Wege: keine Objekte auf Wegzellen, Brücken liegen auf Flusszellen', () =>
     assert.ok(!(f & FLAG.WEG) || f & FLAG.FLUSS, `Objekt ${o.arten[o.art[i]]} steht auf dem Weg`);
   }
   for (const w of welt.wege) for (const br of w.bruecken) {
-    assert.ok(welt.flags[zelle(welt, br.x, br.y)] & FLAG.FLUSS, 'Brücke nicht über einem Fluss');
-    assert.ok(br.laenge >= welt.zelle);
+    let nass = false;   // irgendwo unter der Brücke liegt Fluss
+    for (let s = -br.laenge / 2; s <= br.laenge / 2; s += welt.zelle / 2) if (welt.flags[zelle(welt, br.x + br.dx * s, br.y + br.dy * s)] & FLAG.FLUSS) nass = true;
+    assert.ok(nass, 'Brücke nicht über einem Fluss');
+    assert.ok(br.laenge >= welt.zelle && Math.abs(Math.hypot(br.dx, br.dy) - 1) < 1e-6);
   }
 });
 

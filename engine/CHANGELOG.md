@@ -1,5 +1,12 @@
 # Engine-Changelog
 
+## 2026-11 – Weltengine: Wege in 3D
+- world/wege-lage 1.0.0 (neu): Lage der Brücken in Metern, `mitBruecken(adapter, lagen)` macht sie begehbar
+- world/wege-mesh 1.0.0 (neu): Holzbrücken (Bohlen, Geländer, Pfeiler) je Flussquerung
+- world/terrain-farben 1.1.0 (additiv): Wegzellen (FLAG.WEG) werden als Erdweg eingefärbt, abschaltbar mit `wege: false`; Welten ohne Wege unverändert
+- world/worldgen/worldgen-wege 1.1.0: Brücken haben `dx`/`dy` (Richtung); `x`/`y` ist jetzt die Mitte zwischen beiden Ufern und `laenge` die Spannweite von Ufer zu Ufer (vorher Anzahl Flusszellen)
+- games/testwelt: Wege an, Brücken begehbar, Wege auf der Karte
+
 ## 2026-11 – Weltengine: Wegenetz
 - world/worldgen/worldgen-wege 1.0.0 (neu): Stufe „wege“ zwischen „orte“ und „objekte“ – Spannbaum plus Abkürzungen über Start, Dörfer und gewählte Sehenswürdigkeiten, A* um Steilhänge, geteilte Strecken, Brücken über Flüsse. Standardmäßig aus (`wege: { aktiv: true }`), bestehende Welten und Schnappschüsse bleiben gleich.
 - world/worldgen/worldgen 1.1.0 (additiv): `welt.wege`, `welt.wegKnoten`, Stufe „wege“ in STANDARD_STUFEN, Wege im Worker-Transfer
