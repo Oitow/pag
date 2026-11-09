@@ -111,6 +111,7 @@ export function createCharacter(opts = {}) {
       if (blickPunkt) blickAktualisieren();
       if (ausdruckRest > 0 && (ausdruckRest -= dt) <= 0) animator.ausdruck = null;
       animator.update(dt, motor.zustand);
+      model.updateGesicht?.(dt);                         // Blinzeln/Mimik des Modells (falls vorhanden)
     },
     spiele: (clip, o) => animator.spiele(clip, o),
     stoppe: (clip) => animator.stoppe(clip),
@@ -157,6 +158,7 @@ export function createCharacter(opts = {}) {
       ausdruckRest = 0;
       if ('ausdruck' in animator) animator.ausdruck = ausdruck || null;   // Animator reicht ihn jedes Bild ans Modell
       else model.setAusdruck(ausdruck, o);
+      if (ausdruck && o && Number.isFinite(o.dauer)) ausdruckRest = o.dauer;   // danach wieder automatisch
       return true;
     },
     /** Reaktionen des Animators (falls vorhanden): Stoß/Treffer, Umfallen (Ragdoll-artig), Aufstehen. */

@@ -8,6 +8,7 @@
  *   szene.add(figur.root);
  *   figur.befestigen('handR', schwert);
  *   figur.setLook({ kopfbedeckung: { stil: 'krone' } });   // Rig-Gruppen & Befestigtes bleiben erhalten
+ * @tags     figur, charakter, modell, mesh, spieler, npc, avatar, editor, ausrüstung, mimik, gesicht
  * @version  1.1.0
  * @status   entwurf
  * @three    ja
@@ -134,7 +135,8 @@ export function createCharacterModel({ look = {}, seed = 1, material = null, sch
   };
   modell.setSichtbar = (an) => { rig.root.visible = !!an; return modell; };
   // Gesicht (siehe Modulkopf). Ohne Mimik: Zustand wird nur gemerkt.
-  modell.setAusdruck = (name) => { zustand.ausdruck = createLook({ ausdruck: name }).ausdruck; modell.gesicht?.setAusdruck(zustand.ausdruck); return modell; };
+  modell.setAusdruck = (name) => { zustand.ausdruck = name == null ? modell.look.ausdruck : createLook({ ausdruck: name }).ausdruck;   // null = Grundmimik aus dem Look
+  modell.gesicht?.setAusdruck(zustand.ausdruck); return modell; };
   modell.setLider = (zu) => { zustand.zu = zu; modell.gesicht?.setLider(zu); return modell; };
   /** Von außen blinzeln → ab dann steuert der Aufrufer das Blinzeln (automatisches Blinzeln aus). */
   modell.blinzeln = (dauer) => { zustand.auto = false; if (modell.gesicht) { modell.gesicht.autoBlinzeln = false; modell.gesicht.blinzeln(dauer); } return modell; };

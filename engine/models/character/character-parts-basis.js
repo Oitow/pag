@@ -19,7 +19,8 @@ export function farbeMisch(a, b, t) {
 }
 export const dunkler = (c, t) => farbeMisch(c, 0, t);
 export const heller = (c, t) => farbeMisch(c, 0xffffff, t);
-export const GOLD = 0xd8b048, LEDER = 0x5a4030;
+export const GOLD = 0xd8b048;
+export const LEDER = 0x5a4030;
 
 /** Kugel-Ausschnitt (theta von oben gemessen, phi = π/2 ist vorn +Z). */
 export function schale(b, r, farbe, t, { phi0 = 0, phiL = 2 * Math.PI, th0 = 0, thL = Math.PI, ws = 12, hs = 7 } = {}) {

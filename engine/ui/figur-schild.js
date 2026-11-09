@@ -1,7 +1,7 @@
 /**
  * @modul    figur-schild
  * @zweck    Namensschild + Sprechblase + Lebensbalken über Figuren (DOM-Overlay): folgt dem Kopf, skaliert und blendet nach Abstand aus, verschwindet hinter der Kamera
- * @api      createFigurSchilder(opts) -> { neu(ziel, {name, leben, farbe, versatz, nameAb}) -> schild, update(kamera, dt), anzahl, dispose() } ; schild -> { setName(t), sage(text, {dauer}) , schweige(), setLeben(anteil|null), setFarbe(css), zeige(bool), ziel, spricht, sichtbar, entfernen() }
+ * @api      createFigurSchilder(opts) -> { neu(ziel, {name, leben, farbe, versatz, nameAb}) -> schild, update(kamera, dt), anzahl, dispose() } — jedes Schild: { setName(t), sage(text, {dauer}) , schweige(), setLeben(anteil|null), setFarbe(css), zeige(bool), ziel, spricht, sichtbar, entfernen() }
  * @beispiel
  *   import { createFigurSchilder } from '../../engine/ui/figur-schild.js';
  *   const schilder = createFigurSchilder();
@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import { clamp, smoothstep } from '../core/math.js';
 
 const CSS = `
-.fs-ebene{position:fixed;inset:0;pointer-events:none;z-index:30;overflow:hidden;font-family:system-ui,sans-serif}
+.fs-ebene{position:fixed;inset:0;pointer-events:none;z-index:2;overflow:hidden;font-family:system-ui,sans-serif}
 .fs-schild{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;gap:3px;
   transform-origin:50% 100%;will-change:transform,opacity;white-space:nowrap}
 .fs-name{font-size:13px;font-weight:600;color:#fff;padding:1px 7px;border-radius:8px;background:rgba(20,24,32,.55);

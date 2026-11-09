@@ -1,10 +1,7 @@
 // Figuren-Labor – Look-Editor: Vorlagen, Zufall, Stile, Farben, Körperbau. Ruft onAenderung(look) bei jeder Änderung.
-import { STILE, VORLAGEN, createLook, randomLook } from '../../../engine/models/character/character-look.js';
+import { STILE, VORLAGEN, TEIL_NAMEN, AUSDRUECKE, createLook, randomLook } from '../../../engine/models/character/character-look.js';
 
-const NAMEN = {
-  haar: 'Haar', bart: 'Bart', oberteil: 'Oberteil', hose: 'Hose', schuhe: 'Schuhe', kopfbedeckung: 'Kopf', umhang: 'Umhang',
-};
-const KOERPER = [['groesse', 'Größe', 0.5, 1.4], ['breite', 'Breite', 0.75, 1.35], ['kopf', 'Kopf', 0.8, 1.5], ['beine', 'Beine', 0.8, 1.2], ['arme', 'Arme', 0.85, 1.15], ['bauch', 'Bauch', 0, 1]];
+const KOERPER = [['groesse', 'Größe', 0.5, 1.4], ['breite', 'Breite', 0.75, 1.35], ['kopf', 'Kopf', 0.8, 1.5], ['beine', 'Beine', 0.8, 1.2], ['arme', 'Arme', 0.85, 1.15], ['bauch', 'Bauch', 0, 1], ['schultern', 'Schultern', 0.8, 1.3], ['muskeln', 'Muskeln', 0, 1]];
 
 export function createEditor({ wurzel, look, onAenderung }) {
   let aktuell = createLook(look);
@@ -31,8 +28,9 @@ export function createEditor({ wurzel, look, onAenderung }) {
     for (const teil of Object.keys(STILE)) {
       let f = `<select data-pfad="${teil}.stil">${STILE[teil].map(s => `<option${s === L[teil].stil ? ' selected' : ''}>${s}</option>`).join('')}</select>`;
       for (const k of ['farbe', 'akzent']) if (k in L[teil]) f += farbFeld(`${teil}.${k}`, L[teil][k] || L.haar.farbe);
-      h += zeile(NAMEN[teil], f);
+      h += zeile(TEIL_NAMEN[teil] || teil, f);
     }
+    h += zeile('Ausdruck', `<select data-pfad="ausdruck">${AUSDRUECKE.map(a => `<option${a === L.ausdruck ? ' selected' : ''}>${a}</option>`).join('')}</select>`);
     h += zeile('Gürtel', `<input type="checkbox" data-guertel${L.guertel ? ' checked' : ''}>` + (L.guertel ? farbFeld('guertel', L.guertel) : ''));
     h += zeile('Tasche', `<input type="checkbox" data-pfad="tasche"${L.tasche ? ' checked' : ''}>`);
     h += zeile('Rucksack', `<input type="checkbox" data-pfad="rucksack"${L.rucksack ? ' checked' : ''}>`);

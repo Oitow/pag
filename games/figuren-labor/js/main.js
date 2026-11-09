@@ -10,7 +10,9 @@ import { waehleZiel, zielPos } from '../../../engine/camera/ziel-wahl.js';
 import { createFigurSchilder } from '../../../engine/ui/figur-schild.js';
 import { VORLAGEN, randomLook, createLook } from '../../../engine/models/character/character-look.js';
 import { CLIP_NAMEN, CLIPS } from '../../../engine/models/character/character-clips.js';
-import { hashSeed, rng, range } from '../../../engine/core/rng.js';
+import { hashSeed, rng, range, pick } from '../../../engine/core/rng.js';
+import { createAusruestung, ausruestungsNamen } from '../../../engine/models/character/character-ausruestung.js';
+import { AUSDRUECKE } from '../../../engine/models/character/character-look.js';
 
 const url = new URLSearchParams(location.search);
 const SEED = +url.get('seed') || 1;
@@ -49,7 +51,18 @@ const spieler = createCharacter({
   look: gespeichert || VORLAGEN.wanderer, seed: SEED, welt: welt.adapter, pos: { x: 0, y: 0, z: 4 }, yaw: Math.PI,
   onSchritt: () => { schritte.n++; }, schilder, name: (gespeichert || VORLAGEN.wanderer).name,
 });
-// INTEGRATION Ausrüstung (character-ausruestung): hier Start-Ausrüstung anlegen, z. B. spieler.ausruesten('handR', …)
+// Ausrüstung (character-ausruestung): 🗡 schaltet durch alle Gegenstände in der rechten Hand (Schild/Buch → linke Hand)
+let ausrNr = -1, ausrObj = null;
+function naechsteAusruestung() {
+  if (ausrObj) { spieler.ablegen(ausrObj); ausrObj.dispose?.(); ausrObj = null; }
+  ausrNr = ausrNr + 1 >= ausruestungsNamen.length ? -1 : ausrNr + 1;
+  if (ausrNr < 0) return 'leer';
+  const name = ausruestungsNamen[ausrNr];
+  const sockel = name === 'schild' ? 'handL' : 'handR';
+  ausrObj = createAusruestung(name, { sockel, seed: SEED, masse: spieler.model.masse });
+  spieler.ausruesten(sockel, ausrObj);
+  return name;
+}
 szene.add(spieler.root);
 
 const eingabe = createMoveInput({
@@ -76,18 +89,29 @@ function npcsErzeugen() {
     const pos = { x: Math.cos(a) * d, y: 0, z: Math.sin(a) * d };
     const look = randomLook(hashSeed('npc', SEED, i), { kind: i % 4 === 3 });
     const fig = createCharacter({ look, seed: hashSeed('npcseed', i), welt: welt.adapter, pos, yaw: a, schilder, name: look.name });
-    // INTEGRATION Brain: statt createSteering → createCharacter({ …, brain: { plan, reaktion, verhalten } }) und
-    //   unten n.fig.update(dt, null, { nachbarn, npcs, stunde }) – character.js kann das schon.
-    const hirn = createSteering({ seed: hashSeed('hirn', SEED, i), heimat: { x: pos.x, z: pos.z } });
-    if (i === 0) hirn.folge(() => spieler.zustand.pos, 2.5);
-    else if (i === 1) hirn.folgePfad([{ x: -3, z: 2 }, { x: 0, z: -9 }, { x: 0, z: -17 }, { x: 3, z: 2 }], { schleife: true });
-    else hirn.wandere({ x: pos.x, z: pos.z }, 8);
+    // NPC 0 folgt, NPC 1 läuft einen Pfad (character-steering); alle anderen leben mit character-brain
+    // (wandern, arbeiten, plaudern, idle-Clips)
+    let hirn = null;
+    if (i < 2) {
+      hirn = createSteering({ seed: hashSeed('hirn', SEED, i), heimat: { x: pos.x, z: pos.z } });
+      if (i === 0) hirn.folge(() => spieler.zustand.pos, 2.5);
+      else hirn.folgePfad([{ x: -3, z: 2 }, { x: 0, z: -9 }, { x: 0, z: -17 }, { x: 3, z: 2 }], { schleife: true });
+    } else {
+      fig.setBrain({
+        seed: hashSeed('brain', SEED, i), heimat: { x: pos.x, z: pos.z },
+        grund: i % 3 === 0
+          ? { zustand: 'arbeiten', ort: { x: pos.x, z: pos.z }, clip: pick(r, ['hacken', 'fegen', 'graben', 'haemmern']) }
+          : { zustand: 'wandern', radius: 8 },
+        verhalten: { plauderChance: 0.05, idleClips: ['umschauen', 'kratzen', 'strecken'] },
+      });
+    }
     szene.add(fig.root);
     npcs.push({ fig, hirn, pause: range(r, 2, 8) });
   }
 }
 npcsErzeugen();
-const nachbarn = [];
+const nachbarn = [], brains = [];
+const brainKontext = { nachbarn, npcs: brains, stunde: 10, ziele: [] };
 
 // ---- Oberfläche ----
 const editor = createEditor({
@@ -127,10 +151,19 @@ function clipListe() {
 clipListe();
 $('aktionen').onclick = (e) => {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.clip) spieler.spiele(b.dataset.clip); else spieler.stoppe();
+  if (b.dataset.ausdruck) spieler.setAusdruck(b.dataset.ausdruck, { dauer: 4 });
+  else if (b.dataset.clip) spieler.spiele(b.dataset.clip); else spieler.stoppe();
   b.blur();
 };
-// INTEGRATION Ausdrücke: Knopfreihe aus AUSDRUECKE (character-look) → spieler.setAusdruck(name) (Feature-Check ist in character.js)
+$('bAusr').onclick = () => { $('bAusr').textContent = '🗡 ' + naechsteAusruestung(); };
+// Ausdrücke: Knopfreihe aus AUSDRUECKE (character-look) im Aktionen-Panel → spieler.setAusdruck(name) für 4 s
+function ausdruckReihe() {
+  const d = document.createElement('div');
+  d.className = 'gruppe';
+  d.innerHTML = '<b>Ausdruck</b>' + AUSDRUECKE.map(a => `<button data-ausdruck="${a}">${a}</button>`).join('');
+  $('aktionen').appendChild(d);
+}
+ausdruckReihe();
 // Lock-On (T / 🎯): bestes Ziel vorn, erneut drücken = nächstes rechts, nur eins = loslassen
 let ziel = null;
 function zielWaehlen() {
@@ -189,11 +222,15 @@ function bild(jetzt) {
     nachbarn.length = 0;
     nachbarn.push({ x: z.pos.x, z: z.pos.z, radius: spieler.model.masse.radius });
     for (const n of npcs) nachbarn.push({ x: n.fig.zustand.pos.x, z: n.fig.zustand.pos.z, radius: n.fig.model.masse.radius });
+    brains.length = 0;
+    for (const n of npcs) if (n.fig.brain) brains.push(n.fig.brain);
     for (const n of npcs) {
-      const absicht = n.hirn.update(dt, n.fig.zustand, nachbarn.filter(q => q.x !== n.fig.zustand.pos.x || q.z !== n.fig.zustand.pos.z));
-      n.fig.update(dt, absicht);
+      if (n.hirn) {
+        const absicht = n.hirn.update(dt, n.fig.zustand, nachbarn.filter(q => q.x !== n.fig.zustand.pos.x || q.z !== n.fig.zustand.pos.z));
+        n.fig.update(dt, absicht);
+        if (n.hirn.modus === 'folgen' && n.hirn.angekommen && (n.pause -= dt) < 0) { n.fig.spiele('winken'); n.pause = 12; }
+      } else n.fig.update(dt, null, brainKontext);
       if (n.blickZeit > 0 && (n.blickZeit -= dt) <= 0) n.fig.blickZu(null);
-      if (n.hirn.modus === 'folgen' && n.hirn.angekommen && (n.pause -= dt) < 0) { n.fig.spiele('winken'); n.pause = 12; }
     }
   }
 

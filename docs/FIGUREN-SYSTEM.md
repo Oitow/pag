@@ -36,6 +36,19 @@ Meter, Sekunden, Radiant. Y nach oben. Figur-Ursprung **an den Füßen**, Blick 
 | move-input | input | `engine/input/move-input.js` | Tastatur + Touch-Stick/Knöpfe + Gamepad → Absicht |
 | follow-camera | camera | `engine/camera/follow-camera.js` | Third-Person-Orbit, weiches Folgen, Boden-Kollision, Pinch/Zoom |
 | character | gameplay | `engine/gameplay/character.js` | Klebstoff für Spiele: `createCharacter(...)` |
+| character-ausruestung | models | `engine/models/character/character-ausruestung.js` | Gegenstände für Sockel: Schwert, Axt, Schild, Fackel, Laterne … |
+| character-parts-* | models | `engine/models/character/character-parts-{basis,torso,becken,ruecken,haar,hut,zubehoer,gesicht}.js` | Aufgeteilte Bau-Funktionen; `-gesicht` = bewegliche Mimik |
+| character-clips-mehr | models | `engine/models/character/character-clips-mehr.js` | Weitere Clips (nur Daten, von character-clips registriert) |
+| character-anim-* | models | `engine/models/character/character-anim-{blick,hang,idle,zustand}.js` | Animator-Schichten: Blick, Hang-Füße, Idle-Varianten, Motor-Sonderzustände |
+| character-sekundaer | models | `engine/models/character/character-sekundaer.js` | Nachschwingen (Feder-Dämpfer): Kopf, Gewicht, Umhang, Haar |
+| character-reaktion | models | `engine/models/character/character-reaktion.js` | Treffer aus Richtung, Umfallen, Aufstehen (ohne Physik-Engine) |
+| character-motor-tuning | gameplay | `engine/gameplay/character-motor-tuning.js` | `MOTOR_TUNING` (Standardwerte des Motors) |
+| character-steering-extra | gameplay | `engine/gameplay/character-steering-extra.js` | Helfer: Patrouille, Umkreisen, Abstand, Verstecken |
+| character-gruppe | gameplay | `engine/gameplay/character-gruppe.js` | Schwarm: Separation, Kohäsion, Ausrichtung |
+| character-sinne | gameplay | `engine/gameplay/character-sinne.js` | NPC-Wahrnehmung: Sichtkegel, Hören, Sichtlinie, Gedächtnis |
+| character-brain | gameplay | `engine/gameplay/character-brain.js` | NPC-Zustandsautomat (idle, wandern, patrouille, arbeiten, folgen, fliehen, angreifen, suchen, plaudern) + Tagesplan |
+| ziel-wahl | camera | `engine/camera/ziel-wahl.js` | Lock-On-Ziel wählen (vorn / nächstes links/rechts) |
+| figur-schild | ui | `engine/ui/figur-schild.js` | Namensschild, Sprechblase, Lebensbalken über Figuren (DOM) |
 
 Demo/Testspiel: `games/figuren-labor/` (Editor + Herumlaufen + NPCs).
 
@@ -64,6 +77,8 @@ Reines Objekt: `{ <knochen>: { x, y, z } (Rotation), basisPos: { x, y, z } (Vers
 `{ x, z, sprint, springen, ducken, blickYaw? }` – `x, z` = gewünschte Laufrichtung in **Weltkoordinaten**, Länge 0…1
 (Analogstick halb gedrückt = langsam). `springen` = Taste **gehalten** (Motor erkennt Flanken selbst → Jump-Buffer, variable Höhe).
 `blickYaw` (optional, Zahl) = Figur schaut dorthin statt in Laufrichtung (Lock-On, Zielen, Seitwärtsgehen).
+Seit 1.1 optional (gehalten, Flanken erkennt der Motor): `rollen` (Rolle am Boden / Dash in der Luft), `gleiten`, `tauchen`,
+`schleichen` (wie ducken), `kantenSchutz` (nur dieser Frame). `move-input.zuAbsicht` reicht alle Bool-Aktionen durch.
 
 ### Welt-Adapter (für Motor & Kamera)
 ```js
@@ -79,6 +94,20 @@ Reines Objekt: `{ <knochen>: { x, y, z } (Rotation), basisPos: { x, y, z } (Vers
 { pos: {x,y,z}, vel: {x,y,z}, yaw, drehRate, tempo /*horizontal m/s*/, tempoAnteil /*0…1 von laufTempo*/,
   amBoden, imWasser, duckt, sprintet, rutscht, sprung /*true im Frame des Absprungs*/, landung /*Aufprall-Tempo im Lande-Frame, sonst 0*/,
   luftZeit, eintauchen /*0…1*/ }
+```
+Seit 1.1 zusätzlich: `rollt, dash, rollAnteil /*0…1*/, abklingzeit, gleitet, doppelSprung /*nur im Frame*/, sprungZahl, taucht, tauchTiefe,
+schleicht, anKante, betaeubt, getroffen /*nur im ersten Frame nach stoss*/`. Der Animator stellt sie dar (Rolle, Salto, Gleiten …).
+
+### Mimik (Modell ↔ Animator)
+Modell: `setAusdruck(name|null)` (null = Grundmimik `look.ausdruck`), `setAugen(yaw, nick, lid)`, `setLider(zu)`, `blinzeln()`,
+`updateGesicht(dt)`. Namen: `AUSDRUECKE` aus character-look. Der Animator leitet den Ausdruck aus Clip/Treffer/Zustand ab
+(`animator.ausdruck` setzen = erzwingen) und ruft das Modell per Duck-Typing; `character.setAusdruck(name, { dauer })` macht beides.
+
+### NPC mit Brain
+```js
+const npc = createCharacter({ look, welt, name: 'Jupp', schilder,
+  brain: { heimat, grund: { zustand: 'wandern', radius: 10 }, plan: [{ von: 8, bis: 12, zustand: 'arbeiten', ort, clip: 'hacken' }] } });
+npc.update(dt, null, { nachbarn, npcs: brains, stunde, ziele });   // absicht = null → Brain entscheidet, Clips laufen von selbst
 ```
 
 ## Regeln für alle Modul-Autoren
