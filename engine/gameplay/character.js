@@ -1,7 +1,7 @@
 /**
  * @modul    character
  * @zweck    Fertige Spielfigur in einem Objekt: Modell (Look) + Animator + Bewegungs-Motor, für Spieler und NPCs gleich
- * @api      createCharacter(opts) -> { root, model, animator, motor, zustand, look, name, schild, brain, update(dt,absicht?,brainKontext?), setBrain(brain|opts|null), spiele(name,opts), stoppe(name?), aktion(name,opts), sage(text,{dauer,geste,ausdruck}), setName(t), setLeben(anteil|null), ausruesten(sockel,obj), ablegen(sockel|obj), ausruestung, setAusdruck(name,opts), blickZu(punkt|figur|fn|null), setSichtbar(bool), abstandZu(punkt|figur), setLook(teil), teleport(pos,yaw?), stoss(x,y,z,opts?), dispose() }
+ * @api      createCharacter(opts) -> { root, model, animator, motor, zustand, look, name, schild, brain, update(dt,absicht?,brainKontext?), setBrain(brain|opts|null), spiele(name,opts), stoppe(name?), aktion(name,opts), sage(text,{dauer,geste,ausdruck}), setName(t), setLeben(anteil|null), ausruesten(sockel,obj), ablegen(sockel|obj), ausruestung, setAusdruck(name|null,opts), treffer(richtung,staerke,opts), umfallen(richtung,opts), aufstehen(dauer), blickZu(punkt|figur|fn|null), setSichtbar(bool), abstandZu(punkt|figur), setLook(teil), teleport(pos,yaw?), stoss(x,y,z,opts?), dispose() }
  * @beispiel
  *   import { createCharacter } from '../../engine/gameplay/character.js';
  *   const held = createCharacter({ look: VORLAGEN.wanderer, welt, pos: { x: 0, y: 0, z: 0 } });
@@ -48,6 +48,7 @@ export function createCharacter(opts = {}) {
   const animator = createAnimator(model, {
     seed: opts.seed ?? 1,
     gehTempo: motor.tuning.gehTempo, laufTempo: motor.tuning.laufTempo, sprintTempo: motor.tuning.sprintTempo,
+    bodenHoehe: opts.welt?.bodenHoehe ? (x, z) => opts.welt.bodenHoehe(x, z) : undefined,   // Hang-Anpassung der Füße
     ...opts.animation,
     onSchritt: (fuss, staerke) => opts.onSchritt?.(fuss, staerke, figur),
   });
@@ -66,14 +67,21 @@ export function createCharacter(opts = {}) {
     return brain;
   }
   const LEER = {};
+  let ausdruckRest = 0;
+  const blickAus = () => { animator.blickZuPunkt ? animator.blickZuPunkt(null) : animator.blickZu(null); };
   const blickDir = { x: 0, y: 0, z: 1 };
 
+  const weltBlick = { x: 0, y: 0, z: 0 };
   function blickAktualisieren() {
     const p = blickPunkt ? punktVon(blickPunkt) : null;
-    if (!p) { if (blickPunkt) animator.blickZu(null); return; }
+    if (!p) { if (blickPunkt) blickAus(); return; }
     const z = motor.zustand, c = Math.cos(z.yaw), s = Math.sin(z.yaw);
     // Figur als Ziel: in die Augen schauen; sonst genau auf den Punkt
     const zielY = (+p.y || 0) + (blickPunkt.zustand ? blickPunkt.model?.masse?.augenHoehe ?? m.augenHoehe : 0);
+    if (typeof animator.blickZuPunkt === 'function') {   // neuer Animator: Kopf + Augen folgen einem Weltpunkt
+      weltBlick.x = +p.x; weltBlick.y = zielY; weltBlick.z = +p.z;
+      animator.blickZuPunkt(weltBlick); return;
+    }
     const dx = p.x - z.pos.x, dz = p.z - z.pos.z, dy = zielY - (z.pos.y + m.augenHoehe);
     blickDir.x = dx * c - dz * s; blickDir.z = dx * s + dz * c; blickDir.y = dy;
     animator.blickZu(blickDir);
@@ -101,6 +109,7 @@ export function createCharacter(opts = {}) {
       motor.update(dt, gesperrt ? STOP : absicht);
       sync();
       if (blickPunkt) blickAktualisieren();
+      if (ausdruckRest > 0 && (ausdruckRest -= dt) <= 0) animator.ausdruck = null;
       animator.update(dt, motor.zustand);
     },
     spiele: (clip, o) => animator.spiele(clip, o),
@@ -120,9 +129,9 @@ export function createCharacter(opts = {}) {
     /** Sprechblase (braucht opts.schilder); geste = Clip-Name, ausdruck = Gesichtsausdruck (falls das Modell es kann). */
     sage(text, { dauer, geste, ausdruck } = {}) {
       if (geste && CLIPS[geste]) animator.spiele(geste);
-      if (ausdruck) figur.setAusdruck(ausdruck);
-      if (!schild) return false;
+      if (!schild) { if (ausdruck) figur.setAusdruck(ausdruck); return false; }
       schild.sage(text, { dauer });
+      if (ausdruck && figur.setAusdruck(ausdruck)) ausdruckRest = Number.isFinite(dauer) ? dauer : Math.min(8, 1.5 + String(text).length * 0.06);
       return true;
     },
     setName(t) { name = t ? String(t) : ''; schild?.setName(name); },
@@ -142,14 +151,20 @@ export function createCharacter(opts = {}) {
       if (typeof model.ablegen === 'function') return model.ablegen(typeof wer === 'string' ? wer : obj || wer);
       return model.loesen(typeof wer === 'string' ? wer : obj || wer);
     },
-    /** Gesichtsausdruck weiterreichen, falls das Modell es kann (→ true), sonst false. */
+    /** Gesichtsausdruck setzen (null = automatisch aus Clips/Zustand), falls das Modell es kann (→ true), sonst false. */
     setAusdruck(ausdruck, o) {
       if (typeof model.setAusdruck !== 'function') return false;
-      model.setAusdruck(ausdruck, o);
+      ausdruckRest = 0;
+      if ('ausdruck' in animator) animator.ausdruck = ausdruck || null;   // Animator reicht ihn jedes Bild ans Modell
+      else model.setAusdruck(ausdruck, o);
       return true;
     },
+    /** Reaktionen des Animators (falls vorhanden): Stoß/Treffer, Umfallen (Ragdoll-artig), Aufstehen. */
+    treffer(richtung, staerke = 1, o) { if (typeof animator.treffer !== 'function') return false; animator.treffer(richtung, staerke, o); return true; },
+    umfallen(richtung, o) { if (typeof animator.umfallen !== 'function') return false; animator.umfallen(richtung, o); return true; },
+    aufstehen(dauer) { if (typeof animator.aufstehen !== 'function') return false; animator.aufstehen(dauer); return true; },
     /** Kopf schaut zu einem Punkt / einer Figur / Object3D / Funktion (wird jedes Bild neu gelesen); null = geradeaus. */
-    blickZu(punkt) { blickPunkt = punkt || null; if (!blickPunkt) animator.blickZu(null); else blickAktualisieren(); },
+    blickZu(punkt) { blickPunkt = punkt || null; if (!blickPunkt) blickAus(); else blickAktualisieren(); },
     setSichtbar(an) { model.setSichtbar(an); if (schild) schild.zeige(an); },
     abstandZu(ziel) {
       const p = punktVon(ziel); if (!p) return Infinity;

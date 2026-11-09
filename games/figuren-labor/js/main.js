@@ -116,7 +116,7 @@ $('info').style.display = infoAn ? '' : 'none';
 function clipListe() {
   const gruppen = {};
   for (const n of CLIP_NAMEN) {
-    if (['schwimmen', 'wassertreten'].includes(n)) continue;
+    if (['schwimmen', 'wassertreten'].includes(n) || CLIPS[n]?.idle) continue;   // Idle-Varianten spielt der Animator selbst
     const m = CLIPS[n]?.maske; const g = typeof m === 'string' ? m : 'eigen';
     (gruppen[g] ??= []).push(n);
   }
@@ -143,6 +143,8 @@ function zielWaehlen() {
 const GRUESSE = ['Hallo!', 'Na, wie geht\'s?', 'Schönes Labor hier.', 'Ich teste nur …', 'Pass auf die Rampe auf!'];
 let grussNr = 0, nahKnopf = false;
 const absicht = {};
+let stoppAn = false;
+$('bStopp').onclick = () => spieler.stoppe();
 setTimeout(() => { $('hilfe').style.opacity = 0; }, 7000);
 
 addEventListener('resize', () => {
@@ -169,6 +171,9 @@ function bild(jetzt) {
   const zp = ziel && zielPos(ziel);
   absicht.blickYaw = kamera.erstePerson ? kamera.yaw : zp ? Math.atan2(zp.x - spieler.zustand.pos.x, zp.z - spieler.zustand.pos.z) : undefined;
   spieler.update(dt, absicht);
+  // Dauer-Clips (tragen, sitzenBoden, schlafen …) laufen bis stoppe() → ⏹ in der Leiste, solange eine Aktion läuft
+  const laeuft = !!spieler.animator.aktion;
+  if (laeuft !== stoppAn) { stoppAn = laeuft; $('bStopp').style.display = laeuft ? '' : 'none'; }
   const z = spieler.zustand;
   // NPC in Reichweite → 💬 / E: NPC dreht den Kopf her und antwortet
   let nah = null, best = 3;

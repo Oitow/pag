@@ -77,3 +77,16 @@ test('Brain anhängen: Optionen oder fertiges Objekt, Absicht + Clip', () => {
   f.setBrain(null); assert.equal(f.brain, null);
   f.dispose();
 });
+
+test('Reaktionen durchgereicht (Feature-Check), Ausdruck über den Animator', () => {
+  const f = createCharacter({ welt });
+  const kann = n => typeof f.animator[n] === 'function';
+  assert.equal(f.treffer({ x: 0, z: -1 }, 0.7), kann('treffer'));
+  assert.equal(f.umfallen({ x: 1, z: 0 }), kann('umfallen'));
+  assert.equal(f.aufstehen(1), kann('aufstehen'));
+  for (let i = 0; i < 60; i++) f.update(1 / 30, { x: 0, z: 0 });
+  if (f.setAusdruck('froh') && 'ausdruck' in f.animator) assert.equal(f.animator.ausdruck, 'froh');
+  f.setAusdruck(null);
+  assert.ok(Number.isFinite(f.zustand.pos.y));
+  f.dispose();
+});
