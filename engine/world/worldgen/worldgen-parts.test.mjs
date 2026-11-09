@@ -75,3 +75,18 @@ test('Formen liefern endliche Masken; Optionen werden tief gemischt', () => {
   const o = mischeOptionen({ a: { b: 1, c: [1] } }, { a: { c: [2], d: 3 } });
   assert.deepEqual(o, { a: { b: 1, c: [2], d: 3 } });
 });
+
+test('Höhe: Felsstufen (optional) stufen nur das Gebirge, ohne Option unverändert', async () => {
+  const { createHeightSampler } = await import('./worldgen-height.js');
+  const basis = { seed: 3, breite: 128, tiefe: 128, form: { typ: 'insel' }, hoehe: { gebirge: { menge: 0.9, hoehe: 1.2 } } };
+  const a = createHeightSampler(basis), b = createHeightSampler({ ...basis, hoehe: { gebirge: { menge: 0.9, hoehe: 1.2, felsStufen: { stufen: 12, staerke: 0.7 } } } });
+  let anders = 0, max = 0;
+  for (let y = 0; y < 128; y += 3) for (let x = 0; x < 128; x += 3) {
+    const ha = a.sample(x, y), hb = b.sample(x, y);
+    assert.ok(Number.isFinite(hb));
+    if (ha !== hb) anders++;
+    max = Math.max(max, Math.abs(ha - hb));
+  }
+  assert.ok(anders > 20, 'Felsstufen wirken nicht');
+  assert.ok(max < 0.1, `Felsstufen zu stark (${max})`);
+});

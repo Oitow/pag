@@ -29,7 +29,8 @@ export function biomFarben(welt) {
  * opts: schritt (Gitterzellen je Vertex, 1 = volle Auflösung), schatten, meerGroesse (Vielfaches der Karte),
  * farbRauschen (0…1, Stärke der Mikrovariation), wasserFarbe, meerFarbe, wasserDeckkraft.
  * Ab 1.1 (Farben aus terrain-farben): farben {biomKey: 0xRRGGBB}, details (false = nur weich gemischte Biomfarben),
- * schnee (false = kein Temperatur-Schnee), felsAb (Steigung für Hangfels), mulden, weich (Mischradius in Zellen).
+ * schnee (false = kein Temperatur-Schnee), felsAb (Steigung für Hangfels), mulden, weich (Mischradius in Zellen),
+ * weichesUfer (false = Wasserfläche endet an Zellkanten wie in 1.0).
  */
 export function createTerrainMesh(adapter, opts = {}) {
   const welt = adapter.welt;
@@ -83,9 +84,12 @@ export function createTerrainMesh(adapter, opts = {}) {
     const k = j * nx + i;
     if (vNr[k] >= 0) return vNr[k];
     const gx = Math.min(B - 1, i * schritt), gy = Math.min(T - 1, j * schritt);
-    const p = adapter.zuWelt(gx * z, gy * z), h = spiegel(gx, gy) ?? welt.hoehe[gy * B + gx];
+    const p = adapter.zuWelt(gx * z, gy * z), boden = welt.hoehe[gy * B + gx] * hs;
+    let y = (spiegel(gx, gy) ?? welt.hoehe[gy * B + gx]) * hs + 0.04;
+    // Ufer-Vertex (trocken): Wasser knapp unter den Boden ziehen → Uferlinie schneidet schräg durchs Dreieck statt Treppenkante
+    if (opts.weichesUfer !== false && !istWasser(gx, gy)) y = Math.min(y, boden - 0.06);
     vNr[k] = wpos.length / 3;
-    wpos.push(p.x, h * hs + 0.04, p.z);
+    wpos.push(p.x, y, p.z);
     return vNr[k];
   }
   for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {

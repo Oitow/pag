@@ -68,14 +68,14 @@ function eintrag(e) {
 /** Dichte-Tabelle und Typ-Einträge einer Art pro Biom-Id. */
 function dichteArray(art, biome) {
   const d = new Float32Array(256), basis = art.dichte?._ ?? 0;
-  const typIdx = new Array(256), cache = new Map();
+  const typIdx = new Array(256), cache = new Map(), alle = [];
   biome.forEach((bm, id) => {
     d[id] = art.dichte?.[bm.key] ?? basis;
     const liste = art.typen?.[bm.key] || art.typen?._ || [art.key];
-    if (!cache.has(liste)) cache.set(liste, liste.map(eintrag));
+    if (!cache.has(liste)) cache.set(liste, liste.map(e => { const n = eintrag(e); n.nr = alle.length; alle.push(n); return n; }));
     typIdx[id] = cache.get(liste);
   });
-  return { d, typIdx };
+  return { d, typIdx, alle };
 }
 
 /** Gewichtete Typwahl mit weichen Bedingungen; null, wenn kein Eintrag passt. */
@@ -137,7 +137,7 @@ export function verteile(quelle, arten, opts, bereich) {
     const art = arten[a];
     const r = art.radius ?? 2, c = r, r2 = r * r;
     const as = hashSeed(seed, 'objekt', art.key) | 0;
-    const { d: dichte, typIdx } = dichteArray(art, biome);
+    const { d: dichte, typIdx, alle } = dichteArray(art, biome);
     const af = faktor * (opts.artDichte?.[art.key] ?? 1);
     let maxD = 0;
     for (let i = 0; i < 256; i++) if (dichte[i] > maxD) maxD = dichte[i];
@@ -152,7 +152,7 @@ export function verteile(quelle, arten, opts, bereich) {
     const gx1 = Math.floor((bereich.x1 - 1e-6) / c) + 1, gy1 = Math.floor((bereich.y1 - 1e-6) / c) + 1;
     const GW = gx1 - gx0 + 1, GH = gy1 - gy0 + 1;
     const px = new Float32Array(GW * GH), py = new Float32Array(GW * GH), ok = new Uint8Array(GW * GH);
-    const wahl = new Array(GW * GH);
+    const wahl = new Int32Array(GW * GH);
     // 1) Kandidaten pro Gitterzelle + Dichteprüfung + Typwahl
     for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) {
       const k = gy * GW + gx, X = gx + gx0, Y = gy + gy0;
@@ -174,22 +174,25 @@ export function verteile(quelle, arten, opts, bereich) {
       if (unterWald > 0) p *= smoothstep(unterWald - 0.2, unterWald + 0.15, waldBei(info, x, y));
       if (wurf >= p * (rand ? 1 + (rand.gewicht ?? 2) : 1)) continue;
       if (rand || hf) {
-        // Umgebung: stärkster Wald / steilster Hang rundum
-        const dd = (rand ? rand.dist : hf.dist) ?? 3, w0 = rand ? waldBei(info, x, y) : 0;
-        let wMax = 0, hMax = 0;
-        for (let q = 0; q < 4; q++) {
-          const qx = x + RX[q] * dd, qy = y + RY[q] * dd;
-          quelle.punkt(qx, qy, nb);
-          if (rand) { const w = waldBei(nb, qx, qy); if (w > wMax) wMax = w; }
-          if (hf && nb[1] > hMax) hMax = nb[1];
+        // Umgebung: stärkster Wald / steilster Hang rundum (mitten im Wald gibt es keinen Rand → Abkürzung)
+        const w0 = rand ? waldBei(info, x, y) : 0;
+        if (hf || w0 <= 0.9) {
+          const dd = (rand ? rand.dist : hf.dist) ?? 3;
+          let wMax = 0, hMax = 0;
+          for (let q = 0; q < 4; q++) {
+            const qx = x + RX[q] * dd, qy = y + RY[q] * dd;
+            quelle.punkt(qx, qy, nb);
+            if (rand) { const w = waldBei(nb, qx, qy); if (w > wMax) wMax = w; }
+            if (hf && nb[1] > hMax) hMax = nb[1];
+          }
+          if (rand) p *= 1 + (rand.gewicht ?? 2) * Math.max(0, wMax - w0);
+          if (hf) p *= smoothstep(hf.min, hf.min + (hf.weich ?? 0.04), hMax - info[1]);
         }
-        if (rand) p *= 1 + (rand.gewicht ?? 2) * Math.max(0, wMax - w0);
-        if (hf) p *= smoothstep(hf.min, hf.min + (hf.weich ?? 0.04), hMax - info[1]);
         if (wurf >= p) continue;
       }
       const e = waehleTyp(typIdx[info[0]], info, hash2(X, Y, as + 3), hash2(X, Y, as + 6) * 2 - 1);
       if (!e) continue;
-      ok[k] = 1; px[k] = x; py[k] = y; wahl[k] = e;
+      ok[k] = 1; px[k] = x; py[k] = y; wahl[k] = e.nr;
     }
     // 2) Konflikte: ein Kandidat bleibt, wenn kein gültiger Nachbar näher als r eine höhere Priorität hat
     for (let gy = 1; gy < GH - 1; gy++) for (let gx = 1; gx < GW - 1; gx++) {
@@ -209,7 +212,7 @@ export function verteile(quelle, arten, opts, bereich) {
         if (pj > prio || (pj === prio && j > k)) { frei = false; break; }
       }
       if (!frei) continue;
-      const e = wahl[k];
+      const e = alle[wahl[k]];
       let tn = typNr.get(e.name);
       if (tn === undefined) { tn = typen.length; typen.push(e.name); typNr.set(e.name, tn); }
       const h4 = hash2(X, Y, as + 4);

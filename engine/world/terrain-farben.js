@@ -28,16 +28,47 @@ export const GELAENDE_FARBEN = {
   tiefsee: [0x2f4a4e, 0], meer: [0x9a9270, 0], see: [0x6a6448, 0], fluss: [0x958b74, 0],
 };
 
-const TROCKEN = [0xb5a862, 0], SATT = [0x5a8436, 0], HELLGRAS = 0x9fb45a, FELS = 0x847b6f, FELS_WARM = 0xa47f5e, FELS_DUNKEL = 0x5f5850;
-const NASSSAND = 0xa39468, KIES = 0x9b9282, SCHLAMM = 0x5e5a40, SCHNEE = 0xf1f4f7, MEERSAND = 0xc4b488, MEERTIEF = 0x2c4a52;
+const rgb = (hex) => [(hex >> 16 & 255) / 255, (hex >> 8 & 255) / 255, (hex & 255) / 255];
+const TROCKEN = rgb(0xb5a862), SATT = rgb(0x5a8436), HELLGRAS = rgb(0x9fb45a), FELS = rgb(0x847b6f), FELS_WARM = rgb(0xa47f5e);
+const FELS_DUNKEL = rgb(0x5f5850), NASSSAND = rgb(0xa39468), KIES = rgb(0x9b9282), SCHLAMM = rgb(0x5e5a40), SCHNEE = rgb(0xf1f4f7);
+const MEERSAND = rgb(0xc4b488), MEERTIEF = rgb(0x2c4a52);
 
 /** sRGB-Komponente (0…1) → linear. */
 export function srgbZuLinear(v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
-const rgb = (hex) => [(hex >> 16 & 255) / 255, (hex >> 8 & 255) / 255, (hex & 255) / 255];
-function mische(c, hex, t) {
+const LUT_N = 1024, LUT = new Float32Array(LUT_N + 2);
+for (let k = 0; k <= LUT_N + 1; k++) LUT[k] = srgbZuLinear(Math.min(1, k / LUT_N));
+/** Rauschfeld B×T, grob alle `st` Zellen abgetastet und bilinear verfeinert (spart Rauschaufrufe bei weichen Feldern). */
+function grobFeld(B, T, st, fn) {
+  const gb = Math.ceil((B - 1) / st) + 1, gt = Math.ceil((T - 1) / st) + 1, g = new Float32Array(gb * gt), aus = new Float32Array(B * T);
+  for (let j = 0; j < gt; j++) for (let i = 0; i < gb; i++) g[j * gb + i] = fn(i * st, j * st);
+  for (let y = 0; y < T; y++) {
+    const j = Math.min(gt - 2, Math.floor(y / st)), v = y / st - j;
+    for (let x = 0; x < B; x++) {
+      const i = Math.min(gb - 2, Math.floor(x / st)), u = x / st - i, k = j * gb + i;
+      const o = g[k] + (g[k + 1] - g[k]) * u, w = g[k + gb] + (g[k + gb + 1] - g[k + gb]) * u;
+      aus[y * B + x] = o + (w - o) * v;
+    }
+  }
+  return aus;
+}
+/** Schneller 3×3-Kastenfilter (zeilenweise, cachefreundlich), iter Durchgänge; Ränder werden gekappt. */
+function weich3(a, B, T, iter, tmp) {
+  for (let it = 0; it < iter; it++) {
+    for (let y = 0; y < T; y++) {
+      const o = y * B;
+      tmp[o] = (a[o] + a[o + 1]) * 0.5; tmp[o + B - 1] = (a[o + B - 2] + a[o + B - 1]) * 0.5;
+      for (let x = 1; x < B - 1; x++) tmp[o + x] = (a[o + x - 1] + a[o + x] + a[o + x + 1]) * (1 / 3);
+    }
+    for (let x = 0; x < B; x++) { a[x] = (tmp[x] + tmp[x + B]) * 0.5; a[(T - 1) * B + x] = (tmp[(T - 2) * B + x] + tmp[(T - 1) * B + x]) * 0.5; }
+    for (let y = 1; y < T - 1; y++) {
+      const o = y * B;
+      for (let x = 0; x < B; x++) a[o + x] = (tmp[o + x - B] + tmp[o + x] + tmp[o + x + B]) * (1 / 3);
+    }
+  }
+}
+function mische(c, f, t) {
   if (t <= 0) return; if (t > 1) t = 1;
-  const r = (hex >> 16 & 255) / 255, g = (hex >> 8 & 255) / 255, b = (hex & 255) / 255;
-  c[0] += (r - c[0]) * t; c[1] += (g - c[1]) * t; c[2] += (b - c[2]) * t;
+  c[0] += (f[0] - c[0]) * t; c[1] += (f[1] - c[1]) * t; c[2] += (f[2] - c[2]) * t;
 }
 
 /**
@@ -58,10 +89,13 @@ export function gelaendeFarben(welt, opts = {}) {
     return [...rgb(hex), p ? p[1] : 0.5];
   });
   const kan = [new Float32Array(N), new Float32Array(N), new Float32Array(N), new Float32Array(N)];
+  const jx = details ? grobFeld(B, T, 2, (x, y) => 1.6 * nA(x * 0.21 * s, y * 0.21 * s)) : null;
+  const jy = details ? grobFeld(B, T, 2, (x, y) => 1.6 * nA(x * 0.21 * s + 40, y * 0.21 * s - 40)) : null;
+  const FLK = details ? grobFeld(B, T, 4, (x, y) => fbm2(nB, x * s * 0.07, y * s * 0.07, 3)) : null;
   for (let y = 0; y < T; y++) for (let x = 0; x < B; x++) {
     let qx = x, qy = y;
     if (details) {
-      qx = Math.round(x + 1.6 * nA(x * 0.21 * s, y * 0.21 * s)); qy = Math.round(y + 1.6 * nA(x * 0.21 * s + 40, y * 0.21 * s - 40));
+      qx = Math.round(x + jx[y * B + x]); qy = Math.round(y + jy[y * B + x]);
       if (qx < 0) qx = 0; else if (qx >= B) qx = B - 1;
       if (qy < 0) qy = 0; else if (qy >= T) qy = T - 1;
     }
@@ -69,14 +103,16 @@ export function gelaendeFarben(welt, opts = {}) {
     kan[0][i] = f[0]; kan[1][i] = f[1]; kan[2][i] = f[2]; kan[3][i] = f[3];
   }
   const weich = Math.max(0, opts.weich ?? 1);
-  if (weich > 0) for (const k of kan) boxBlur(k, B, T, weich, 2);
+  const tmp = new Float32Array(N);
+  if (weich === 1) for (const k of kan) weich3(k, B, T, 2, tmp);
+  else if (weich > 0) for (const k of kan) boxBlur(k, B, T, Math.round(weich), 2);
 
   // Ufer-Masken: Nähe zu Fluss / See / Meer (weich)
   let flussNah = null, seeNah = null;
   if (details) {
     flussNah = new Float32Array(N); seeNah = new Float32Array(N);
     for (let i = 0; i < N; i++) { flussNah[i] = FL[i] & FLAG.FLUSS ? 1 : 0; seeNah[i] = FL[i] & FLAG.SEE ? 1 : 0; }
-    boxBlur(flussNah, B, T, 1, 2); boxBlur(seeNah, B, T, 1, 2);
+    weich3(flussNah, B, T, 2, tmp); weich3(seeNah, B, T, 2, tmp);
   }
 
   const aus = new Float32Array(N * 3), c = [0, 0, 0];
@@ -93,14 +129,14 @@ export function gelaendeFarben(welt, opts = {}) {
     const gx = (H[xr] - H[xl]) * hs / ((xr - xl || 1) * mpz), gy = (H[yu] - H[yo]) * hs / (((yu - yo) / B || 1) * mpz);
     const steig = Math.sqrt(gx * gx + gy * gy);           // Steigung (Höhe je Meter)
     const fx = x * s, fy = y * s;
-    const flecken = fbm2(nB, fx * 0.07, fy * 0.07, 3);     // große Flecken (Wiese, Trockenheit)
+    const flecken = FLK[i];                                 // große Flecken (Wiese, Trockenheit)
     const fein = nC(fx * 0.45, fy * 0.45);                  // feine Variation
     const gras = kan[3][i];
 
     if (fl & FLAG.OZEAN) {
       // Meeresgrund: heller Sand im Flachen, dunkel in der Tiefe
       const tiefe = -hM;
-      c[0] = c[1] = c[2] = 0; const sand = rgb(MEERSAND); c[0] = sand[0]; c[1] = sand[1]; c[2] = sand[2];
+      c[0] = MEERSAND[0]; c[1] = MEERSAND[1]; c[2] = MEERSAND[2];
       mische(c, NASSSAND, smoothstep(0, 1.2, tiefe));
       mische(c, MEERTIEF, smoothstep(1, 14, tiefe));
     } else {
@@ -109,7 +145,7 @@ export function gelaendeFarben(welt, opts = {}) {
         const feu = Feu ? Feu[i] : 0.5;
         const trocken = smoothstep(0.2, 0.6, flecken + (0.4 - feu) * 0.8) * gras;
         const satt = smoothstep(0.0, 0.4, -flecken + (feu - 0.45) * 0.6) * gras;
-        mische(c, TROCKEN[0], trocken * 0.45); mische(c, SATT[0], satt * 0.5);
+        mische(c, TROCKEN, trocken * 0.45); mische(c, SATT, satt * 0.5);
         // kleine helle Flecken (Klee, Blüten, kurzes Gras)
         mische(c, HELLGRAS, smoothstep(0.35, 0.7, nA(fx * 0.32 + 91, fy * 0.32 - 17)) * gras * 0.35);
       }
@@ -123,8 +159,8 @@ export function gelaendeFarben(welt, opts = {}) {
       if (fs > 0) {
         const warm = Temp ? smoothstep(0.62, 0.85, Temp[i]) * (Feu ? 1 - smoothstep(0.2, 0.45, Feu[i]) : 1) : 0;
         const band = 0.5 + 0.5 * Math.sin(hM * 0.7 + fein * 1.2 + flecken * 4), band2 = 0.5 + 0.5 * Math.sin(hM * 2.3 + fein * 2);
-        const fc = rgb(FELS); const fw = rgb(FELS_WARM);
-        let fr = fc[0] + (fw[0] - fc[0]) * warm, fg = fc[1] + (fw[1] - fc[1]) * warm, fb = fc[2] + (fw[2] - fc[2]) * warm;
+        const fc = FELS, fw = FELS_WARM;
+        const fr = fc[0] + (fw[0] - fc[0]) * warm, fg = fc[1] + (fw[1] - fc[1]) * warm, fb = fc[2] + (fw[2] - fc[2]) * warm;
         const d = 0.8 + 0.22 * band + 0.08 * band2;
         c[0] += (fr * d - c[0]) * fs; c[1] += (fg * d - c[1]) * fs; c[2] += (fb * d - c[2]) * fs;
         if (steig > 1.4) mische(c, FELS_DUNKEL, smoothstep(1.4, 2.4, steig) * 0.35);
@@ -152,5 +188,8 @@ export function gelaendeFarben(welt, opts = {}) {
 }
 
 function schreibe(aus, i, c) {
-  for (let k = 0; k < 3; k++) { const v = c[k] < 0 ? 0 : c[k] > 1 ? 1 : c[k]; aus[i * 3 + k] = srgbZuLinear(v); }
+  for (let k = 0; k < 3; k++) {
+    const v = (c[k] < 0 ? 0 : c[k] > 1 ? 1 : c[k]) * LUT_N, j = v | 0;
+    aus[i * 3 + k] = LUT[j] + (LUT[j + 1] - LUT[j]) * (v - j);
+  }
 }
