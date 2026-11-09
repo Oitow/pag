@@ -1,7 +1,7 @@
 /**
  * @modul    character-model
  * @zweck    Look → fertige Figur: Rig (Gelenk-Gruppen) + Low-Poly-Meshes je Knochen; Look live wechseln, Gegenstände an Sockeln befestigen
- * @api      createCharacterModel({ look, seed, material, schatten, mimik }) -> { root, rig, look, masse, meshes, gesicht, ausdruck, setLook(teilOderLook), befestigen(sockel,obj), loesen(sockelOderObj), setSichtbar(bool), setAusdruck(name), setLider(zu), blinzeln(dauer), setBlick(x,y), updateGesicht(dt), dispose() }
+ * @api      createCharacterModel({ look, seed, material, schatten, mimik }) -> { root, rig, look, masse, meshes, gesicht, ausdruck, setLook(teilOderLook), befestigen(sockel,obj), loesen(sockelOderObj), setSichtbar(bool), setAusdruck(name), setLider(zu), blinzeln(dauer), setBlick(x,y), setAugen(yaw,nick,lid), updateGesicht(dt), dispose() }
  * @beispiel
  *   import { createCharacterModel } from '../../engine/models/character/character-model.js';
  *   const figur = createCharacterModel({ look: VORLAGEN.ritter, seed: 4 });
@@ -13,13 +13,16 @@
  * @three    ja
  *
  * Gesicht/Mimik (1.1, additiv; mit opts.mimik = false festes Gesicht wie 1.0, ohne die Funktionen zu brechen – sie tun dann nichts):
- *   setAusdruck(name)  name aus AUSDRUECKE: 'neutral' | 'froh' | 'wuetend' | 'traurig' | 'ueberrascht' | 'schlafend'
+ *   setAusdruck(name)  name aus AUSDRUECKE (character-look), z. B. 'neutral' 'froh' 'freundlich' 'freude' 'wuetend' 'traurig'
+ *                      'ueberrascht' 'erschrocken' 'schlafend' 'muede' 'gaehnen' 'schmerz' 'benommen' 'bewusstlos' 'tot' 'stolz'
+ *                      'entschlossen' 'konzentriert' 'skeptisch' 'nachdenklich'; Unbekanntes → 'neutral'
  *                      (Start: look.ausdruck; bleibt bei setLook erhalten, außer der Teil-Look setzt ausdruck)
  *   ausdruck           aktueller Ausdruck (nur lesen)
  *   setLider(zu)       0 = Lider wie Ausdruck … 1 = geschlossen (müde, zwinkern; additiv zum Blinzeln)
- *   blinzeln(dauer)    einmal blinzeln (Standard 0,16 s)
+ *   blinzeln(dauer)    einmal blinzeln (Standard 0,16 s; schaltet das automatische Blinzeln ab – der Aufrufer steuert dann)
  *   setBlick(x, y)     Pupillen −1…1 (x + = zur linken Seite der Figur/+X, y + = hoch)
- *   updateGesicht(dt)  pro Frame aufrufen: Blinzel-Animation + automatisches Blinzeln alle 2–6 s (seed-deterministisch)
+ *   setAugen(yaw, nick, lid)  für den Animator: Blick in rad (±0,5 Anschlag; yaw + = +X, nick + = nach unten), lid 0…1 = Lidschluss
+ *   updateGesicht(dt)  pro Frame aufrufen (nötig, damit Blinzeln abläuft): Blinzel-Animation + automatisches Blinzeln alle 2–6 s (seed-deterministisch)
  *   gesicht            das Objekt aus createGesicht (oder null), z. B. gesicht.autoBlinzeln = false
  */
 import { hashSeed } from '../../core/rng.js';
@@ -68,8 +71,8 @@ function mischen(a, b) {
  */
 export function createCharacterModel({ look = {}, seed = 1, material = null, schatten = true, mimik = true } = {}) {
   const mat = material || standardMaterial();
-  const modell = { look: createLook(look), meshes: [], gesicht: null };
-  let zustand = { ausdruck: modell.look.ausdruck, zu: 0, blick: [0, 0] };   // Gesichtszustand überlebt setLook
+  const modell = { look: createLook(look), meshes: [], gesicht: null };   // Umhang hängt an rig.sockel.umhang (Saum nach −Y)
+  let zustand = { ausdruck: modell.look.ausdruck, zu: 0, blick: [0, 0], auto: true };   // Gesichtszustand überlebt setLook
   modell.masse = koerperMasse(modell.look);
   const rig = createRig(modell.masse);
   modell.rig = rig;
@@ -92,6 +95,7 @@ export function createCharacterModel({ look = {}, seed = 1, material = null, sch
     if (mimik) {
       const g = createGesicht(ctx, { seed, material: mat, schatten });
       g.setAusdruck(zustand.ausdruck).setLider(zustand.zu).setBlick(...zustand.blick);
+      g.autoBlinzeln = zustand.auto;
       rig.knochen.kopf.add(g.gruppe);
       modell.gesicht = g;
       modell.meshes.push(...g.meshes);
@@ -132,8 +136,15 @@ export function createCharacterModel({ look = {}, seed = 1, material = null, sch
   // Gesicht (siehe Modulkopf). Ohne Mimik: Zustand wird nur gemerkt.
   modell.setAusdruck = (name) => { zustand.ausdruck = createLook({ ausdruck: name }).ausdruck; modell.gesicht?.setAusdruck(zustand.ausdruck); return modell; };
   modell.setLider = (zu) => { zustand.zu = zu; modell.gesicht?.setLider(zu); return modell; };
-  modell.blinzeln = (dauer) => { modell.gesicht?.blinzeln(dauer); return modell; };
+  /** Von außen blinzeln → ab dann steuert der Aufrufer das Blinzeln (automatisches Blinzeln aus). */
+  modell.blinzeln = (dauer) => { zustand.auto = false; if (modell.gesicht) { modell.gesicht.autoBlinzeln = false; modell.gesicht.blinzeln(dauer); } return modell; };
   modell.setBlick = (x = 0, y = 0) => { zustand.blick = [x, y]; modell.gesicht?.setBlick(x, y); return modell; };
+  modell.setAugen = (yaw, nick, lid) => {
+    const g = modell.gesicht;
+    if (g) { g.setAugen(yaw, nick, lid); zustand.blick = [g.meshes[0].position.x / (modell.masse.kopfRadius * 0.17 * 0.24), g.meshes[0].position.y / (modell.masse.kopfRadius * 0.17 * 0.18)]; }
+    if (lid != null) zustand.zu = lid;
+    return modell;
+  };
   modell.updateGesicht = (dt) => { modell.gesicht?.update(dt); return modell; };
   Object.defineProperty(modell, 'ausdruck', { get: () => zustand.ausdruck, enumerable: true });
   /** Gibt Geometrien frei und hängt die Figur aus (geteiltes Material bleibt; eigenes material gehört dem Aufrufer). */

@@ -39,7 +39,9 @@ export const TEIL_NAMEN = {
 };
 
 /** Gesichtsausdrücke (character-model: setAusdruck). Erster = Standard. */
-export const AUSDRUECKE = ['neutral', 'froh', 'wuetend', 'traurig', 'ueberrascht', 'schlafend'];
+export const AUSDRUECKE = ['neutral', 'froh', 'wuetend', 'traurig', 'ueberrascht', 'schlafend',
+  'freundlich', 'freude', 'schmerz', 'tot', 'bewusstlos', 'benommen', 'erschrocken', 'muede', 'gaehnen',
+  'stolz', 'entschlossen', 'konzentriert', 'skeptisch', 'nachdenklich'];
 
 /** Seltene Kopfbedeckungen: randomLook nimmt sie nur, wenn opts.stile.kopfbedeckung sie ausdrücklich erlaubt. */
 const SELTEN_HUT = ['krone', 'helm', 'topfhelm', 'reif', 'zauberhut'];
