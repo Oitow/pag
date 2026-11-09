@@ -185,3 +185,122 @@ test('radius/hoehe zur Laufzeit setzbar', () => {
   m.radius = 0.5; m.hoehe = NaN;
   assert.deepEqual([m.radius, m.hoehe], [0.5, 1.75]);
 });
+
+// ---------- 1.1.0: Rolle, Dash, Doppelsprung, Gleiten, Tauchen, Kantenschutz, Stoß ----------
+
+test('Ausweichrolle: schneller Vorstoß, Abklingzeit, Zustandsfelder', () => {
+  const m = createMotor({ welt: flach, pos: { x: 0, z: 0 } });
+  let rollFrames = 0, maxTempo = 0;
+  lauf(m, 0.3, (i) => ({ x: 0, z: 0, rollen: i < 3 }), (z) => { if (z.rollt) { rollFrames++; maxTempo = Math.max(maxTempo, z.tempo); } });
+  assert.ok(rollFrames > 10, `rollFrames ${rollFrames}`);
+  assert.ok(maxTempo > MOTOR_TUNING.laufTempo, `rollTempo ${maxTempo}`);
+  assert.ok(m.zustand.pos.z > 1, 'rollt in Blickrichtung (+Z)');
+  // während der Abklingzeit keine neue Rolle
+  lauf(m, 0.25, null);
+  assert.equal(m.zustand.rollt, false);
+  assert.ok(m.zustand.abklingzeit > 0);
+  lauf(m, 0.05, { rollen: true });
+  assert.equal(m.zustand.rollt, false, 'Abklingzeit blockiert');
+  lauf(m, 0.6, null);
+  assert.equal(m.zustand.abklingzeit, 0);
+  m.rolleJetzt({ x: 1, z: 0 });
+  m.update(DT, null);
+  assert.equal(m.zustand.rollt, true);
+  assert.ok(m.zustand.vel.x > 5 && m.zustand.rollAnteil >= 0);
+});
+
+test('Dash in der Luft: einmal je Luftphase, ohne Schwerkraft', () => {
+  const m = createMotor({ welt: flach, pos: { x: 0, z: 0 } });
+  lauf(m, 0.2, { springen: true });
+  assert.equal(m.zustand.amBoden, false);
+  const y0 = m.zustand.pos.y;
+  lauf(m, 0.1, (i) => ({ springen: true, rollen: i < 2, x: 1, z: 0 }));
+  assert.equal(m.zustand.dash, true);
+  assert.ok(Math.abs(m.zustand.pos.y - y0) < 1e-6, 'Höhe bleibt beim Dash');
+  assert.ok(m.zustand.vel.x > 10);
+  lauf(m, 0.7, (i) => ({ rollen: i % 2 === 0 }));
+  let dashs = 0;
+  // zweiter Dash erst nach Landung möglich
+  lauf(m, 2, null, (z) => { if (z.dash) dashs++; });
+  assert.equal(dashs, 0);
+  assert.equal(m.zustand.amBoden, true);
+});
+
+test('Doppelsprung nur mit Tuning, sprungZahl zählt', () => {
+  const ohne = createMotor({ welt: flach, pos: { x: 0, z: 0 } });
+  let max = 0;
+  lauf(ohne, 2, (i) => ({ springen: i < 20 || (i > 30 && i < 60) }), (z) => { max = Math.max(max, z.pos.y); });
+  assert.ok(max < MOTOR_TUNING.sprungHoehe * 1.1);
+  const mit = createMotor({ welt: flach, pos: { x: 0, z: 0 }, tuning: { doppelSprung: 1 } });
+  let max2 = 0, doppel = 0;
+  lauf(mit, 2, (i) => ({ springen: i < 20 || (i > 30 && i < 60) || (i > 62 && i < 64) }), (z) => { max2 = Math.max(max2, z.pos.y); if (z.doppelSprung) doppel++; });
+  assert.equal(doppel, 1, 'genau ein Luftsprung');
+  assert.ok(max2 > MOTOR_TUNING.sprungHoehe + 0.3, `apex ${max2}`);
+  assert.equal(mit.zustand.sprungZahl, 0, 'nach Landung zurückgesetzt');
+});
+
+test('Gleiten begrenzt die Fallgeschwindigkeit', () => {
+  const welt = { bodenHoehe: () => 0 };
+  const a = createMotor({ welt, pos: { x: 0, y: 20, z: 0 } }), b = createMotor({ welt, pos: { x: 0, y: 20, z: 0 } });
+  lauf(a, 1, null); lauf(b, 1, { gleiten: true });
+  assert.equal(b.zustand.gleitet, true);
+  assert.ok(b.zustand.vel.y >= -MOTOR_TUNING.gleitFallTempo - 0.01, `vy ${b.zustand.vel.y}`);
+  assert.ok(b.zustand.pos.y > a.zustand.pos.y + 5);
+  lauf(b, 12, { gleiten: true });
+  assert.equal(b.zustand.amBoden, true);
+  assert.equal(b.zustand.gleitet, false);
+});
+
+test('Tauchen: Absicht.tauchen zieht unter die Schwimmlage, Auftrieb holt zurück', () => {
+  const welt = { bodenHoehe: () => -6, wasserHoehe: () => 0 };
+  const m = createMotor({ welt, pos: { x: 0, y: -1.2, z: 0 } });
+  lauf(m, 2, null);
+  assert.equal(m.zustand.imWasser, true);
+  const lage = m.zustand.pos.y;
+  lauf(m, 2, { tauchen: true });
+  assert.equal(m.zustand.taucht, true);
+  assert.ok(m.zustand.pos.y < lage - 2, `tauchY ${m.zustand.pos.y}`);
+  lauf(m, 4, null);
+  assert.equal(m.zustand.taucht, false);
+  assert.ok(Math.abs(m.zustand.pos.y - lage) < 0.1);
+});
+
+test('Kantenschutz: geduckt bzw. per Option nicht von der Klippe', () => {
+  const klippe = { bodenHoehe: (x, z) => (z > 3 ? -5 : 0) };
+  for (const [opts, absicht] of [[{}, { x: 0, z: 1, ducken: true }], [{ kantenSchutz: true }, { x: 0, z: 1 }], [{}, { x: 0, z: 1, kantenSchutz: true }]]) {
+    const m = createMotor({ welt: klippe, pos: { x: 0, z: 0 }, ...opts });
+    let kante = false;
+    lauf(m, 3, absicht, (z) => { kante ||= z.anKante; });
+    assert.equal(m.zustand.amBoden, true);
+    assert.ok(m.zustand.pos.z <= 3 && m.zustand.pos.z > 2.4, `z ${m.zustand.pos.z}`);
+    assert.ok(kante);
+  }
+  // ohne Schutz fällt man hinunter, schräg an der Kante wird entlang gerutscht
+  const frei = createMotor({ welt: klippe, pos: { x: 0, z: 0 } });
+  lauf(frei, 2, { x: 0, z: 1 });
+  assert.ok(frei.zustand.pos.y < -4);
+  const schraeg = createMotor({ welt: klippe, pos: { x: 0, z: 2.5 }, kantenSchutz: true });
+  lauf(schraeg, 1, { x: 0.7, z: 0.7 });
+  assert.ok(schraeg.zustand.pos.x > 2 && schraeg.zustand.pos.y === 0);
+});
+
+test('Schleichen = geduckt langsam; Stoß mit Betäubung und Wand', () => {
+  const m = createMotor({ welt: flach, pos: { x: 0, z: 0 } });
+  lauf(m, 1, { x: 0, z: 1, schleichen: true });
+  assert.equal(m.zustand.schleicht, true);
+  assert.ok(m.zustand.tempo <= MOTOR_TUNING.duckTempo + 1e-6);
+  let getroffen = 0;
+  m.stoss(6, 0, 0, { betaeubung: 0.5 });
+  lauf(m, 0.3, { x: 0, z: 1 }, (z) => { if (z.getroffen) getroffen++; });
+  assert.equal(getroffen, 1);
+  assert.ok(m.zustand.betaeubt > 0 && m.zustand.betaeubt < 0.5);
+  assert.ok(m.zustand.pos.x > 0.4);
+  // Stoß gegen eine Wand verpufft (kein Kleben/Weiterdrücken nach Wandende)
+  const wand = { bodenHoehe: (x, z) => (x > 1 && z < 2 ? 3 : 0) };
+  const w = createMotor({ welt: wand, pos: { x: 0.5, z: 0 } });
+  w.stoss(20, 0, 0);
+  lauf(w, 0.2, null);
+  assert.ok(w.zustand.pos.x <= 1);
+  lauf(w, 0.5, { x: 0, z: 1 });
+  assert.ok(w.zustand.pos.x <= 1.05, `x ${w.zustand.pos.x}`);
+});

@@ -111,3 +111,103 @@ test('robust: NaN, leere Eingaben, setModus, dispose', () => {
   assert.deepEqual([h.update(0.1, z).x, h.update(0.1, z).z], [0, 0]);
   h.dispose();
 });
+
+// ---------- 1.1.0 ----------
+import { patrouilleWeiter, umkreisRichtung, abstandRichtung, versteckPunkt } from './character-steering-extra.js';
+
+test('Helfer 1.1: Patrouille-Fortschritt, Umkreisen, Abstand, Versteck', () => {
+  assert.deepEqual(patrouilleWeiter(3, 2, 1, 'schleife'), { index: 0, richtung: 1, fertig: false });
+  assert.deepEqual(patrouilleWeiter(3, 2, 1, 'pingpong'), { index: 1, richtung: -1, fertig: false });
+  assert.deepEqual(patrouilleWeiter(3, 0, -1, 'pingpong'), { index: 1, richtung: 1, fertig: false });
+  assert.equal(patrouilleWeiter(3, 2, 1, 'einmal').fertig, true);
+  const u = umkreisRichtung({ x: 3, z: 0 }, { x: 0, z: 0 }, 3, 1);
+  assert.ok(Math.abs(u.x) < 1e-9 && Math.abs(u.z - 1) < 1e-9, 'auf dem Kreis rein tangential');
+  assert.ok(umkreisRichtung({ x: 1, z: 0 }, { x: 0, z: 0 }, 3, 1).x > 0, 'zu nah → nach außen');
+  assert.equal(abstandRichtung({ x: 0, z: 0 }, { x: 4, z: 0 }, 3, 6).stark, 0);
+  assert.ok(abstandRichtung({ x: 0, z: 0 }, { x: 1, z: 0 }, 3, 6).x < 0);
+  const v = versteckPunkt({ x: 0, z: 0 }, { x: 0, z: -10 }, [{ x: 2, z: 0, radius: 1 }, { x: 0, z: -8 }], 1);
+  assert.ok(v.z > 0 && v.x > 2, `hinter dem Stein ${v.x},${v.z}`);
+  assert.equal(versteckPunkt({ x: 0, z: 0 }, { x: 1, z: 1 }, [], 1), null);
+});
+
+test('Patrouille: Pingpong mit Warten und Blick am Wegpunkt', () => {
+  const a = npc(0, 0, { seed: 4 });
+  a.hirn.patrouille([{ x: 0, z: 0 }, { x: 5, z: 0, warten: 1, blickYaw: Math.PI }, { x: 5, z: 5 }], { art: 'pingpong' });
+  const besucht = [];
+  let wartete = false, blick = false;
+  sim([a], 20, () => {
+    if (besucht[besucht.length - 1] !== a.hirn.punktIndex) besucht.push(a.hirn.punktIndex);
+    if (a.hirn.wartet) { wartete = true; if (Math.abs(Math.abs(a.motor.zustand.yaw) - Math.PI) < 0.2) blick = true; }
+  });
+  assert.deepEqual(besucht.slice(0, 5), [1, 2, 1, 0, 1]); // Start steht schon auf Punkt 0
+  assert.ok(wartete && blick);
+  assert.equal(a.hirn.angekommen, false);
+});
+
+test('Umkreisen hält den Radius und blickt zum Ziel; Abstand halten', () => {
+  const ziel = { x: 0, z: 0 };
+  const a = npc(6, 0, { seed: 2, tempo: 0.6 });
+  a.hirn.umkreise(() => ziel, 3, { drehsinn: -1 });
+  let winkel = 0, vorher = Math.atan2(6, 0);
+  sim([a], 4); vorher = Math.atan2(a.motor.zustand.pos.x, a.motor.zustand.pos.z);
+  sim([a], 4, () => {
+    const w = Math.atan2(a.motor.zustand.pos.x, a.motor.zustand.pos.z);
+    let d = w - vorher; if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; winkel += d; vorher = w;
+    assert.ok(Math.abs(abst(a.motor.zustand.pos, ziel) - 3) < 0.8);
+  });
+  assert.ok(Math.abs(winkel) > 1.5, `kreist ${winkel}`);
+  const blick = Math.atan2(-a.motor.zustand.pos.x, -a.motor.zustand.pos.z);
+  assert.ok(Math.abs(Math.atan2(Math.sin(blick - a.motor.zustand.yaw), Math.cos(blick - a.motor.zustand.yaw))) < 0.3);
+  const b = npc(1, 0, { seed: 3 });
+  b.hirn.halteAbstand(() => ziel, 4, 6);
+  sim([b], 4);
+  const d = abst(b.motor.zustand.pos, ziel);
+  assert.ok(d >= 3.8 && d <= 6.2 && b.hirn.angekommen, `abstand ${d}`);
+});
+
+test('Verstecken: hinter Deckung, geduckt; ohne Deckung fliehen', () => {
+  const jaeger = { x: 0, z: -10 };
+  const a = npc(0, 0, { seed: 5 });
+  a.hirn.verstecke(() => jaeger, [{ x: 3, z: 0, radius: 1 }]);
+  sim([a], 4);
+  assert.ok(a.hirn.angekommen && a.motor.zustand.duckt);
+  assert.ok(a.motor.zustand.pos.z > 0.5, 'hinter dem Stein (von der Bedrohung abgewandt)');
+  const b = npc(0, 0, { seed: 5 });
+  b.hirn.verstecke(() => jaeger, []);
+  sim([b], 1);
+  assert.ok(b.motor.zustand.pos.z > 2);
+});
+
+test('Schwarm: Gruppe bleibt zusammen ohne zu kollidieren', () => {
+  const herde = [];
+  for (let i = 0; i < 6; i++) { const n = npc((i % 3) * 3, Math.floor(i / 3) * 3, { seed: 10 + i, gruppe: { kohaesion: 1 } }); n.hirn.schwarm({ x: 3, z: 3 }, 10); herde.push(n); }
+  let minAbstand = Infinity;
+  const sim2 = (sek) => { for (let i = 0; i < Math.round(sek / DT); i++) for (const n of herde) {
+    const andere = herde.filter((o) => o !== n).map((o) => ({ x: o.motor.zustand.pos.x, z: o.motor.zustand.pos.z, vx: o.motor.zustand.vel.x, vz: o.motor.zustand.vel.z, radius: 0.3 }));
+    n.motor.update(DT, n.hirn.update(DT, n.motor.zustand, andere));
+  } };
+  sim2(2);
+  for (let k = 0; k < 8; k++) {
+    sim2(1);
+    for (const a of herde) for (const b of herde) if (a !== b) minAbstand = Math.min(minAbstand, abst(a.motor.zustand.pos, b.motor.zustand.pos));
+  }
+  const mx = herde.reduce((s, n) => s + n.motor.zustand.pos.x, 0) / 6, mz = herde.reduce((s, n) => s + n.motor.zustand.pos.z, 0) / 6;
+  const streuung = Math.max(...herde.map((n) => abst(n.motor.zustand.pos, { x: mx, z: mz })));
+  assert.ok(minAbstand > 0.35, `min ${minAbstand}`);
+  assert.ok(streuung < 8, `streuung ${streuung}`);
+});
+
+test('Steckenbleiben eskaliert: Hüpfer, dann steckt = true; Patrouille überspringt Punkt', () => {
+  const mauer = { bodenHoehe: (x, z) => (z > 2 && z < 3 ? 5 : 0) }; // unüberwindbare Mauer quer
+  const a = npc(0, 0, { seed: 1, welt: mauer });
+  a.hirn.gehZu(0, 10);
+  let hopp = false;
+  for (let i = 0; i < 60 * 12; i++) { const ab = a.hirn.update(DT, a.motor.zustand, []); hopp ||= ab.springen; a.motor.update(DT, ab); }
+  assert.ok(hopp, 'Hüpfer versucht');
+  assert.equal(a.hirn.steckt, true);
+  const b = npc(0, 0, { seed: 1, welt: mauer });
+  b.hirn.patrouille([{ x: 0, z: 10 }, { x: 5, z: 0 }], { art: 'einmal' });
+  sim([b], 12);
+  assert.equal(b.hirn.punktIndex, 1);
+  assert.equal(b.hirn.angekommen, true);
+});
