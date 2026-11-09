@@ -1,5 +1,13 @@
 # Engine-Changelog
 
+## 2026-11 – Weltengine: Wegenetz
+- world/worldgen/worldgen-wege 1.0.0 (neu): Stufe „wege“ zwischen „orte“ und „objekte“ – Spannbaum plus Abkürzungen über Start, Dörfer und gewählte Sehenswürdigkeiten, A* um Steilhänge, geteilte Strecken, Brücken über Flüsse. Standardmäßig aus (`wege: { aktiv: true }`), bestehende Welten und Schnappschüsse bleiben gleich.
+- world/worldgen/worldgen 1.1.0 (additiv): `welt.wege`, `welt.wegKnoten`, Stufe „wege“ in STANDARD_STUFEN, Wege im Worker-Transfer
+- world/worldgen/worldgen-path 1.1.0 (additiv): Optionen `faktor(i)` und `minKosten`
+- world/worldgen/worldgen-grid 1.1.0 (additiv): `FLAG.WEG` (128)
+- world/worldgen/worldgen-presets 1.2.0 (additiv): Optionen `wege`
+- games/weltlabor: Ebene „Wege“ mit Brücken
+
 ## 2026-11 – Natur-Assets und schönere Welt
 - Neu: models/natur – prozedurale Low-Poly-Assets per Seed (Vertrag: docs/NATUR-ASSETS.md): natur-basis, baum-arten/-skelett/baum
   (14 Baumarten, Jahreszeiten, Alter), fels-form/fels (6 Felstypen, 5 Gesteine, Moos/Schnee), totholz-form/totholz,

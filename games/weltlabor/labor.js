@@ -16,7 +16,7 @@ const REGLER = {
   wind: [['klima', 'wind'], 0, 359, 1, '🧭 Wind (°)'],
   dichte: [['objekte', 'dichte'], 0, 2, 0.1, '🌲 Objektdichte'],
 };
-const EBENEN = ['biome', 'hoehe', 'feuchte', 'temperatur', 'schatten', 'fluesse', 'objekte', 'orte'];
+const EBENEN = ['biome', 'hoehe', 'feuchte', 'temperatur', 'schatten', 'fluesse', 'wege', 'objekte', 'orte'];
 const OBJ_FARBE = { baum: '#1d4a22', busch: '#4d7a32', fels: '#6e6e6e', kaktus: '#2f8a5a', schilf: '#a8a46a', blume: '#e6a8d8', totholz: '#6b4a2f', unterholz: '#3f6a2c', geroell: '#8a857a', seerose: '#7fbf6a', bodendecker: '#7a9a4a' };
 
 let welt = null, worker = null, auftragNr = 0, wartend = null;
@@ -96,7 +96,7 @@ function fertig(daten, wo) {
   $('status').textContent = `✅ ${welt.breite}×${welt.tiefe} in ${z.gesamt} ms (${wo})`;
   $('zeiten').textContent = Object.entries(z).filter(([k]) => k !== 'gesamt').map(([k, v]) => `${k}: ${v} ms`).join(' · ');
   $('zahlen').textContent = `Flüsse: ${welt.fluesse.length} · Seen: ${welt.seen.length} · Objekte: ${welt.objekte ? welt.objekte.anzahl : 0}` +
-    (welt.orte.doerfer.length ? ` · Dörfer: ${welt.orte.doerfer.length}` : '') + (welt.orte.poi.length ? ` · Orte: ${welt.orte.poi.length}` : '');
+    (welt.orte.doerfer.length ? ` · Dörfer: ${welt.orte.doerfer.length}` : '') + (welt.orte.poi.length ? ` · Orte: ${welt.orte.poi.length}` : '') + (welt.wege?.length ? ` · Wege: ${welt.wege.length}` : '');
   legende();
   zeichnen();
 }
@@ -163,6 +163,20 @@ function zeichnen() {
         ctx.beginPath(); ctx.moveTo(P[k - 2], P[k - 1]); ctx.lineTo(P[k], P[k + 1]); ctx.stroke();
       }
     }
+  }
+  if (an.wege && welt.wege) {
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const [farbe, breite] of [['rgba(60,40,20,.7)', 2.2], ['#e2c48d', 1.2]]) {
+      ctx.strokeStyle = farbe; ctx.lineWidth = Math.max(breite, breite * 1.6 / s);
+      for (const w of welt.wege) {
+        const P = w.punkte;
+        ctx.beginPath(); ctx.moveTo(P[0], P[1]);
+        for (let k = 2; k < P.length; k += 2) ctx.lineTo(P[k], P[k + 1]);
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle = '#6b4a2b';
+    for (const w of welt.wege) for (const br of w.bruecken) ctx.fillRect(br.x - 1.6, br.y - 1.6, 3.2, 3.2);
   }
   if (an.objekte && welt.objekte) {
     const o = welt.objekte, r = Math.max(0.35, 1.2 / s);

@@ -7,7 +7,7 @@ const jetzt = () => performance.now();
 /** auftrag: { modus: 'karte'|'chunks', optionen, chunkGroesse } → { daten, puffer } */
 export function erzeuge(auftrag) {
   if (auftrag.modus === 'chunks') return ausChunks(auftrag);
-  const welt = createWorld(auftrag.optionen);
+  const welt = createWorld({ ...auftrag.optionen, wege: { aktiv: true, poi: ['gipfel'], ...auftrag.optionen.wege } });
   return transferierbar(welt);
 }
 

@@ -7,13 +7,13 @@
  *   const dist = chamferDistanz(wasserMaske, 256, 256);   // Abstand (Zellen) zum nächsten Wasser
  *   console.log(hashArrays(welt.hoehe, welt.biom));      // Schnappschuss-Hash für Tests
  * @tags     welt, worldgen, gitter, heap, abstand
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
 
 /** Bit-Flags pro Zelle in welt.flags. */
-export const FLAG = Object.freeze({ OZEAN: 1, SEE: 2, FLUSS: 4, KUESTE: 8, KLIPPE: 16, ORT: 32, FREI: 64 });
+export const FLAG = Object.freeze({ OZEAN: 1, SEE: 2, FLUSS: 4, KUESTE: 8, KLIPPE: 16, ORT: 32, FREI: 64, WEG: 128 });
 /** Jede Art Wasser (Meer, See, Fluss). */
 export const WASSER = 7;
 

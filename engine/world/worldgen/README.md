@@ -22,6 +22,7 @@ welt.objekte;                // { anzahl, x, y, art, typ, skala, drehung, arten,
 | klima | `worldgen-climate` | Temperatur (Höhe, Breitengrad), Feuchte (Wassernähe, Regenschatten nach Wind) |
 | biome | `worldgen-biomes` | Prioritätsregeln (Wasser, Schnee, Fels, Strand, Sumpf) und Whittaker-Tabelle → `biom`, `hang` |
 | orte | `worldgen-sites` | Startplatz, Dörfer, Sehenswürdigkeiten (Gipfel, Quelle, Mündung, See) |
+| wege | `worldgen-wege` | Wegenetz zwischen Start, Dörfern und gewählten Sehenswürdigkeiten, Brücken über Flüsse (nur mit `wege: { aktiv: true }`) → `wege`, `wegKnoten`, `FLAG.WEG` |
 | objekte | `worldgen-scatter` | Blue-Noise-Verteilung mit Dichte pro Biom und Lichtungen |
 
 Dazu kommen `worldgen-query` (Abfragen, `mitAbfragen` nach einem Worker), `worldgen-path` (A* mit Hang- und Wasserkosten), `worldgen-chunks` (unendlicher Modus) und `worldgen-grid` (Heap, Abstände, Flags).
@@ -52,6 +53,17 @@ createWorld({
 ```
 
 Biom-Ids sind stabil (Index in der Liste). Neue Biome werden hinten angehängt, `biomId(welt, 'pilzhain')` liefert die Id.
+
+## Wege
+
+```js
+const welt = createWorld({ preset: 'kontinent', seed: 3, wege: { aktiv: true, poi: ['gipfel'], schleifen: 1 } });
+for (const w of welt.wege) { w.punkte; w.laenge; w.bruecken; }   // Linie [x0,y0,…], Brücken { x, y, laenge }
+welt.flags[i] & FLAG.WEG;                                          // Wegzelle (bleibt frei von Objekten)
+```
+
+Die Wege sind standardmäßig aus, damit bestehende Welten gleich bleiben. Das Netz ist ein Spannbaum über alle Knoten plus `schleifen` Abkürzungen.
+Jeder Weg sucht per A* die flachste Strecke (`hangKosten`), nutzt vorhandene Wege mit (`rabatt`) und quert Flüsse nur kurz (`bruecke`, `Infinity` = nie). Meer und Seen sind gesperrt, andere Inseln bleiben also unverbunden.
 
 ## Unendlicher Modus (Chunks)
 

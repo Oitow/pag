@@ -87,7 +87,8 @@
 | worldgen-shape | `engine/world/worldgen/worldgen-shape.js` | Landform-Masken für den Weltgenerator (Insel, Archipel, Kontinent, Küste, Vulkan, Canyon, Plateau, unendlich) plus formspezifische Nachbearbeitung der Höhe | entwurf |
 | worldgen-sites | `engine/world/worldgen/worldgen-sites.js` | Orte finden: Startplatz (flach, nah an Wasser und Wald, eingeebnet), Dorfplätze mit Mindestabstand und Sehenswürdigkeiten (Gipfel, Quellen, Mündungen, Seen) | entwurf |
 | worldgen-vegetation | `engine/world/worldgen/worldgen-vegetation.js` | Standard-Objektarten des Weltgenerators als reine Daten: Kronendach, Totholz, Unterholz, Büsche (Waldrand), Felsen/Findlinge, Geröll am Hangfuß, Kakteen, Schilf, Seerosen, Blumen und Bodendecker – mit gewichteten Typen je Biom und Typmischung nach Höhe/Feuchte/Temperatur | entwurf |
-| worldgen | `engine/world/worldgen/worldgen.js` | Weltgenerator-Einstieg: createWorld(optionen) führt die Stufen-Pipeline (Höhe → Erosion → Hydrologie → Flüsse → Klima → Biome → Orte → Objekte) per Preset aus; Spiele können Stufen einfügen/ersetzen; Ergebnis in typisierten Arrays | entwurf |
+| worldgen-wege | `engine/world/worldgen/worldgen-wege.js` | Wegenetz zwischen Startplatz, Dörfern und ausgewählten Sehenswürdigkeiten: Spannbaum plus Abkürzungen, A* um Steilhänge herum, Wege teilen sich Strecken, Flüsse werden kurz per Brücke gequert; markiert Zellen als WEG und hält sie frei von Objekten | entwurf |
+| worldgen | `engine/world/worldgen/worldgen.js` | Weltgenerator-Einstieg: createWorld(optionen) führt die Stufen-Pipeline (Höhe → Erosion → Hydrologie → Flüsse → Klima → Biome → Orte → Wege → Objekte) per Preset aus; Spiele können Stufen einfügen/ersetzen; Ergebnis in typisierten Arrays | entwurf |
 
 ## Tags
 
@@ -134,6 +135,7 @@
 | bogen | character-ausruestung |
 | boids | character-gruppe |
 | brille | character-parts-kopf, character-parts-zubehoer |
+| bruecke | worldgen-wege |
 | busch | natur-assets, pflanze-busch |
 | cache | natur-assets |
 | cape | character-parts-ruecken |
@@ -145,7 +147,7 @@
 | daten | baum-arten, worldgen-vegetation |
 | dialog | figur-schild |
 | dom | fake-dom |
-| dorf | worldgen-sites |
+| dorf | worldgen-sites, worldgen-wege |
 | dreispitz | character-parts-hut |
 | editor | character-look, character-model |
 | eingabe | move-input, touch-stick |
@@ -252,6 +254,7 @@
 | nachschwingen | character-sekundaer |
 | namensschild | figur-schild |
 | natur | baum-arten, baum-skelett, baum, fels-basis, fels-form, fels, natur-assets, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-wueste, totholz-form, totholz, natur-material, scatter-mesh |
+| netz | worldgen-wege |
 | node | fake-dom |
 | noise | noise |
 | normale | worldgen-query |
@@ -265,7 +268,7 @@
 | overlay | figur-schild |
 | parameter | baum-arten |
 | patrouille | character-steering-extra, character-steering |
-| pfad | character-steering, worldgen-path |
+| pfad | character-steering, worldgen-path, worldgen-wege |
 | pflanze | pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-wueste |
 | physik | character-motor |
 | pilz | pflanze-blume, pflanze-boden |
@@ -323,6 +326,7 @@
 | steering | character-gruppe, character-steering-extra, character-steering |
 | stein | fels-form, fels |
 | steuerung | move-input |
+| strassen | worldgen-wege |
 | strauch | pflanze-busch |
 | streaming | worldgen-chunks |
 | sukkulente | pflanze-wueste |
@@ -358,12 +362,13 @@
 | wandern | character-steering |
 | wasser | terrain-mesh, worldgen-adapter, worldgen-hydrology, worldgen-rivers |
 | wedel | pflanze-formen |
+| wege | worldgen-wege |
 | wegfindung | worldgen-path |
-| welt | noise, rng, scatter-mesh, terrain-farben, terrain-mesh, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen |
+| welt | noise, rng, scatter-mesh, terrain-farben, terrain-mesh, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | werkzeug | character-ausruestung |
 | whittaker | worldgen-biomes |
 | wind | baum, natur-basis, pflanze-basis, pflanze-boden, pflanze-busch, natur-material, scatter-mesh |
-| worldgen | worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen |
+| worldgen | worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | wueste | pflanze-wueste |
 | zauberhut | character-parts-hut |
 | ziel | ziel-wahl |
@@ -1554,7 +1559,7 @@ erodiereHydraulisch(hoehe, 256, 256, { tropfen: 40000, seed: 3 });
 
 Genutzt von: – · Tags: welt, worldgen, erosion, terrain, hydraulik · THREE: nein
 
-### worldgen-grid · `engine/world/worldgen/worldgen-grid.js` · v1.0.0 · entwurf
+### worldgen-grid · `engine/world/worldgen/worldgen-grid.js` · v1.1.0 · entwurf
 Gitter-Helfer für den Weltgenerator: typisierter Min-Heap, Chamfer-Abstand, Regionen-Markierung, bilineares Abtasten, Array-Hash
 
 - `createMinHeap(kapazitaet) -> {push(i,prio),pop()->i,size,clear()}`
@@ -1605,7 +1610,7 @@ stufeHydrologie(welt, opts);   // setzt welt.flags (OZEAN/SEE/KUESTE), welt.wass
 
 Genutzt von: – · Tags: welt, worldgen, wasser, seen, abfluss, priority-flood · THREE: nein
 
-### worldgen-path · `engine/world/worldgen/worldgen-path.js` · v1.0.0 · entwurf
+### worldgen-path · `engine/world/worldgen/worldgen-path.js` · v1.1.0 · entwurf
 A*-Wegsuche auf dem Weltgitter (8 Richtungen) mit Kosten nach Hang, Wasser und Flüssen; wiederverwendbare typisierte Puffer
 
 - `createPathfinder(welt, opts) -> {finde(ax,ay,bx,by)->Float32Array|null, kosten(i)->number}`
@@ -1618,7 +1623,7 @@ const weg = pf.finde(10, 10, 200, 180);   // [x0,y0,x1,y1,…] in Weltkoordinate
 
 Genutzt von: – · Tags: welt, worldgen, wegfindung, astar, pfad · THREE: nein
 
-### worldgen-presets · `engine/world/worldgen/worldgen-presets.js` · v1.1.0 · entwurf
+### worldgen-presets · `engine/world/worldgen/worldgen-presets.js` · v1.2.0 · entwurf
 Standardoptionen und benannte Voreinstellungen (insel, archipel, kontinent, gebirge, wueste, tundra, sumpfland, vulkaninsel, canyon, flachland, kueste, hochebene, unendlich) plus tiefes Zusammenführen von Optionen
 
 - `STANDARD_OPTIONEN`
@@ -1728,8 +1733,23 @@ VEGETATION_TYPEN.includes('fichte');   // true
 
 Genutzt von: – · Tags: welt, worldgen, objekte, vegetation, baeume, felsen, bodendecker, daten · THREE: nein
 
-### worldgen · `engine/world/worldgen/worldgen.js` · v1.0.0 · entwurf
-Weltgenerator-Einstieg: createWorld(optionen) führt die Stufen-Pipeline (Höhe → Erosion → Hydrologie → Flüsse → Klima → Biome → Orte → Objekte) per Preset aus; Spiele können Stufen einfügen/ersetzen; Ergebnis in typisierten Arrays
+### worldgen-wege · `engine/world/worldgen/worldgen-wege.js` · v1.0.0 · entwurf
+Wegenetz zwischen Startplatz, Dörfern und ausgewählten Sehenswürdigkeiten: Spannbaum plus Abkürzungen, A* um Steilhänge herum, Wege teilen sich Strecken, Flüsse werden kurz per Brücke gequert; markiert Zellen als WEG und hält sie frei von Objekten
+
+- `planeNetz(knoten, schleifen) -> [[a,b],…]`
+- `stufeWege(welt, opts) -> void (füllt welt.wege)`
+
+```js
+import { createWorld, FLAG } from '../../engine/world/worldgen/worldgen.js';
+const welt = createWorld({ preset: 'insel', seed: 42, wege: { aktiv: true, poi: ['gipfel'] } });
+for (const w of welt.wege) zeichneLinie(w.punkte);        // [x0,y0,x1,y1,…] in Weltkoordinaten
+const aufWeg = welt.flags[y * welt.breite + x] & FLAG.WEG;
+```
+
+Genutzt von: – · Tags: welt, worldgen, wege, strassen, pfad, bruecke, dorf, netz · THREE: nein
+
+### worldgen · `engine/world/worldgen/worldgen.js` · v1.1.0 · entwurf
+Weltgenerator-Einstieg: createWorld(optionen) führt die Stufen-Pipeline (Höhe → Erosion → Hydrologie → Flüsse → Klima → Biome → Orte → Wege → Objekte) per Preset aus; Spiele können Stufen einfügen/ersetzen; Ergebnis in typisierten Arrays
 
 - `createWorld(optionen) -> welt`
 - `STANDARD_STUFEN`
