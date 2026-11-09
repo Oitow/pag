@@ -56,19 +56,22 @@ function zweige(s, ballen, dicke, anzahl) {
 
 /** Kahle Ruten (Winter): vom Boden fächerförmig nach oben, mit kleiner Gabel. */
 function kahleZweige(s, r, hoehe, breite, anzahl) {
+  const spitzen = [];
   for (let i = 0; i < anzahl; i++) {
     const w = r() * Math.PI * 2, L = hoehe * range(r, 0.75, 1.05);
     const pkt = bogen3(bogen(L, range(r, 0.9, 1.35), range(r, -0.2, 0.3), 2), w);
     s.rohr(pkt, [hoehe * 0.025, hoehe * 0.015, 0], HOLZ, (t) => t * 0.5, { seiten: 3 });
     const m = pkt[1], w2 = w + range(r, -0.9, 0.9);
     s.rohr([m, [m[0] + Math.cos(w2) * L * 0.3, m[1] + L * 0.3, m[2] + Math.sin(w2) * L * 0.3]], [hoehe * 0.012, 0], HOLZ, () => 0.6, { seiten: 3 });
+    spitzen.push(pkt[1].map((v, k) => v * 0.4 + pkt[2][k] * 0.6));
   }
+  return spitzen;
 }
 
 /** Punkt auf der Oberfläche eines Ballens (eher seitlich/oben). */
 function aufBallen(r, b, minY = -0.2) {
   const w = r() * Math.PI * 2, y = range(r, minY, 0.85), q = Math.sqrt(1 - y * y);
-  return [b.c[0] + Math.cos(w) * q * b.rad[0] * 0.98, b.c[1] + y * b.rad[1] * 0.98, b.c[2] + Math.sin(w) * q * b.rad[2] * 0.98];
+  return [b.c[0] + Math.cos(w) * q * b.rad[0] * 1.04, b.c[1] + y * b.rad[1] * 1.04, b.c[2] + Math.sin(w) * q * b.rad[2] * 1.04];
 }
 
 function busch(s, r, o, beeren) {
@@ -84,14 +87,14 @@ function busch(s, r, o, beeren) {
     farbeFn: laubFarbe(r, pal, o.jahreszeit), windFn,
   });
   zweige(s, ballen, hoehe * 0.035, o.detail === 0 ? 2 : 4);
-  if (winter) kahleZweige(s, r, hoehe, breite, [4, 13, 20][o.detail]);
+  const spitzen = winter ? kahleZweige(s, r, hoehe, breite, [4, 13, 20][o.detail]) : [];
   if (beeren) {
     const rot = o.beere ? o.beere === 'rot' : chance(r, 0.55);
     const bf = farbe(rot ? '#c8142c' : '#36397f'), bh = farbe(rot ? '#ff5a5a' : '#7c84d6');
     const n = [5, 12, 22][o.detail] + (o.jahreszeit === 'herbst' ? 4 : 0) - (winter ? 8 : 0);
     const br = hoehe * 0.06;
     for (let i = 0; i < n; i++) {
-      const p = aufBallen(r, ballen[i % ballen.length]);
+      const p = winter ? spitzen[i % spitzen.length] : aufBallen(r, ballen[i % ballen.length]);
       s.ballen(p, [br, br, br], o.detail === 2 ? 5 : 4, 2, (ny) => (ny > 0.3 ? bh : bf), () => windFn(p[1]), 0.1);
     }
   }
@@ -130,7 +133,7 @@ function zwergstrauch(s, r, o) {
   const grund = [farbe('#5d6b38'), farbe('#6b6a3e'), farbe('#56603a')];
   // Flaches Polster, dicht besetzt mit kleinen Trieb-Kegeln (heidekrautige Textur)
   const seg = [[6, 2], [7, 3], [9, 4]][o.detail];
-  const polster = { c: [0, 0, 0], rad: [breite * 0.62, hoehe * 0.45, breite * 0.58] };
+  const polster = { c: [0, hoehe * 0.15, 0], rad: [breite * 0.62, hoehe * 0.45, breite * 0.58] };
   s.ballen(polster.c, polster.rad, seg[0], seg[1], (ny) => (ny < 0 ? hell(grund[2], 0.6) : pick(r, grund)), () => 0.05, 0.2);
   const winterWeiss = (oben) => o.jahreszeit === 'winter' && oben > 0.4 && chance(r, 0.7);
   const tuffs = [6, 22, 36][o.detail], tseg = o.detail === 2 ? [5, 3] : [4, 2];

@@ -7,7 +7,7 @@
  *   const gen = createChunkGenerator({ preset: 'unendlich', seed: 5 });
  *   const c = gen.generateChunk(3, -2, 64);   // c.hoehe hat (64+1)² Werte, Randzeilen identisch mit den Nachbarn
  * @tags     welt, worldgen, chunks, unendlich, streaming, terrain
- * @version  1.1.0
+ * @version  1.2.0
  * @status   entwurf
  * @three    nein
  */
@@ -115,6 +115,7 @@ export function createChunkGenerator(optionen = {}) {
     const temperatur = new Float32Array(nn), feuchte = new Float32Array(nn), wasser = new Float32Array(nn);
     // exakte Werte (Float64) für die Objektverteilung – gleich wie samplePunkt
     const eH = new Float64Array(nn), eS = new Float64Array(nn), eW = new Float64Array(nn);
+    const eT = new Float64Array(nn), eF = new Float64Array(nn), eWs = new Float64Array(nn);
     // Höhen mit 1 Zelle Rand → Hang ohne Zusatzabtastung, identisch an gemeinsamen Kanten
     const m = n + 2, R = new Float64Array(m * m), RF = new Float64Array(m * m), RS = new Float64Array(m * m);
     for (let y = 0; y < m; y++) for (let x = 0; x < m; x++) {
@@ -126,7 +127,8 @@ export function createChunkGenerator(optionen = {}) {
       const k = (y + 1) * m + x + 1, i = y * n + x;
       const gx = R[k + 1] - R[k - 1], gy = R[k + m] - R[k - m];
       auswerten(x0 + x, y0 + y, R[k], Math.sqrt(gx * gx + gy * gy) * hangK, RF[k], RS[k], a);
-      wasser[i] = wasserSpiegel(a[2], a[4], RS[k]) * skala;
+      const ws = wasserSpiegel(a[2], a[4], RS[k]);
+      wasser[i] = ws * skala; eWs[i] = ws; eT[i] = a[6]; eF[i] = a[7];
       biom[i] = a[0]; eS[i] = a[1]; eH[i] = a[2]; eW[i] = a[3]; flags[i] = a[4];
       hoehe[i] = a[2] * skala; temperatur[i] = a[6]; feuchte[i] = a[7];
     }
@@ -137,6 +139,7 @@ export function createChunkGenerator(optionen = {}) {
         if (ix < 0 || iy < 0 || ix >= n || iy >= n) return samplePunkt(x, y, aus);
         const i = iy * n + ix;
         aus[0] = biom[i]; aus[1] = eS[i]; aus[2] = eH[i]; aus[3] = eW[i]; aus[4] = flags[i]; aus[5] = 0;
+        if (aus.length > 8) { aus[6] = eT[i]; aus[7] = eF[i]; aus[8] = eWs[i]; }
         return true;
       },
     };

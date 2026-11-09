@@ -103,10 +103,10 @@ export function baueBlume(s, r, { detail = 1, jahreszeit = 'sommer', sorte, farb
     for (let i = 0; i < nb2; i++) {
       const p = stiel[0].map((v, k) => v + (top[k] - v) * (0.15 + 0.15 * i)), ww = r() * Math.PI * 2;
       for (let k = 0; k < 5; k++) {
-        const a = ww + (k - 2) * 0.5, L2 = H * 0.18;
+        const a = ww + (k - 2) * 0.5, L2 = H * 0.26;
         const sp = [p[0] + Math.cos(a) * L2, p[1] + L2 * 0.15, p[2] + Math.sin(a) * L2], q = seiteZu(a);
         const m = [p[0] + Math.cos(a) * L2 * 0.5, p[1] + L2 * 0.12, p[2] + Math.sin(a) * L2 * 0.5];
-        s.dreieckZwei(p, m.map((v, j) => v + q[j] * L2 * 0.12), sp, gruen, 0.5);
+        s.dreieckZwei(p, m.map((v, j) => v + q[j] * L2 * 0.18), sp, gruen, 0.5);
       }
     }
   }
@@ -133,7 +133,7 @@ export function baueEinenPilz(s, r, pos, so, skala, detail) {
     for (let i = 0; i < 5 + detail * 2; i++) {
       const a = r() * Math.PI * 2, t = range(r, 0.15, 0.8);
       const y = y0 + hutH * (0.25 + 0.75 * t), rr = R * (1 - t * t) * 1.02 + 0.002;
-      const p = P([Math.cos(a) * rr, y, Math.sin(a) * rr]), d = R * 0.13;
+      const p = P([Math.cos(a) * rr, y, Math.sin(a) * rr]), d = R * 0.18;
       const q = seiteZu(a);
       s.dreieckAussen([p[0] + q[0] * d, p[1], p[2] + q[2] * d], [p[0] - q[0] * d, p[1], p[2] - q[2] * d], [p[0], p[1] + d * 1.2, p[2]], pc, farbe(so.punkte), 0);
     }

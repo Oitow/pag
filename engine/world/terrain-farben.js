@@ -43,7 +43,7 @@ function mische(c, hex, t) {
 /**
  * opts: hoehenSkala (m je Einheit, 40), meterProZelle (1), farben {biomKey: 0xRRGGBB} (überschreibt Palette),
  * details (true; false = nur weich gemischte Biomfarben), rauschen (Stärke Mikrovariation, 1), schnee (true),
- * schneeTemp (0.06), felsAb (Steigung, ab der Fels durchkommt, 0.6), mulden (Abdunkeln konkaver Stellen, 1), weich (Mischradius in Zellen, 1).
+ * schneeTemp (0.08), felsAb (Steigung, ab der Fels durchkommt, 0.6), mulden (Abdunkeln konkaver Stellen, 1), weich (Mischradius in Zellen, 1).
  */
 export function gelaendeFarben(welt, opts = {}) {
   const B = welt.breite, T = welt.tiefe, N = B * T, H = welt.hoehe, FL = welt.flags;
@@ -80,7 +80,7 @@ export function gelaendeFarben(welt, opts = {}) {
   }
 
   const aus = new Float32Array(N * 3), c = [0, 0, 0];
-  const schneeAn = opts.schnee !== false && details, schneeT = opts.schneeTemp ?? 0.06;
+  const schneeAn = opts.schnee !== false && details, schneeT = opts.schneeTemp ?? 0.08;
   const felsAb = opts.felsAb ?? 0.6, mulden = opts.mulden ?? 1;
   const schneeId = welt.biome.findIndex(b => b.key === 'schnee');
   const Temp = welt.temperatur, Feu = welt.feuchte, MD = welt.meerDistanz;
@@ -122,10 +122,10 @@ export function gelaendeFarben(welt, opts = {}) {
       const fs = smoothstep(felsAb + flecken * 0.15, felsAb + 0.35 + flecken * 0.15, steig);
       if (fs > 0) {
         const warm = Temp ? smoothstep(0.62, 0.85, Temp[i]) * (Feu ? 1 - smoothstep(0.2, 0.45, Feu[i]) : 1) : 0;
-        const band = 0.5 + 0.5 * Math.sin(hM * 0.55 + fein * 1.5 + flecken * 3);
+        const band = 0.5 + 0.5 * Math.sin(hM * 0.7 + fein * 1.2 + flecken * 4), band2 = 0.5 + 0.5 * Math.sin(hM * 2.3 + fein * 2);
         const fc = rgb(FELS); const fw = rgb(FELS_WARM);
         let fr = fc[0] + (fw[0] - fc[0]) * warm, fg = fc[1] + (fw[1] - fc[1]) * warm, fb = fc[2] + (fw[2] - fc[2]) * warm;
-        const d = 0.86 + 0.2 * band;
+        const d = 0.8 + 0.22 * band + 0.08 * band2;
         c[0] += (fr * d - c[0]) * fs; c[1] += (fg * d - c[1]) * fs; c[2] += (fb * d - c[2]) * fs;
         if (steig > 1.4) mische(c, FELS_DUNKEL, smoothstep(1.4, 2.4, steig) * 0.35);
       }
@@ -136,7 +136,7 @@ export function gelaendeFarben(welt, opts = {}) {
           const nord = Math.max(-1, Math.min(1, gy * 1.5));
           sn = smoothstep(schneeT + 0.022, schneeT - 0.012, Temp[i] + flecken * 0.018 + fein * 0.006 - nord * 0.014);
         } else sn = welt.biom[i] === schneeId ? 1 : 0;
-        sn *= 1 - smoothstep(1.1, 1.9, steig + fein * 0.2);
+        sn *= 1 - 0.75 * smoothstep(1.3, 2.6, steig + fein * 0.3);
         mische(c, SCHNEE, sn);
       }
     }

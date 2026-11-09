@@ -66,7 +66,7 @@ export const BLUMEN_SORTEN = {
   glockenblume: { form: 'glocke', farben: ['#6f62d6', '#8a6fe0', '#5a72d8'], mitte: '#e9e2ff', hoehe: [0.25, 0.45], groesse: 0.05, blaetter: 5 },
   loewenzahn: { form: 'pompon', farben: ['#f6c514', '#f8d32a'], mitte: '#d9a10c', hoehe: [0.15, 0.3], groesse: 0.05, blaetter: 0 },
   lupine: { form: 'aehre', farben: ['#7a52d4', '#d45aa8', '#5d6fe0', '#f0eef8'], mitte: '#ffffff', hoehe: [0.6, 0.95], groesse: 0.07, blaetter: 0 },
-  kornblume: { form: 'stern', farben: ['#3d6fe8', '#4a58e0'], mitte: '#2a2f8a', hoehe: [0.3, 0.5], groesse: 0.055, blaetter: 7 },
+  kornblume: { form: 'stern', farben: ['#3d6fe8', '#4a58e0'], mitte: '#2a2f8a', hoehe: [0.3, 0.5], groesse: 0.065, blaetter: 7 },
 };
 /** Sorte per Zufall (oder per Name) → { name, …parameter }. */
 export function blumenSorte(r, name) {
@@ -78,7 +78,7 @@ export function blumenSorte(r, name) {
 export const PILZ_SORTEN = {
   fliegenpilz: { hut: '#d4231c', stiel: '#f2ede0', unten: '#efe6cf', punkte: '#ffffff', hoehe: [0.14, 0.24], hutR: [0.07, 0.11], stielR: 0.018, flach: 0.55 },
   steinpilz: { hut: '#7a4a24', stiel: '#e2d3b0', unten: '#d9c87a', punkte: null, hoehe: [0.1, 0.17], hutR: [0.06, 0.09], stielR: 0.02, flach: 0.6 },
-  kreis: { hut: '#c9a57a', stiel: '#efe4cf', unten: '#e6d8bc', punkte: null, hoehe: [0.05, 0.09], hutR: [0.03, 0.045], stielR: 0.007, flach: 0.7 },
+  kreis: { hut: '#c9a57a', stiel: '#efe4cf', unten: '#e6d8bc', punkte: null, hoehe: [0.06, 0.11], hutR: [0.035, 0.055], stielR: 0.007, flach: 0.7 },
 };
 
 /**

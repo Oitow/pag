@@ -53,7 +53,7 @@ function kaktus(s, r, o) {
     if (blueht && o.detail > 0) bluete(s, r, oben, Ra * 0.7, farbe('#f6f1e6'));
   }
   if (blueht) bluete(s, r, [0, H, 0], R * 0.7, farbe('#f6f1e6'));
-  return { stammRadius: R * 1.1 };
+  return { stammRadius: R * 0.95 };
 }
 
 function saeulenkaktus(s, r, o) {
@@ -73,7 +73,7 @@ function saeulenkaktus(s, r, o) {
     saeule([Math.cos(w) * d, 0, Math.sin(w) * d], H * range(r, 0.3, 0.55), R * range(r, 0.6, 0.8));
   }
   if (o.jahreszeit === 'sommer' && (o.bluete ?? chance(r, 0.5))) bluete(s, r, top, R * 0.75, farbe(pick(r, ['#e85a9c', '#f2c230', '#f07a3a'])));
-  return { stammRadius: R * 1.1 };
+  return { stammRadius: R * 0.95 };
 }
 
 function agave(s, r, o) {
