@@ -21,7 +21,7 @@ function ausChunks({ optionen, chunkGroesse = 64 }) {
   const n = S * S;
   const hoehe = new Float32Array(n), biom = new Uint8Array(n), flags = new Uint8Array(n);
   const temperatur = new Float32Array(n), feuchte = new Float32Array(n), wasserstand = new Float32Array(n);
-  const ox = [], oy = [], oart = [], otyp = [], oskala = [];
+  const ox = [], oy = [], oart = [], otyp = [], oskala = [], seen = [];
   let arten = [];
   const typen = [], typNr = new Map();
   const off = endlich ? 0 : -Math.floor(anz / 2);
@@ -31,8 +31,9 @@ function ausChunks({ optionen, chunkGroesse = 64 }) {
       const s = y * c.n + x, d = (cy * G + y) * S + cx * G + x;
       hoehe[d] = c.hoehe[s]; biom[d] = c.biom[s]; flags[d] = c.flags[s];
       temperatur[d] = c.temperatur[s]; feuchte[d] = c.feuchte[s];
-      wasserstand[d] = c.flags[s] & 1 ? 0 : c.hoehe[s] + 0.002;
+      wasserstand[d] = c.wasser ? c.wasser[s] : c.flags[s] & 1 ? 0 : c.hoehe[s] + 0.002;
     }
+    for (const see of c.seen || []) seen.push({ ...see, x: see.x - off * G, y: see.y - off * G });
     const o = c.objekte;
     arten = o.arten;
     for (let i = 0; i < o.anzahl; i++) {
@@ -46,7 +47,7 @@ function ausChunks({ optionen, chunkGroesse = 64 }) {
   const objekte = { anzahl: ox.length, x: Float32Array.from(ox), y: Float32Array.from(oy), art: Uint8Array.from(oart), typ: Uint8Array.from(otyp), skala: Float32Array.from(oskala), arten, typen };
   const daten = {
     breite: S, tiefe: S, zelle: 1, seed: optionen.seed, preset: 'chunks', hoehe, wasserstand, flags, biom, temperatur, feuchte,
-    biome: gen.biome.map(({ regel, ...b }) => b), fluesse: [], seen: [], orte: { start: null, doerfer: [], poi: [] }, objekte,
+    biome: gen.biome.map(({ regel, ...b }) => b), fluesse: [], seen, orte: { start: null, doerfer: [], poi: [] }, objekte,
     zeiten: { [`chunks (${anz * anz}×${G}²)`]: ms, gesamt: ms },
   };
   const puffer = [hoehe, biom, flags, temperatur, feuchte, wasserstand, objekte.x, objekte.y, objekte.art, objekte.typ, objekte.skala].map(a => a.buffer);

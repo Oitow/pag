@@ -58,11 +58,20 @@ Biom-Ids sind stabil (Index in der Liste). Neue Biome werden hinten angehängt, 
 ```js
 import { createChunkGenerator } from '../../engine/world/worldgen/worldgen.js';
 const gen = createChunkGenerator({ preset: 'unendlich', seed: 5, hoehenSkala: 40 });
-const c = gen.generateChunk(cx, cy, 64);  // (64+1)² Ecken: hoehe, biom, flags, temperatur, feuchte, objekte
+const c = gen.generateChunk(cx, cy, 64);  // (64+1)² Ecken: hoehe, biom, flags, temperatur, feuchte, wasser, objekte, seen
 gen.sampleHeight(x, y);                   // punktweise, identisch mit den Chunk-Werten
+gen.seenIn(x0, y0, x1, y1);               // Seen mit Mittelpunkt im Rechteck: { x, y, radius, spiegel, zufluss }
 ```
 
-Kanten und Objekte sind nahtlos, weil alles nur von Seed und Position abhängt. Ohne globale Stufen gibt es hier keine Erosion, Seen oder echten Flüsse. Stattdessen gibt es Rauschflüsse.
+Kanten und Objekte sind nahtlos, weil alles nur von Seed und Position abhängt. Ohne globale Stufen gibt es hier keine Erosion.
+Flüsse und Seen kommen aus `worldgen-chunkfluss` (Flussmodus `'netz'`, Standard):
+
+- Grobes Knotengitter (Abstand `chunk.netz.weite` × Maßstab, gejittert per Seed). Jeder Knoten fließt zum steilsten tieferen Nachbarn, sofern kein Bergrücken dazwischen liegt. Flache Senken laufen über.
+- Der Zufluss wird nur über `tiefeZufluss` Ringe stromauf gezählt (bleibt lokal). Ab `minZufluss` entsteht ein Fluss, breiter mit mehr Zufluss, mit Mäander-Verzerrung und Tal.
+- Echte Senken mit genug Zufluss werden kleine Seen (`flags` SEE, Spiegel in `wasser`). Binnengewässer bleiben über dem Meeresspiegel. Flüsse, die ins Meer laufen, bilden Mündungen.
+- `chunk: { flussModus: 'rauschen' }` liefert die alten Rauschflüsse (ohne Seen), `chunk: { fluesse: false }` schaltet Wasser im Inland ab.
+
+`c.wasser` enthält den Wasserspiegel × `hoehenSkala` (Meer 0, See = Spiegel, Fluss knapp über dem Boden, trocken = `hoehe`).
 `kachelbar: true` macht das Höhenfeld einer endlichen Welt periodisch.
 
 ## Worker
@@ -75,3 +84,8 @@ const welt = mitAbfragen(e.data);
 ```
 
 Eine Vorschau mit allen Reglern liegt unter `games/weltlabor/`. Die Tests startest du mit `node --test 'engine/world/**/*.test.mjs'`.
+
+## Schnappschüsse
+
+`worldgen-snapshot.test.mjs` hält Hashes über Höhe, Biom, Flags und Objekte für 8 Presets und beide Chunk-Flussmodi fest (Seed 77, 48², Qualität `schnell`).
+Ändert sich eine Welt absichtlich, gibt `SCHNAPPSCHUSS_NEU=1 node --test engine/world/worldgen/worldgen-snapshot.test.mjs` die neuen Werte aus. Trag sie bewusst ein und erwähne das im PR.

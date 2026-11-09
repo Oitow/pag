@@ -6,7 +6,7 @@
  *   import { aufloesen } from '../../engine/world/worldgen/worldgen-presets.js';
  *   const opts = aufloesen({ preset: 'vulkaninsel', seed: 9, klima: { feuchte: 0.8 } });
  * @tags     welt, worldgen, presets, optionen, insel
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
@@ -27,7 +27,7 @@ export const STANDARD_OPTIONEN = {
   biome: { extra: [], aus: [], randRauschen: 0.04 },
   objekte: { aktiv: true, dichte: 1 },
   orte: { start: true, doerfer: 3, poi: true },
-  chunk: { fluesse: true, flussBreite: 0.014, flussTiefe: 0.05, flussFrequenz: 1.6 },
+  chunk: { fluesse: true, flussModus: 'netz', netz: {}, flussBreite: 0.014, flussTiefe: 0.05, flussFrequenz: 1.6 },
   stufen: [],
 };
 

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createChunkGenerator } from './worldgen-chunks.js';
 import { createHeightSampler } from './worldgen-height.js';
 import { aufloesen } from './worldgen-presets.js';
-import { hashArrays } from './worldgen-grid.js';
+import { hashArrays, FLAG } from './worldgen-grid.js';
 
 test('Chunks: gemeinsame Kanten sind identisch, sampleHeight passt zum Chunk', () => {
   const gen = createChunkGenerator({ seed: 21, hoehenSkala: 40 });
@@ -41,4 +41,49 @@ test('kachelbar: linke und rechte Kante (sowie oben/unten) passen nahtlos', () =
   const hs = createHeightSampler(opts);
   for (let k = 0; k < 48; k++) assert.ok(Math.abs(hs.sample(0, k) - hs.sample(64, k)) < 1e-9);
   for (let k = 0; k < 64; k++) assert.ok(Math.abs(hs.sample(k, 0) - hs.sample(k, 48)) < 1e-9);
+});
+
+test('Chunk-Flussnetz: Kanten nahtlos (auch Wasser), reihenfolgeunabhängig, Flüsse und Seen vorhanden', () => {
+  const G = 32, n = G + 1;
+  const g1 = createChunkGenerator({ seed: 5, hoehenSkala: 30 });
+  let fluss = 0, see = 0, seen = 0;
+  for (let cy = -2; cy < 2; cy++) for (let cx = -2; cx < 2; cx++) {
+    const a = g1.generateChunk(cx, cy, G), r = g1.generateChunk(cx + 1, cy, G), u = g1.generateChunk(cx, cy + 1, G);
+    for (let k = 0; k < n; k++) {
+      for (const f of ['hoehe', 'biom', 'flags', 'wasser']) {
+        assert.equal(a[f][k * n + G], r[f][k * n], `${f}: rechte Kante (${cx},${cy}) Zeile ${k}`);
+        assert.equal(a[f][G * n + k], u[f][k], `${f}: untere Kante (${cx},${cy}) Spalte ${k}`);
+      }
+    }
+    for (let i = 0; i < n * n; i++) {
+      if (a.flags[i] & FLAG.FLUSS) fluss++;
+      if (a.flags[i] & FLAG.SEE) { see++; assert.ok(a.wasser[i] > a.hoehe[i], 'Seespiegel über Seeboden'); }
+      if (a.flags[i] & FLAG.OZEAN) assert.equal(a.wasser[i], 0);
+    }
+    seen += a.seen.length;
+  }
+  assert.ok(fluss > 50, `zu wenig Flusszellen (${fluss})`);
+  assert.ok(see > 20 && seen > 0, `zu wenig See (${see} Zellen, ${seen} Seen)`);
+  // frischer Generator, andere Reihenfolge → gleiche Werte (Zwischenspeicher ändert nichts)
+  const g2 = createChunkGenerator({ seed: 5, hoehenSkala: 30 });
+  const spaet = g2.generateChunk(3, 3, G); g2.generateChunk(-1, -1, G);
+  const c2 = g2.generateChunk(0, 0, G), c1 = g1.generateChunk(0, 0, G);
+  assert.equal(hashArrays(c1.hoehe, c1.flags, c1.wasser), hashArrays(c2.hoehe, c2.flags, c2.wasser));
+  assert.equal(hashArrays(spaet.hoehe), hashArrays(g1.generateChunk(3, 3, G).hoehe));
+  // samplePunkt liefert ab 1.1 den Wasserspiegel in aus[8]
+  const aus = new Float64Array(9);
+  for (let k = 0; k < 30; k++) {
+    const x = (k * 7) % n, y = (k * 11) % n;
+    g1.samplePunkt(c1.x0 + x, c1.y0 + y, aus);
+    assert.equal(aus[4], c1.flags[y * n + x]);
+    assert.equal(Math.fround(aus[8] * 30), c1.wasser[y * n + x]);
+  }
+  g1.dispose(); g2.dispose();
+});
+
+test('Chunk-Flussmodus "rauschen" bleibt verfügbar (ohne Seen)', () => {
+  const gen = createChunkGenerator({ seed: 5, chunk: { flussModus: 'rauschen' } });
+  const c = gen.generateChunk(0, 0, 32);
+  assert.equal(c.seen.length, 0);
+  for (const f of c.flags) assert.ok(!(f & FLAG.SEE));
 });
