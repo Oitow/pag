@@ -1,5 +1,18 @@
 # Engine-Changelog
 
+## 2026-11 – Natur-Assets und schönere Welt
+- Neu: models/natur – prozedurale Low-Poly-Assets per Seed (Vertrag: docs/NATUR-ASSETS.md): natur-basis, baum-arten/-skelett/baum
+  (14 Baumarten, Jahreszeiten, Alter), fels-form/fels (6 Felstypen, 5 Gesteine, Moos/Schnee), totholz-form/totholz,
+  pflanze-formen/-basis/-blume/-busch/-boden/-wueste (13 Typen), natur-assets (Registry + Varianten-Cache)
+- Neu: render/natur-material – Vertexfarben-Material mit Wind-Shader (Attribut wind, Instanz-Phase, Schatten schwingt mit, Fern-Ausblenden)
+- world/scatter-mesh 2.0.0 (Verhalten geändert): nutzt Asset-Cache (opts.assets), Varianten je Typ, Kacheln + Fern-Detail, Wind via update();
+  unbekannte Typen werden weggelassen statt als Busch gezeichnet, Seerosen auf Wasserhöhe. Nutzer angepasst: testwelt
+- world/terrain-mesh 1.1.0 + neu terrain-farben: weiche Biomübergänge, Wiesenflecken, Hangfels mit Bändern, Ufer, Schnee mit Rauschgrenze
+- worldgen-scatter 1.1.0 + neu worldgen-vegetation: Vegetation in Ebenen (neue Arten totholz, unterholz, geroell, seerose, bodendecker),
+  Typwahl nach Höhe/Temperatur/Feuchte; Option objekte.artDichte. worldgen-chunks 1.2.0, worldgen-adapter 1.1.0 (Radien neuer Typen),
+  worldgen-height 1.1.0 (optionale Felsstufen). Schnappschüsse neu (nur Objekte geändert)
+- Spiele: neues natur-labor (Asset-Betrachter); testwelt mit neuen Assets und Wind; weltlabor-Kartenfarben
+
 ## 2026-11 – Figuren-System ausgebaut (alle additiv, Minor-Versionen)
 - Aussehen: render/mesh-builder 1.1 (torus, lathe); character-look 1.1 (neue Haare/Bärte/Kleidung/Hüte, brille/schal/schmuck,
   Körper schultern/muskeln, Feld ausdruck, TEIL_NAMEN, AUSDRUECKE, 9 neue Vorlagen); character-model 1.1 (Mimik: setAusdruck,

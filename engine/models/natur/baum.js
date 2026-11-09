@@ -1,7 +1,7 @@
 /**
  * @modul    baum
  * @zweck    Prozedurale Low-Poly-Bäume (14 Arten) als EINE Geometrie mit Vertexfarben + Wind-Attribut; Jahreszeit, Alter, Detailstufe
- * @api      TYPEN [typ…] ; erzeuge(typ, seed, opts) -> { geometrie, hoehe, radius, stammRadius } ; opts: { detail 0|1|2, jahreszeit 'sommer'|'herbst'|'winter', alter 0..1 }
+ * @api      TYPEN [typ…] ; erzeuge(typ, seed, opts) -> { geometrie, hoehe, radius, stammRadius }  (opts: detail 0|1|2, jahreszeit sommer|herbst|winter, alter 0..1)
  * @beispiel
  *   import { erzeuge } from '../../engine/models/natur/baum.js';
  *   import { standardMaterial } from '../../engine/render/mesh-builder.js';

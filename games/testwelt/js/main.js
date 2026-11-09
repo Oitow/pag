@@ -72,7 +72,8 @@ async function erzeuge() {
   adapter = createWeltAdapter(welt, { hoehenSkala: HOEHEN_SKALA, meterProZelle: METER_PRO_ZELLE });
   gelaende = createTerrainMesh(adapter, { schatten: true });
   const t1 = performance.now();
-  objekte = createScatterMesh(adapter, { schatten: true, unterWasser: false, assets: createAssetCache, bodendeckerWeite: 110, kachel: 128, fernWeite: 160 });
+  objekte = createScatterMesh(adapter, { schatten: true, unterWasser: false, assets: createAssetCache, bodendeckerWeite: 110, kachel: 128, fernWeite: 160,
+    typSkala: { fels: 1.4, felsbrocken: 1.8 } });   // Felsen etwas größer → passt zu den Hindernis-Radien des Adapters
   szene.add(gelaende.gruppe, objekte.gruppe);
   szene.fog.far = Math.max(300, adapter.groesse.x * 1.1);
   zeichneKarte();
