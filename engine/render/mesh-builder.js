@@ -1,14 +1,14 @@
 /**
  * @modul    mesh-builder
  * @zweck    Low-Poly-Modelle aus Primitiven (Box, Kugel, Zylinder …) mit Vertexfarben zu EINER Geometrie verschmelzen; Farbvariation pro Dreieck per Seed
- * @api      createMeshBuilder(opts) -> builder ; standardMaterial(opts) -> MeshStandardMaterial ; tMatrix(t) -> Matrix4
+ * @api      createMeshBuilder(opts) -> builder (box, sphere, cyl, cone, ico, capsule, torus, lathe, add, geometry, mesh) ; standardMaterial(opts) -> MeshStandardMaterial ; tMatrix(t) -> Matrix4
  * @beispiel
  *   import { createMeshBuilder } from '../../engine/render/mesh-builder.js';
  *   const b = createMeshBuilder({ seed: 7 });
  *   b.box(0.6, 0.4, 1.0, '#d9772b', { y: 0.5 }).sphere(0.25, 0xffffff, { y: 0.8, z: 0.5, sy: 0.8 }, 8, 6);
  *   szene.add(b.mesh());   // THREE.Mesh mit standardMaterial()
  * @tags     mesh, geometrie, lowpoly, vertexfarben, modell, primitive, merge
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    ja
  */
@@ -89,6 +89,10 @@ export function createMeshBuilder({ seed = 1, jitter = 0.06 } = {}) {
     cone(r, h, farbe, t, seg = 8) { return eigen(new THREE.ConeGeometry(r, h, seg), farbe, t); },
     ico(r, farbe, t, detail = 0) { return eigen(new THREE.IcosahedronGeometry(r, detail), farbe, t); },
     capsule(r, len, farbe, t, cap = 3, seg = 8) { return eigen(new THREE.CapsuleGeometry(r, len, cap, seg), farbe, t); },
+    /** Ring (Torus) in der XY-Ebene; bogen < 2π = offener Bogen (z. B. Henkel, Bügel). */
+    torus(r, rohr, farbe, t, rs = 4, ts = 10, bogen = Math.PI * 2) { return eigen(new THREE.TorusGeometry(r, rohr, rs, ts, bogen), farbe, t); },
+    /** Drehkörper um Y aus Profil [[radius, y], …] (Becher, Vase, Flasche). */
+    lathe(profil, farbe, t, seg = 10) { return eigen(new THREE.LatheGeometry(profil.map(([x, y]) => new THREE.Vector2(x, y)), seg), farbe, t); },
 
     /** Alle Teile → neue BufferGeometry (position, normal, color). */
     geometry() {

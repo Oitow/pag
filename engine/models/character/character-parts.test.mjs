@@ -4,8 +4,11 @@ import { createMeshBuilder } from '../../render/mesh-builder.js';
 import { koerperMasse, createLook, STILE } from './character-look.js';
 import { teilKontext, farbeMisch, baueTorso, baueHals, baueBecken, baueOberarm, baueUnterarm, baueHand, baueOberschenkel, baueUnterschenkel, baueFuss, baueUmhang, baueRucksack } from './character-parts.js';
 import { baueKopf, baueKopfbedeckung, deckendeKopfbedeckung } from './character-parts-kopf.js';
+import { baueZubehoer, hatZubehoer, baueBrille } from './character-parts-zubehoer.js';
+import { createGesicht, AUSDRUCK_DATEN } from './character-parts-gesicht.js';
+import { AUSDRUECKE } from './character-look.js';
 
-const ctx = (teil) => { const l = createLook(teil); return teilKontext(l, koerperMasse(l)); };
+const ctx = (teil, o) => { const l = createLook(teil); return teilKontext(l, koerperMasse(l), o); };
 const box = (fn, k) => { const g = fn(createMeshBuilder(), k).geometry(); g.computeBoundingBox(); return g; };
 
 test('farbeMisch', () => {
@@ -38,6 +41,20 @@ test('Stile ergeben unterschiedliche Geometrie', () => {
   verschieden(baueKopfbedeckung, 'kopfbedeckung', STILE.kopfbedeckung.slice(1));
   verschieden(baueUmhang, 'umhang', ['kurz', 'lang']);
   verschieden(baueFuss, 'schuhe', STILE.schuhe);
+  verschieden(baueUmhang, 'umhang', STILE.umhang.slice(1));
+  verschieden(baueBecken, 'oberteil', ['kittel', 'mantel', 'schuerze', 'kettenhemd', 'lederruestung', 'hemd']);
+  verschieden(baueOberschenkel, 'hose', ['lang', 'kurz', 'pluder']);
+  verschieden(baueKopf, 'brille', STILE.brille);
+  verschieden(baueZubehoer, 'schal', STILE.schal.slice(1));
+  verschieden(baueZubehoer, 'schmuck', ['kette', 'amulett', 'perlen']);
+  assert.notEqual(sig(baueKopf, { schmuck: { stil: 'ohrringe' } }), sig(baueKopf, {}));
+  assert.equal(hatZubehoer(ctx({ schmuck: { stil: 'ohrringe' } })), false);
+  assert.equal(hatZubehoer(ctx({ schal: { stil: 'halstuch' } })), true);
+  assert.equal(baueBrille(createMeshBuilder(), ctx({})).leer, true);
+  assert.equal(deckendeKopfbedeckung('reif'), false);
+  // Muskeln/Schultern verändern Arme und Torso
+  assert.ok(ctx({ koerper: { muskeln: 1 } }).armR > ctx({}).armR);
+  assert.notEqual(sig(baueTorso, { koerper: { schultern: 1.3 } }), sig(baueTorso, {}));
   assert.notEqual(sig(baueBecken, { hose: { stil: 'rock' } }), sig(baueBecken, { hose: { stil: 'lang' } }));
   assert.notEqual(sig(baueOberschenkel, { hose: { stil: 'kurz' } }), sig(baueOberschenkel, { hose: { stil: 'lang' } }));
   assert.notEqual(sig(baueBecken, { tasche: true }), sig(baueBecken, { tasche: false }));
@@ -51,4 +68,26 @@ test('Rock bleibt am Becken und endet oberhalb der Knöchel', () => {
     const k = ctx(teil), bb = box(baueBecken, k).boundingBox;
     assert.ok(-bb.min.y < k.m.oberschenkel + k.m.unterschenkel * 0.5, JSON.stringify(teil));
   }
+});
+
+test('Kopf mit Mimik: ohne festes Gesicht, aber mit Augäpfeln', () => {
+  const fest = box(baueKopf, ctx({})), mimik = box(baueKopf, ctx({}, { mimik: true }));
+  assert.ok(mimik.attributes.position.count < fest.attributes.position.count + 200);
+  assert.notEqual(mimik.attributes.position.count, fest.attributes.position.count);
+});
+
+test('Gesicht: 3 Meshes, Lider bedecken geschlossen die Pupillen', () => {
+  const k = ctx({ ausdruck: 'ueberrascht' }, { mimik: true }), g = createGesicht(k, { seed: 4 });
+  assert.equal(g.meshes.length, 3);
+  assert.equal(g.ausdruck, 'ueberrascht');
+  assert.deepEqual(Object.keys(AUSDRUCK_DATEN), AUSDRUECKE);
+  g.gruppe.updateMatrixWorld(true);
+  const welt = (m) => { m.geometry.computeBoundingBox(); return m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld); };
+  g.setAusdruck('schlafend');
+  g.gruppe.updateMatrixWorld(true);
+  const lid = welt(g.meshes[1]), pup = welt(g.meshes[0]);
+  assert.ok(lid.max.z > pup.max.z, `Lid vor Pupille (${lid.max.z} > ${pup.max.z})`);
+  assert.ok(pup.max.z < k.R * 1.05 && pup.min.y > k.R * 0.7, 'Pupillen sitzen im Gesicht');
+  g.dispose();
+  assert.equal(g.gruppe.parent, null);
 });

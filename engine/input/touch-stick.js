@@ -1,14 +1,14 @@
 /**
  * @modul    touch-stick
  * @zweck    Touch-Steuerung fürs Handy: dynamischer virtueller Joystick (linke Hälfte), Kamera-Wischen + Pinch-Zoom (rechte Hälfte), runde Aktionsknöpfe unten rechts
- * @api      createTouchStick(opts) -> { stick {x, y, an}, sprint, nimmKamera() -> {dx, dy, zoom}, benutzt, zeigen(bool), reset(), dispose() } ; istTouchGeraet() -> bool
+ * @api      createTouchStick(opts) -> { stick {x, y, an}, sprint, nimmKamera() -> {dx, dy, zoom}, benutzt, stickRadius, zeigen(bool), knopfZeigen(name, bool), reset(), dispose() } ; istTouchGeraet() -> bool ; autoStickRadius(breite, hoehe) -> px
  * @beispiel
  *   import { createTouchStick } from '../../engine/input/touch-stick.js';
  *   const t = createTouchStick({ element: canvas, knoepfe: [{ name: 'springen', knopf: '⤒' }],
  *     beiKnopf: (name, unten) => console.log(name, unten), beiErstemTouch: () => t.zeigen(true) });
  *   const { dx, dy, zoom } = t.nimmKamera();   // Pixel bzw. ln(Abstandsverhältnis) seit dem letzten Aufruf
  * @tags     eingabe, touch, joystick, handy, knoepfe, pinch, zoom
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
@@ -42,22 +42,37 @@ export function istTouchGeraet() {
   return typeof window !== 'undefined' && ('ontouchstart' in window || (globalThis.navigator?.maxTouchPoints || 0) > 0);
 }
 
+/** Stick-Radius passend zur Bildschirmgröße (kleines Handy ≈ 46 px, Tablet ≈ 76 px). */
+export function autoStickRadius(breite = globalThis.innerWidth || 400, hoehe = globalThis.innerHeight || 800) {
+  return Math.round(Math.max(46, Math.min(76, Math.min(breite, hoehe) * 0.12)));
+}
+const vibriere = ms => { try { globalThis.navigator?.vibrate?.(ms); } catch (_) { /* egal */ } };
+
 // Kreisbogen-Plätze (Grad, 0 = rechts, 90 = oben) um den Sprungknopf, nach Anzahl der weiteren Knöpfe
 const stil = { n: 0, el: null };
 const BOGEN = [[], [168], [178, 112], [186, 138, 90], [190, 150, 110, 72]];
 
 export function createTouchStick({
-  element = document.body, stickRadius = 56, knoepfe = [], beiKnopf = () => {}, beiErstemTouch = () => {},
-  totzone = 0.12, sprintZeit = 0.3, sichtbar = false,
+  element = document.body, stickRadius = 'auto', knoepfe = [], beiKnopf = () => {}, beiErstemTouch = () => {},
+  totzone = 0.12, sprintZeit = 0.3, sichtbar = false, knopfSkala = 'auto', vibration = false,
 } = {}) {
+  // stickRadius / knopfSkala 'auto' = nach Bildschirmgröße (bei resize neu); vibration = kurzes Summen bei Knopf/Sprint
+  const autoR = stickRadius === 'auto' || !(stickRadius > 0);
+  if (autoR) stickRadius = autoStickRadius();
+  const skala = knopfSkala === 'auto' || !(knopfSkala > 0)
+    ? Math.max(0.8, Math.min(1.25, Math.min(globalThis.innerWidth || 400, globalThis.innerHeight || 800) / 420)) : knopfSkala;
   const el = (tag, cls, txt) => { const e = document.createElement(tag); e.className = cls; if (txt != null) e.textContent = txt; return e; };
   // Ein gemeinsames <style> für alle Instanzen (Referenzzähler), beim letzten dispose entfernt
   if (stil.n++ === 0) { stil.el = el('style', ''); stil.el.textContent = CSS; (document.head || document.body).appendChild(stil.el); }
 
   const ui = el('div', 'mi-ui');
   const basis = el('div', 'mi-stick'); const knauf = el('div', 'mi-knauf'); basis.appendChild(knauf);
-  const durchm = (stickRadius + 26) * 2;
-  basis.style.width = basis.style.height = durchm + 'px';
+  let durchm = 0;
+  const groesse = () => {
+    durchm = (stickRadius + 26) * 2; basis.style.width = basis.style.height = durchm + 'px';
+    const k = Math.round(stickRadius * 1.04); knauf.style.width = knauf.style.height = k + 'px'; knauf.style.margin = `${-k / 2}px 0 0 ${-k / 2}px`;
+  };
+  groesse();
   ui.appendChild(basis);
 
   const stick = { x: 0, y: 0, an: false };
@@ -65,7 +80,7 @@ export function createTouchStick({
   let stickId = null, sx = 0, sy = 0, vollSeit = -1;
   const kamZeiger = new Map();      // pointerId → {x, y}
   let pinch = 0;
-  let benutzt = false, weg = false;
+  let benutzt = false, weg = false, sprintVorher = false;
   const jetzt = () => performance.now() / 1000;
 
   function ruhe() {                 // Geister-Stick unten links
@@ -87,20 +102,20 @@ export function createTouchStick({
     const b = el('button', 'mi-knopf' + (gross ? ' mi-gross' : ''), k.knopf);
     b.type = 'button';
     b.setAttribute('aria-label', k.titel || k.name);
-    const g = gross ? 78 : 60;
+    const g = Math.round((gross ? 78 : 60) * skala);
     // Sprungknopf in der Ecke, weitere auf Bögen (r = 100, ab dem 5. weiter außen)
     let rc = 39, bc = 39;           // Mittelpunkt: Abstand von rechter/unterer Kante
     if (!gross) {
       const a = (plaetze[i - 1] ?? (200 - (i - 5) * 36)) * Math.PI / 180, r = i <= 4 ? 100 : 172;
-      rc = 39 - Math.cos(a) * r; bc = 39 + Math.sin(a) * r;
-    }
+      rc = 39 * skala - Math.cos(a) * r * skala; bc = 39 * skala + Math.sin(a) * r * skala;
+    } else { rc = bc = 39 * skala; }
     Object.assign(b.style, { width: g + 'px', height: g + 'px', right: (rc - g / 2) + 'px', bottom: (bc - g / 2) + 'px' });
     let zeiger = null;
     const runter = e => {
       e.preventDefault?.(); e.stopPropagation?.();
       try { b.setPointerCapture(e.pointerId); } catch (_) { /* egal */ }
       if (zeiger !== null) return;
-      zeiger = e.pointerId; b.classList.add('mi-an'); beiKnopf(k.name, true);
+      zeiger = e.pointerId; b.classList.add('mi-an'); if (vibration) vibriere(10); beiKnopf(k.name, true);
     };
     const hoch = e => {
       if (zeiger === null || (e && e.pointerId !== undefined && e.pointerId !== zeiger)) return;
@@ -109,7 +124,7 @@ export function createTouchStick({
     const sperre = e => { e.preventDefault?.(); e.stopPropagation?.(); };
     const paare = [['pointerdown', runter], ['pointerup', hoch], ['pointercancel', hoch], ['lostpointercapture', hoch], ['contextmenu', sperre], ['click', sperre]];
     for (const [t, f] of paare) b.addEventListener(t, f);
-    knopfEls.push({ b, paare, hoch: () => hoch() });
+    knopfEls.push({ name: k.name, b, paare, hoch: () => hoch() });
     reihe.appendChild(b);
   });
   document.body.appendChild(ui);
@@ -167,6 +182,8 @@ export function createTouchStick({
   };
   const flaeche = [['pointerdown', runter], ['pointermove', bewegt], ['pointerup', hoch], ['pointercancel', hoch]];
   for (const [t, f] of flaeche) element.addEventListener(t, f);
+  const neuGroesse = () => { if (autoR && stickId === null) { stickRadius = autoStickRadius(); groesse(); ruhe(); } };
+  globalThis.addEventListener?.('resize', neuGroesse);
 
   const alt = { ta: element.style?.touchAction, us: element.style?.userSelect };
   function zeigen(an) {
@@ -182,10 +199,17 @@ export function createTouchStick({
     get sprint() {
       const s = stickId !== null && vollSeit >= 0 && jetzt() - vollSeit >= sprintZeit;
       basis.classList.toggle('mi-sprint', s);
+      if (s && !sprintVorher && vibration) vibriere(15);
+      sprintVorher = s;
       return s;
     },
     nimmKamera() { const r = { dx: kam.dx, dy: kam.dy, zoom: kam.zoom }; kam.dx = kam.dy = kam.zoom = 0; return r; },
+    get stickRadius() { return stickRadius; },
     zeigen,
+    /** Einzelnen Knopf ein-/ausblenden (z. B. 💬 nur in der Nähe eines NPCs). Ausblenden lässt ihn los. */
+    knopfZeigen(name, an) {
+      for (const k of knopfEls) if (k.name === name) { k.b.style.display = an ? '' : 'none'; if (!an) k.hoch(); }
+    },
     reset() {
       stickLos(); kamZeiger.clear(); pinch = 0; kam.dx = kam.dy = kam.zoom = 0;
       for (const k of knopfEls) k.hoch();
@@ -194,6 +218,7 @@ export function createTouchStick({
       if (weg) return; weg = true;
       this.reset();
       for (const [t, f] of flaeche) element.removeEventListener(t, f);
+      globalThis.removeEventListener?.('resize', neuGroesse);
       for (const k of knopfEls) for (const [t, f] of k.paare) k.b.removeEventListener(t, f);
       zeigen(false);
       ui.remove();

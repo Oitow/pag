@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createCharacterModel } from './character-model.js';
-import { VORLAGEN, randomLook, STILE } from './character-look.js';
+import { VORLAGEN, randomLook, STILE, AUSDRUECKE } from './character-look.js';
 
 const dreiecke = (m) => m.meshes.reduce((n, x) => n + x.geometry.attributes.position.count / 3, 0);
 function hashGeo(m) {
@@ -10,12 +10,12 @@ function hashGeo(m) {
   for (const x of m.meshes) for (const v of x.geometry.attributes.position.array) { h ^= Math.round(v * 1e5); h = Math.imul(h, 16777619); }
   return h >>> 0;
 }
-function pruefen(look, name) {
-  const m = createCharacterModel({ look });
+function pruefen(look, name, opts = {}) {
+  const m = createCharacterModel({ look, ...opts });
   m.root.updateMatrixWorld(true);
   const bb = new THREE.Box3().setFromObject(m.root), h = m.masse.hoehe;
   const t = dreiecke(m);
-  assert.ok(t <= 4000, `${name}: ${t} Dreiecke`);
+  assert.ok(t <= 4500, `${name}: ${t} Dreiecke`);   // inkl. beweglichem Gesicht (~330)
   assert.ok(Math.abs(bb.min.y) < 0.02 * h + 0.01, `${name}: Füße auf dem Boden (${bb.min.y})`);
   const hut = m.look.kopfbedeckung.stil !== 'keine';
   assert.ok(bb.max.y > h * 0.85 && bb.max.y < h * (hut ? 1.5 : 1.15), `${name}: Höhe ${bb.max.y} ≠ ${h}`);
@@ -27,6 +27,7 @@ function pruefen(look, name) {
 test('alle Vorlagen und 50 Zufalls-Looks bauen (Dreiecke, Höhe)', () => {
   for (const [n, v] of Object.entries(VORLAGEN)) pruefen(v, n);
   for (let i = 0; i < 50; i++) pruefen(randomLook(1000 + i, { kind: i % 7 === 0 }), 'zufall' + i);
+  for (const v of Object.values(VORLAGEN)) assert.ok(pruefen(v, 'statisch', { mimik: false }) <= 4200);
 });
 
 test('jeder Stil baut (alle Werte aus STILE)', () => {
@@ -80,4 +81,59 @@ test('setSichtbar, Schatten-Option und dispose gibt Geometrien frei', () => {
   assert.equal(frei, n);
   assert.equal(m.root.parent, null);
   assert.equal(m.meshes.length, 0);
+});
+
+test('Mimik: Ausdruck, Lider, Blinzeln, Blick; bleibt bei setLook; dispose ohne Lecks', () => {
+  const m = createCharacterModel({ look: { ...VORLAGEN.koechin }, seed: 2 });
+  const lider = () => m.meshes.find((x) => x.name === 'lider');
+  const mimik = () => m.meshes.find((x) => x.name === 'mimik');
+  assert.equal(m.ausdruck, 'froh', 'Start aus look.ausdruck');
+  assert.equal(lider().parent.parent.parent, m.rig.knochen.kopf);
+  const geos = new Set();
+  for (const a of AUSDRUECKE) { m.setAusdruck(a); geos.add(mimik().geometry); assert.equal(m.ausdruck, a); }
+  assert.equal(geos.size, AUSDRUECKE.length, 'jeder Ausdruck eigene Geometrie');
+  m.setAusdruck('quatsch');
+  assert.equal(m.ausdruck, 'neutral');
+  const offen = lider().rotation.x;
+  m.setAusdruck('schlafend');
+  assert.ok(lider().rotation.x > offen + 1, 'schlafend schließt die Lider');
+  m.setAusdruck('neutral').blinzeln(0.2).updateGesicht(0.1);
+  assert.ok(lider().rotation.x > offen + 1, 'Blinzeln: Mitte = zu');
+  m.updateGesicht(0.15);
+  assert.ok(Math.abs(lider().rotation.x - offen) < 1e-9, 'danach wieder offen');
+  m.setLider(0.5);
+  assert.ok(lider().rotation.x > offen);
+  m.setLider(0).setBlick(1, -1);
+  const p = m.meshes.find((x) => x.name === 'pupillen').position;
+  assert.ok(p.x > 0 && p.y < 0);
+  m.setBlick(9, 0);
+  assert.ok(Math.abs(p.x - m.masse.kopfRadius * 0.17 * 0.24) < 1e-9, 'Blick begrenzt');
+  m.setAusdruck('wuetend').setLook({ haar: { stil: 'locken' } });
+  assert.equal(m.ausdruck, 'wuetend', 'setLook behält Ausdruck');
+  assert.equal(mimik().geometry, m.gesicht.meshes[2].geometry);
+  m.setLook({ ausdruck: 'traurig' });
+  assert.equal(m.ausdruck, 'traurig');
+  // automatisches Blinzeln: innerhalb von 10 s mindestens einmal zu
+  let zu = false;
+  for (let i = 0; i < 600; i++) { m.updateGesicht(1 / 60); if (lider().rotation.x > 1) zu = true; }
+  assert.ok(zu);
+  let frei = 0;
+  for (const x of m.meshes) x.geometry.addEventListener('dispose', () => frei++);
+  const n = m.meshes.length;
+  m.dispose();
+  assert.equal(frei, n, 'jede Geometrie genau einmal frei');
+  // ohne Mimik: Funktionen da, tun nichts Schlimmes
+  const s = createCharacterModel({ look: VORLAGEN.ritter, mimik: false });
+  assert.equal(s.gesicht, null);
+  assert.ok(!s.meshes.some((x) => x.name === 'lider'));
+  s.setAusdruck('froh').blinzeln().setBlick(1, 1).setLider(1).updateGesicht(0.1);
+  assert.equal(s.ausdruck, 'froh');
+  s.dispose();
+});
+
+test('Zubehör-Mesh nur bei Schal/Halsschmuck', () => {
+  const ohne = createCharacterModel({ look: {} }), mit = createCharacterModel({ look: { schal: { stil: 'schal' } } });
+  assert.ok(!ohne.meshes.some((x) => x.name === 'zubehoer'));
+  assert.ok(mit.meshes.some((x) => x.name === 'zubehoer' && x.parent === mit.rig.knochen.torso));
+  ohne.dispose(); mit.dispose();
 });

@@ -1,14 +1,17 @@
 /**
  * @modul    character
  * @zweck    Fertige Spielfigur in einem Objekt: Modell (Look) + Animator + Bewegungs-Motor, für Spieler und NPCs gleich
- * @api      createCharacter(opts) -> { root, model, animator, motor, zustand, look, update(dt,absicht), spiele(name,opts), stoppe(name?), setLook(teil), teleport(pos,yaw?), stoss(x,y,z), dispose() }
+ * @api      createCharacter(opts) -> { root, model, animator, motor, zustand, look, name, schild, brain, update(dt,absicht?,brainKontext?), setBrain(brain|opts|null), spiele(name,opts), stoppe(name?), aktion(name,opts), sage(text,{dauer,geste,ausdruck}), setName(t), setLeben(anteil|null), ausruesten(sockel,obj), ablegen(sockel|obj), ausruestung, setAusdruck(name,opts), blickZu(punkt|figur|fn|null), setSichtbar(bool), abstandZu(punkt|figur), setLook(teil), teleport(pos,yaw?), stoss(x,y,z,opts?), dispose() }
  * @beispiel
  *   import { createCharacter } from '../../engine/gameplay/character.js';
  *   const held = createCharacter({ look: VORLAGEN.wanderer, welt, pos: { x: 0, y: 0, z: 0 } });
  *   szene.add(held.root);
- *   held.update(dt, absicht);   // absicht aus move-input (stickZuWelt) oder character-steering
+ *   held.update(dt, absicht);   // absicht aus move-input (zuAbsicht) oder character-steering; Zusatz-Flags (rollen …) gehen durch
+ *   // Mit Namensschild/Sprechblase (engine/ui/figur-schild.js):
+ *   const bauer = createCharacter({ look, welt, name: 'Jupp', schilder });
+ *   bauer.sage('Moin!', { geste: 'winken' }); bauer.blickZu(held); bauer.ausruesten('handR', mistgabel);
  * @tags     figur, charakter, spieler, npc, bewegung, animation, controller, avatar
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
@@ -16,10 +19,22 @@ import { createCharacterModel } from '../models/character/character-model.js';
 import { createAnimator } from '../models/character/character-animator.js';
 import { CLIPS } from '../models/character/character-clips.js';
 import { createMotor } from './character-motor.js';
+import { createBrain } from './character-brain.js';
+
+/** Weltposition aus {x,y,z}, Funktion, Figur (zustand.pos) oder Object3D. */
+function punktVon(p) {
+  const q = typeof p === 'function' ? p() : p?.zustand?.pos || (p?.isObject3D ? p.getWorldPosition?.(p.position.clone()) : p);
+  return q && Number.isFinite(+q.x) && Number.isFinite(+q.z) ? q : null;
+}
+// Motor-Kurzbefehle für aktion(name), falls der Motor sie kennt
+const MOTOR_AKTIONEN = { springen: 'springeJetzt', rollen: 'rolleJetzt' };
 
 /**
  * opts: { look, seed = 1, welt (Adapter: bodenHoehe …), pos {x,y,z}, yaw = 0, tuning (Motor), animation (Animator-Optionen),
- *         schatten = true, onSchritt(fuss, staerke, figur) }
+ *         schatten = true, onSchritt(fuss, staerke, figur), name, schilder (engine/ui/figur-schild), schild: { leben, versatz, farbe },
+ *         brain: fertiges Brain (character-brain) oder Optionen dafür (welt/heimat/seed werden ergänzt) }
+ * update(dt, absicht): absicht = null/undefined und Brain vorhanden → Brain entscheidet (3. Argument = Kontext
+ *   {ziele, nachbarn, stunde, npcs}); Brain-Aktionen (aktionNeu) spielen als Clip, aktion null beendet Schleifen-Clips.
  * Aktionen mit Maske 'ganz' (z. B. tod, ausweichrolle, sitzen) sperren die Lauf-Absicht, solange sie laufen.
  */
 export function createCharacter(opts = {}) {
@@ -38,6 +53,31 @@ export function createCharacter(opts = {}) {
   });
   const root = model.root;
   const STOP = { x: 0, z: 0, sprint: false, springen: false, ducken: false };
+  let name = opts.name ? String(opts.name) : '';
+  const schild = opts.schilder ? opts.schilder.neu(model.rig.sockel.kopf, { name, ...opts.schild }) : null;
+  const ausruestung = new Map();    // sockel → obj
+  let blickPunkt = null, weg = false, brain = null, brainEigen = false, brainClip = null;
+  function setBrain(b) {
+    if (brainEigen) brain?.dispose?.();
+    brainEigen = !!b && typeof b.update !== 'function';
+    brain = !b ? null : brainEigen
+      ? createBrain({ seed: opts.seed ?? 1, welt: opts.welt, heimat: { x: motor.zustand.pos.x, z: motor.zustand.pos.z }, ...b }) : b;
+    brainClip = null;
+    return brain;
+  }
+  const LEER = {};
+  const blickDir = { x: 0, y: 0, z: 1 };
+
+  function blickAktualisieren() {
+    const p = blickPunkt ? punktVon(blickPunkt) : null;
+    if (!p) { if (blickPunkt) animator.blickZu(null); return; }
+    const z = motor.zustand, c = Math.cos(z.yaw), s = Math.sin(z.yaw);
+    // Figur als Ziel: in die Augen schauen; sonst genau auf den Punkt
+    const zielY = (+p.y || 0) + (blickPunkt.zustand ? blickPunkt.model?.masse?.augenHoehe ?? m.augenHoehe : 0);
+    const dx = p.x - z.pos.x, dz = p.z - z.pos.z, dy = zielY - (z.pos.y + m.augenHoehe);
+    blickDir.x = dx * c - dz * s; blickDir.z = dx * s + dz * c; blickDir.y = dy;
+    animator.blickZu(blickDir);
+  }
 
   function sync() {
     const z = motor.zustand;
@@ -45,19 +85,77 @@ export function createCharacter(opts = {}) {
     root.rotation.y = z.yaw;
   }
 
-  Object.assign(figur, {
+  Object.defineProperties(figur, Object.getOwnPropertyDescriptors({
     root, model, animator, motor,
     get zustand() { return motor.zustand; },
     get look() { return model.look; },
-    update(dt, absicht) {
+    update(dt, absicht, kontext) {
+      if (absicht == null && brain) {
+        const r = brain.update(dt, motor.zustand, kontext || LEER);
+        absicht = r.absicht;
+        if (r.aktionNeu && r.aktion && CLIPS[r.aktion]) { animator.spiele(r.aktion); brainClip = r.aktion; }
+        else if (!r.aktion && brainClip) { if (CLIPS[brainClip]?.schleife) animator.stoppe(brainClip); brainClip = null; }
+      }
       const a = animator.aktion;
       const gesperrt = a && CLIPS[a]?.maske === 'ganz';
       motor.update(dt, gesperrt ? STOP : absicht);
       sync();
+      if (blickPunkt) blickAktualisieren();
       animator.update(dt, motor.zustand);
     },
-    spiele: (name, o) => animator.spiele(name, o),
-    stoppe: (name) => animator.stoppe(name),
+    spiele: (clip, o) => animator.spiele(clip, o),
+    stoppe: (clip) => animator.stoppe(clip),
+    get name() { return name; },
+    get brain() { return brain; },
+    setBrain,
+    get schild() { return schild; },
+    get ausruestung() { return new Map(ausruestung); },
+    /** Sicher: Clip abspielen (→ {dauer, trefferBei}) oder Motor-Befehl (springen, rollen); unbekannt → null. */
+    aktion(clip, o) {
+      if (CLIPS[clip]) return animator.spiele(clip, o);
+      const f = MOTOR_AKTIONEN[clip];
+      if (f && typeof motor[f] === 'function') { motor[f](o?.richtung); return { dauer: 0, trefferBei: 0 }; }
+      return null;
+    },
+    /** Sprechblase (braucht opts.schilder); geste = Clip-Name, ausdruck = Gesichtsausdruck (falls das Modell es kann). */
+    sage(text, { dauer, geste, ausdruck } = {}) {
+      if (geste && CLIPS[geste]) animator.spiele(geste);
+      if (ausdruck) figur.setAusdruck(ausdruck);
+      if (!schild) return false;
+      schild.sage(text, { dauer });
+      return true;
+    },
+    setName(t) { name = t ? String(t) : ''; schild?.setName(name); },
+    setLeben(anteil) { schild?.setLeben(anteil); },
+    /** Gegenstand an Sockel (handR, handL, kopf, ruecken, guertel, umhang); ersetzt Vorhandenes dort. */
+    ausruesten(sockel, obj) {
+      if (ausruestung.has(sockel)) figur.ablegen(sockel);
+      const r = typeof model.ausruesten === 'function' ? model.ausruesten(sockel, obj) : model.befestigen(sockel, obj);
+      if (obj) ausruestung.set(sockel, obj);
+      return r;
+    },
+    ablegen(wer) {
+      let sockel = wer;
+      if (typeof wer !== 'string') for (const [s, o] of ausruestung) if (o === wer) sockel = s;
+      const obj = ausruestung.get(sockel);
+      ausruestung.delete(sockel);
+      if (typeof model.ablegen === 'function') return model.ablegen(typeof wer === 'string' ? wer : obj || wer);
+      return model.loesen(typeof wer === 'string' ? wer : obj || wer);
+    },
+    /** Gesichtsausdruck weiterreichen, falls das Modell es kann (→ true), sonst false. */
+    setAusdruck(ausdruck, o) {
+      if (typeof model.setAusdruck !== 'function') return false;
+      model.setAusdruck(ausdruck, o);
+      return true;
+    },
+    /** Kopf schaut zu einem Punkt / einer Figur / Object3D / Funktion (wird jedes Bild neu gelesen); null = geradeaus. */
+    blickZu(punkt) { blickPunkt = punkt || null; if (!blickPunkt) animator.blickZu(null); else blickAktualisieren(); },
+    setSichtbar(an) { model.setSichtbar(an); if (schild) schild.zeige(an); },
+    abstandZu(ziel) {
+      const p = punktVon(ziel); if (!p) return Infinity;
+      const z = motor.zustand.pos;
+      return Math.hypot(p.x - z.x, p.z - z.z);
+    },
     setLook(teil) {
       model.setLook(teil);
       if ('radius' in motor) motor.radius = model.masse.radius;
@@ -65,9 +163,16 @@ export function createCharacter(opts = {}) {
       return model.look;
     },
     teleport(pos, yaw) { motor.teleport(pos, yaw); sync(); },
-    stoss: (x, y, z) => motor.stoss(x, y, z),
-    dispose() { animator.dispose(); motor.dispose(); model.dispose(); },
-  });
+    stoss: (x, y, z, o) => motor.stoss(x, y, z, o),
+    dispose() {
+      if (weg) return; weg = true;
+      blickPunkt = null; ausruestung.clear(); setBrain(null);
+      schild?.entfernen();
+      root.removeFromParent?.();
+      animator.dispose(); motor.dispose(); model.dispose();
+    },
+  }));
   sync();
+  if (opts.brain) setBrain(opts.brain);
   return figur;
 }

@@ -41,3 +41,13 @@ test('Spiegeln und innen drehen die Dreiecke um; Original-Geometrie bleibt', () 
   const p = new THREE.Vector3(1, 0, 0).applyMatrix4(tMatrix({ x: 1, ry: Math.PI / 2, s: 2 }));
   assert.ok(Math.abs(p.x - 1) < 1e-6 && Math.abs(p.z + 2) < 1e-6);
 });
+
+test('torus und lathe (1.1)', () => {
+  const g = createMeshBuilder().torus(0.5, 0.1, 0xffffff, { y: 1 }).lathe([[0.1, 0], [0.3, 0.2], [0.25, 0.5]], 0xff0000).geometry();
+  g.computeBoundingBox();
+  assert.ok(g.attributes.position.count > 50);
+  assert.ok(g.boundingBox.max.y > 1.5 && g.boundingBox.max.y <= 1.6 + 1e-6 && Math.abs(g.boundingBox.min.y) < 1e-6);
+  const halb = createMeshBuilder().torus(1, 0.1, 0xffffff, {}, 4, 8, Math.PI).geometry();
+  halb.computeBoundingBox();
+  assert.ok(halb.boundingBox.min.y > -0.11);
+});

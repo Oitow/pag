@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { installFakeDom } from '../test/fake-dom.mjs';
-import { createMoveInput, stickZuWelt } from './move-input.js';
+import { createMoveInput, stickZuWelt, zuAbsicht, tastenText, ERWEITERTE_AKTIONEN } from './move-input.js';
+import { autoStickRadius } from './touch-stick.js';
 
 // Ergänzungen zur Attrappe: echtes removeEventListener für window und Elemente
 function aufbau(opts) {
@@ -178,4 +179,71 @@ test('dispose entfernt Listener', () => {
   for (const t of ['pointerdown', 'pointermove', 'pointerup', 'wheel']) assert.equal(body._listener[t].length, 0, t);
   taste('KeyW');
   assert.equal(ein.lesen().y, 0);
+});
+
+test('Erweiterte Aktionen per Name, Flags in lesen() und zuAbsicht', () => {
+  const { taste, ein } = aufbau({ aktionen: ['rollen', 'interagieren', { name: 'gleiten', knopf: '»' }, 'eigen'] });
+  const namen = ein.aktionen.map(a => a.name);
+  assert.ok(['rollen', 'interagieren', 'gleiten', 'eigen'].every(n => namen.includes(n)));
+  assert.equal(ein.aktionen.find(a => a.name === 'gleiten').knopf, '»');
+  assert.equal(ein.aktionen.find(a => a.name === 'gleiten').padKnopf, ERWEITERTE_AKTIONEN.gleiten.padKnopf);
+  taste('KeyQ'); taste('KeyW');
+  const e = ein.lesen();
+  assert.equal(e.rollen, true); assert.equal(e.interagieren, false); assert.equal(e.eigen, false);
+  assert.equal(ein.gedrueckt('rollen'), true);
+  const a = zuAbsicht(e, 0);
+  assert.ok(nah(a.z, 1) && nah(a.x, 0));
+  assert.equal(a.rollen, true); assert.equal(a.springen, false);
+  assert.equal(a.aktiv, undefined, 'nur boolesche Felder');
+  ein.dispose();
+});
+
+test('Tastenbelegung: Daten-Objekt, setBelegung, lerneTaste, Pad', async () => {
+  const { taste, ein } = aufbau({ belegung: { tasten: { vor: ['KeyZ'], springen: ['KeyJ'] }, pad: { springen: 3 } } });
+  taste('KeyZ'); taste('KeyJ');
+  let e = ein.lesen();
+  assert.equal(e.y, 1); assert.equal(e.springen, true);
+  taste('KeyZ', false); taste('KeyJ', false); taste('KeyW');
+  assert.equal(ein.lesen().y, 0, 'W ist nicht mehr vorwärts');
+  taste('KeyW', false);
+  const b = ein.belegung;
+  assert.deepEqual(b.tasten.vor, ['KeyZ']); assert.equal(b.pad.springen, 3);
+  assert.deepEqual(JSON.parse(JSON.stringify(b)), b);
+  ein.setBelegung({ tasten: { links: ['KeyH'] } });
+  taste('KeyH'); assert.equal(ein.lesen().x, -1); taste('KeyH', false);
+  const p = ein.lerneTaste('ducken');
+  taste('KeyK');
+  assert.equal(await p, 'KeyK');
+  assert.equal(ein.belegung.tasten.ducken[0], 'KeyK');
+  taste('KeyK', false); taste('KeyK');
+  assert.equal(ein.lesen().ducken, true);
+  const p2 = ein.lerneTaste('vor');
+  taste('Escape');
+  assert.equal(await p2, null);
+  assert.equal(await ein.lerneTaste('gibtsnicht'), null);
+  ein.dispose();
+});
+
+test('tastenText, autoStickRadius, zeigeKnopf, Vibration', () => {
+  assert.equal(tastenText('KeyW'), 'W'); assert.equal(tastenText('Space'), 'Leertaste'); assert.equal(tastenText('Digit3'), '3');
+  assert.equal(autoStickRadius(360, 740), 46); assert.equal(autoStickRadius(1024, 768), 76);
+  assert.ok(autoStickRadius(500, 900) > 46 && autoStickRadius(500, 900) < 76);
+  const summen = [];
+  const altNav = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  Object.defineProperty(globalThis, 'navigator', { value: { getGamepads: () => [], vibrate: ms => summen.push(ms) }, configurable: true, writable: true });
+  const { ein } = aufbau({ aktionen: ['rollen'], vibration: true });
+  try {
+    const ui = document.body.children.filter(k => k.className === 'mi-ui').at(-1);
+    const reihe = ui.children[1];
+    const rolleK = reihe.children.find(b => b.textContent === ERWEITERTE_AKTIONEN.rollen.knopf);
+    rolleK.dispatch('pointerdown', { pointerId: 4, preventDefault() {}, stopPropagation() {} });
+    assert.equal(ein.lesen().rollen, true);
+    assert.equal(summen.length, 1);
+    ein.zeigeKnopf('rollen', false);
+    assert.equal(rolleK.style.display, 'none');
+    assert.equal(ein.lesen().rollen, false, 'ausblenden lässt los');
+  } finally {
+    if (altNav) Object.defineProperty(globalThis, 'navigator', altNav); else delete globalThis.navigator;
+    ein.dispose();
+  }
 });

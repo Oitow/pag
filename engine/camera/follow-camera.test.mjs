@@ -94,3 +94,89 @@ test('Sprint-FOV, Schütteln klingt ab, Lock-On, kein NaN', () => {
   assert.ok(endlich(cam.kamera) && Number.isFinite(cam.yaw) && Number.isFinite(cam.distanz));
   cam.dispose();
 });
+
+test('Hindernisse (Welt-Adapter) entlang des Strahls: heran und weich zurück', () => {
+  let stamm = true;
+  // Baumstamm 3 m hinter der Figur (Kamera blickt nach +Z, steht also bei −Z)
+  const welt = { bodenHoehe: () => 0, hindernisse: (x, z, r) => (stamm && Math.hypot(x, z + 3) < 0.4 + r ? { x: 0, z: 1 } : null) };
+  const cam = createFollowCamera({ welt, autoAusrichten: 0 });
+  const ziel = { x: 0, y: 0, z: 0 };
+  lauf(cam, ziel, {}, 1);
+  const nah = horizAbstand(cam.kamera, ziel);
+  assert.ok(nah < 3, `vor dem Stamm: ${nah}`);
+  stamm = false;
+  cam.update(1 / 60, ziel, {});
+  const einBild = horizAbstand(cam.kamera, ziel);
+  assert.ok(einBild < nah + 0.5, `kein Sprung zurück: ${einBild}`);
+  lauf(cam, ziel, {}, 3);
+  assert.ok(horizAbstand(cam.kamera, ziel) > 5.5);
+});
+
+test('Lock-On: Zielwechsel gleitet, Funktion als Ziel', () => {
+  const cam = createFollowCamera({ autoAusrichten: 0 });
+  const ziel = { x: 0, y: 0, z: 0 };
+  cam.lockOn(() => ({ x: 10, y: 0, z: 0 }));
+  lauf(cam, ziel, {}, 3);
+  assert.ok(Math.abs(cam.yaw - Math.PI / 2) < 0.02);
+  cam.lockOn({ x: 0, y: 0, z: 10 });
+  cam.update(1 / 60, ziel, {});
+  assert.ok(cam.yaw > 1.3, `kein Sprung: ${cam.yaw}`);
+  lauf(cam, ziel, {}, 3);
+  assert.ok(Math.abs(cam.yaw) < 0.03, `yaw ${cam.yaw}`);
+  assert.equal(typeof cam.lockZiel, 'object');
+});
+
+test('Erste Person beim Reinzoomen, raus beim Rauszoomen', () => {
+  const modi = [];
+  const cam = createFollowCamera({ erstePerson: true, autoAusrichten: 0, onModus: m => modi.push(m) });
+  const ziel = { x: 1, y: 2, z: 3 };
+  cam.zoomen(100); lauf(cam, ziel, {}, 1);
+  assert.equal(cam.erstePerson, false);
+  cam.zoomen(0.5);
+  assert.equal(cam.erstePerson, true);
+  lauf(cam, ziel, { augenHoehe: 1.7 }, 2);
+  const p = cam.kamera.position;
+  assert.ok(Math.hypot(p.x - 1, p.z - 3) < 0.2 && Math.abs(p.y - 3.7) < 0.05, `${p.x},${p.y},${p.z}`);
+  assert.equal(cam.figurAusblenden, true);
+  cam.drehen(0, -1.5);                            // Ego: weit nach oben schauen erlaubt
+  assert.ok(cam.pitch < -1);
+  cam.zoomen(-0.2);
+  assert.equal(cam.erstePerson, false);
+  assert.ok(cam.pitch >= -0.35);
+  assert.deepEqual(modi, ['erste', 'dritte']);
+});
+
+test('Presets: weich anfahren, sofort, Schulter-Versatz, unbekannt', () => {
+  const cam = createFollowCamera({ autoAusrichten: 0 });
+  const ziel = { x: 0, y: 0, z: 0 };
+  assert.equal(cam.setPreset('gibtsnicht'), false);
+  cam.setPreset('weit'); lauf(cam, ziel, {}, 3);
+  assert.ok(Math.abs(cam.distanz - 11) < 0.05 && Math.abs(cam.pitch - 0.55) < 0.01);
+  cam.setPreset('schulter', { sofort: true }); cam.update(1 / 60, ziel, {});
+  assert.equal(cam.preset, 'schulter');
+  assert.ok(cam.kamera.position.x < -0.3, `rechts der Figur (−X): ${cam.kamera.position.x}`);
+  cam.drehen(0, 0.2);                             // manuelles Drehen gewinnt gegen den Preset-Pitch
+  const p = cam.pitch; lauf(cam, ziel, {}, 1);
+  assert.equal(cam.pitch, p);
+});
+
+test('Kamerafahrt: hin, halten, zurück, Promise', async () => {
+  const cam = createFollowCamera({ autoAusrichten: 0 });
+  const ziel = { x: 0, y: 0, z: 0 };
+  lauf(cam, ziel, {}, 1);
+  const normal = cam.kamera.position.clone();
+  let fertig = false;
+  const pr = cam.fahrt({ pos: { x: 20, y: 10, z: 20 }, blick: { x: 0, y: 0, z: 0 }, dauer: 0.5, halten: 0.5 });
+  pr.then(() => { fertig = true; });
+  lauf(cam, ziel, {}, 0.8);
+  assert.ok(cam.inFahrt && cam.kamera.position.distanceTo({ x: 20, y: 10, z: 20 }) < 0.01);
+  lauf(cam, ziel, {}, 1);
+  await pr;
+  assert.ok(fertig && !cam.inFahrt);
+  assert.ok(cam.kamera.position.distanceTo(normal) < 0.01);
+  cam.fahrt({ pos: { x: 5, y: 5, z: 5 }, halten: Infinity, dauer: 0.2 });
+  lauf(cam, ziel, {}, 2);
+  assert.ok(cam.inFahrt);
+  cam.beendeFahrt(); lauf(cam, ziel, {}, 0.5);
+  assert.ok(!cam.inFahrt);
+});
