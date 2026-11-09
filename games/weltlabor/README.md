@@ -6,7 +6,7 @@ Vorschau für den Weltgenerator aus `engine/world/worldgen/`. Kein Spiel, sonder
 - **Einstellungen:** Seed (🎲 würfelt einen neuen), Größe 128/256/512, Qualität schnell/normal/hoch
 - **Regler:** Gebirge, Küstenform, Erosion, Flüsse, Temperatur, Feuchte, Wind, Objektdichte
 - **Ebenen:** Biome, Höhe, Feuchte, Temperatur, Schatten, Flüsse, Objekte, Orte (Start 🚩, Dörfer, Gipfel ▲)
-- **Modus „Chunks“:** setzt die Karte aus 64er-Chunks zusammen und zeigt so, dass die Kanten nahtlos sind
+- **Modus „Chunks“:** setzt die Karte aus 64er-Chunks zusammen und zeigt so, dass die Kanten nahtlos sind – inklusive Flussnetz und kleiner Seen aus dem unendlichen Modus
 - Die Erzeugung läuft in einem Web Worker (`worker.js`). Geht das nicht, läuft sie im Hauptthread. Angezeigt werden die Zeiten pro Stufe.
 - Antippen oder Überfahren der Karte zeigt Biom, Höhe, Temperatur und Feuchte an der Stelle.
 

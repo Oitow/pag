@@ -54,7 +54,8 @@
 | terrain-mesh | `engine/world/terrain-mesh.js` | Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit Biomfarben, Hangfels und Farbrauschen, Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont | entwurf |
 | worldgen-adapter | `engine/world/worldgen/worldgen-adapter.js` | Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md | entwurf |
 | worldgen-biomes | `engine/world/worldgen/worldgen-biomes.js` | Biome nach Whittaker (Temperatur × Feuchte, als schnelle Nachschlagetabelle) plus Prioritätsregeln (Wasser, Schnee, Fels, Strand, Sumpf); Biomliste per Spiel erweiterbar | entwurf |
-| worldgen-chunks | `engine/world/worldgen/worldgen-chunks.js` | Unendlicher/gestreamter Modus: Höhe, Klima, Biome, Rauschflüsse und Objekte punktweise und pro Chunk – nahtlos über Chunkgrenzen (ohne globale Erosion/Hydrologie) | entwurf |
+| worldgen-chunkfluss | `engine/world/worldgen/worldgen-chunkfluss.js` | Chunk-lokale Flussnetze und kleine Seen für den unendlichen Modus: grobes Knotengitter aus Seed + Position, Abfluss zum tiefsten Nachbarn, begrenzter Zufluss, Senken werden Seen – nahtlos ohne globale Stufen | entwurf |
+| worldgen-chunks | `engine/world/worldgen/worldgen-chunks.js` | Unendlicher/gestreamter Modus: Höhe, Klima, Biome, chunk-lokale Flussnetze + kleine Seen (oder Rauschflüsse) und Objekte punktweise und pro Chunk – nahtlos über Chunkgrenzen (ohne globale Erosion/Hydrologie) | entwurf |
 | worldgen-climate | `engine/world/worldgen/worldgen-climate.js` | Klima für den Weltgenerator: Temperatur nach Höhe/Breitengrad, Feuchte aus Wassernähe, Rauschen und Regenschatten (Windrichtung) | entwurf |
 | worldgen-erosion | `engine/world/worldgen/worldgen-erosion.js` | Schnelle hydraulische Tropfen-Erosion (mit Pinsel-Abtrag) und thermische Erosion auf einem Float32-Höhenfeld; Qualitätsstufen schnell/normal/hoch | entwurf |
 | worldgen-grid | `engine/world/worldgen/worldgen-grid.js` | Gitter-Helfer für den Weltgenerator: typisierter Min-Heap, Chamfer-Abstand, Regionen-Markierung, bilineares Abtasten, Array-Hash | entwurf |
@@ -108,7 +109,7 @@
 | brille | character-parts-kopf, character-parts-zubehoer |
 | cape | character-parts-ruecken |
 | charakter | character, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips, character-gang, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer |
-| chunks | worldgen-chunks |
+| chunks | worldgen-chunkfluss, worldgen-chunks |
 | clip | character-animator, character-clips-mehr, character-clips |
 | controller | character-motor, character |
 | dash | character-motor, character-anim-zustand |
@@ -129,7 +130,7 @@
 | feuchte | worldgen-climate |
 | figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips, character-gang, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-schild, worldgen-adapter |
 | first-person | follow-camera |
-| fluss | worldgen-rivers |
+| fluss | worldgen-chunkfluss, worldgen-rivers |
 | folgen | follow-camera |
 | form | worldgen-shape |
 | frisur | character-parts-haar, character-parts-kopf |
@@ -162,6 +163,7 @@
 | hud | figur-schild |
 | hut | character-parts-hut, character-parts-kopf |
 | hydraulik | worldgen-erosion |
+| hydrologie | worldgen-chunkfluss |
 | idle | character-anim-idle, character-clips-mehr |
 | ik | character-anim-hang, character-gang |
 | insel | worldgen-presets, worldgen-shape, worldgen |
@@ -250,6 +252,7 @@
 | schwert | character-ausruestung |
 | schwimmen | character-motor, character-animator, character-gang |
 | schürze | character-parts-becken, character-parts-torso |
+| see | worldgen-chunkfluss |
 | seed | rng |
 | seen | worldgen-hydrology |
 | sekundaer | character-sekundaer |
@@ -280,7 +283,7 @@
 | ui | figur-schild |
 | umfallen | character-reaktion |
 | umhang | character-parts-ruecken, character-parts, character-sekundaer |
-| unendlich | worldgen-chunks |
+| unendlich | worldgen-chunkfluss, worldgen-chunks |
 | variation | character-anim-idle |
 | vegetation | scatter-mesh |
 | verhalten | character-brain |
@@ -292,10 +295,10 @@
 | wandern | character-steering |
 | wasser | terrain-mesh, worldgen-adapter, worldgen-hydrology, worldgen-rivers |
 | wegfindung | worldgen-path |
-| welt | noise, rng, scatter-mesh, terrain-mesh, worldgen-adapter, worldgen-biomes, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
+| welt | noise, rng, scatter-mesh, terrain-mesh, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
 | werkzeug | character-ausruestung |
 | whittaker | worldgen-biomes |
-| worldgen | worldgen-adapter, worldgen-biomes, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
+| worldgen | worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
 | zauberhut | character-parts-hut |
 | ziel | ziel-wahl |
 | zielen | ziel-wahl |
@@ -1136,10 +1139,23 @@ const id = tab.idVon('pilzhain');
 
 Genutzt von: – · Tags: welt, worldgen, biome, klima, whittaker · THREE: nein
 
-### worldgen-chunks · `engine/world/worldgen/worldgen-chunks.js` · v1.0.0 · entwurf
-Unendlicher/gestreamter Modus: Höhe, Klima, Biome, Rauschflüsse und Objekte punktweise und pro Chunk – nahtlos über Chunkgrenzen (ohne globale Erosion/Hydrologie)
+### worldgen-chunkfluss · `engine/world/worldgen/worldgen-chunkfluss.js` · v1.0.0 · entwurf
+Chunk-lokale Flussnetze und kleine Seen für den unendlichen Modus: grobes Knotengitter aus Seed + Position, Abfluss zum tiefsten Nachbarn, begrenzter Zufluss, Senken werden Seen – nahtlos ohne globale Stufen
 
-- `createChunkGenerator(optionen) -> {opts, sampleHeight(x,y)->number, samplePunkt(x,y,aus)->bool, generateChunk(cx,cy,groesse)->chunk, biome}`
+- `createFlussNetz(opts) -> {praege(x,y,h)->h, fluss, see, knoten(i,j)->knoten, seenIn(x0,y0,x1,y1)->[{x,y,radius,spiegel,zufluss}], weite, dispose()}`
+
+```js
+import { createFlussNetz } from '../../engine/world/worldgen/worldgen-chunkfluss.js';
+const netz = createFlussNetz({ seed: 5, roh: (x, y) => hs.sample(x, y), massstab: 256 });
+const h = netz.praege(x, y, hs.sample(x, y));   // netz.fluss < 1 → im Flussbett, netz.see = Seespiegel oder NaN
+```
+
+Genutzt von: – · Tags: welt, worldgen, chunks, unendlich, fluss, see, hydrologie · THREE: nein
+
+### worldgen-chunks · `engine/world/worldgen/worldgen-chunks.js` · v1.1.0 · entwurf
+Unendlicher/gestreamter Modus: Höhe, Klima, Biome, chunk-lokale Flussnetze + kleine Seen (oder Rauschflüsse) und Objekte punktweise und pro Chunk – nahtlos über Chunkgrenzen (ohne globale Erosion/Hydrologie)
+
+- `createChunkGenerator(optionen) -> {opts, sampleHeight(x,y)->number, samplePunkt(x,y,aus)->bool, generateChunk(cx,cy,groesse)->chunk (+wasser, seen), seenIn(x0,y0,x1,y1), biome, dispose()}`
 
 ```js
 import { createChunkGenerator } from '../../engine/world/worldgen/worldgen-chunks.js';
@@ -1243,7 +1259,7 @@ const weg = pf.finde(10, 10, 200, 180);   // [x0,y0,x1,y1,…] in Weltkoordinate
 
 Genutzt von: – · Tags: welt, worldgen, wegfindung, astar, pfad · THREE: nein
 
-### worldgen-presets · `engine/world/worldgen/worldgen-presets.js` · v1.0.0 · entwurf
+### worldgen-presets · `engine/world/worldgen/worldgen-presets.js` · v1.1.0 · entwurf
 Standardoptionen und benannte Voreinstellungen (insel, archipel, kontinent, gebirge, wueste, tundra, sumpfland, vulkaninsel, canyon, flachland, kueste, hochebene, unendlich) plus tiefes Zusammenführen von Optionen
 
 - `STANDARD_OPTIONEN`
