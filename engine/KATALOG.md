@@ -11,6 +11,9 @@
 | noise | `engine/core/noise.js` | Seedbares Simplex-Rauschen 2D/3D plus fBm, Grat-Rauschen und Domain-Warp für Terrain, Biome und Texturen | stabil |
 | rng | `engine/core/rng.js` | Deterministischer Zufall (mulberry32), Seeds aus Text, Gitter-Hash und Würfel-Helfer | stabil |
 | fake-dom | `engine/test/fake-dom.mjs` | Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame | stabil |
+| scatter-mesh | `engine/world/scatter-mesh.js` | Zeichnet die Objekte einer erzeugten Welt (welt.objekte: Bäume, Büsche, Felsen, Kakteen, Schilf, Blumen) als InstancedMesh je Typ mit einfachen Low-Poly-Formen; eigene Formen je Typ überschreibbar | entwurf |
+| terrain-mesh | `engine/world/terrain-mesh.js` | Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit Biomfarben, Hangfels und Farbrauschen, Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont | entwurf |
+| worldgen-adapter | `engine/world/worldgen/worldgen-adapter.js` | Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md | entwurf |
 | worldgen-biomes | `engine/world/worldgen/worldgen-biomes.js` | Biome nach Whittaker (Temperatur × Feuchte, als schnelle Nachschlagetabelle) plus Prioritätsregeln (Wasser, Schnee, Fels, Strand, Sumpf); Biomliste per Spiel erweiterbar | entwurf |
 | worldgen-chunks | `engine/world/worldgen/worldgen-chunks.js` | Unendlicher/gestreamter Modus: Höhe, Klima, Biome, Rauschflüsse und Objekte punktweise und pro Chunk – nahtlos über Chunkgrenzen (ohne globale Erosion/Hydrologie) | entwurf |
 | worldgen-climate | `engine/world/worldgen/worldgen-climate.js` | Klima für den Weltgenerator: Temperatur nach Höhe/Breitengrad, Feuchte aus Wassernähe, Rauschen und Regenschatten (Windrichtung) | entwurf |
@@ -34,20 +37,25 @@
 | abfluss | worldgen-hydrology, worldgen-rivers |
 | abfrage | worldgen-query |
 | abstand | worldgen-grid |
+| adapter | worldgen-adapter |
 | astar | worldgen-path |
 | attrappe | fake-dom |
-| baeume | worldgen-scatter |
-| biome | worldgen-biomes, worldgen-query |
+| baeume | scatter-mesh, worldgen-scatter |
+| biome | terrain-mesh, worldgen-biomes, worldgen-query |
 | blue-noise | worldgen-scatter |
+| boden | worldgen-adapter |
 | chunks | worldgen-chunks |
 | dom | fake-dom |
 | dorf | worldgen-sites |
 | erosion | worldgen-erosion |
 | fbm | worldgen-height |
+| felsen | scatter-mesh |
 | feuchte | worldgen-climate |
+| figur | worldgen-adapter |
 | fluss | worldgen-rivers |
 | form | worldgen-shape |
 | gebirge | worldgen-height |
+| gelaende | terrain-mesh |
 | generator | worldgen |
 | gitter | worldgen-grid |
 | hash | rng |
@@ -55,16 +63,20 @@
 | hoehe | worldgen-height, worldgen-query |
 | hydraulik | worldgen-erosion |
 | insel | worldgen-presets, worldgen-shape, worldgen |
+| instanzen | scatter-mesh |
 | interpolation | math |
 | kamera | math |
 | karte | worldgen |
 | klima | worldgen-biomes, worldgen-climate |
+| kollision | worldgen-adapter |
 | maske | worldgen-shape |
 | mathe | math |
+| meer | terrain-mesh |
+| mesh | scatter-mesh, terrain-mesh |
 | node | fake-dom |
 | noise | noise |
 | normale | worldgen-query |
-| objekte | worldgen-scatter |
+| objekte | scatter-mesh, worldgen-scatter |
 | optionen | worldgen-presets |
 | orte | worldgen-sites |
 | pfad | worldgen-path |
@@ -80,15 +92,16 @@
 | start | worldgen-sites |
 | streaming | worldgen-chunks |
 | temperatur | worldgen-climate |
-| terrain | noise, worldgen-chunks, worldgen-erosion, worldgen-height, worldgen-shape, worldgen |
+| terrain | noise, terrain-mesh, worldgen-chunks, worldgen-erosion, worldgen-height, worldgen-shape, worldgen |
 | test | fake-dom |
 | unendlich | worldgen-chunks |
+| vegetation | scatter-mesh |
 | verteilung | worldgen-scatter |
-| wasser | worldgen-hydrology, worldgen-rivers |
+| wasser | terrain-mesh, worldgen-adapter, worldgen-hydrology, worldgen-rivers |
 | wegfindung | worldgen-path |
-| welt | noise, rng, worldgen-biomes, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
+| welt | noise, rng, scatter-mesh, terrain-mesh, worldgen-adapter, worldgen-biomes, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
 | whittaker | worldgen-biomes |
-| worldgen | worldgen-biomes, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
+| worldgen | worldgen-adapter, worldgen-biomes, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
 | zufall | rng |
 
 ## Module
@@ -112,7 +125,7 @@ kamera.x = damp(kamera.x, ziel.x, 6, dt);
 zoom = clamp(zoom, 5, 80);
 ```
 
-Genutzt von: – · Tags: mathe, interpolation, kamera · THREE: nein
+Genutzt von: testwelt · Tags: mathe, interpolation, kamera · THREE: nein
 
 ### noise · `engine/core/noise.js` · v1.0.0 · stabil
 Seedbares Simplex-Rauschen 2D/3D plus fBm, Grat-Rauschen und Domain-Warp für Terrain, Biome und Texturen
@@ -168,6 +181,49 @@ dom.tick(16); // führt alle angefragten Animation-Frames aus
 ```
 
 Genutzt von: – · Tags: test, dom, node, attrappe · THREE: nein
+
+### scatter-mesh · `engine/world/scatter-mesh.js` · v1.0.0 · entwurf
+Zeichnet die Objekte einer erzeugten Welt (welt.objekte: Bäume, Büsche, Felsen, Kakteen, Schilf, Blumen) als InstancedMesh je Typ mit einfachen Low-Poly-Formen; eigene Formen je Typ überschreibbar
+
+- `createScatterMesh(adapter, opts) -> {gruppe,anzahl,typen,dispose}`
+- `FORMEN`
+- `baueForm(teile) -> BufferGeometry`
+
+```js
+import { createScatterMesh } from '../../engine/world/scatter-mesh.js';
+const pflanzen = createScatterMesh(adapter, { schatten: true });
+szene.add(pflanzen.gruppe);
+```
+
+Genutzt von: testwelt · Tags: welt, objekte, baeume, felsen, instanzen, vegetation, mesh · THREE: ja
+
+### terrain-mesh · `engine/world/terrain-mesh.js` · v1.0.0 · entwurf
+Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit Biomfarben, Hangfels und Farbrauschen, Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont
+
+- `createTerrainMesh(adapter, opts) -> {gruppe,boden,wasser,meer,dispose}`
+- `biomFarben(welt) -> Float32Array`
+
+```js
+import { createTerrainMesh } from '../../engine/world/terrain-mesh.js';
+const gelaende = createTerrainMesh(adapter, { schritt: 1, schatten: true });
+szene.add(gelaende.gruppe);
+```
+
+Genutzt von: testwelt · Tags: welt, terrain, gelaende, wasser, meer, mesh, biome · THREE: ja
+
+### worldgen-adapter · `engine/world/worldgen/worldgen-adapter.js` · v1.0.0 · entwurf
+Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md
+
+- `createWeltAdapter(welt, opts) -> {bodenHoehe,wasserHoehe,hindernisse,normale,biomBei,zuGitter,zuWelt,startPunkt,groesse,hoehenSkala,meterProZelle,dispose}`
+- `HINDERNIS_RADIEN`
+
+```js
+import { createWeltAdapter } from '../../engine/world/worldgen/worldgen-adapter.js';
+const adapter = createWeltAdapter(createWorld({ preset: 'insel', seed: 42 }), { hoehenSkala: 60, meterProZelle: 2 });
+const s = adapter.startPunkt(); const y = adapter.bodenHoehe(s.x, s.z);
+```
+
+Genutzt von: testwelt · Tags: welt, worldgen, adapter, boden, wasser, kollision, figur · THREE: nein
 
 ### worldgen-biomes · `engine/world/worldgen/worldgen-biomes.js` · v1.0.0 · entwurf
 Biome nach Whittaker (Temperatur × Feuchte, als schnelle Nachschlagetabelle) plus Prioritätsregeln (Wasser, Schnee, Fels, Strand, Sumpf); Biomliste per Spiel erweiterbar
@@ -410,4 +466,4 @@ const welt = createWorld({ preset: 'insel', seed: 42, breite: 256, tiefe: 256, q
 const h = welt.heightAt(100.5, 80.2), wasser = welt.isWater(100, 80), start = welt.orte.start;
 ```
 
-Genutzt von: weltlabor · Tags: welt, worldgen, insel, terrain, generator, prozedural, karte · THREE: nein
+Genutzt von: testwelt, weltlabor · Tags: welt, worldgen, insel, terrain, generator, prozedural, karte · THREE: nein

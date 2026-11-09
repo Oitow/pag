@@ -1,0 +1,6 @@
+{
+  "eintrag": "js/main.js",
+  "html": "index.html",
+  "entfernen": ["<a id=\"back\" href=\"../../\">← Spiele</a>"],
+  "smoke": { "query": "?seed=42&groesse=128", "warte": 6000, "ignoriere": ["Failed to load resource"] }
+}
