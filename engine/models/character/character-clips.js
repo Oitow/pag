@@ -31,14 +31,15 @@ const HALTUNG = { schulterR: [-0.5, 0, -0.2], ellbogenR: [-0.6], handR: [1.6] };
 
 function rolleKeys() {
   // Vorwärtsrolle um die Körpermitte (Mitte c über den Füßen), angezogen; Drehung läuft über ±π (Sprung ist unsichtbar).
-  const c = [0, 0.42, 0.12], keys = [K(0, {})];
-  const eng = { torso: [1.1], hals: [0.5], kopf: [0.4], huefteL: [-1.9], huefteR: [-1.9], knieL: [2.3], knieR: [2.3], fussL: [0.3], fussR: [0.3],
+  const cl = [0.95, 0.15], cw = [0.6, 0.15], keys = [K(0, {})];   // Mitte des angezogenen Körpers: lokal (y,z) → Welt
+  const eng = { torso: [1.1], hals: [0.7], kopf: [0.5], huefteL: [-1.9], huefteR: [-1.9], knieL: [2.3], knieR: [2.3], fussL: [0.3], fussR: [0.3],
     schulterL: [-1.2, 0, 0.3], schulterR: [-1.2, 0, -0.3], ellbogenL: [-1.8], ellbogenR: [-1.8] };
   keys.push(K(0.08, { ...eng, huefteL: [-1.0], huefteR: [-1.0], knieL: [1.6], knieR: [1.6], torso: [0.8], basisPos: [0, -0.3, 0] }));
   const winkel = [[0.13, 0.5], [0.19, 1.3], [0.25, 2.2], [0.3, PI], [0.3, -PI], [0.35, -2.2], [0.41, -1.3], [0.47, -0.5]];
   for (const [t, w] of winkel) {
-    const y = c[1] - (c[1] * Math.cos(w) - c[2] * Math.sin(w)), z = c[2] - (c[1] * Math.sin(w) + c[2] * Math.cos(w));
-    keys.push(K(t, { ...eng, basis: [w], basisPos: [0, y - 0.08 * Math.sin(Math.abs(w) / 2), z] }, 'linear'));
+    const y = cw[0] - (cl[0] * Math.cos(w) - cl[1] * Math.sin(w)), z = cw[1] - (cl[0] * Math.sin(w) + cl[1] * Math.cos(w));
+    const ab = w < 0 ? -0.3 * clamp((w + 2.2) / 1.7, 0, 1) : 0;    // zum Ende hin auf die Füße absenken
+    keys.push(K(t, { ...eng, basis: [w], basisPos: [0, y + ab, z] }, 'linear'));
   }
   keys.push(K(0.54, { ...eng, huefteL: [-1.1], huefteR: [-1.1], knieL: [1.7], knieR: [1.7], torso: [0.7], basisPos: [0, -0.3, 0] }, 'linear'));
   keys.push(K(0.7, {}));
@@ -97,9 +98,9 @@ const ROH = {
     K(0, { schulterR: [-0.6, 0, -0.1], ellbogenR: [-0.7], handR: [1.7], schulterL: [-0.6, 0, -0.1], ellbogenL: [-0.9], handL: [1.7] }),
     K(0.3, { schulterR: [-2.95, 0, 0.12], ellbogenR: [-1.35], handR: [2.1], schulterL: [-2.85, 0, -0.18], ellbogenL: [-1.35], handL: [2.1],
       torso: [-0.3, -0.12, 0], hals: [-0.1], kopf: [-0.1], basisPos: [0, 0.01, 0] }),
-    K(0.42, { schulterR: [-0.95, 0, 0.18], ellbogenR: [-0.1], handR: [3.0], schulterL: [-0.85, 0, -0.22], ellbogenL: [-0.2], handL: [3.0],
+    K(0.42, { schulterR: [-1.6, 0, 0.18], ellbogenR: [-0.1], handR: [2.6], schulterL: [-1.5, 0, -0.22], ellbogenL: [-0.2], handL: [3.0],
       torso: [0.6, 0, 0], hals: [-0.25], kopf: [-0.15], becken: [0.1], basisPos: [0, -0.13, 0] }, 'rein'),
-    K(0.55, { schulterR: [-0.85, 0, 0.18], ellbogenR: [-0.15], handR: [2.95], schulterL: [-0.75, 0, -0.22], ellbogenL: [-0.25], handL: [2.95],
+    K(0.55, { schulterR: [-1.45, 0, 0.18], ellbogenR: [-0.15], handR: [2.6], schulterL: [-1.35, 0, -0.22], ellbogenL: [-0.25], handL: [2.95],
       torso: [0.55, 0, 0], hals: [-0.25], kopf: [-0.15], becken: [0.1], basisPos: [0, -0.12, 0] }),
     K(0.8, { schulterR: [-0.5, 0, -0.1], ellbogenR: [-0.6], handR: [1.7], schulterL: [-0.4, 0, 0.1], ellbogenL: [-0.6] }),
   ] },
@@ -166,7 +167,7 @@ const ROH = {
     K(0, {}),
     K(0.4, { huefteL: [-1.0], huefteR: [-1.0], knieL: [1.9], knieR: [1.9], fussL: [-0.4], fussR: [-0.4], torso: [0.5], schulterL: [-0.6, 0, 0.2],
       schulterR: [-0.6, 0, -0.2], ellbogenL: [-0.4], ellbogenR: [-0.4], basisPos: [0, -0.45, -0.1] }),
-    K(0.9, { huefteL: [-1.45, 0, 0.1], huefteR: [-1.4, 0, -0.1], knieL: [0.35], knieR: [0.5], fussL: [0.2], fussR: [0.15], torso: [-0.12], hals: [0.1],
+    K(0.9, { huefteL: [-1.4, 0, 0.1], huefteR: [-1.35, 0, -0.1], knieL: [0.45], knieR: [0.6], fussL: [-0.35], fussR: [-0.3], torso: [-0.12], hals: [0.1],
       schulterL: [0.45, 0, 0.3], schulterR: [0.45, 0, -0.3], ellbogenL: [-0.05], ellbogenR: [-0.05], handL: [-0.6], handR: [-0.6],
       basisPos: [0, -0.73, -0.05] }),
   ] },

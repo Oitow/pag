@@ -55,7 +55,7 @@ Sockel: `handR, handL, kopf (Scheitel), ruecken, guertel, umhang`.
 Drehsinn (rotation.x): Hüfte − = Bein vor · Knie + = beugen · Schulter − = Arm vor · Ellbogen − = beugen ·
 Torso/Hals/Kopf + = nach vorn neigen · Fuß + = Zehen hoch · `schulterL.rotation.z +` / `schulterR.rotation.z −` = Arm abspreizen.
 Mesh-Lage: Kopf-Kugel zentriert bei `y = kopfRadius` im Knochen `kopf`; Gliedmaßen-Meshes hängen von ihrem Gelenk nach −Y;
-Fuß-Mesh vom Knöchel bis zum Boden (`−fussHoehe`) und nach +Z.
+Fuß-Mesh vom Knöchel bis zum Boden und nach +Z (der Knöchel liegt 0,02·hoehe/1,75 unter `fussHoehe`, weil die Hüftgelenke so tief sitzen).
 
 ### Pose (character-pose)
 Reines Objekt: `{ <knochen>: { x, y, z } (Rotation), basisPos: { x, y, z } (Versatz der basis) }`. Fehlende Knochen = 0.

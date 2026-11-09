@@ -124,10 +124,10 @@ export function baueKopfbedeckung(b, K) {
     b.sphere(R * 0.82, c, { y: R * 2.1, sy: 0.25, jitter: 0.18 }, 12, 4);
     b.cyl(R * 0.97, R * 0.97, R * 0.16, a, { y: R * 1.68 }, 12);
   } else if (st === 'helm') {
-    schale(b, R * 1.14, c, { y: R * 1.2, jitter: 0.05 }, { thL: PI * 0.56 });
-    schale(b, R * 1.14, c, { y: R * 1.2, jitter: 0.05 }, { phi0: PI / 2 + 0.7, phiL: 2 * PI - 1.4, th0: PI * 0.55, thL: PI * 0.25 });
-    b.cyl(R * 1.16, R * 1.16, R * 0.13, a, { y: R * 1.14 }, 14);
-    b.box(R * 0.14, R * 0.6, R * 0.1, c, { y: R * 0.98, z: R * 1.12 });                                    // Nasenschutz
+    schale(b, R * 1.12, c, { y: R * 1.22, jitter: 0.05 }, { thL: PI * 0.5 });
+    schale(b, R * 1.12, c, { y: R * 1.22, jitter: 0.05 }, { phi0: PI / 2 + 1.0, phiL: 2 * PI - 2.0, th0: PI * 0.5, thL: PI * 0.28, ws: 10, hs: 3 });
+    b.cyl(R * 1.15, R * 1.15, R * 0.13, a, { y: R * 1.27 }, 14);
+    b.box(R * 0.13, R * 0.5, R * 0.08, c, { y: R * 1.1, z: R * 1.1 });                                     // Nasenschutz
     b.sphere(R * 0.95, a, { y: R * 2.2, z: -R * 0.15, sx: 0.14, sy: 0.45, jitter: 0.12 }, 6, 4);           // Kamm
   } else if (st === 'bandana') {
     schale(b, R * 1.08, c, { y: R * 1.08, z: -R * 0.06, rx: -0.15, jitter: 0.1 }, { thL: PI * 0.47 });

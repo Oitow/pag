@@ -207,12 +207,14 @@ export function createAnimator(model, opts = {}) {
     akt = null;
   }
 
+  Object.defineProperties(api, {
+    aktion: { get: () => (akt ? akt.name : null), enumerable: true },
+    aktionGewicht: { get: () => (akt ? akt.w : 0), enumerable: true },
+    pose: { get: () => P.final, enumerable: true },
+    phase: { get: () => st.phase, enumerable: true },
+  });
   Object.assign(api, {
     update, spiele, stoppe,
-    get aktion() { return akt ? akt.name : null; },
-    get aktionGewicht() { return akt ? akt.w : 0; },
-    get pose() { return P.final; },
-    get phase() { return st.phase; },
     blickZu(dir) { blickZiel = dir ? { x: numOr(dir.x, 0), y: numOr(dir.y, 0), z: numOr(dir.z, 1) } : null; },
     dispose() { akt = null; blickZiel = null; o.onSchritt = null; },
   });

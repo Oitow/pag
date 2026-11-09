@@ -109,6 +109,7 @@ export function createLook(teil = {}) {
 const HAUT = ['#f6d2b8', '#eab894', '#e0ac88', '#c89070', '#b07a58', '#8a5a3e', '#6a4230', '#4a2e22'];
 const HAAR = ['#1a1410', '#2a2018', '#4a3020', '#6a4a2a', '#8a5a2a', '#b8863a', '#d8b870', '#a83a1e', '#c8c0b8', '#e8e4dc'];
 const STOFF = ['#4f7a5a', '#4f6a7a', '#7a4a3a', '#8a6a3e', '#5a5a6a', '#6a3a5a', '#a85a3a', '#3a5a3a', '#7a7a4a', '#2f4f6f', '#9a8a6a', '#6a2a24'];
+const METALL = ['#9aa0a8', '#8a8a86', '#a8a49a', '#7a8088', '#b0a080'];
 const LEDER = ['#4a3426', '#3a2a1a', '#5a4030', '#2a2018', '#6a5040'];
 const VORNAMEN = ['Alma', 'Bert', 'Cora', 'Dirk', 'Elsa', 'Finn', 'Greta', 'Hugo', 'Ida', 'Jonas', 'Kira', 'Lutz', 'Mila', 'Nils', 'Olga', 'Paul', 'Rike', 'Sven', 'Tilda', 'Udo', 'Vera', 'Wim'];
 
@@ -138,6 +139,8 @@ export function randomLook(seed, opts = {}) {
     tasche: chance(r, 0.3),
     rucksack: chance(r, 0.15),
   };
+  // Rüstung in Metall statt Stoff
+  if (teil.oberteil.stil === 'ruestung') teil.oberteil.farbe = pick(r, METALL);
   // Krone/Helm sind selten – nur wenn ausdrücklich erlaubt
   if (!opts.stile?.kopfbedeckung && ['krone', 'helm'].includes(teil.kopfbedeckung.stil)) teil.kopfbedeckung.stil = 'muetze';
   return createLook(mischen(teil, opts.grundlage));

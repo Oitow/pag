@@ -1,7 +1,7 @@
 /**
  * @modul    character-rig
  * @zweck    Prozedurales Skelett einer Menschen-Figur aus Gruppen (keine Skinning-Knochen): feste Gelenknamen, Ruhepose, Sockel für Hut/Waffe/Rucksack
- * @api      KNOCHEN ; SOCKEL ; createRig(masse) -> rig ; rig.anpassen(masse) ; rig.ruhepose() ; rig.dispose()
+ * @api      KNOCHEN ; SOCKEL ; createRig(masse) -> { root, knochen, sockel, masse, anpassen(masse), ruhepose(), dispose() }
  * @beispiel
  *   import { createRig } from '../../engine/models/character/character-rig.js';
  *   const rig = createRig(koerperMasse(look));
