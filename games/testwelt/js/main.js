@@ -1,10 +1,11 @@
 // Testwelt – begehbare 3D-Welt aus dem Baukasten: Weltgenerator (engine/world/worldgen) + Gelände/Objekte
-// (engine/world/terrain-mesh, scatter-mesh) + Spielfigur (Engine-Figurensystem oder Platzhalter, siehe figur.js).
+// (engine/world/terrain-mesh, water-mesh, scatter-mesh) + Spielfigur (Engine-Figurensystem oder Platzhalter, siehe figur.js).
 import * as THREE from 'three';
 import { createWorld, PRESETS } from '../../../engine/world/worldgen/worldgen.js';
 import { createWeltAdapter } from '../../../engine/world/worldgen/worldgen-adapter.js';
 import { createTerrainMesh, biomFarben } from '../../../engine/world/terrain-mesh.js';
 import { createScatterMesh } from '../../../engine/world/scatter-mesh.js';
+import { createWaterMesh } from '../../../engine/world/water-mesh.js';
 import { createSpielerFigur } from './figur.js';
 
 const $ = (id) => document.getElementById(id);
@@ -51,7 +52,7 @@ seedEl.value = url.get('seed') ?? 42;
 if (['128', '256'].includes(url.get('groesse'))) groesseEl.value = url.get('groesse');
 
 // ---- Welt ----
-let welt = null, adapter = null, gelaende = null, objekte = null, figur = null;
+let welt = null, adapter = null, gelaende = null, wasser = null, objekte = null, figur = null;
 let dorfNr = 0, gipfelNr = 0;
 const pause = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
 
@@ -62,12 +63,13 @@ async function erzeuge() {
   const g = +groesseEl.value;
   const neu = createWorld({ preset: presetEl.value, seed: +seedEl.value | 0, breite: g, tiefe: g, qualitaet: 'normal' });
   const msWelt = performance.now() - t0;
-  gelaende?.dispose(); objekte?.dispose(); adapter?.dispose();
+  gelaende?.dispose(); wasser?.dispose(); objekte?.dispose(); adapter?.dispose();
   welt = neu;
   adapter = createWeltAdapter(welt, { hoehenSkala: HOEHEN_SKALA, meterProZelle: METER_PRO_ZELLE });
-  gelaende = createTerrainMesh(adapter, { schatten: true });
+  gelaende = createTerrainMesh(adapter, { schatten: true, wasser: false });
+  wasser = createWaterMesh({ adapter, himmelFarbe: HIMMEL, sonne: { x: 60, y: 120, z: 40 } });
   objekte = createScatterMesh(adapter, { schatten: true, unterWasser: false });
-  szene.add(gelaende.gruppe, objekte.gruppe);
+  szene.add(gelaende.gruppe, wasser.gruppe, objekte.gruppe);
   szene.fog.far = Math.max(300, adapter.groesse.x * 1.1);
   zeichneKarte();
   const start = adapter.startPunkt();
@@ -136,6 +138,7 @@ function bild(jetzt) {
   const echt = (jetzt - alt) / 1000, dt = Math.min(0.05, echt); alt = jetzt;
   if (!figur || !adapter) return;
   figur.update(dt);
+  wasser.update(dt);
   const p = figur.position;
   // Schattenkamera folgt der Figur
   sonne.position.set(p.x + 60, p.y + 120, p.z + 40);

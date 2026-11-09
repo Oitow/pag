@@ -23,6 +23,13 @@ test('Gelände: Vertices liegen auf der Bodenhöhe, Farben endlich', () => {
   g.dispose(); halb.dispose();
 });
 
+test('Gelände ohne Wasser (wasser: false): nur Boden und Meeresgrund', () => {
+  const g = createTerrainMesh(adapter, { wasser: false });
+  assert.equal(g.wasser, null); assert.equal(g.meer, null);
+  assert.deepEqual(g.gruppe.children.map(o => o.name).sort(), ['boden', 'meeresgrund']);
+  g.dispose();
+});
+
 test('Objekte: Instanzen je Typ, Anzahl passt', () => {
   const s = createScatterMesh(adapter);
   assert.ok(s.anzahl > 0 && s.anzahl <= welt.objekte.anzahl);

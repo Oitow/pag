@@ -1,13 +1,13 @@
 /**
  * @modul    terrain-mesh
  * @zweck    Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit Biomfarben, Hangfels und Farbrauschen, Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont
- * @api      createTerrainMesh(adapter, opts) -> {gruppe,boden,wasser,meer,dispose} ; biomFarben(welt) -> Float32Array
+ * @api      createTerrainMesh(adapter, opts) -> {gruppe,boden,wasser,meer,dispose} (wasser/meer = null bei opts.wasser === false) ; biomFarben(welt) -> Float32Array
  * @beispiel
  *   import { createTerrainMesh } from '../../engine/world/terrain-mesh.js';
  *   const gelaende = createTerrainMesh(adapter, { schritt: 1, schatten: true });
  *   szene.add(gelaende.gruppe);
  * @tags     welt, terrain, gelaende, wasser, meer, mesh, biome
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    ja
  */
@@ -27,7 +27,8 @@ export function biomFarben(welt) {
 
 /**
  * opts: schritt (Gitterzellen je Vertex, 1 = volle Auflösung), schatten, meerGroesse (Vielfaches der Karte),
- * farbRauschen (0…1), felsFarbe, wasserFarbe, meerFarbe, wasserDeckkraft.
+ * farbRauschen (0…1), felsFarbe, wasserFarbe, meerFarbe, wasserDeckkraft,
+ * wasser (false = keine Seen/Flüsse/Meer zeichnen, z. B. weil water-mesh das übernimmt; Meeresgrund bleibt).
  */
 export function createTerrainMesh(adapter, opts = {}) {
   const welt = adapter.welt;
@@ -101,7 +102,8 @@ export function createTerrainMesh(adapter, opts = {}) {
     opacity: opts.wasserDeckkraft ?? 0.78, depthWrite: false,
   });
   let wasser = null;
-  if (widx.length) {
+  const mitWasser = opts.wasser !== false;
+  if (mitWasser && widx.length) {
     const wg = new THREE.BufferGeometry();
     wg.setAttribute('position', new THREE.Float32BufferAttribute(wpos, 3));
     wg.setIndex(widx);
@@ -118,11 +120,14 @@ export function createTerrainMesh(adapter, opts = {}) {
   const meerMat = new THREE.MeshStandardMaterial({
     color: opts.meerFarbe ?? 0x2b6a96, roughness: 0.2, metalness: 0.1, transparent: true, opacity: 0.85, depthWrite: false,
   });
-  const meer = new THREE.Mesh(meerGeo, meerMat);
-  meer.name = 'meer';
-  meer.position.y = 0.02;
-  meer.renderOrder = 1;
-  gruppe.add(meer);
+  let meer = null;
+  if (mitWasser) {
+    meer = new THREE.Mesh(meerGeo, meerMat);
+    meer.name = 'meer';
+    meer.position.y = 0.02;
+    meer.renderOrder = 1;
+    gruppe.add(meer);
+  } else { meerMat.dispose(); wasserMat.dispose(); }
   // Meeresboden unter dem Meer außerhalb der Karte (kein Blick ins Leere)
   const grund = new THREE.Mesh(meerGeo.clone(), new THREE.MeshStandardMaterial({ color: 0x1d3b4f, roughness: 1 }));
   grund.position.y = -0.8 * hs;
@@ -133,6 +138,7 @@ export function createTerrainMesh(adapter, opts = {}) {
     gruppe, boden, wasser, meer,
     dispose() {
       gruppe.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+      if (!meer) meerGeo.dispose();
       gruppe.removeFromParent();
     },
   };
