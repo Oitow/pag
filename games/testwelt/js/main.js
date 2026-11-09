@@ -5,6 +5,9 @@ import { createWorld, PRESETS } from '../../../engine/world/worldgen/worldgen.js
 import { createWeltAdapter } from '../../../engine/world/worldgen/worldgen-adapter.js';
 import { createTerrainMesh, biomFarben } from '../../../engine/world/terrain-mesh.js';
 import { createScatterMesh } from '../../../engine/world/scatter-mesh.js';
+import { createSky } from '../../../engine/world/sky.js';
+import { createDayNight, formatUhrzeit } from '../../../engine/world/daynight.js';
+import { createWeather } from '../../../engine/world/weather.js';
 import { createSpielerFigur } from './figur.js';
 
 const $ = (id) => document.getElementById(id);
@@ -26,13 +29,22 @@ const szene = new THREE.Scene();
 szene.background = new THREE.Color(HIMMEL);
 szene.fog = new THREE.Fog(HIMMEL, 120, 520);
 const kamera = new THREE.PerspectiveCamera(60, 1, 0.1, 2000);
-szene.add(new THREE.HemisphereLight(0xcfe6ff, 0x5a5040, 1.1));
+const umgebung = new THREE.HemisphereLight(0xcfe6ff, 0x5a5040, 1.1);
+szene.add(umgebung);
 const sonne = new THREE.DirectionalLight(0xfff1d6, 2.2);
 sonne.castShadow = true;
 sonne.shadow.mapSize.set(2048, 2048);
 Object.assign(sonne.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 300 });
 sonne.shadow.bias = -0.0005;
 szene.add(sonne, sonne.target);
+
+// ---- Himmel, Tageszeit, Wetter (engine/world/sky, daynight, weather) ----
+const himmel = createSky({ radius: 900 });
+szene.add(himmel.mesh);
+const startZeit = new URLSearchParams(location.search).get('zeit');
+const tagNacht = createDayNight({ stunde: startZeit !== null ? +startZeit || 0 : 10, sonne, umgebung, szene, himmel });
+const wetter = createWeather({ nebel: szene.fog, seed: 1 });
+szene.add(wetter.gruppe);
 
 function groesseAnpassen() {
   renderer.setSize(innerWidth, innerHeight, false);
@@ -68,7 +80,7 @@ async function erzeuge() {
   gelaende = createTerrainMesh(adapter, { schatten: true });
   objekte = createScatterMesh(adapter, { schatten: true, unterWasser: false });
   szene.add(gelaende.gruppe, objekte.gruppe);
-  szene.fog.far = Math.max(300, adapter.groesse.x * 1.1);
+  wetter.setNebelBasis(120, Math.max(300, adapter.groesse.x * 1.1));
   zeichneKarte();
   const start = adapter.startPunkt();
   if (!figur) figur = await createSpielerFigur({ szene, kamera, adapter, element: canvas, start, seed: welt.seed });
@@ -126,6 +138,13 @@ const springeZu = (o) => { if (!o) return; const p = adapter.zuWelt(o.x, o.y); f
 $('zumStart').onclick = () => springeZu(welt.orte.start);
 $('zumDorf').onclick = () => { const d = welt.orte.doerfer; if (d.length) springeZu(d[dorfNr++ % d.length]); };
 $('zumGipfel').onclick = () => { const g = welt.orte.poi.filter(p => p.art === 'gipfel'); if (g.length) springeZu(g[gipfelNr++ % g.length]); };
+// Tageszeit: Regler 0–24 h, ⏸/▶ hält die Zeit an; Wetter: klar → Regen → Sturm
+const zeitEl = $('zeit'), zeitText = $('zeitText'), WETTER_FOLGE = [['klar', '☀'], ['regen', '🌧'], ['sturm', '⛈']];
+let wetterNr = 0;
+zeitEl.oninput = () => { tagNacht.setStunde(+zeitEl.value); };
+$('zeitLauf').onclick = () => { tagNacht.laeuft = !tagNacht.laeuft; $('zeitLauf').textContent = tagNacht.laeuft ? '⏸' : '▶'; };
+$('wetter').onclick = () => { const [art, z] = WETTER_FOLGE[++wetterNr % 3]; wetter.setWetter(art); $('wetter').textContent = z; };
+zeitEl.addEventListener('change', () => zeitEl.blur());
 // Fokus von Knöpfen/Auswahl lösen, damit Tasten (Leertaste!) wieder die Figur steuern
 for (const el of document.querySelectorAll('#oben button, #oben select')) el.addEventListener('click', () => el.blur());
 
@@ -137,9 +156,11 @@ function bild(jetzt) {
   if (!figur || !adapter) return;
   figur.update(dt);
   const p = figur.position;
-  // Schattenkamera folgt der Figur
-  sonne.position.set(p.x + 60, p.y + 120, p.z + 40);
-  sonne.target.position.set(p.x, p.y, p.z);
+  // Tageszeit + Wetter; Schattenkamera folgt der Figur
+  wetter.update(dt, kamera);
+  tagNacht.bewoelkung = wetter.bewoelkung;
+  tagNacht.update(dt, p);
+  himmel.update(dt, kamera);
   renderer.render(szene, kamera);
 
   fpsBilder++; fpsZeit += echt;
@@ -150,7 +171,9 @@ function bild(jetzt) {
     $('info').innerHTML = `<b>${biom?.name ?? '–'}</b> · Höhe ${p.y.toFixed(1)} m${w !== null && w > p.y ? ' · 🌊' : ''}` +
       ` · ${figur.tempo.toFixed(1)} m/s<br>${figur.art} · ${fps} fps · ${statistik}`;
     karteMarker();
+    if (document.activeElement !== zeitEl) zeitEl.value = tagNacht.stunde.toFixed(2);
+    zeitText.textContent = formatUhrzeit(tagNacht.stunde);
   }
 }
 
-erzeuge().then(() => { requestAnimationFrame(bild); if (url.has("debug")) window.testwelt = { get figur() { return figur; }, get adapter() { return adapter; } }; });
+erzeuge().then(() => { requestAnimationFrame(bild); if (url.has("debug")) window.testwelt = { get figur() { return figur; }, get adapter() { return adapter; }, tagNacht, wetter, himmel }; });

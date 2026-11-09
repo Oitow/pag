@@ -1,5 +1,11 @@
 # Engine-Changelog
 
+## 2026-11 – Himmel, Tag/Nacht, Wetter
+- world/sky 1.0.0: Shader-Himmelskuppel (Verlauf, Sonne mit Glut, Mond, funkelnde Sterne, Nebelband am Horizont) – Idee aus siedlung übernommen
+- world/daynight 1.0.0: Tageszeit 0..24 h mit Geschwindigkeit/Pause; reine Rechnung `tageszeitZustand` (ohne THREE) für Sonnen-/Mondrichtung, Licht-, Umgebungs-, Nebel- und Himmelsfarben, Bewölkung
+- world/weather 1.0.0: Regen als Linien-Partikel um die Kamera, Nebel je Wetterstärke, Bewölkungswert für daynight
+- games/testwelt: Himmel + Tag/Nacht + Wetter eingebaut (Uhrzeit-Regler, Zeit-Pause, Wetterknopf)
+
 ## 2026-11 – Testwelt
 - world/worldgen/worldgen-adapter 1.0.0: Welt in Metern für Figuren/Kamera (bodenHoehe, wasserHoehe, hindernisse, Startpunkt) – passt zu docs/FIGUREN-SYSTEM.md
 - world/terrain-mesh 1.0.0: Gelände mit Biomfarben, Seen/Flüsse, Meer

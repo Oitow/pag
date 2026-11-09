@@ -11,8 +11,11 @@
 | noise | `engine/core/noise.js` | Seedbares Simplex-Rauschen 2D/3D plus fBm, Grat-Rauschen und Domain-Warp für Terrain, Biome und Texturen | stabil |
 | rng | `engine/core/rng.js` | Deterministischer Zufall (mulberry32), Seeds aus Text, Gitter-Hash und Würfel-Helfer | stabil |
 | fake-dom | `engine/test/fake-dom.mjs` | Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame | stabil |
+| daynight | `engine/world/daynight.js` | Tageszeit-Steuerung (0..24 h, Geschwindigkeit, Pause): rechnet Sonnen-/Mondrichtung, Licht-, Umgebungs-, Nebel- und Himmelsfarben (reine Funktion ohne THREE) und überträgt sie auf Licht, Nebel und Himmel | entwurf |
 | scatter-mesh | `engine/world/scatter-mesh.js` | Zeichnet die Objekte einer erzeugten Welt (welt.objekte: Bäume, Büsche, Felsen, Kakteen, Schilf, Blumen) als InstancedMesh je Typ mit einfachen Low-Poly-Formen; eigene Formen je Typ überschreibbar | entwurf |
+| sky | `engine/world/sky.js` | Prozeduraler Himmel als Shader-Kuppel um die Kamera: Farbverlauf Zenit→Horizont, Sonnenscheibe mit Glut, Mond, funkelnde Sterne nachts; handytauglich (ein Mesh, kein Texturzugriff) – passt zu daynight.js | entwurf |
 | terrain-mesh | `engine/world/terrain-mesh.js` | Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit Biomfarben, Hangfels und Farbrauschen, Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont | entwurf |
+| weather | `engine/world/weather.js` | Einfaches Wetter: Regen als Linien-Partikel in einer Box um die Kamera (seedbar, wenig CPU) plus dichterer Nebel und Bewölkungswert für daynight; weiche Übergänge zwischen klar/regen/sturm | entwurf |
 | worldgen-adapter | `engine/world/worldgen/worldgen-adapter.js` | Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md | entwurf |
 | worldgen-biomes | `engine/world/worldgen/worldgen-biomes.js` | Biome nach Whittaker (Temperatur × Feuchte, als schnelle Nachschlagetabelle) plus Prioritätsregeln (Wasser, Schnee, Fels, Strand, Sumpf); Biomliste per Spiel erweiterbar | entwurf |
 | worldgen-chunks | `engine/world/worldgen/worldgen-chunks.js` | Unendlicher/gestreamter Modus: Höhe, Klima, Biome, Rauschflüsse und Objekte punktweise und pro Chunk – nahtlos über Chunkgrenzen (ohne globale Erosion/Hydrologie) | entwurf |
@@ -39,6 +42,7 @@
 | abstand | worldgen-grid |
 | adapter | worldgen-adapter |
 | astar | worldgen-path |
+| atmosphaere | daynight, sky, weather |
 | attrappe | fake-dom |
 | baeume | scatter-mesh, worldgen-scatter |
 | biome | terrain-mesh, worldgen-biomes, worldgen-query |
@@ -60,6 +64,7 @@
 | gitter | worldgen-grid |
 | hash | rng |
 | heap | worldgen-grid |
+| himmel | daynight, sky |
 | hoehe | worldgen-height, worldgen-query |
 | hydraulik | worldgen-erosion |
 | insel | worldgen-presets, worldgen-shape, worldgen |
@@ -69,16 +74,20 @@
 | karte | worldgen |
 | klima | worldgen-biomes, worldgen-climate |
 | kollision | worldgen-adapter |
+| licht | daynight |
 | maske | worldgen-shape |
 | mathe | math |
 | meer | terrain-mesh |
 | mesh | scatter-mesh, terrain-mesh |
+| mond | daynight, sky |
+| nebel | daynight, weather |
 | node | fake-dom |
 | noise | noise |
 | normale | worldgen-query |
 | objekte | scatter-mesh, worldgen-scatter |
 | optionen | worldgen-presets |
 | orte | worldgen-sites |
+| partikel | weather |
 | pfad | worldgen-path |
 | poi | worldgen-sites |
 | poisson | worldgen-scatter |
@@ -86,11 +95,15 @@
 | priority-flood | worldgen-hydrology |
 | prozedural | noise, worldgen |
 | rauschen | noise |
-| regen | worldgen-climate |
+| regen | weather, worldgen-climate |
 | seed | rng |
 | seen | worldgen-hydrology |
+| shader | sky |
+| sonne | daynight, sky |
 | start | worldgen-sites |
+| sterne | sky |
 | streaming | worldgen-chunks |
+| tageszeit | daynight |
 | temperatur | worldgen-climate |
 | terrain | noise, terrain-mesh, worldgen-chunks, worldgen-erosion, worldgen-height, worldgen-shape, worldgen |
 | test | fake-dom |
@@ -99,7 +112,8 @@
 | verteilung | worldgen-scatter |
 | wasser | terrain-mesh, worldgen-adapter, worldgen-hydrology, worldgen-rivers |
 | wegfindung | worldgen-path |
-| welt | noise, rng, scatter-mesh, terrain-mesh, worldgen-adapter, worldgen-biomes, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
+| welt | noise, rng, daynight, scatter-mesh, sky, terrain-mesh, weather, worldgen-adapter, worldgen-biomes, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
+| wetter | weather |
 | whittaker | worldgen-biomes |
 | worldgen | worldgen-adapter, worldgen-biomes, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen |
 | zufall | rng |
@@ -182,6 +196,22 @@ dom.tick(16); // führt alle angefragten Animation-Frames aus
 
 Genutzt von: – · Tags: test, dom, node, attrappe · THREE: nein
 
+### daynight · `engine/world/daynight.js` · v1.0.0 · entwurf
+Tageszeit-Steuerung (0..24 h, Geschwindigkeit, Pause): rechnet Sonnen-/Mondrichtung, Licht-, Umgebungs-, Nebel- und Himmelsfarben (reine Funktion ohne THREE) und überträgt sie auf Licht, Nebel und Himmel
+
+- `tageszeitZustand(stunde,opts) -> zustand`
+- `createDayNight(opts) -> {stunde,geschwindigkeit,laeuft,bewoelkung,zustand,update,setStunde,anwenden,dispose}`
+- `formatUhrzeit(stunde) -> 'hh:mm'`
+- `SCHLUESSEL`
+
+```js
+import { createDayNight } from '../../engine/world/daynight.js';
+const tag = createDayNight({ stunde: 9, sonne, umgebung: hemi, szene, himmel });
+tag.update(dt, figur.position); // Zeit läuft, Licht folgt der Figur
+```
+
+Genutzt von: testwelt · Tags: welt, himmel, licht, tageszeit, sonne, mond, nebel, atmosphaere · THREE: nein
+
 ### scatter-mesh · `engine/world/scatter-mesh.js` · v1.0.0 · entwurf
 Zeichnet die Objekte einer erzeugten Welt (welt.objekte: Bäume, Büsche, Felsen, Kakteen, Schilf, Blumen) als InstancedMesh je Typ mit einfachen Low-Poly-Formen; eigene Formen je Typ überschreibbar
 
@@ -197,6 +227,20 @@ szene.add(pflanzen.gruppe);
 
 Genutzt von: testwelt · Tags: welt, objekte, baeume, felsen, instanzen, vegetation, mesh · THREE: ja
 
+### sky · `engine/world/sky.js` · v1.0.0 · entwurf
+Prozeduraler Himmel als Shader-Kuppel um die Kamera: Farbverlauf Zenit→Horizont, Sonnenscheibe mit Glut, Mond, funkelnde Sterne nachts; handytauglich (ein Mesh, kein Texturzugriff) – passt zu daynight.js
+
+- `createSky(opts) -> {mesh,uniforms,setzeZustand,update,dispose}`
+
+```js
+import { createSky } from '../../engine/world/sky.js';
+const himmel = createSky({ radius: 900 });
+szene.add(himmel.mesh);
+himmel.update(dt, kamera); // Kuppel folgt der Kamera, Sterne funkeln
+```
+
+Genutzt von: testwelt · Tags: welt, himmel, sonne, mond, sterne, shader, atmosphaere · THREE: ja
+
 ### terrain-mesh · `engine/world/terrain-mesh.js` · v1.0.0 · entwurf
 Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit Biomfarben, Hangfels und Farbrauschen, Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont
 
@@ -210,6 +254,22 @@ szene.add(gelaende.gruppe);
 ```
 
 Genutzt von: testwelt · Tags: welt, terrain, gelaende, wasser, meer, mesh, biome · THREE: ja
+
+### weather · `engine/world/weather.js` · v1.0.0 · entwurf
+Einfaches Wetter: Regen als Linien-Partikel in einer Box um die Kamera (seedbar, wenig CPU) plus dichterer Nebel und Bewölkungswert für daynight; weiche Übergänge zwischen klar/regen/sturm
+
+- `createWeather(opts) -> {gruppe,staerke,ziel,bewoelkung,setWetter,setNebelBasis,update,dispose}`
+- `nebelFuerWetter(nah,fern,staerke) -> {nah,fern}`
+- `WETTER`
+
+```js
+import { createWeather } from '../../engine/world/weather.js';
+const wetter = createWeather({ nebel: szene.fog, seed: 7 });
+szene.add(wetter.gruppe); wetter.setWetter('regen');
+wetter.update(dt, kamera); tagNacht.bewoelkung = wetter.bewoelkung;
+```
+
+Genutzt von: testwelt · Tags: welt, wetter, regen, nebel, partikel, atmosphaere · THREE: ja
 
 ### worldgen-adapter · `engine/world/worldgen/worldgen-adapter.js` · v1.0.0 · entwurf
 Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md
