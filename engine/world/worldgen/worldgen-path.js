@@ -7,7 +7,7 @@
  *   const pf = createPathfinder(welt, { hangKosten: 12, wasser: Infinity });
  *   const weg = pf.finde(10, 10, 200, 180);   // [x0,y0,x1,y1,…] in Weltkoordinaten oder null
  * @tags     welt, worldgen, wegfindung, astar, pfad
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
@@ -15,7 +15,9 @@ import { createMinHeap, DX8, DY8, DL8, FLAG } from './worldgen-grid.js';
 
 /**
  * opts: { hangKosten (8), wasser (Infinity = gesperrt, sonst Zusatzkosten Meer/See), fluss (Zusatzkosten, Standard 6),
- *         diagonal (true), maxKnoten (b*t), sperre(i) -> bool (optional) }
+ *         diagonal (true), maxKnoten (b*t), sperre(i) -> bool (optional),
+ *         faktor(i) -> number (optional, multipliziert die Zellkosten, z. B. Rabatt auf vorhandenen Wegen),
+ *         minKosten (1; kleinste mögliche Zellkosten – unter 1 setzen, wenn faktor Rabatte gibt, sonst sind Wege nicht optimal) }
  */
 export function createPathfinder(welt, opts = {}) {
   const { breite: b, tiefe: t, flags: FL, hang: S, zelle: z } = welt;
@@ -23,7 +25,7 @@ export function createPathfinder(welt, opts = {}) {
   const hk = opts.hangKosten ?? 8, wk = opts.wasser ?? Infinity, fk = opts.fluss ?? 6;
   const richtungen = opts.diagonal === false ? 4 : 8;
   const maxK = opts.maxKnoten ?? n;
-  const sperre = opts.sperre;
+  const sperre = opts.sperre, faktor = opts.faktor, minK = opts.minKosten ?? 1;
   const g = new Float32Array(n), von = new Int32Array(n), marke = new Uint32Array(n), zu = new Uint32Array(n);
   const heap = createMinHeap(1024);
   let gen = 0;
@@ -35,7 +37,7 @@ export function createPathfinder(welt, opts = {}) {
     if (f & (FLAG.OZEAN | FLAG.SEE)) c += wk;
     else if (f & FLAG.FLUSS) c += fk;
     if (sperre && sperre(i)) return Infinity;
-    return c;
+    return faktor ? c * faktor(i) : c;
   }
 
   function finde(ax, ay, bx, by) {
@@ -66,7 +68,7 @@ export function createPathfinder(welt, opts = {}) {
         if (marke[j] === gen && ng >= g[j]) continue;
         marke[j] = gen; g[j] = ng; von[j] = c;
         const hx = Math.abs(nx - ex), hy = Math.abs(ny - ey);
-        heap.push(j, ng + (hx > hy ? hx + 0.4142 * hy : hy + 0.4142 * hx));
+        heap.push(j, ng + minK * (hx > hy ? hx + 0.4142 * hy : hy + 0.4142 * hx));
       }
     }
     if (!gefunden) return null;
