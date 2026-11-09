@@ -1,11 +1,13 @@
 // Testwelt – begehbare 3D-Welt aus dem Baukasten: Weltgenerator (engine/world/worldgen) + Gelände/Objekte
-// (engine/world/terrain-mesh, scatter-mesh) + Spielfigur (Engine-Figurensystem oder Platzhalter, siehe figur.js).
+// (engine/world/terrain-mesh, scatter-mesh) + Spielfigur (Engine-Figurensystem, figur.js) + Dorfbewohner (dorf.js).
 import * as THREE from 'three';
 import { createWorld, PRESETS } from '../../../engine/world/worldgen/worldgen.js';
 import { createWeltAdapter } from '../../../engine/world/worldgen/worldgen-adapter.js';
 import { createTerrainMesh, biomFarben } from '../../../engine/world/terrain-mesh.js';
 import { createScatterMesh } from '../../../engine/world/scatter-mesh.js';
+import { createFigurSchilder } from '../../../engine/ui/figur-schild.js';
 import { createSpielerFigur } from './figur.js';
+import { createDorf } from './dorf.js';
 
 const $ = (id) => document.getElementById(id);
 const HOEHEN_SKALA = 60, METER_PRO_ZELLE = 2;
@@ -51,7 +53,9 @@ seedEl.value = url.get('seed') ?? 42;
 if (['128', '256'].includes(url.get('groesse'))) groesseEl.value = url.get('groesse');
 
 // ---- Welt ----
-let welt = null, adapter = null, gelaende = null, objekte = null, figur = null;
+let welt = null, adapter = null, gelaende = null, objekte = null, figur = null, dorf = null;
+const schilder = createFigurSchilder();
+let stunde = 9;                                   // Spielzeit: 1 Stunde je 30 s (Tagesplan der Bewohner)
 let dorfNr = 0, gipfelNr = 0;
 const pause = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
 
@@ -71,9 +75,11 @@ async function erzeuge() {
   szene.fog.far = Math.max(300, adapter.groesse.x * 1.1);
   zeichneKarte();
   const start = adapter.startPunkt();
-  if (!figur) figur = await createSpielerFigur({ szene, kamera, adapter, element: canvas, start, seed: welt.seed });
+  if (!figur) figur = createSpielerFigur({ szene, kamera, adapter, element: canvas, start, seed: welt.seed, schilder, npcs: () => dorf?.bewohner || [] });
   else figur.setAdapter(adapter);
   figur.teleport(start.x, start.z);
+  dorf?.dispose();
+  dorf = createDorf({ szene, adapter, welt, schilder, spieler: () => figur.figur, seed: welt.seed });
   dorfNr = gipfelNr = 0;
   const neueUrl = `?preset=${presetEl.value}&seed=${seedEl.value}&groesse=${g}`;
   history.replaceState(null, '', neueUrl);
@@ -125,6 +131,7 @@ seedEl.onkeydown = (e) => { if (e.key === 'Enter') erzeuge(); };
 const springeZu = (o) => { if (!o) return; const p = adapter.zuWelt(o.x, o.y); figur.teleport(p.x, p.z); };
 $('zumStart').onclick = () => springeZu(welt.orte.start);
 $('zumDorf').onclick = () => { const d = welt.orte.doerfer; if (d.length) springeZu(d[dorfNr++ % d.length]); };
+$('kameraPreset').onclick = () => { $('kameraPreset').textContent = '🎥 ' + figur.naechstesPreset(); };
 $('zumGipfel').onclick = () => { const g = welt.orte.poi.filter(p => p.art === 'gipfel'); if (g.length) springeZu(g[gipfelNr++ % g.length]); };
 // Fokus von Knöpfen/Auswahl lösen, damit Tasten (Leertaste!) wieder die Figur steuern
 for (const el of document.querySelectorAll('#oben button, #oben select')) el.addEventListener('click', () => el.blur());
@@ -135,7 +142,10 @@ function bild(jetzt) {
   requestAnimationFrame(bild);
   const echt = (jetzt - alt) / 1000, dt = Math.min(0.05, echt); alt = jetzt;
   if (!figur || !adapter) return;
+  stunde = (stunde + dt / 30) % 24;
+  dorf?.update(dt, stunde);
   figur.update(dt);
+  schilder.update(kamera, dt);
   const p = figur.position;
   // Schattenkamera folgt der Figur
   sonne.position.set(p.x + 60, p.y + 120, p.z + 40);
@@ -148,9 +158,10 @@ function bild(jetzt) {
     infoZeit = 0.2;
     const biom = adapter.biomBei(p.x, p.z), w = adapter.wasserHoehe(p.x, p.z);
     $('info').innerHTML = `<b>${biom?.name ?? '–'}</b> · Höhe ${p.y.toFixed(1)} m${w !== null && w > p.y ? ' · 🌊' : ''}` +
-      ` · ${figur.tempo.toFixed(1)} m/s<br>${figur.art} · ${fps} fps · ${statistik}`;
+      ` · ${figur.tempo.toFixed(1)} m/s · 🕒 ${Math.floor(stunde)}:${String(Math.floor(stunde % 1 * 60)).padStart(2, '0')}` +
+      `<br>${figur.art} · 🎥 ${figur.preset} · ${dorf?.bewohner.length ?? 0} Bewohner · ${fps} fps · ${statistik}`;
     karteMarker();
   }
 }
 
-erzeuge().then(() => { requestAnimationFrame(bild); if (url.has("debug")) window.testwelt = { get figur() { return figur; }, get adapter() { return adapter; } }; });
+erzeuge().then(() => { requestAnimationFrame(bild); if (url.has("debug")) window.testwelt = { get figur() { return figur; }, get adapter() { return adapter; }, get dorf() { return dorf; } }; });
