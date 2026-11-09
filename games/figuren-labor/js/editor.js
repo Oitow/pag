@@ -27,21 +27,22 @@ export function createEditor({ wurzel, look, onAenderung }) {
     let h = `<div class="ed-kopf"><b>👕 Aussehen</b><input class="ed-name" value="${L.name.replace(/"/g, '')}" maxlength="40" aria-label="Name"></div>`;
     h += `<div class="ed-reihe ed-vorlagen">${Object.entries(VORLAGEN).map(([k, v]) => `<button data-vorlage="${k}">${v.name}</button>`).join('')}<button data-zufall>🎲 Zufall</button><button data-zufall-kind>🎲 Kind</button></div>`;
     h += `<div class="ed-gitter">`;
-    h += farbFeld('haut', 'Haut', L.haut) + farbFeld('augen', 'Augen', L.augen);
+    h += zeile('Haut', farbFeld('haut', L.haut)) + zeile('Augen', farbFeld('augen', L.augen));
     for (const teil of Object.keys(STILE)) {
-      h += `<label>${NAMEN[teil]}<select data-pfad="${teil}.stil">${STILE[teil].map(s => `<option${s === L[teil].stil ? ' selected' : ''}>${s}</option>`).join('')}</select></label>`;
-      for (const f of ['farbe', 'akzent']) if (f in L[teil]) h += farbFeld(`${teil}.${f}`, f === 'farbe' ? 'Farbe' : 'Akzent', L[teil][f] || L.haar.farbe);
+      let f = `<select data-pfad="${teil}.stil">${STILE[teil].map(s => `<option${s === L[teil].stil ? ' selected' : ''}>${s}</option>`).join('')}</select>`;
+      for (const k of ['farbe', 'akzent']) if (k in L[teil]) f += farbFeld(`${teil}.${k}`, L[teil][k] || L.haar.farbe);
+      h += zeile(NAMEN[teil], f);
     }
-    h += `<label>Gürtel<input type="checkbox" data-guertel${L.guertel ? ' checked' : ''}></label>`;
-    if (L.guertel) h += farbFeld('guertel', 'Farbe', L.guertel);
-    h += `<label>Tasche<input type="checkbox" data-pfad="tasche"${L.tasche ? ' checked' : ''}></label>`;
-    h += `<label>Rucksack<input type="checkbox" data-pfad="rucksack"${L.rucksack ? ' checked' : ''}></label>`;
+    h += zeile('Gürtel', `<input type="checkbox" data-guertel${L.guertel ? ' checked' : ''}>` + (L.guertel ? farbFeld('guertel', L.guertel) : ''));
+    h += zeile('Tasche', `<input type="checkbox" data-pfad="tasche"${L.tasche ? ' checked' : ''}>`);
+    h += zeile('Rucksack', `<input type="checkbox" data-pfad="rucksack"${L.rucksack ? ' checked' : ''}>`);
     for (const [k, name, a, b] of KOERPER)
-      h += `<label class="ed-weit">${name}<input type="range" min="${a}" max="${b}" step="0.01" value="${L.koerper[k]}" data-pfad="koerper.${k}"></label>`;
+      h += `<label>${name}<input type="range" min="${a}" max="${b}" step="0.01" value="${L.koerper[k]}" data-pfad="koerper.${k}"></label>`;
     h += `</div>`;
     el.innerHTML = h;
   }
-  const farbFeld = (pfad, name, wert) => `<label>${name}<input type="color" value="${wert}" data-pfad="${pfad}"></label>`;
+  const farbFeld = (pfad, wert) => `<input type="color" value="${wert}" data-pfad="${pfad}" aria-label="${pfad}">`;
+  const zeile = (name, inhalt) => `<label><span>${name}</span><span class="ed-felder">${inhalt}</span></label>`;
 
   el.addEventListener('input', (e) => {
     const t = e.target;

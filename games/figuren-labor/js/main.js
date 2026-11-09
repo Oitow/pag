@@ -90,7 +90,7 @@ $('bNpc').onclick = () => { npcAn = !npcAn; for (const n of npcs) n.fig.root.vis
 let infoAn = !TEST && !matchMedia('(pointer: coarse)').matches;
 $('bInfo').onclick = () => { infoAn = !infoAn; $('info').style.display = infoAn ? '' : 'none'; };
 $('info').style.display = infoAn ? '' : 'none';
-$('aktionen').innerHTML = CLIP_NAMEN.map(n => `<button data-clip="${n}">${n}</button>`).join('') + '<button data-clip="">⏹ stopp</button>';
+$('aktionen').innerHTML = CLIP_NAMEN.filter(n => !['schwimmen', 'wassertreten'].includes(n)).map(n => `<button data-clip="${n}">${n}</button>`).join('') + '<button data-clip="">⏹ stopp</button>';
 $('aktionen').onclick = (e) => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.clip) spieler.spiele(b.dataset.clip); else spieler.stoppe();

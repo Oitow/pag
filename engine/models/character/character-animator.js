@@ -1,7 +1,7 @@
 /**
  * @modul    character-animator
  * @zweck    Prozedurale Figuren-Animation aus dem Motor-Zustand: idle/gehen/laufen/sprinten ohne Fußrutschen, Luft, Landung, Schwimmen, Ducken, Rutschen, Kurvenlage, Atmen, Aktions-Clips mit Masken, Blick
- * @api      createAnimator(model,opts) -> animator ; animator.update(dt,zustand) ; animator.spiele(name,{tempo,mischung}) -> {dauer,trefferBei} ; animator.stoppe(name) ; animator.aktion ; animator.blickZu(dirLokal) ; animator.gewicht ; animator.griff ; animator.pose ; animator.dispose()
+ * @api      createAnimator(model,opts) -> { update(dt,zustand) -> pose, spiele(name,{tempo,mischung}) -> {dauer,trefferBei}, stoppe(name?), aktion, aktionGewicht, blickZu(dirLokal|null), gewicht, griff, pose, phase, dispose() }
  * @beispiel
  *   import { createAnimator } from '../../engine/models/character/character-animator.js';
  *   const anim = createAnimator({ rig, masse }, { seed: 7, onSchritt: (fuss, st) => schrittGeraeusch(st) });

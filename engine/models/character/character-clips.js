@@ -117,9 +117,9 @@ const ROH = {
   aufheben: { dauer: 1.1, trefferBei: 0.5, maske: 'ganz', fuesseFest: true, keys: [
     K(0, {}),
     K(0.42, { becken: [0.35], torso: [0.85], hals: [0.15], kopf: [0.05], schulterR: [-0.9, 0, -0.05], ellbogenR: [-0.3], handR: [0.2],
-      schulterL: [-0.5, 0, 0.15], ellbogenL: [-0.6], basisPos: [0, -0.38, -0.05] }),
+      schulterL: [-0.5, 0, 0.15], ellbogenL: [-0.6], basisPos: [0, -0.32, -0.05] }),
     K(0.6, { becken: [0.35], torso: [0.85], hals: [0.15], kopf: [0.05], schulterR: [-1.0, 0, 0.05], ellbogenR: [-0.5], handR: [0.4],
-      schulterL: [-0.5, 0, 0.15], ellbogenL: [-0.6], basisPos: [0, -0.38, -0.05] }),
+      schulterL: [-0.5, 0, 0.15], ellbogenL: [-0.6], basisPos: [0, -0.32, -0.05] }),
     K(1.1, { schulterR: [-0.5, 0, -0.05], ellbogenR: [-1.2] }),
   ] },
   jubeln: { dauer: 1.4, trefferBei: 0.3, maske: 'ganz', fuesseFest: true, keys: [

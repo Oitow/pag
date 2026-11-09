@@ -53,7 +53,7 @@ schulterX, schulterY, oberarm, unterarm, hand, halsLaenge, kopfRadius, breite, b
 Knochen: `basis, becken, torso, hals, kopf, schulterL, ellbogenL, handL, schulterR, ellbogenR, handR, huefteL, knieL, fussL, huefteR, knieR, fussR`.
 Sockel: `handR, handL, kopf (Scheitel), ruecken, guertel, umhang`.
 Drehsinn (rotation.x): Hüfte − = Bein vor · Knie + = beugen · Schulter − = Arm vor · Ellbogen − = beugen ·
-Torso/Hals/Kopf + = nach vorn neigen · Fuß + = Zehen hoch · `schulterL.rotation.z +` / `schulterR.rotation.z −` = Arm abspreizen.
+Torso/Hals/Kopf + = nach vorn neigen · Fuß − = Zehen hoch · `schulterL.rotation.z +` / `schulterR.rotation.z −` = Arm abspreizen.
 Mesh-Lage: Kopf-Kugel zentriert bei `y = kopfRadius` im Knochen `kopf`; Gliedmaßen-Meshes hängen von ihrem Gelenk nach −Y;
 Fuß-Mesh vom Knöchel bis zum Boden und nach +Z (der Knöchel liegt 0,02·hoehe/1,75 unter `fussHoehe`, weil die Hüftgelenke so tief sitzen).
 

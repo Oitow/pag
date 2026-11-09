@@ -19,7 +19,7 @@ import * as THREE from 'three';
  * Links = +X (Figur blickt nach +Z). Drehsinn (rotation.x):
  *   huefte −  = Bein nach vorn      knie +    = beugen (Unterschenkel nach hinten)
  *   schulter − = Arm nach vorn      ellbogen − = beugen (Unterarm nach vorn)
- *   torso/hals/kopf + = nach vorn neigen        fuss + = Zehen hoch
+ *   torso/hals/kopf + = nach vorn neigen        fuss − = Zehen hoch
  *   schulterL.rotation.z + / schulterR.rotation.z − = Arm seitlich abspreizen
  */
 export const KNOCHEN = [

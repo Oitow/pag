@@ -42,7 +42,7 @@ function ziel() { return { x: 0, y: 0, z: 0, neig: 0, stand: true, vor: 0 }; }
  * → ziele = { L, R: {x,y,z,neig,stand,vor}, basisX, basisY, beckenZ }. In der Standphase wandert der Fuß genau mit −tempo nach hinten.
  */
 export function fussZiele(m, g, z = {}) {
-  const s = skala(m), Ls = m.oberschenkel + m.unterschenkel, a0 = m.fussHoehe;
+  const s = skala(m), Ls = m.oberschenkel + m.unterschenkel, a0 = m.fussHoehe - 0.02 * s;   // Knöchelhöhe bei Bodenkontakt (wie Ruhepose)
   const laufW = g.laufW || 0, sprintW = g.sprintW || 0, idleW = g.idleW ?? 0, duckW = g.duckW || 0, rutschW = g.rutschW || 0;
   const tempo = Math.max(0, g.tempo || 0), phase = g.phase || 0, gewicht = g.gewicht || 0;
   const beta = stuetzAnteil(laufW, sprintW);
