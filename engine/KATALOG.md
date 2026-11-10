@@ -19,6 +19,7 @@
 | schnappschuss-puffer | `engine/core/schnappschuss-puffer.js` | Mehrspieler-Grundlage: speichert verspätete Zustände fremder Figuren mit Zeitstempel und liefert weich interpolierte Zustände (leicht in der Vergangenheit) | entwurf |
 | speicher | `engine/core/speicher.js` | Spielstände sicher speichern/laden (localStorage mit Arbeitsspeicher-Fallback), Versionen, Migration, Autospeichern, Export/Import als Text, TypedArrays | entwurf |
 | zeit | `engine/core/zeit.js` | Spieluhr: Tageszeit, Tage, Jahreszeiten und Jahre mit Ereignissen, Pause, Tempo und Speicherstand | entwurf |
+| behaelter | `engine/gameplay/behaelter.js` | Behälter in der Welt (Truhe, Fass, Schrank): eigenes Inventar, öffnen/schließen je Figur, Schloss mit Schlüssel, Ablegen/Entnehmen, Speichern | entwurf |
 | character-brain | `engine/gameplay/character-brain.js` | NPC-Verhaltensplaner (Zustandsautomat) über Steering + Sinne: idle, wandern, patrouille, arbeiten, folgen, fliehen, angreifen, suchen, plaudern; Tagesablauf nach Stunde; liefert Absicht + Aktions-Clip | entwurf |
 | character-gruppe | `engine/gameplay/character-gruppe.js` | Schwarm-/Herdenverhalten für NPCs (Boids in x/z): Separation, Kohäsion, Ausrichtung – liefert eine Zusatzkraft für die Absicht | entwurf |
 | character-motor-tuning | `engine/gameplay/character-motor-tuning.js` | Standard-Tuning des Figuren-Motors (Tempo, Sprung, Rolle/Dash, Gleiten, Tauchen, Kantenschutz) – reine Daten | entwurf |
@@ -33,6 +34,8 @@
 | koerper | `engine/gameplay/koerper.js` | Leichte Physik für lose Dinge (Gegenstände, Beute, Bälle, Kisten-Trümmer) ohne THREE: Kugeln mit Schwerkraft, Abprallen, Reibung, Haften am flachen Hang, Rutschen am steilen, Schwimmen/Sinken, Hindernisse, Einschlafen – fester Zeitschritt, deterministisch | entwurf |
 | rezepte | `engine/gameplay/rezepte.js` | Herstellen: Rezepte als Daten (Zutaten → Ergebnis, optional Werkzeug und Station), prüfen was mit einem Inventar möglich ist und sicher herstellen (alles oder nichts) | entwurf |
 | rohstoffe | `engine/gameplay/rohstoffe.js` | Abbaubare Quellen (Baum, Fels, Busch) ohne THREE: Beute per Seed, Werkzeug nötig oder nur schneller, Abnutzung, Nachwachsen nach Spielzeit, Speichern/Laden | entwurf |
+| stationen | `engine/gameplay/stationen.js` | Stationen als Orte in der Welt (Werkbank, Feuerstelle, Amboss): wer steht an welcher Art Station, nächste Station, benutzen – das Ergebnis von beiWem() passt direkt in rezepte.pruefe(…, {stationen}) | entwurf |
+| tueren | `engine/gameplay/tueren.js` | Türen und Tore als reine Logik: auf/zu mit weicher Animation, Kollisions-Körper nur solange zu, Schlüssel/Sperre, Selbstschließen, Interaktions-Ziel | entwurf |
 | welt-dinge | `engine/gameplay/welt-dinge.js` | Gegenstände, die in der Welt liegen (ohne THREE): ablegen, werfen, aufheben ins Inventar, gleiche Stapel in der Nähe zusammenlegen, Lebensdauer, Speichern/Laden – verbindet Physik (koerper), Interaktion und Inventar | entwurf |
 | zauber | `engine/gameplay/zauber.js` | Zauber-System ohne THREE: 10 Zauber als Daten (Geschoss, Strahl, Kegel, Ort, Selbst, Teleport), Zauberbuch mit Mana, Abklingzeiten, Wirkzeit, Geschoss-Simulation und Treffer-Ereignissen | entwurf |
 | move-input | `engine/input/move-input.js` | Bewegungs-Eingabe für Figuren: Tastatur (WASD/Pfeile), Maus-Ziehen/Mausrad, Touch-Stick + Knöpfe, Gamepad → Stick, Kamera-Delta, Aktionen (Flanke/gehalten) | entwurf |
@@ -86,6 +89,9 @@
 | zauber-effekte | `engine/render/zauber-effekte.js` | Leichte Zauber-Effekte fürs Handy: ein Partikel-Points-Objekt (Funken, Schweife), leuchtende Geschoss-Kugeln, Schockwellen-Ringe, Blitze, Erdstacheln, Schutz-Aura, Meteor-Sturz – alles aus Pools | entwurf |
 | fake-dom | `engine/test/fake-dom.mjs` | Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame | stabil |
 | figur-schild | `engine/ui/figur-schild.js` | Namensschild + Sprechblase + Lebensbalken über Figuren (DOM-Overlay): folgt dem Kopf, skaliert und blendet nach Abstand aus, verschwindet hinter der Kamera | entwurf |
+| hud | `engine/ui/hud.js` | Spiel-Anzeige als DOM-Overlay: Hinweis-Zeile mit Fortschritt, Kurzmeldungen (zusammenzählbar), Lebens-/Ausdauer-Balken und Bereiche für Leisten | entwurf |
+| inventar-ansicht | `engine/ui/inventar-ansicht.js` | Zeigt ein Inventar als Reihe/Raster von Plätzen (Schnellleiste, Rucksack, Truhe): Zeichen, Anzahl, Haltbarkeits-Strich, gewählter Platz, Tippen und Gedrückt-halten | entwurf |
+| menue | `engine/ui/menue.js` | Menü/Fenster als DOM-Overlay mit Seiten (Pause, Optionen, Spielstände, Truhe, Werkbank …): Knöpfe, Schalter, Regler, Auswahl, eigene Elemente; Escape/Rand-Tipp, fingerfreundlich, alle Stile inline | entwurf |
 | himmel-stand | `engine/world/himmel-stand.js` | Himmel als reine Daten: Sonnen- und Mondbahn aus Stunde/Jahreszeit/Breitengrad, Mondphase, Himmels-, Nebel- und Lichtfarben über den Tag (Nacht, Dämmerung, goldene Stunde, Mittag), Sterne, Einfluss von Wolken/Nebel/Regen/Blitz | entwurf |
 | himmel | `engine/world/himmel.js` | Zeichnet den Himmel aus einem himmel-stand: Himmelskuppel mit Farbverlauf, Sonnenscheibe mit Schein, Mond mit Phase, ziehende Wolken, Sterne; steuert Sonnen-/Mondlicht mit mitlaufendem Schatten, Umgebungslicht und Nebel der Szene | entwurf |
 | kollision | `engine/world/kollision.js` | Kollisions-Welt über einem Welt-Adapter: bewegliche und entfernbare Körper (Zylinder, gedrehte Kästen) mit Höhe – man kann draufsteigen, drüberspringen, sich aneinander vorbeischieben; dazu ein Strahl-Test gegen Gelände und Körper (Zielen, Sichtlinie, Ablegen) | entwurf |
@@ -94,6 +100,7 @@
 | terrain-mesh | `engine/world/terrain-mesh.js` | Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit weich gemischten Biomfarben, Wiesenflecken, Hangfels, Ufern (Sand/Kies/Schlamm) und Schnee (terrain-farben), Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont | entwurf |
 | wege-lage | `engine/world/wege-lage.js` | Lage der Brücken einer Welt in Metern (Mitte, Richtung, Länge, Höhe an beiden Enden) und ein Adapter, auf dem Figuren über die Brücken laufen statt durch den Fluss | entwurf |
 | wege-mesh | `engine/world/wege-mesh.js` | Holzbrücken für die Wege einer Welt als Three-Meshes: Bohlendeck, Längsbalken, Geländer und Pfeiler bis zum Flussgrund, passend geneigt zwischen beiden Ufern (Lage aus wege-lage) | entwurf |
+| welt-aenderung | `engine/world/welt-aenderung.js` | Änderungs-Schicht über einer erzeugten Welt (ohne THREE): Gelände mit Pinseln heben, senken, glätten, einebnen und Objekte entfernen; gemerkt werden nur die Unterschiede zum Seed (kleiner Spielstand), mit Rückgängig/Wiederholen, Sperrzonen (Wasser, Wege) und Meldung des geänderten Bereichs fürs Neuzeichnen | entwurf |
 | wetter | `engine/world/wetter.js` | Wetter-Zustand: Wetterarten wechseln per Seed nach Klima (Feuchte/Temperatur), Werte laufen weich, Wind, Blitz, Nässe | entwurf |
 | worldgen-adapter | `engine/world/worldgen/worldgen-adapter.js` | Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md | entwurf |
 | worldgen-biomes | `engine/world/worldgen/worldgen-biomes.js` | Biome nach Whittaker (Temperatur × Feuchte, als schnelle Nachschlagetabelle) plus Prioritätsregeln (Wasser, Schnee, Fels, Strand, Sumpf); Biomliste per Spiel erweiterbar | entwurf |
@@ -129,8 +136,10 @@
 | accessoire | character-parts-zubehoer |
 | accessoires | character-look |
 | adapter | kollision, wege-lage, worldgen-adapter |
+| aendern | welt-aenderung |
 | agave | pflanze-wueste |
 | aktion | interaktion, character-animator, character-clips |
+| amboss | stationen |
 | amulett | character-parts-zubehoer |
 | angriff | character-clips |
 | animation | character, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-pose, character-reaktion, character-rig, character-sekundaer |
@@ -152,11 +161,14 @@
 | avatar | character, character-look, character-model |
 | axt | character-ausruestung |
 | baeume | scatter-mesh, worldgen-scatter, worldgen-vegetation |
+| balken | hud |
 | bart | character-parts-haar, character-parts-kopf |
+| bauen | welt-aenderung |
 | baum | baum-arten, baum-skelett, baum, natur-assets, natur-basis |
 | baumstumpf | totholz |
 | beeren | pflanze-busch |
 | begehbar | kollision |
+| behaelter | behaelter |
 | betaeubt | character-anim-zustand |
 | beute | rohstoffe, welt-dinge |
 | bewegung | character-motor-tuning, character-motor, character-steering, character |
@@ -180,15 +192,15 @@
 | chunks | worldgen-chunkfluss, worldgen-chunks |
 | clip | character-animator, character-clips-mehr, character-clips-zauber, character-clips |
 | controller | character-motor, character |
-| crafting | rezepte |
+| crafting | rezepte, stationen |
 | dash | character-motor, character-anim-zustand |
 | daten | register, baum-arten, worldgen-vegetation |
-| dialog | figur-schild |
-| dom | fake-dom |
+| dialog | figur-schild, menue |
+| dom | fake-dom, menue |
 | dorf | worldgen-sites, worldgen-wege |
 | dreispitz | character-parts-hut |
 | dämmerung | himmel-stand |
-| editor | character-look, character-model |
+| editor | character-look, character-model, welt-aenderung |
 | effekt | zauber-effekte |
 | eingabe | move-input, touch-stick |
 | emote | character-clips-mehr, character-clips |
@@ -202,11 +214,14 @@
 | farbe | character-parts-basis |
 | farben | himmel-stand, terrain-farben |
 | farn | pflanze-boden |
+| fass | behaelter |
 | fbm | worldgen-height |
 | feder | character-sekundaer |
 | fels | fels-basis, fels-form, fels, natur-assets |
 | felsen | scatter-mesh, worldgen-vegetation |
+| fenster | menue |
 | feuchte | worldgen-climate |
+| feuerstelle | stationen |
 | figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-material, figur-schild, wege-lage, worldgen-adapter |
 | first-person | follow-camera |
 | fluss | worldgen-chunkfluss, worldgen-rivers |
@@ -219,12 +234,12 @@
 | funken | zauber-effekte |
 | fähigkeit | zauber |
 | gamepad | move-input |
-| gameplay | ereignisse, character-brain, character-gruppe, character-motor-tuning, character-motor, character-sinne, character-steering-extra, character-steering, hand, interaktion, inventar, koerper, rezepte, rohstoffe, welt-dinge |
+| gameplay | ereignisse, behaelter, character-brain, character-gruppe, character-motor-tuning, character-motor, character-sinne, character-steering-extra, character-steering, hand, interaktion, inventar, koerper, rezepte, rohstoffe, stationen, tueren, welt-dinge |
 | gang | character-animator, character-gang |
 | gebirge | worldgen-height |
 | gedaechtnis | character-sinne |
 | gegenstand | register, inventar, koerper, welt-dinge |
-| gelaende | character-anim-hang, terrain-farben, terrain-mesh |
+| gelaende | character-anim-hang, terrain-farben, terrain-mesh, welt-aenderung |
 | gelenke | character-rig |
 | generator | worldgen |
 | geometrie | fels-basis, fels-form, natur-basis, pflanze-basis, totholz-form, mesh-builder |
@@ -237,29 +252,31 @@
 | ginster | pflanze-busch |
 | gitter | raum-gitter, worldgen-grid |
 | gleiten | character-motor, character-anim-zustand |
+| graben | welt-aenderung |
 | gras | pflanze-boden |
 | gürtel | character-parts-becken |
 | haar | character-parts-haar, character-parts-kopf, character-sekundaer |
 | halm | pflanze-formen |
 | haltbarkeit | hand |
 | hand | hand |
-| handy | touch-stick |
+| handy | touch-stick, menue |
 | hang | character-anim-hang |
 | hash | rng |
 | heap | worldgen-grid |
 | heide | pflanze-busch |
 | helm | character-parts-hut, character-parts-kopf |
 | herde | character-gruppe |
-| herstellen | rezepte |
+| herstellen | rezepte, stationen |
 | hilfen | character-parts-basis |
 | himmel | himmel-stand, himmel |
 | hindernis | kollision |
-| hinweis | interaktion |
+| hinweis | interaktion, hud |
 | hoehe | worldgen-height, worldgen-query |
 | hoeren | character-sinne |
 | holz | wege-mesh |
+| hotbar | inventar-ansicht |
 | hp | figur-schild |
-| hud | figur-schild |
+| hud | figur-schild, hud, inventar-ansicht |
 | hut | character-parts-hut, character-parts-kopf |
 | hydraulik | worldgen-erosion |
 | hydrologie | worldgen-chunkfluss |
@@ -267,9 +284,9 @@
 | ik | character-anim-hang, character-gang |
 | insel | worldgen-presets, worldgen-shape, worldgen |
 | instanzen | natur-material, scatter-mesh |
-| interaktion | interaktion |
+| interaktion | interaktion, tueren |
 | interpolation | math, schnappschuss-puffer |
-| inventar | hand, inventar, rezepte, welt-dinge |
+| inventar | behaelter, hand, inventar, rezepte, welt-dinge, inventar-ansicht |
 | jahreszeit | zeit, baum |
 | joystick | move-input, touch-stick |
 | kaktus | pflanze-wueste |
@@ -288,15 +305,18 @@
 | klima | wetter, worldgen-biomes, worldgen-climate |
 | knoepfe | touch-stick |
 | koerper | koerper, kollision |
-| kollision | follow-camera, raum-gitter, kollision, worldgen-adapter |
+| kollision | follow-camera, raum-gitter, tueren, kollision, worldgen-adapter |
 | kopf | character-anim-blick, character-parts-haar, character-parts-hut, character-parts-kopf |
 | korb | character-ausruestung |
 | krone | character-parts-hut, character-parts-kopf |
 | körper | character-parts |
 | l-system | baum-skelett |
+| lager | behaelter |
 | laterne | character-ausruestung |
 | laufen | character-animator, character-gang |
+| leben | hud |
 | lebensbalken | figur-schild |
+| leiste | hud |
 | licht | himmel-stand, himmel |
 | localStorage | speicher |
 | lock-on | follow-camera, ziel-wahl |
@@ -314,6 +334,8 @@
 | maus | move-input |
 | meer | terrain-mesh |
 | mehrspieler | raum-gitter, schnappschuss-puffer |
+| meldung | hud |
+| menue | menue |
 | merge | natur-basis, mesh-builder |
 | mesh | character-model, character-parts-basis, character-parts, mesh-builder, scatter-mesh, terrain-mesh, wege-mesh |
 | migration | speicher |
@@ -338,21 +360,25 @@
 | normale | worldgen-query |
 | npc | character-brain, character-gruppe, character-sinne, character-steering-extra, character-steering, character, interaktion, character-anim-idle, character-animator, character-look, character-model, figur-schild |
 | oberteil | character-parts-torso |
-| objekte | scatter-mesh, worldgen-scatter, worldgen-vegetation |
+| objekte | scatter-mesh, welt-aenderung, worldgen-scatter, worldgen-vegetation |
+| oeffnen | tueren |
 | ohrringe | character-parts-zubehoer |
-| optionen | worldgen-presets |
+| optionen | menue, worldgen-presets |
 | orbit | follow-camera |
+| ort | stationen |
 | orte | worldgen-sites |
-| overlay | figur-schild |
+| overlay | figur-schild, hud, menue |
 | parameter | baum-arten |
 | partikel | niederschlag, zauber-effekte |
 | patrouille | character-steering-extra, character-steering |
+| pause | menue |
 | persistenz | speicher |
 | pfad | character-steering, worldgen-path, worldgen-wege |
 | pflanze | pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-wueste |
 | physik | character-motor, koerper, kollision |
 | pilz | pflanze-blume, pflanze-boden |
 | pinch | touch-stick |
+| pinsel | welt-aenderung |
 | poi | worldgen-sites |
 | poisson | worldgen-scatter |
 | pose | character-pose |
@@ -364,7 +390,7 @@
 | raf | schleife |
 | ragdoll | character-reaktion |
 | randlicht | figur-material |
-| raster | raum-gitter |
+| raster | raum-gitter, inventar-ansicht |
 | raum | raum-gitter |
 | rauschen | noise |
 | raycast | kollision |
@@ -382,7 +408,8 @@
 | rolle | character-motor, character-anim-zustand |
 | rollen | koerper |
 | rosette | pflanze-formen |
-| rucksack | character-parts-ruecken, character-parts |
+| rucksack | character-parts-ruecken, character-parts, inventar-ansicht |
+| rueckgaengig | welt-aenderung |
 | ruhe | character-anim-idle |
 | rüstung | character-parts-torso |
 | salto | character-anim-zustand |
@@ -392,10 +419,12 @@
 | schilf | pflanze-boden |
 | schleichen | character-sinne |
 | schleife | schleife |
+| schluessel | behaelter, tueren |
 | schmuck | character-parts-zubehoer |
 | schnee | niederschlag, terrain-farben, wetter |
-| schnellleiste | hand |
+| schnellleiste | hand, inventar-ansicht |
 | schockwelle | zauber-effekte |
+| schrank | behaelter |
 | schuetteln | follow-camera |
 | schuhe | character-parts |
 | schwarm | character-gruppe, character-steering |
@@ -413,16 +442,17 @@
 | skelett | character-rig, baum-skelett |
 | sockel | character-ausruestung, character-rig |
 | sonne | himmel-stand, himmel |
-| speichern | speicher, zeit, inventar, character-look |
+| speichern | speicher, zeit, behaelter, inventar, character-look, welt-aenderung |
 | spell | zauber |
 | spieler | character, character-animator, character-look, character-model |
-| spielstand | speicher |
+| spielstand | speicher, menue |
 | sprechblase | figur-schild |
 | springen | character-animator |
 | sprung | character-motor |
 | stamm | totholz-form, totholz |
 | stapel | inventar |
 | start | worldgen-sites |
+| station | stationen |
 | steering | character-gruppe, character-steering-extra, character-steering |
 | stein | fels-form, fels |
 | sterne | himmel-stand, himmel |
@@ -437,23 +467,28 @@
 | tageszeit | zeit |
 | tasche | character-parts-becken |
 | tastatur | move-input |
+| teilupdate | terrain-mesh |
 | temperatur | worldgen-climate |
-| terrain | noise, terrain-farben, terrain-mesh, worldgen-chunks, worldgen-erosion, worldgen-height, worldgen-shape, worldgen |
+| terrain | noise, terrain-farben, terrain-mesh, welt-aenderung, worldgen-chunks, worldgen-erosion, worldgen-height, worldgen-shape, worldgen |
 | test | fake-dom |
 | third-person | follow-camera |
+| toast | hud |
 | tod | character-reaktion |
+| tor | tueren |
 | totholz | totholz-form, totholz |
-| touch | move-input, touch-stick |
+| touch | move-input, touch-stick, inventar-ansicht |
 | treffer | character-reaktion |
-| tuer | interaktion |
+| truhe | behaelter, inventar-ansicht |
+| tuer | interaktion, tueren |
 | tuning | character-motor-tuning |
 | turban | character-parts-hut |
 | ufer | terrain-farben |
 | uhr | zeit |
-| ui | figur-schild |
+| ui | figur-schild, hud, inventar-ansicht, menue |
 | umfallen | character-reaktion |
 | umhang | character-parts-ruecken, character-parts, character-sekundaer |
 | umkreis | raum-gitter |
+| undo | welt-aenderung |
 | unendlich | worldgen-chunkfluss, worldgen-chunks |
 | varianten | natur-assets |
 | variation | character-anim-idle |
@@ -472,9 +507,9 @@
 | wedel | pflanze-formen |
 | wege | wege-lage, wege-mesh, worldgen-wege |
 | wegfindung | worldgen-path |
-| welt | noise, rng, welt-dinge, kollision, scatter-mesh, terrain-farben, terrain-mesh, wege-lage, wege-mesh, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
+| welt | noise, rng, welt-dinge, kollision, scatter-mesh, terrain-farben, terrain-mesh, wege-lage, wege-mesh, welt-aenderung, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | werfen | welt-dinge |
-| werkbank | rezepte |
+| werkbank | rezepte, stationen |
 | werkzeug | hand, rohstoffe, character-ausruestung |
 | wetter | niederschlag, himmel-stand, wetter |
 | whittaker | worldgen-biomes |
@@ -699,6 +734,30 @@ uhr.update(dt); // je Bild, dt in echten Sekunden
 
 Genutzt von: testwelt · Tags: zeit, tageszeit, jahreszeit, kalender, uhr, speichern · THREE: nein
 
+### behaelter · `engine/gameplay/behaelter.js` · v1.0.0 · entwurf
+Behälter in der Welt (Truhe, Fass, Schrank): eigenes Inventar, öffnen/schließen je Figur, Schloss mit Schlüssel, Ablegen/Entnehmen, Speichern
+
+- `createBehaelter({register,interaktion,ereignisse,reichweite,plaetze}) -> {neu(id,{pos,plaetze,name,inhalt,radius,schluessel,daten})->behaelter,entferne(id)->[{id,anzahl,daten}],hole(id),alle(),anzahl,oeffne(id,wer)->{ok,grund},schliesse(wer)->bool,offen(wer)->behaelter|null,pruefe(wer)->behaelter|null,lege(wer,platz,anzahl?)->bewegt,nimm(wer,platz,anzahl?)->bewegt,nimmAlles(wer)->bewegt,zustand(),lade(stand),dispose()}`
+
+```js
+import { createBehaelter } from '../../engine/gameplay/behaelter.js';
+const kisten = createBehaelter({ register: gegenstaende, interaktion, ereignisse });
+kisten.neu('truhe-1', { pos: { x: 4, z: 7 }, inhalt: [{ id: 'gold', anzahl: 5 }], schluessel: 'schluessel' });
+// E-Taste löst über die Interaktion oeffne() aus; je Bild: kisten.pruefe(spieler);
+kisten.nimmAlles(spieler); kisten.schliesse(spieler);
+```
+
+Genutzt von: testwelt · Tags: behaelter, truhe, fass, schrank, lager, schluessel, inventar, gameplay, speichern · THREE: nein
+behaelter = { id, name, pos, radius, inventar, schluessel, verschlossen, offenFuer (wer | null), daten }.
+wer = dasselbe Objekt wie bei der Interaktion: { x, y?, z, inventar, … }. Eine Figur hat höchstens einen Behälter offen
+(ein neues oeffne schließt den alten); ein Behälter ist nur für eine Figur offen (sonst grund 'besetzt').
+grund: null | 'unbekannt' | 'verschlossen' | 'besetzt' | 'weit' ('weit' nur geprüft, wenn wer.x/wer.z endlich sind).
+Schloss: Hat wer den `schluessel` (Gegenstand-id) im Inventar, wird dauerhaft aufgeschlossen; der Schlüssel bleibt erhalten.
+Mit `interaktion`: je Behälter ein Ziel 'behaelter:<id>' (art 'behaelter', text '<name> öffnen').
+Ereignisse: 'behaelter:offen' | 'behaelter:zu' | 'behaelter:verschlossen' { behaelter, wer }.
+Speicherformat zustand(): { [id]: { inv: inventar.zustand(), zu: bool } } (zu = noch verschlossen). lade() nimmt nur dieses Format,
+ignoriert unbekannte ids und lässt offene Behälter offen.
+
 ### character-brain · `engine/gameplay/character-brain.js` · v1.0.0 · entwurf
 NPC-Verhaltensplaner (Zustandsautomat) über Steering + Sinne: idle, wandern, patrouille, arbeiten, folgen, fliehen, angreifen, suchen, plaudern; Tagesablauf nach Stunde; liefert Absicht + Aktions-Clip
 
@@ -880,10 +939,11 @@ Höhe passt (nur wenn beide y endlich), im Blickkegel (nur wenn yaw endlich und 
 Wertung (kleiner = besser): randAbstand + winkelRad * 0.6 − prio; bei Gleichstand das zuerst gemeldete Ziel.
 Ziele liegen in einem Raum-Gitter (engine/core/raum-gitter.js). Funktions-pos wird in aktualisiere() nachgeführt.
 
-### inventar · `engine/gameplay/inventar.js` · v1.1.0 · entwurf
+### inventar · `engine/gameplay/inventar.js` · v1.2.0 · entwurf
 Inventar mit festen Plätzen, Stapeln, Gewichtsgrenze, Speichern/Laden und Änderungs-Meldung
 
 - `createInventar({plaetze,register,stapel,maxGewicht,ereignisse,name}) -> {plaetze,gib(id,anzahl,daten)->rest,passt(id,anzahl),nimm(id,anzahl)->anzahl,nimmVon(platz,anzahl),hat(id,anzahl),zaehle(id),frei(),gewicht,verschiebe(von,nach),teile(platz,anzahl)->index,setzeDaten(platz,daten|null)->bool,leere(),zustand(),lade(zustand),onAenderung(fn)->abmelden,dispose()}`
+- `uebertrage(von,platz,nach,anzahl?)->bewegt`
 
 ```js
 import { createInventar } from '../../engine/gameplay/inventar.js';
@@ -957,6 +1017,47 @@ werkzeug = Register-Eintrag des Gegenstands in der Hand ({ id, tags, tempo }) od
 `jetzt` ist eine beliebige, wachsende Spielzeit (z. B. Tage als Kommazahl) – dieselbe Einheit wie `nachwachsen`.
 onDa(schluessel, art) darf false liefern („gerade steht jemand dort“) → neuer Versuch nach `warte` Zeit-Einheiten.
 Ereignisse: 'abgebaut' { schluessel, art, beute, wer }, 'nachgewachsen' { schluessel, art }.
+
+### stationen · `engine/gameplay/stationen.js` · v1.0.0 · entwurf
+Stationen als Orte in der Welt (Werkbank, Feuerstelle, Amboss): wer steht an welcher Art Station, nächste Station, benutzen – das Ergebnis von beiWem() passt direkt in rezepte.pruefe(…, {stationen})
+
+- `createStationen({interaktion,ereignisse,reichweite,onBenutzt}) -> {neu(id,{art,pos,radius,reichweite,name,text,aktiv,daten})->station,entferne(id),hole(id),alle(),anzahl,setAktiv(id,an),beiWem(wer,aus?)->[art],naechste(wer,art?)->station|null,benutze(id,wer)->bool,zustand(),lade(stand),dispose()}`
+
+```js
+import { createStationen } from '../../engine/gameplay/stationen.js';
+const stationen = createStationen({ interaktion, ereignisse });
+stationen.neu('tisch-1', { art: 'werkbank', pos: { x: 4, z: 7 } });
+const p = rezepte.pruefe('tisch', inventar, { stationen: stationen.beiWem(spieler) });
+```
+
+Genutzt von: testwelt · Tags: station, werkbank, feuerstelle, amboss, herstellen, crafting, ort, gameplay · THREE: nein
+station = { id, art, name, pos {x,y?,z}, radius, reichweite, aktiv, daten }. wer = { x, y?, z }.
+In Reichweite: aktiv, Rand-Abstand (Mittelpunkt − radius, min 0) ≤ reichweite, Höhe |dy| ≤ 2.5 (nur wenn beide y endlich).
+beiWem() liefert die verschiedenen Arten als Array (darf per `aus` wiederverwendet werden, dann kein Müll pro Bild).
+Mit `interaktion` wird jede Station als Ziel 'station:<id>' gemeldet (Hinweistext, Aktion = benutze); inaktiv = Ziel nicht aktiv.
+Ereignis: 'station:benutzt' { station, wer }. zustand()/lade() sichern nur den Aktiv-Zustand ({id: 0|1}).
+
+### tueren · `engine/gameplay/tueren.js` · v1.0.0 · entwurf
+Türen und Tore als reine Logik: auf/zu mit weicher Animation, Kollisions-Körper nur solange zu, Schlüssel/Sperre, Selbstschließen, Interaktions-Ziel
+
+- `createTueren({welt,interaktion,ereignisse,dauer,autoZu,maxWinkel}) -> {neu(id,{x,z,y,winkel,breite,dicke,hoehe,offen,angel,schluessel,verbraucht,name,autoZu,daten})->tuer,entferne(id),hole(id),alle(),anzahl,schalte(id,wer?)->{ok,grund,offen},oeffne(id,wer?),schliesse(id,wer?),sperre(id,an?),update(dt)->Anzahl bewegter,zustand(),lade(stand),dispose()}`
+
+```js
+import { createTueren } from '../../engine/gameplay/tueren.js';
+const tueren = createTueren({ welt: kollision, interaktion, autoZu: 5 });
+const t = tueren.neu('haus', { x: 4, z: 2, winkel: 0, breite: 1.2, angel: 'links', schluessel: 'schluessel' });
+// je Bild: tueren.update(dt);  Mesh: pivot.position.set(t.angelPos.x, t.y, t.angelPos.z); pivot.rotation.y = t.winkel + t.drehung;
+```
+
+Genutzt von: testwelt · Tags: tuer, tor, oeffnen, schluessel, kollision, interaktion, gameplay · THREE: nein
+Winkel wie beim Kasten in world/kollision: Blatt liegt lokal entlang x (Breite), Dicke entlang z; rotation.y = winkel.
+Blatt-Achse in der Welt = (cos w, -sin w) in (x, z), Normale = (sin w, cos w). angel 'links' = Angel bei Mitte - halbe Breite
+entlang der Achse, 'rechts' = bei Mitte + halbe Breite. Mesh: Pivot an angelPos, rotation.y = winkel + drehung, das Blatt
+im Pivot um ∓breite/2 in lokal x versetzt (links: +breite/2, rechts: -breite/2).
+seite = Vorzeichen von drehung (rotation.y-Änderung); wird beim Öffnen mit `wer` so gewählt, dass das Blatt von der Figur wegschwingt.
+grund: null | 'unbekannt' | 'verschlossen' | 'blockiert'. Ein Schlüssel-Inventar ist wer.inventar ({hat(id,n), nimm(id,n)}).
+Ereignisse (ereignisse.sende): 'tuer:auf' / 'tuer:zu' / 'tuer:verschlossen' { tuer, wer }.
+Interaktions-Ziel 'tuer:<id>' mit Text "<name> öffnen" | "<name> schließen" | "<name> (verschlossen)".
 
 ### welt-dinge · `engine/gameplay/welt-dinge.js` · v1.1.0 · entwurf
 Gegenstände, die in der Welt liegen (ohne THREE): ablegen, werfen, aufheben ins Inventar, gleiche Stapel in der Nähe zusammenlegen, Lebensdauer, Speichern/Laden – verbindet Physik (koerper), Interaktion und Inventar
@@ -1838,11 +1939,11 @@ fx.update(dt, { hoehePx: renderer.domElement.height });
 
 Genutzt von: figuren-labor · Tags: zauber, magie, effekt, partikel, funken, blitz, schockwelle, shader, vfx · THREE: ja
 
-### fake-dom · `engine/test/fake-dom.mjs` · v1.0.0 · stabil
+### fake-dom · `engine/test/fake-dom.mjs` · v1.1.0 · stabil
 Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame
 
-- `installFakeDom(opts) -> { els, rafs, storage, tick(dt) }`
-- `fakeElement() -> Element-Attrappe`
+- `installFakeDom(opts) -> { els, rafs, storage, winListener, docListener, tick(dt) }`
+- `fakeElement(tag) -> Element-Attrappe { children, parentNode, style, appendChild, append, prepend, insertBefore, removeChild, replaceChildren, remove, contains, addEventListener, removeEventListener, dispatch(typ, ereignis), click() }`
 
 ```js
 import { installFakeDom } from '../test/fake-dom.mjs';
@@ -1866,6 +1967,60 @@ schilder.update(kamera, dt);   // jedes Bild nach der Kamera, vor/nach dem Rende
 ```
 
 Genutzt von: figuren-labor, testwelt · Tags: ui, namensschild, sprechblase, dialog, lebensbalken, hp, figur, npc, overlay, hud · THREE: ja
+
+### hud · `engine/ui/hud.js` · v1.0.0 · entwurf
+Spiel-Anzeige als DOM-Overlay: Hinweis-Zeile mit Fortschritt, Kurzmeldungen (zusammenzählbar), Lebens-/Ausdauer-Balken und Bereiche für Leisten
+
+- `createHud({eltern,unten,zIndex,maxMeldungen,farben}) -> { element, hinweis(text, anteil?), melde(text, {dauer, art, schluessel, anzahl}) -> meldung, balken(id, {wert, farbe, zeichen, text}|null), bereich(name) -> Element, update(dt), zeige(an), sichtbar, meldungen, dispose() }`
+
+```js
+import { createHud } from '../../engine/ui/hud.js';
+const hud = createHud({ unten: 124 });
+hud.balken('leben', { wert: 0.8, zeichen: '❤', farbe: '#e0683c' });
+hud.hinweis('E – Aufheben');                       // jedes Bild aufrufen ist ok, '' blendet aus
+hud.melde('+{n} 🪵 Holz', { schluessel: 'holz', anzahl: 3 });
+hud.bereich('leiste').append(meineLeiste);         // Bereiche: leiste, ueberLeiste, obenLinks, obenRechts, mitte
+hud.update(dt);                                    // jedes Bild (lässt Meldungen altern)
+```
+
+Genutzt von: testwelt · Tags: ui, hud, hinweis, meldung, toast, balken, leben, leiste, overlay · THREE: nein
+
+### inventar-ansicht · `engine/ui/inventar-ansicht.js` · v1.0.0 · entwurf
+Zeigt ein Inventar als Reihe/Raster von Plätzen (Schnellleiste, Rucksack, Truhe): Zeichen, Anzahl, Haltbarkeits-Strich, gewählter Platz, Tippen und Gedrückt-halten
+
+- `createInventarAnsicht({inventar,register,eltern,von,bis,spalten,groesse,breite,gewaehlt,titel,onTipp,onLang,langMs,zeichen,farben}) -> {element,felder,zeichne(),update(dt),dispose()}`
+
+```js
+import { createInventarAnsicht } from '../../engine/ui/inventar-ansicht.js';
+const leiste = createInventarAnsicht({ inventar: inv, register: items, eltern: document.body, bis: 8,
+gewaehlt: () => hand.platz, onTipp: (platz) => hand.waehle(platz) });
+// jedes Bild: leiste.update(dt);   // dt in Sekunden; nötig für onLang und für den Wechsel des gewählten Platzes
+```
+
+Genutzt von: testwelt · Tags: ui, inventar, schnellleiste, hotbar, rucksack, truhe, raster, hud, touch · THREE: nein
+
+### menue · `engine/ui/menue.js` · v1.0.0 · entwurf
+Menü/Fenster als DOM-Overlay mit Seiten (Pause, Optionen, Spielstände, Truhe, Werkbank …): Knöpfe, Schalter, Regler, Auswahl, eigene Elemente; Escape/Rand-Tipp, fingerfreundlich, alle Stile inline
+
+- `createMenue({eltern,zIndex,breite,randSchliesst,taste,onAuf,onZu,farben}) -> {element, offen, aktuell, seite(name,{titel,eintraege|()=>[],zurueck,schliessbar}), zeige(name='start'), schliesse(), schalte(name), zurueck(), aktualisiere(), dispose()}`
+- `spielstandEintraege(speicher,{slots,holeDaten,onLade,beschreibe,namen}) -> () => Einträge`
+
+```js
+import { createMenue, spielstandEintraege } from '../../engine/ui/menue.js';
+const m = createMenue({ onAuf: () => pausiere(true), onZu: () => pausiere(false) });
+m.seite('start', { titel: 'Pause', schliessbar: true, eintraege: [
+{ text: 'Weiter', schliesst: true },
+{ text: 'Optionen', nach: 'optionen' },
+{ text: 'Spielstände', nach: 'staende' } ] });
+m.seite('optionen', { titel: 'Optionen', zurueck: 'start', eintraege: [
+{ art: 'regler', text: 'Lautstärke', wert: () => vol, setze: v => vol = v, format: v => Math.round(v * 100) + ' %' } ] });
+m.seite('staende', { titel: 'Spielstände', zurueck: 'start',
+eintraege: spielstandEintraege(speicher, { holeDaten: () => stand(), onLade: d => lade(d) }) });
+// Escape öffnet/zurück/schließt; m.schalte() per Knopf
+```
+
+Genutzt von: testwelt · Tags: ui, menue, pause, optionen, fenster, overlay, dialog, spielstand, dom, handy · THREE: nein
+Einträge einer Seite (art fehlt → knopf): knopf{text,zeichen,hinweis,aktiv,aktion,nach,schliesst} | schalter{text,wert,setze} | regler{text,min,max,schritt,wert,setze,format} | auswahl{text,optionen,wert,setze} | text | trenner | element | reihe{eintraege}
 
 ### himmel-stand · `engine/world/himmel-stand.js` · v1.0.0 · entwurf
 Himmel als reine Daten: Sonnen- und Mondbahn aus Stunde/Jahreszeit/Breitengrad, Mondphase, Himmels-, Nebel- und Lichtfarben über den Tag (Nacht, Dämmerung, goldene Stunde, Mittag), Sterne, Einfluss von Wolken/Nebel/Regen/Blitz
@@ -1919,10 +2074,10 @@ filter für hindernisse (alles optional): { y (Fußhöhe), hoehe (Körpergröße
 Mit y werden Körper übersprungen, über oder unter denen man ist; begehbare schon ab „Oberkante ≤ y + stufe“ (hochsteigen).
 bodenHoehe(x, z, y): ohne y nur das Gelände des Adapters; mit y zusätzlich begehbare Oberseiten bis y + stufe.
 
-### scatter-mesh · `engine/world/scatter-mesh.js` · v2.1.0 · entwurf
+### scatter-mesh · `engine/world/scatter-mesh.js` · v2.2.0 · entwurf
 Zeichnet die Objekte einer erzeugten Welt (welt.objekte) als InstancedMesh je (Typ, Variante): mit Asset-Cache prozedurale Natur-Assets in Metern (Bäume, Felsen, Büsche, Bodendecker …) mit Wind, sonst einfache Low-Poly-FORMEN; unbekannte Typen → Ersatz nach Art oder weglassen; Seerosen auf dem Wasser
 
-- `createScatterMesh(adapter, opts) -> {gruppe,anzahl,dreiecke,meshes,typen,update(zeit, { staerke, richtung, kamera }),verstecke(objektIndex,versteckt?),lage(objektIndex),dispose}`
+- `createScatterMesh(adapter, opts) -> {gruppe,anzahl,dreiecke,meshes,typen,update(zeit, { staerke, richtung, kamera }),verstecke(objektIndex,versteckt?),lage(objektIndex),setzeAufBoden(bereich)->anzahl,dispose}`
 - `FORMEN`
 - `ERSATZ`
 - `BODENDECKER`
@@ -1953,19 +2108,21 @@ const nurBiome = gelaendeFarben(welt, { hoehenSkala: 60, meterProZelle: 2, detai
 
 Genutzt von: – · Tags: welt, terrain, gelaende, farben, biome, schnee, ufer, vertexfarben · THREE: nein
 
-### terrain-mesh · `engine/world/terrain-mesh.js` · v1.1.0 · entwurf
+### terrain-mesh · `engine/world/terrain-mesh.js` · v1.2.0 · entwurf
 Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit weich gemischten Biomfarben, Wiesenflecken, Hangfels, Ufern (Sand/Kies/Schlamm) und Schnee (terrain-farben), Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont
 
-- `createTerrainMesh(adapter, opts) -> {gruppe,boden,wasser,meer,dispose}`
+- `createTerrainMesh(adapter, opts) -> {gruppe,boden,wasser,meer,aktualisiere(bereich,{erde,erdFarbe}?)->vertices,dispose}`
 - `biomFarben(welt) -> Float32Array`
 
 ```js
 import { createTerrainMesh } from '../../engine/world/terrain-mesh.js';
 const gelaende = createTerrainMesh(adapter, { schritt: 1, schatten: true });
 szene.add(gelaende.gruppe);
+// nach einer Gelände-Änderung (engine/world/welt-aenderung.js) nur das Stück neu aufbauen:
+aend.onAenderung(({ bereich }) => bereich && gelaende.aktualisiere(bereich, { erde: (i) => Math.abs(aend.delta(i)) / 0.4 }));
 ```
 
-Genutzt von: testwelt · Tags: welt, terrain, gelaende, wasser, meer, mesh, biome · THREE: ja
+Genutzt von: testwelt · Tags: welt, terrain, gelaende, wasser, meer, mesh, biome, teilupdate · THREE: ja
 
 ### wege-lage · `engine/world/wege-lage.js` · v1.0.0 · entwurf
 Lage der Brücken einer Welt in Metern (Mitte, Richtung, Länge, Höhe an beiden Enden) und ein Adapter, auf dem Figuren über die Brücken laufen statt durch den Fluss
@@ -1996,6 +2153,23 @@ const begehbar = mitBruecken(adapter, wege.lagen);   // diesen Adapter der Figur
 ```
 
 Genutzt von: testwelt · Tags: welt, wege, bruecke, holz, mesh · THREE: ja
+
+### welt-aenderung · `engine/world/welt-aenderung.js` · v1.0.0 · entwurf
+Änderungs-Schicht über einer erzeugten Welt (ohne THREE): Gelände mit Pinseln heben, senken, glätten, einebnen und Objekte entfernen; gemerkt werden nur die Unterschiede zum Seed (kleiner Spielstand), mit Rückgängig/Wiederholen, Sperrzonen (Wasser, Wege) und Meldung des geänderten Bereichs fürs Neuzeichnen
+
+- `createWeltAenderung(adapter|welt, {maxSchritte,maxAbweichung,minHoehe,maxHoehe,sperrFlags,ereignisse}) -> {pinsel(art,x,z,{radius,staerke,ziel,form})->bereich|null,kannAendern(x,z),delta(zellIndex)->m,entferneObjekt(index),stelleObjektHer(index),istEntfernt(index),entfernte()->[index],objekteImUmkreis(x,z,radius,filter?)->[index],beginne(),beende()->bool,rueckgaengig()->aenderung|null,wiederholen()->aenderung|null,kannRueckgaengig,kannWiederholen,festschreiben(),zuruecksetzen()->bereich|null,zustand(),lade(stand)->bereich|null,zuWelt(bereich)->{x0,z0,x1,z1},onAenderung(fn)->abmelden,anzahl,dispose()}`
+- `PINSEL_ARTEN`
+
+```js
+import { createWeltAenderung } from '../../engine/world/welt-aenderung.js';
+const aend = createWeltAenderung(adapter, { maxAbweichung: 4 });
+aend.onAenderung(({ bereich }) => gelaende.aktualisiere(bereich));     // nur das Stück neu zeichnen
+aend.pinsel('senken', figur.x, figur.z, { radius: 1.5, staerke: 0.4 }); // Loch graben (Meter)
+aend.rueckgaengig();
+speicher.speichere('welt', { seed, aenderung: aend.zustand() });        // Spielstand = Seed + Änderungen
+```
+
+Genutzt von: testwelt · Tags: welt, gelaende, terrain, aendern, graben, pinsel, editor, bauen, rueckgaengig, undo, speichern, objekte · THREE: nein
 
 ### wetter · `engine/world/wetter.js` · v1.0.0 · entwurf
 Wetter-Zustand: Wetterarten wechseln per Seed nach Klima (Feuchte/Temperatur), Werte laufen weich, Wind, Blitz, Nässe

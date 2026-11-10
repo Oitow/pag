@@ -1,7 +1,7 @@
 /**
  * @modul    scatter-mesh
  * @zweck    Zeichnet die Objekte einer erzeugten Welt (welt.objekte) als InstancedMesh je (Typ, Variante): mit Asset-Cache prozedurale Natur-Assets in Metern (Bäume, Felsen, Büsche, Bodendecker …) mit Wind, sonst einfache Low-Poly-FORMEN; unbekannte Typen → Ersatz nach Art oder weglassen; Seerosen auf dem Wasser
- * @api      createScatterMesh(adapter, opts) -> {gruppe,anzahl,dreiecke,meshes,typen,update(zeit, { staerke, richtung, kamera }),verstecke(objektIndex,versteckt?),lage(objektIndex),dispose} ; FORMEN ; ERSATZ ; BODENDECKER ; baueForm(teile) -> BufferGeometry
+ * @api      createScatterMesh(adapter, opts) -> {gruppe,anzahl,dreiecke,meshes,typen,update(zeit, { staerke, richtung, kamera }),verstecke(objektIndex,versteckt?),lage(objektIndex),setzeAufBoden(bereich)->anzahl,dispose} ; FORMEN ; ERSATZ ; BODENDECKER ; baueForm(teile) -> BufferGeometry
  * @beispiel
  *   import { createScatterMesh } from '../../engine/world/scatter-mesh.js';
  *   import { createAssetCache } from '../../engine/models/natur/natur-assets.js';
@@ -9,7 +9,7 @@
  *   szene.add(pflanzen.gruppe);
  *   // je Bild: pflanzen.update(zeit);
  * @tags     welt, objekte, baeume, felsen, instanzen, vegetation, mesh, wind, natur
- * @version  2.1.0
+ * @version  2.2.0
  * @status   entwurf
  * @three    ja
  */
@@ -128,10 +128,10 @@ export function createScatterMesh(adapter, opts = {}) {
     const kx = kachel > 0 ? Math.floor(w.x / kachel) : 0, kz = kachel > 0 ? Math.floor(w.z / kachel) : 0;
     const key = `${name}#${v}#${form}#${kx},${kz}`;
     let g = proGruppe.get(key);
-    if (!g) proGruppe.set(key, g = { asset, name, v, mitte: [(kx + 0.5) * kachel, (kz + 0.5) * kachel], m: [], idx: [] });
+    if (!g) proGruppe.set(key, g = { asset, name, v, mitte: [(kx + 0.5) * kachel, (kz + 0.5) * kachel], m: [], idx: [], dy: [] });
     const sk = (o.skala[i] || 1) * (asset ? groesse * (typSkala[name] ?? 1) : faktor);
     p.set(w.x, wasser ? wh + 0.02 : y - (asset ? 0.02 : 0.05 * sk), w.z); s.set(sk, sk, sk); q.setFromAxisAngle(achse, o.drehung ? o.drehung[i] : 0);
-    g.m.push(...m4.compose(p, q, s).elements); g.idx.push(i);
+    g.m.push(...m4.compose(p, q, s).elements); g.idx.push(i); g.dy.push(wasser ? NaN : p.y - y);
   }
   const farbe = new THREE.Color();
   const geos = new Map();   // eigene Formen: eine Geometrie je Name
@@ -139,6 +139,7 @@ export function createScatterMesh(adapter, opts = {}) {
   let anzahl = 0, dreiecke = 0;
   const typen = new Set();
   const instanzen = new Map();   // Objekt-Index → [InstancedMesh, Nummer, Gruppe] (fürs Verstecken)
+  let faecher = null;            // Zell-Index → [Objekt-Index] (erst bei setzeAufBoden gebaut)
   const baue = (geo, material, g, matrix) => {
     const im = new THREE.InstancedMesh(geo, material, g.idx.length);
     if (matrix) im.instanceMatrix = matrix; else im.instanceMatrix.array.set(g.m);
@@ -195,8 +196,32 @@ export function createScatterMesh(adapter, opts = {}) {
       const m = e[2].m, k = e[1] * 16;
       return { x: m[k + 12], y: m[k + 13], z: m[k + 14], skala: Math.hypot(m[k], m[k + 1], m[k + 2]) };
     },
+    /** Nach einer Gelände-Änderung (bereich {x0,y0,x1,y1} in Gitterzellen): Objekte dort wieder auf den Boden setzen. Liefert die Anzahl. */
+    setzeAufBoden(bereich) {
+      if (!bereich || !o) return 0;
+      const B = welt.breite, T = welt.tiefe, Z = welt.zelle || 1;
+      if (!faecher) {
+        faecher = new Map();
+        for (const i of instanzen.keys()) { const k = Math.floor(o.y[i] / Z) * B + Math.floor(o.x[i] / Z); const l = faecher.get(k); if (l) l.push(i); else faecher.set(k, [i]); }
+      }
+      let n = 0;
+      // ein Objekt hängt (bilinear) an den vier Ecken seiner Zelle → eine Zelle Rand nach links/oben
+      for (let b = Math.max(0, bereich.y0 - 1); b <= Math.min(T - 1, bereich.y1); b++) for (let a = Math.max(0, bereich.x0 - 1); a <= Math.min(B - 1, bereich.x1); a++) {
+        const l = faecher.get(b * B + a);
+        if (!l) continue;
+        for (const i of l) {
+          const [im, k, g] = instanzen.get(i);
+          if (Number.isNaN(g.dy[k])) continue;                      // Seerosen bleiben auf dem Wasser
+          const w = adapter.zuWelt(o.x[i], o.y[i]), y = adapter.bodenHoehe(w.x, w.z) + g.dy[k], arr = im.instanceMatrix.array;
+          g.m[k * 16 + 13] = y;
+          if (arr[k * 16 + 15] !== 0) arr[k * 16 + 13] = y;        // versteckte bleiben versteckt
+          im.instanceMatrix.needsUpdate = true; n++;
+        }
+      }
+      return n;
+    },
     dispose() {
-      instanzen.clear();
+      instanzen.clear(); faecher = null;
       for (const g of geos.values()) g.dispose();
       for (const m of gruppe.children) m.dispose();
       mat.dispose(); if (matBoden !== mat) matBoden.dispose();

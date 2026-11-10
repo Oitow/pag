@@ -16,3 +16,27 @@ test('echtes THREE läuft in Node (ohne Rendern)', () => {
   assert.ok(g.attributes.position.count > 0);
   assert.equal(THREE.REVISION, '170');
 });
+
+test('fake-dom 1.1: Kinder, Eltern, Entfernen und Ereignisse', () => {
+  installFakeDom();
+  const a = document.createElement('div'), b = document.createElement('button'), c = document.createElement('span');
+  a.append(b, c);
+  assert.equal(a.children.length, 2);
+  assert.equal(b.parentNode, a);
+  assert.ok(a.contains(c));
+  b.remove();
+  assert.deepEqual(a.children, [c]);
+  assert.equal(b.parentNode, null);
+  a.insertBefore(b, c);
+  assert.deepEqual(a.children, [b, c]);
+  let n = 0;
+  const f = (e) => { n++; e.preventDefault(); e.stopPropagation(); assert.equal(e.target, b); };
+  b.addEventListener('pointerdown', f);
+  b.dispatch('pointerdown');
+  b.removeEventListener('pointerdown', f);
+  b.dispatch('pointerdown');
+  assert.equal(n, 1);
+  a.replaceChildren();
+  assert.equal(a.children.length, 0);
+  assert.equal(c.parentNode, null);
+});
