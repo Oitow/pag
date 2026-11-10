@@ -1,5 +1,14 @@
 # Engine-Changelog
 
+## 2026-11 – Figuren: schönerer Look, Zauber
+- render/figur-material 1.0.0 (neu): Figuren-Material mit Randlicht, aufgehellter Schattenseite, kräftigeren Farben
+- models/character/character-model 1.2.0: nutzt standardmäßig `figurMaterial()` (eigenes `material` geht weiter)
+- models/character/character-clips-zauber 1.0.0 (neu): 6 Zauber-Gesten (zauberWurf, -Stoss, -Finger, -Himmel, -Boden, -Selbst); character-clips 1.2.0 registriert sie
+- gameplay/zauber 1.0.0 (neu): 10 Zauber als Daten, Zauberbuch mit Mana, Abklingzeit, Wirkzeit, Geschossen, Treffer-Ereignissen (ohne THREE)
+- render/zauber-effekte 1.0.0 (neu): Partikel, Geschoss-Kugeln, Ringe, Blitze, Erdstacheln, Aura, Meteor-Sturz aus Pools
+- input/touch-stick 1.1.1: Knöpfe ab dem 5. sitzen höher (der 6. Knopf lag halb unter dem Bildschirmrand)
+- games/figuren-labor: Zauberleiste + ✨-Knopf, Leben/Mana, ☰-Menü als Blatt mit Reitern (Handy unten, groß links)
+
 ## 2026-11 – Lebendige Welt (Fahrplan Etappe 1)
 - core/zeit 1.0.0 (neu): Spieluhr mit Tagen, Jahreszeiten, Ereignissen, Pause/Tempo, Speicherstand
 - core/schleife 1.0.0 (neu): Spielschleife mit festem oder variablem Zeitschritt, FPS, Tab-Pause

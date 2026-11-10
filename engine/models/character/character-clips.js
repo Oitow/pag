@@ -1,6 +1,6 @@
 /**
  * @modul    character-clips
- * @zweck    Aktions-Clips einer Figur als Keyframe-Daten (winken, schlagen, hacken, werfen, aufheben, tod, rolle, sitzen, tanzen … + character-clips-mehr) und ihr Abtaster
+ * @zweck    Aktions-Clips einer Figur als Keyframe-Daten (winken, schlagen, hacken, werfen, aufheben, tod, rolle, sitzen, tanzen … + character-clips-mehr + character-clips-zauber) und ihr Abtaster
  * @api      CLIPS ; CLIP_NAMEN ; IDLE_VARIANTEN ; clipPose(name,t,out) -> pose ; clipZeit(clip,t,schleife?) -> t ; registriereClip(name,def) -> clip ; clipMaske(clip) -> kanalliste
  * @beispiel
  *   import { CLIPS, clipPose, registriereClip } from '../../engine/models/character/character-clips.js';
@@ -8,13 +8,14 @@
  *   registriereClip('verbeugen', { dauer: 1.2, maske: 'ganz', fuesseFest: true,
  *     keys: [{ t: 0, pose: {} }, { t: 0.5, pose: { torso: [1.0, 0, 0] } }, { t: 1.2, pose: {} }] });
  * @tags     figur, charakter, animation, clip, keyframe, aktion, angriff, emote
- * @version  1.1.0
+ * @version  1.2.0
  * @status   entwurf
  * @three    nein
  */
 import { clamp } from '../../core/math.js';
 import { mischePose, kopierePose, leerePose, MASKEN, maskeVon } from './character-pose.js';
 import { MEHR_CLIPS, IDLE_VARIANTEN } from './character-clips-mehr.js';
+import { ZAUBER_CLIPS } from './character-clips-zauber.js';
 
 export { IDLE_VARIANTEN };
 
@@ -235,6 +236,7 @@ export function registriereClip(name, def) {
 }
 for (const [n, d] of Object.entries(ROH)) registriereClip(n, d);
 for (const [n, d] of Object.entries(MEHR_CLIPS)) registriereClip(n, d);
+for (const [n, d] of Object.entries(ZAUBER_CLIPS)) registriereClip(n, d);
 
 /** Kanalliste der Clip-Maske (character-pose MASKEN). */
 export const clipMaske = (clip) => maskeVon(clip?.maske);

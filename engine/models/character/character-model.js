@@ -9,7 +9,7 @@
  *   figur.befestigen('handR', schwert);
  *   figur.setLook({ kopfbedeckung: { stil: 'krone' } });   // Rig-Gruppen & Befestigtes bleiben erhalten
  * @tags     figur, charakter, modell, mesh, spieler, npc, avatar, editor, ausrüstung, mimik, gesicht
- * @version  1.1.0
+ * @version  1.2.0
  * @status   entwurf
  * @three    ja
  *
@@ -27,7 +27,8 @@
  *   gesicht            das Objekt aus createGesicht (oder null), z. B. gesicht.autoBlinzeln = false
  */
 import { hashSeed } from '../../core/rng.js';
-import { createMeshBuilder, standardMaterial } from '../../render/mesh-builder.js';
+import { createMeshBuilder } from '../../render/mesh-builder.js';
+import { figurMaterial } from '../../render/figur-material.js';
 import { createLook, koerperMasse } from './character-look.js';
 import { createRig } from './character-rig.js';
 import {
@@ -65,13 +66,13 @@ function mischen(a, b) {
 }
 
 /**
- * opts: { look (Teil-Look), seed = 1 (Farbvariation), material? (Standard: geteiltes standardMaterial()), schatten = true,
+ * opts: { look (Teil-Look), seed = 1 (Farbvariation), material? (Standard: geteiltes figurMaterial() mit Randlicht, seit 1.2), schatten = true,
  *         mimik = true (bewegliches Gesicht: +3 kleine Meshes; false = festes Gesicht im Kopf-Mesh, spart Draw-Calls bei Massen-NPCs) }
  * → { root, rig, look, masse, meshes, gesicht, ausdruck, setLook(teil), befestigen(sockel, obj), loesen(sockel|obj), setSichtbar(b),
  *     setAusdruck(name), setLider(zu), blinzeln(dauer), setBlick(x, y), updateGesicht(dt), dispose() }
  */
 export function createCharacterModel({ look = {}, seed = 1, material = null, schatten = true, mimik = true } = {}) {
-  const mat = material || standardMaterial();
+  const mat = material || figurMaterial();
   const modell = { look: createLook(look), meshes: [], gesicht: null };   // Umhang hängt an rig.sockel.umhang (Saum nach −Y)
   let zustand = { ausdruck: modell.look.ausdruck, zu: 0, blick: [0, 0], auto: true };   // Gesichtszustand überlebt setLook
   modell.masse = koerperMasse(modell.look);

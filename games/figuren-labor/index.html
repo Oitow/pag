@@ -6,55 +6,131 @@
 <title>Figuren-Labor</title>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #9ec8e8; font-family: system-ui, sans-serif; color: #2a2218; -webkit-user-select: none; user-select: none; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #9ec8e8; font-family: system-ui, sans-serif; color: #2a2218; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
   canvas { display: block; position: fixed; inset: 0; touch-action: none; }
-  #back { position: fixed; left: 10px; top: 10px; z-index: 5; color: #fff; text-decoration: none; background: #0006; padding: 6px 10px; border-radius: 8px; font-size: 14px; }
-  .leiste { position: fixed; right: 10px; top: 10px; z-index: 5; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: 70vw; }
-  .leiste button, .aktionen button { font: inherit; font-size: 14px; border: 0; border-radius: 10px; padding: 7px 10px; background: #fffc; color: #2a2218; box-shadow: 0 2px 6px #0003; cursor: pointer; }
-  .leiste button.an { background: #ffd870; }
-  .aktionen { position: fixed; left: 50%; top: 54px; transform: translateX(-50%); z-index: 5; display: none; gap: 6px; flex-direction: column;
-    width: min(560px, calc(100vw - 20px)); max-height: 46vh; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y;
-    background: #fbf6eae6; border-radius: 12px; padding: 8px; box-sizing: border-box; box-shadow: 0 4px 18px #0004; }
-  .aktionen.offen { display: flex; }
-  .aktionen .gruppe { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
-  .aktionen .gruppe b { width: 100%; font-size: 12px; color: #6a5a40; }
-  .aktionen button { min-height: 36px; }
-  .aktionen .stopp { align-self: flex-start; background: #ffd870; position: sticky; top: 0; z-index: 1; }
-  @media (max-width: 600px) { .leiste { max-width: calc(100vw - 90px); } .leiste button { padding: 7px 8px; font-size: 13px; } #info { font-size: 10px; bottom: auto; top: 96px; } }
+  button { touch-action: manipulation; }
+  #back { position: fixed; left: 10px; top: calc(8px + env(safe-area-inset-top, 0px)); z-index: 5; color: #fff; text-decoration: none; background: #0006; padding: 8px 10px; border-radius: 10px; font-size: 14px; }
+  /* Kopfzeile: Balken in der Mitte, Menü rechts */
+  #kopf { position: fixed; right: 10px; top: calc(8px + env(safe-area-inset-top, 0px)); z-index: 51; display: flex; gap: 6px; }
+  #kopf button { font: inherit; font-size: 15px; font-weight: 600; border: 0; border-radius: 12px; min-height: 40px; padding: 0 14px; background: #fffd; color: #2a2218; box-shadow: 0 2px 6px #0003; cursor: pointer; }
+  #kopf button.an { background: #ffd870; }
+  #hud { position: fixed; left: 100px; right: 112px; top: calc(12px + env(safe-area-inset-top, 0px)); z-index: 5; display: flex; flex-direction: column; gap: 5px; max-width: 320px; margin: 0 auto; pointer-events: none; }
+  .balken { position: relative; height: 11px; border-radius: 6px; background: #0007; overflow: hidden; box-shadow: 0 0 0 1.5px #fff8; }
+  .balken i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; transition: width .2s; }
+  .balken u { position: absolute; left: 0; top: 0; bottom: 0; background: #9cd0ffcc; transition: width .2s; }
+  .leben i { background: linear-gradient(#ff7a6a, #d8382a); } .mana i { background: linear-gradient(#7ac4ff, #2a78e0); }
+  /* Zauberleiste: wischbar, große Tippflächen */
+  #zleiste { position: fixed; left: 0; right: 0; top: calc(54px + env(safe-area-inset-top, 0px)); z-index: 5; display: flex; gap: 7px; padding: 4px 10px 8px; overflow-x: auto; scrollbar-width: none; touch-action: pan-x; justify-content: safe center; }
+  #zleiste::-webkit-scrollbar { display: none; }
+  .zk { position: relative; flex: 0 0 auto; width: 50px; height: 50px; border-radius: 14px; border: 2px solid #fff9; background: radial-gradient(circle at 35% 30%, #fff5, #0000 60%), color-mix(in srgb, var(--f) 45%, #1a1420); box-shadow: 0 2px 6px #0005; padding: 0; overflow: hidden; cursor: pointer; font-size: 24px; line-height: 1; }
+  .zk.an { border-color: #ffd870; box-shadow: 0 0 0 3px #ffd870, 0 0 14px var(--f); transform: translateY(2px) scale(1.06); }
+  .zk small { position: absolute; right: 3px; bottom: 1px; font-size: 10px; font-weight: 700; color: #cfe6ff; text-shadow: 0 1px 2px #000; }
+  .zk .cd { position: absolute; inset: 0; background: conic-gradient(#000b calc(var(--cd, 0) * 360deg), #0000 0); pointer-events: none; }
+  .zk.leer span { opacity: .4; } .zk.leer small { color: #ff8a7a; }
+  #bZaubern { position: fixed; left: 50%; bottom: 46px; transform: translateX(-50%); z-index: 5; font: inherit; font-size: 16px; font-weight: 600; border: 0; border-radius: 14px; padding: 12px 20px; background: #ffd870; color: #2a2218; box-shadow: 0 3px 10px #0005; cursor: pointer; }
+  @media (pointer: coarse) { #bZaubern { display: none; } }
+  #meldung { position: fixed; left: 50%; top: 124px; transform: translateX(-50%); z-index: 6; background: #000a; color: #fff; padding: 7px 14px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .25s; pointer-events: none; white-space: nowrap; }
+  #meldung.an { opacity: 1; }
   #info { position: fixed; left: 10px; bottom: 10px; z-index: 4; font: 12px/1.4 monospace; background: #0008; color: #e8f0e0; padding: 6px 8px; border-radius: 8px; pointer-events: none; white-space: pre; }
-  .hilfe { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 4; background: #0008; color: #fff; padding: 6px 12px; border-radius: 10px; font-size: 13px; pointer-events: none; transition: opacity 1s; text-align: center; }
-  /* Editor */
-  .ed { position: fixed; left: 0; top: 0; bottom: 0; width: min(360px, 92vw); z-index: 6; background: #fbf6eaf2; box-shadow: 4px 0 18px #0004; transform: translateX(-105%); transition: transform .25s; overflow-y: auto; padding: 12px; box-sizing: border-box; -webkit-user-select: auto; user-select: auto; }
-  .ed.offen { transform: none; }
-  .ed-kopf { display: flex; gap: 8px; align-items: center; margin: 34px 0 8px; }
-  .ed-name { flex: 1; font: inherit; padding: 5px 8px; border: 1px solid #c8b890; border-radius: 8px; background: #fff; }
-  .ed-reihe { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
-  .ed-reihe button { font: inherit; font-size: 13px; border: 1px solid #c8b890; background: #fff; border-radius: 8px; padding: 5px 8px; cursor: pointer; }
-  .ed-gitter { display: grid; grid-template-columns: 1fr; gap: 7px; font-size: 14px; }
-  .ed-felder { display: flex; gap: 6px; align-items: center; flex: 1; justify-content: flex-end; }
-  .ed-gitter label { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-  .ed-gitter select { font: inherit; width: 120px; }
-  .ed-gitter input[type=color] { width: 40px; height: 26px; border: 0; padding: 0; background: none; }
-  .ed-gitter input[type=range] { flex: 1; }
+  @media (max-width: 600px) { #info { font-size: 10px; bottom: auto; top: 124px; } }
+  .hilfe { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 4; background: #0008; color: #fff; padding: 6px 12px; border-radius: 10px; font-size: 13px; pointer-events: none; transition: opacity 1s; text-align: center; width: max-content; max-width: calc(100vw - 30px); }
+  @media (pointer: coarse) { .hilfe { bottom: auto; top: 124px; } }
+  /* Menü-Blatt: am Handy von unten, am großen Bildschirm von links */
+  #blatt { position: fixed; z-index: 50; left: 0; right: 0; bottom: 0; height: min(58vh, 540px); display: flex; flex-direction: column; background: #fbf6eaf7; border-radius: 18px 18px 0 0; box-shadow: 0 -4px 22px #0005; transform: translateY(105%); transition: transform .25s; padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; }
+  #blatt.offen { transform: none; }
+  @media (min-width: 820px) { #blatt { right: auto; top: 0; height: auto; width: 400px; border-radius: 0 18px 18px 0; transform: translateX(-105%); } }
+  .blatt-kopf { display: flex; align-items: center; border-bottom: 1px solid #d8cba8; padding: 4px 6px 0 6px; }
+  .tabs { display: flex; flex: 1; overflow-x: auto; scrollbar-width: none; touch-action: pan-x; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs button, #bZu { flex: 0 0 auto; font: inherit; font-size: 15px; min-height: 46px; padding: 0 12px; border: 0; background: none; color: #6a5a40; border-bottom: 3px solid transparent; cursor: pointer; }
+  .tabs button.an { color: #2a2218; font-weight: 700; border-color: #d89a20; }
+  #bZu { font-size: 18px; }
+  .blatt-inhalt { flex: 1; overflow-y: auto; padding: 12px 12px 18px; touch-action: pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  section[data-tab] { display: none; } section[data-tab].an { display: block; }
+  .blatt-inhalt h3 { margin: 14px 0 6px; font-size: 13px; color: #6a5a40; font-weight: 600; } .blatt-inhalt h3:first-child { margin-top: 0; }
+  .chips, .aktionen .gruppe, .ed-reihe { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button, .aktionen button, .ed-reihe button { font: inherit; font-size: 14px; min-height: 42px; padding: 0 12px; border: 1px solid #c8b890; border-radius: 11px; background: #fff; color: #2a2218; cursor: pointer; }
+  .chips button.an, .aktionen .stopp { background: #ffd870; border-color: #d89a20; }
+  [data-schalter]::before { content: "○ "; } [data-schalter].an::before { content: "● "; }
+  .aktionen { display: flex; flex-direction: column; gap: 10px; }
+  .aktionen .gruppe b { width: 100%; font-size: 13px; color: #6a5a40; font-weight: 600; }
+  .aktionen .stopp { align-self: flex-start; position: sticky; top: 0; z-index: 1; }
+  .zkarte { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; font: inherit; margin-bottom: 7px; padding: 8px 10px; border: 2px solid #d8cba8; border-radius: 13px; background: #fff; color: #2a2218; cursor: pointer; }
+  .zkarte.an { border-color: #d89a20; background: #fff4d0; }
+  .zkarte .sym { flex: 0 0 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-size: 24px; background: color-mix(in srgb, var(--f) 45%, #1a1420); }
+  .zkarte .txt { display: flex; flex-direction: column; gap: 2px; font-size: 14px; } .zkarte em { font-style: normal; font-size: 13px; color: #5a4c38; } .zkarte small { font-size: 12px; color: #7a6a50; }
+  /* Aussehen-Editor (im Blatt) */
+  .ed { -webkit-user-select: auto; user-select: auto; }
+  .ed-kopf { display: flex; gap: 8px; align-items: center; margin: 0 0 10px; }
+  .ed-kopf b { display: none; }
+  .ed-name { flex: 1; font: inherit; font-size: 16px; min-height: 42px; padding: 0 10px; border: 1px solid #c8b890; border-radius: 11px; background: #fff; box-sizing: border-box; min-width: 0; }
+  .ed-reihe { margin-bottom: 12px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; touch-action: pan-x; padding-bottom: 2px; }
+  .ed-reihe button { flex: 0 0 auto; }
+  .ed-gitter { display: grid; grid-template-columns: 1fr; gap: 4px; font-size: 15px; }
+  .ed-gitter label { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 46px; border-bottom: 1px solid #e8dcc0; }
+  .ed-felder { display: flex; gap: 8px; align-items: center; flex: 1; justify-content: flex-end; }
+  .ed-gitter select { font: inherit; font-size: 16px; width: 150px; min-height: 40px; border: 1px solid #c8b890; border-radius: 10px; background: #fff; padding: 0 6px; }
+  .ed-gitter input[type=color] { width: 44px; height: 38px; border: 1px solid #c8b890; border-radius: 10px; padding: 2px; background: #fff; }
+  .ed-gitter input[type=range] { flex: 1; height: 36px; max-width: 62%; accent-color: #d89a20; }
+  .ed-gitter input[type=checkbox] { width: 24px; height: 24px; accent-color: #d89a20; }
 </style>
 </head>
 <body>
 <a id="back" href="../../">← Spiele</a>
-<div class="leiste">
-  <button id="bEditor">👕 Aussehen</button>
-  <button id="bAktionen">🎬 Aktionen</button>
-  <button id="bNpc">🧑‍🤝‍🧑 NPCs</button>
-  <button id="bKamera" title="Kamera-Preset wechseln">🎥 standard</button>
-  <button id="bErste" title="Ich-Sicht (auch: ganz reinzoomen)">👁</button>
-  <button id="bFahrt" title="Kamerafahrt zum Plateau">🎞</button>
-  <button id="bAusr" title="Ausrüstung durchschalten">🗡 leer</button>
-  <button id="bSchilder" title="Namensschilder an/aus">🏷</button>
+<div id="kopf">
   <button id="bStopp" title="Laufende Aktion beenden" style="display:none">⏹</button>
-  <button id="bInfo">ℹ️</button>
+  <button id="bMenue" title="Aussehen, Zauber, Ausrüstung, Aktionen, Einstellungen">☰ Menü</button>
 </div>
-<div class="aktionen" id="aktionen"></div>
+<div id="hud"><div class="balken leben"><u></u><i></i></div><div class="balken mana"><i></i></div></div>
+<div id="zleiste"></div>
+<button id="bZaubern">✨ Zaubern (R)</button>
+<div id="meldung"></div>
+<div id="blatt">
+  <div class="blatt-kopf">
+    <div class="tabs">
+      <button data-tab="aussehen" class="an">👕 Aussehen</button>
+      <button data-tab="zauber">✨ Zauber</button>
+      <button data-tab="ausruestung">🗡 Ausrüstung</button>
+      <button data-tab="aktionen">🎬 Aktionen</button>
+      <button data-tab="mehr">⚙️ Mehr</button>
+    </div>
+    <button id="bZu" aria-label="Menü schließen">✕</button>
+  </div>
+  <div class="blatt-inhalt">
+    <section data-tab="aussehen" class="an"></section>
+    <section data-tab="zauber">
+      <h3>Zauber wählen – in der Leiste oben nochmal tippen oder ✨ drücken zum Wirken</h3>
+      <div id="zliste"></div>
+    </section>
+    <section data-tab="ausruestung">
+      <h3>In die Hand nehmen (Schild und Buch links, der Rest rechts)</h3>
+      <div class="chips" id="ausr"></div>
+    </section>
+    <section data-tab="aktionen"><div class="aktionen" id="aktionen"></div></section>
+    <section data-tab="mehr">
+      <h3>Kamera</h3>
+      <div class="chips" id="kameras"></div>
+      <div class="chips" style="margin-top:6px">
+        <button data-schalter="ichsicht">👁 Ich-Sicht</button>
+        <button data-knopf="fahrt">🎞 Kamerafahrt</button>
+      </div>
+      <h3>Welt</h3>
+      <div class="chips">
+        <button data-schalter="npcs" class="an">🧑‍🤝‍🧑 NPCs</button>
+        <button data-schalter="schilder" class="an">🏷 Namensschilder</button>
+        <button data-schalter="info">ℹ️ Debug-Anzeige</button>
+      </div>
+      <h3>Zauber-Labor</h3>
+      <div class="chips">
+        <button data-schalter="freimana">♾ Unendlich Mana</button>
+        <button data-knopf="treffen">💥 Mich treffen (−25)</button>
+        <button data-knopf="heilen">❤ Alle heilen</button>
+      </div>
+    </section>
+  </div>
+</div>
 <pre id="info"></pre>
-<div class="hilfe" id="hilfe">WASD/Stick laufen · Shift Sprint · Leertaste springen · Q Rolle · V gleiten · C ducken · T Ziel · E ansprechen · Ziehen = Kamera · F Schlag · G winken</div>
+<div class="hilfe" id="hilfe">Stick/WASD laufen · Zauber oben wählen, ✨ / R wirken (1–0 = sofort) · ☰ Menü: Aussehen, Ausrüstung, Aktionen</div>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>
