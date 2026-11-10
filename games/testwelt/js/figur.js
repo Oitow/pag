@@ -1,6 +1,6 @@
 // Testwelt – Spielfigur aus dem Engine-Figurensystem (Vertrag: docs/FIGUREN-SYSTEM.md):
 //   input/move-input → gameplay/character (Motor + Modell + Animator, Welt-Adapter) → camera/follow-camera
-// Extras: Erste-Person beim Reinzoomen, Kamera-Presets, Lock-On auf Dorfbewohner (🎯/T), Ansprechen (💬/E).
+// Extras: Erste-Person beim Reinzoomen, Kamera-Presets, Lock-On auf Dorfbewohner (🎯/T). Interaktion (💬/E) wertet sachen.js aus.
 import { createCharacter } from '../../../engine/gameplay/character.js';
 import { createMoveInput, zuAbsicht } from '../../../engine/input/move-input.js';
 import { createFollowCamera, KAMERA_PRESETS } from '../../../engine/camera/follow-camera.js';
@@ -8,7 +8,6 @@ import { waehleZiel, zielPos } from '../../../engine/camera/ziel-wahl.js';
 import { randomLook } from '../../../engine/models/character/character-look.js';
 
 const PRESETS = Object.keys(KAMERA_PRESETS);
-const SPRECH_ABSTAND = 3.5;
 
 /**
  * opts: { szene, kamera, adapter, element, start, seed, schilder, npcs: () => [{ figur, ansprechen() }] }
@@ -16,11 +15,17 @@ const SPRECH_ABSTAND = 3.5;
  */
 export function createSpielerFigur({ szene, kamera, adapter, element, start, seed, schilder = null, npcs = () => [] }) {
   // Adapter über eine Hülle reichen: bei neuer Welt nur die Hülle umhängen, Motor/Kamera bleiben
+  // (Kollisions-Welt: der eigene Körper wird als 'spieler' angemeldet und zieht beim Weltwechsel mit um)
+  let koerper = null;
   const welt = {
-    bodenHoehe: (x, z) => adapter.bodenHoehe(x, z),
+    bodenHoehe: (x, z, y) => adapter.bodenHoehe(x, z, y),
     wasserHoehe: (x, z) => adapter.wasserHoehe(x, z),
-    hindernisse: (x, z, r) => adapter.hindernisse(x, z, r),
+    hindernisse: (x, z, r, filter) => adapter.hindernisse(x, z, r, filter),
+    fuege: (k) => { koerper = { ...k, id: 'spieler' }; adapter.fuege?.(koerper); return 'spieler'; },
+    bewege: (id, x, z, y) => adapter.bewege?.(id, x, z, y),
+    entferne: (id) => adapter.entferne?.(id),
   };
+  const OHNE_MICH = { ausser: 'spieler' };
   const figur = createCharacter({ look: randomLook(seed), seed, welt, pos: { ...start }, schilder, name: 'Du' });
   szene.add(figur.root);
   figur.schild?.zeige(false);                    // eigenes Schild nur für Sprechblasen
@@ -29,10 +34,10 @@ export function createSpielerFigur({ szene, kamera, adapter, element, start, see
   const cam = createFollowCamera({
     kamera, erstePerson: true,
     bodenHoehe: (x, z) => Math.max(adapter.bodenHoehe(x, z), adapter.wasserHoehe(x, z) ?? -1e9),
-    hindernisse: welt.hindernisse,
+    hindernisse: (x, z, r) => adapter.hindernisse(x, z, r, OHNE_MICH),
   });
   const absicht = {};
-  let ziel = null, nahNpc = null, presetNr = 0, knopfAn = false;
+  let ziel = null, presetNr = 0, knopfAn = false, interagiert = false;
 
   function zielWaehlen() {
     const kandidaten = npcs().map(n => n.figur);
@@ -66,21 +71,19 @@ export function createSpielerFigur({ szene, kamera, adapter, element, start, see
       if (z.landung > 9) cam.schuetteln(Math.min(1, z.landung / 20), 0.3);
       cam.update(dt, z.pos, { tempo: z.tempo, sprintet: z.sprintet, yaw: z.yaw, amBoden: z.amBoden, augenHoehe: figur.model.masse.augenHoehe });
       figur.setSichtbar(!cam.figurAusblenden);
-      // Dorfbewohner in Reichweite: 💬 zeigen, E/Knopf spricht an
-      nahNpc = null;
-      let best = SPRECH_ABSTAND;
-      for (const n of npcs()) { const d = figur.abstandZu(n.figur); if (d < best) { best = d; nahNpc = n; } }
-      if (!!nahNpc !== knopfAn) { knopfAn = !!nahNpc; eingabe.zeigeKnopf('interagieren', knopfAn); }
-      if (nahNpc && eingabe.gedrueckt('interagieren')) { nahNpc.ansprechen(figur); figur.blickZu(nahNpc.figur); }
-      if (!nahNpc) figur.blickZu(null);
+      interagiert = !!e.interagieren;
     },
+    /** Interaktions-Taste (E / 💬) gerade gehalten? Auswertung: sachen.js über engine/gameplay/interaktion. */
+    get interagiert() { return interagiert; },
+    /** 💬-Knopf auf dem Handy nur zeigen, wenn es etwas zu tun gibt. */
+    zeigeInteraktion(an) { if (!!an !== knopfAn) { knopfAn = !!an; eingabe.zeigeKnopf('interagieren', knopfAn); } },
     naechstesPreset() {
       presetNr = (presetNr + 1) % PRESETS.length;
       cam.setPreset(PRESETS[presetNr]);
       return PRESETS[presetNr];
     },
     teleport(x, z) { figur.teleport({ x, y: adapter.bodenHoehe(x, z) + 0.5, z }); ziel = null; cam.lockOn(null); },
-    setAdapter(a) { adapter = a; ziel = null; cam.lockOn(null); },
+    setAdapter(a) { adapter = a; if (koerper) { const q = figur.zustand.pos; a.fuege?.({ ...koerper, x: q.x, z: q.z, y0: q.y }); } ziel = null; cam.lockOn(null); },
     dispose() { eingabe.dispose(); cam.dispose(); figur.dispose(); },
   };
 }

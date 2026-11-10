@@ -43,3 +43,22 @@ test('Adapter: Hindernisse schieben aus Baumstämmen heraus', () => {
   assert.ok(Number.isFinite(st.y) && st.y > 0, 'Start liegt an Land');
   a.dispose();
 });
+
+test('Hindernisse finden und abschalten (gefällter Baum)', async () => {
+  const { createWorld } = await import('./worldgen.js');
+  const adapter = createWeltAdapter(createWorld({ preset: 'insel', seed: 42, breite: 64, tiefe: 64, qualitaet: 'schnell' }), { meterProZelle: 2 });
+  assert.ok(adapter.anzahlHindernisse > 0);
+  let erstes = null, n = 0;
+  adapter.alleHindernisse((h) => { n++; if (!erstes) erstes = h; });
+  assert.equal(n, adapter.anzahlHindernisse);
+  const nah = adapter.hindernisNah(erstes.x + erstes.radius + 0.5, erstes.z, 1);
+  assert.ok(nah && Math.abs(nah.abstand - 0.5) < 1e-6 || nah.abstand < 0.5);
+  assert.ok(adapter.hindernisse(erstes.x + 0.01, erstes.z, 0.3));
+  const allein = adapter.hindernisNah(erstes.x, erstes.z, 0.001, (h) => h.index === erstes.index);
+  assert.equal(allein.index, erstes.index);
+  assert.equal(adapter.setHindernis(erstes.index, false), true);
+  assert.equal(adapter.hindernisNah(erstes.x, erstes.z, 0.001, (h) => h.index === erstes.index), null);
+  adapter.setHindernis(erstes.index, true);
+  assert.ok(adapter.hindernisNah(erstes.x, erstes.z, 0.001, (h) => h.index === erstes.index));
+  assert.equal(adapter.setHindernis(-5, false), false);
+});

@@ -88,6 +88,10 @@ Seit 1.1 optional (gehalten, Flanken erkennt der Motor): `rollen` (Rolle am Bode
   hindernisse?(x, z, radius) -> { x, z } | null // Ausschiebe-Vektor (z. B. Baumstämme, Wände)
 }
 ```
+Seit Motor 1.2 gibt der Motor Hinweise mit, die ein Adapter ignorieren darf: `bodenHoehe(x, z, fussY)` und
+`hindernisse(x, z, radius, { y, hoehe, ausser })`. `engine/world/kollision.js` (`createKollisionsWelt({ welt: adapter })`) nutzt sie:
+begehbare Kisten/Plattformen, Hindernisse mit Höhe (drüberspringen), bewegliche und entfernbare Körper, `strahl(...)`.
+Figuren (`createCharacter`) melden sich dort selbst als weicher Zylinder an und schieben sich aneinander vorbei.
 
 ### Motor-Zustand (Motor → Animator, Kamera, Spiel)
 ```js

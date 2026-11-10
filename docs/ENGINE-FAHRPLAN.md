@@ -26,10 +26,14 @@
 - [ ] `ui/werkzeug-leiste` – Werkzeuge für Maus und Finger (Pinsel, Setzen, Löschen, Rückgängig)
 - [ ] Spielstand = Seed + Änderungen (`core/speicher`)
 
-### 3 · Dinge & Handeln
-- [ ] `core/ereignisse` (Event-Bus), `core/register` (Datenkatalog für Gegenstände/Rezepte)
-- [ ] `gameplay/inventar`, `gameplay/rezepte` (Herstellen), `gameplay/interaktion` (ansehen → Aktion: fällen, pflücken, öffnen)
-- [ ] `gameplay/rohstoffe` – Bäume/Felsen abbauen, nachwachsen über die Spieluhr
+### 3 · Dinge & Handeln (Kern fertig)
+- [x] `core/ereignisse` (Event-Bus), `core/register` (Datenkatalog für Gegenstände/Rezepte)
+- [x] `world/kollision` (Körper mit Höhe, begehbar, beweglich, Strahl), `core/raum-gitter`, Motor 1.2 (draufsteigen, kein Tunneln)
+- [x] `gameplay/koerper` (leichte Physik für lose Dinge), `gameplay/welt-dinge` (ablegen, werfen, aufheben)
+- [x] `gameplay/inventar`, `gameplay/interaktion` (ansehen → Aktion, auch gedrückt halten)
+- [x] Bäume/Felsen abbauen (Adapter `setHindernis`, `scatter-mesh.verstecke`) – in der Testwelt
+- [ ] `gameplay/rezepte` (Herstellen), `gameplay/rohstoffe` (Nachwachsen über die Spieluhr, Werkzeug nötig, Haltbarkeit)
+- [ ] Gegenstände in die Hand nehmen/benutzen (Inventar ↔ `character.ausruesten`), Türen/Truhen als Interaktions-Ziele
 - [ ] `ui/hud` (Leiste, Inventar, Hinweise), `ui/menue` (Pause, Optionen, Spielstände)
 
 ### 4 · Klang & Gefühl
@@ -52,6 +56,17 @@
 - [ ] `games/_vorlage` – neues Spiel per `cp -r` (Schleife, Himmel, Figur, Speicher fertig verdrahtet)
 - [ ] Welt-Editor als eigenes Spiel (`games/weltbau`) – alles aus Etappe 2–6 zusammen
 - [ ] Module von `entwurf` auf `stabil` heben, Leistungs-Messung im Smoke-Test
+
+## Fundament für „später vielleicht Mehrspieler“
+Kein Netzwerk-Code, aber die Regeln, die einen Umbau später billig machen:
+- **Simulation ohne Darstellung:** Motor, Physik, Inventar, Interaktion, Dinge laufen ohne THREE/DOM (also auch auf einem Server in Node).
+- **Fester Zeitschritt + Seed:** gleiche Eingaben → gleiches Ergebnis (`koerper`, Motor-Unterschritte, `rng`). Kein `Math.random()` in der Engine.
+- **Eingabe = Absicht:** Spieler und NPCs steuern nur über die Absicht (`motor.update(dt, absicht)`); ein Server kann dieselbe Absicht nachrechnen.
+- **Zustand als reine Daten:** `motor.speichern()/laden()` (Vorhersage zurückspulen), `inventar.zustand()`, `dinge.zustand()`, `register.nummer(id)` (kompakt).
+- **Änderungen als Ereignisse:** Spielregeln melden über `core/ereignisse` (`ding:aufgehoben`, `abgebaut` …) statt direkt die Anzeige anzufassen.
+- **Raum-Abfragen:** `core/raum-gitter` für „wer ist in meiner Nähe“ (Kollision heute, Sichtbereich je Spieler später).
+- **Fremde Figuren glätten:** `core/schnappschuss-puffer` (Zustände kommen ruckelig an, gezeigt wird interpoliert).
+- [ ] Offen: stabile Entitäts-IDs für alles (Figuren, Dinge, Bauteile), Befehls-Schicht („Spieler X will Y“) mit Prüfung, Welt-Änderungen je Chunk (Etappe 2/5).
 
 ## Reihenfolge-Regel
 Immer erst reine Logik (testbar ohne Browser), dann Darstellung, dann Einbau in die Testwelt. Eine Etappe = ein PR.

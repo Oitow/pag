@@ -1,5 +1,21 @@
 # Engine-Changelog
 
+## 2026-11 – Fundament: Kollision, leichte Physik, Dinge & Handeln
+- world/kollision 1.0.0 (neu): Kollisions-Welt über dem Adapter – bewegliche/entfernbare Zylinder und gedrehte Kästen mit Höhe (draufsteigen, drüberspringen, weich aneinander vorbei), Strahl-Test gegen Gelände und Körper
+- gameplay/koerper 1.0.0 (neu): leichte Physik für lose Dinge (fallen, abprallen, Reibung, haften/rutschen am Hang, schwimmen/sinken, einschlafen), fester Zeitschritt
+- gameplay/welt-dinge 1.0.0 (neu): Gegenstände in der Welt – ablegen, werfen, aufheben, Stapel zusammenlegen, Lebensdauer, Spielstand
+- gameplay/interaktion 1.0.0 (neu): bestes Ziel in Reichweite/Blick, sofort oder gedrückt halten mit Fortschritt
+- gameplay/inventar 1.0.0 (neu): Plätze, Stapel, Gewicht, Speichern/Laden
+- core/ereignisse 1.0.0 (neu): Event-Bus mit Prioritäten und Warteschlange (feste Reihenfolge je Schritt)
+- core/register 1.0.0 (neu): Datenkatalog (Gegenstände …) mit stabilen Nummern für Spielstand/Netz
+- core/raum-gitter 1.0.0 (neu): räumliches Raster für bewegliche Dinge (Umkreis, Nächster)
+- core/schnappschuss-puffer 1.0.0 (neu): weiches Interpolieren verspäteter Zustände (Mehrspieler-Grundlage)
+- gameplay/character-motor 1.2.0 (additiv): reicht Fußhöhe an `welt.bodenHoehe(x, z, y)` und `{ y, hoehe, ausser }` an `welt.hindernisse` (alte Adapter ignorieren das); feinere Unterschritte bei hohem Tempo (kein Durchtunneln dünner Stämme); `speichern()`/`laden()`; Option/Feld `kollisionsId`
+- gameplay/character 1.2.0 (additiv): meldet sich in einer Kollisions-Welt selbst als weicher Zylinder an (`koerper: false` schaltet ab)
+- world/worldgen/worldgen-adapter 1.2.0 (additiv): `hindernisNah`, `setHindernis(objektIndex, aktiv)`, `alleHindernisse` – Bäume/Felsen lassen sich abbauen
+- world/scatter-mesh 2.1.0 (additiv): `verstecke(objektIndex)`, `lage(objektIndex)`
+- games/testwelt: Kisten-Treppe, Äpfel/Pilze aufheben, Inventarleiste (antippen = ablegen), Bäume fällen/Felsen abbauen, Figuren schieben sich aneinander vorbei, alles im Spielstand
+
 ## 2026-11 – Figuren: schönerer Look, Zauber
 - render/figur-material 1.0.0 (neu): Figuren-Material mit Randlicht, aufgehellter Schattenseite, kräftigeren Farben
 - models/character/character-model 1.2.0: nutzt standardmäßig `figurMaterial()` (eigenes `material` geht weiter)

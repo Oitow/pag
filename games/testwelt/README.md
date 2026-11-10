@@ -17,14 +17,18 @@ Begehbare 3D-Welt zum Ausprobieren der Engine-Bausteine. Hier landet alles, was 
 - **Dorfbewohner:** `js/dorf.js` – am Start und in bis zu 4 Dörfern je 2–4 NPCs mit `gameplay/character-brain` (wandern,
   vormittags arbeiten, untereinander plaudern), Namensschildern und Sprechblasen (`engine/ui/figur-schild`).
   Sie schauen dich an, wenn du nahe kommst; ansprechen mit E / 💬. Spielzeit: 1 Stunde je 30 s (Anzeige unten links).
+- **Dinge & Handeln:** `js/sachen.js` – Kollisions-Welt (`engine/world/kollision`): Kisten-Treppe neben dem Start zum Draufspringen,
+  Figuren schieben sich aneinander vorbei. Äpfel und Pilze liegen herum (`gameplay/welt-dinge` + leichte Physik `gameplay/koerper`:
+  fallen, rollen, schwimmen, lassen sich wegkicken). E / 💬 = aufheben, ansprechen; **E halten** vor einem Baum/Fels = fällen/abbauen
+  (`gameplay/interaktion`), Holz und Steine fallen heraus. Inventarleiste unten (`gameplay/inventar`): Platz antippen = ablegen.
 - **Himmel & Wetter:** Tag/Nacht mit Sonne, Mond (Phasen), Sternen und Wolken (`engine/world/himmel`, `himmel-stand`), Wetter nach
   Biom-Klima und Jahreszeit (`engine/world/wetter`), Regen/Schnee (`engine/render/niederschlag`). ⏩ = 3 Stunden vor, Wetterknopf = nächstes Wetter.
 - **Zeit & Spielstand:** Spieluhr mit Tagen und Jahreszeiten (`engine/core/zeit`), Schleife (`engine/core/schleife`), Uhr, Wetter und
-  Position werden alle 10 s gespeichert (`engine/core/speicher`); `&frisch` in der URL ignoriert den Spielstand.
-- **Steuerung:** WASD/Pfeile, Shift = rennen, Leertaste = springen, Q = Rolle/Dash, V = gleiten, E = ansprechen,
+  Position, Inventar, herumliegende Dinge und gefällte Bäume werden alle 10 s gespeichert (`engine/core/speicher`); `&frisch` in der URL ignoriert den Spielstand.
+- **Steuerung:** WASD/Pfeile, Shift = rennen, Leertaste = springen, Q = Rolle/Dash, V = gleiten, E = aufheben/ansprechen (halten = fällen),
   T = Ziel erfassen/wechseln (Lock-On), Maus ziehen = Kamera, Mausrad = Zoom (ganz rein = Ich-Sicht), 🎥 = Kamera-Ansicht.
   Handy: Stick links (erscheint unter dem Finger), rechte Hälfte ziehen = Kamera, zwei Finger = Zoom, Knöpfe unten rechts
-  (⤒ springen, 🌀 Rolle, 🪂 gleiten, 🎯 Ziel, 💬 nur in der Nähe eines Bewohners). Gamepad geht auch.
+  (⤒ springen, 🌀 Rolle, 🪂 gleiten, 🎯 Ziel, 💬 nur, wenn es etwas zu tun gibt). Gamepad geht auch.
 - **Springen:** 🚩 Startplatz, 🏘 nächstes Dorf, ▲ nächster Gipfel, Karte oben rechts antippen = dorthin.
 - **URL:** `?preset=archipel&seed=7&groesse=128` (`&debug` legt `window.testwelt` für Tests an).
 

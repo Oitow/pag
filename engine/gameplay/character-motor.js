@@ -1,14 +1,14 @@
 /**
  * @modul    character-motor
  * @zweck    Kinematischer Figuren-Controller ohne THREE: Beschleunigung, Coyote-Time, Jump-Buffer, variable Sprunghöhe, Doppelsprung, Rolle/Dash, Gleiten, Tauchen, Kantenschutz, Stufen, Hang-Rutschen, Hindernisse, Schwimmen, Stöße
- * @api      createMotor({welt,pos,yaw,radius,hoehe,tuning,kantenSchutz}) -> {zustand,tuning,radius,hoehe,update(dt,absicht),teleport(pos,yaw?),stoss(x,y,z,{betaeubung}?),setTuning(teil),springeJetzt(),rolleJetzt(richtung?),dispose()} ; MOTOR_TUNING
+ * @api      createMotor({welt,pos,yaw,radius,hoehe,tuning,kantenSchutz,kollisionsId}) -> {zustand,tuning,radius,hoehe,kollisionsId,update(dt,absicht),teleport(pos,yaw?),stoss(x,y,z,{betaeubung}?),setTuning(teil),springeJetzt(),rolleJetzt(richtung?),speichern(),laden(stand),dispose()} ; MOTOR_TUNING
  * @beispiel
  *   import { createMotor } from '../../engine/gameplay/character-motor.js';
  *   const motor = createMotor({ welt: { bodenHoehe: (x, z) => 0 }, pos: { x: 0, y: 0, z: 0 }, tuning: { doppelSprung: 1 } });
  *   motor.update(dt, { x: 0, z: 1, sprint: false, springen: false, ducken: false, rollen: false, gleiten: false });
  *   figur.position.set(motor.zustand.pos.x, motor.zustand.pos.y, motor.zustand.pos.z);
  * @tags     figur, bewegung, physik, controller, sprung, schwimmen, rolle, dash, gleiten, gameplay
- * @version  1.1.0
+ * @version  1.2.0
  * @status   entwurf
  * @three    nein
  *
@@ -18,19 +18,25 @@
  * Zusätzliche Zustandsfelder (1.1.0): rollt, dash, rollAnteil (0…1 Fortschritt), abklingzeit (s bis Rolle/Dash wieder geht),
  *   gleitet, doppelSprung (true im Frame des Luftsprungs), sprungZahl (Sprünge seit Bodenkontakt), taucht, tauchTiefe (m),
  *   schleicht, anKante (Kantenschutz hat gebremst), betaeubt (Rest-s nach Stoß), getroffen (true im ersten Frame nach stoss()).
+ * Seit 1.2.0: welt.bodenHoehe(x, z, fussY) und welt.hindernisse(x, z, radius, { y, hoehe, ausser: kollisionsId }) bekommen Hinweise
+ *   (alte Adapter ignorieren sie) → mit engine/world/kollision.js auf Kisten steigen, über Niedriges springen, eigener Körper zählt nicht.
+ *   Schnelle Bewegung (Dash, Stoß) wird feiner unterteilt, damit nichts durch dünne Stämme tunnelt. speichern()/laden() = ganzer Zustand.
  */
 import { clamp, lerp, damp, dampAngle, angleDiff, numOr } from '../core/math.js';
 import { MOTOR_TUNING } from './character-motor-tuning.js';
 
 export { MOTOR_TUNING };
 
-const SCHRITT = 0.05, MAX_DT = 0.25, NORMAL_E = 0.35;
+const SCHRITT = 0.05, MAX_DT = 0.25, NORMAL_E = 0.35, MAX_SCHRITTE = 12;
 
-export function createMotor({ welt, pos = { x: 0, y: NaN, z: 0 }, yaw = 0, radius = 0.3, hoehe = 1.75, tuning, kantenSchutz } = {}) {
+export function createMotor({ welt, pos = { x: 0, y: NaN, z: 0 }, yaw = 0, radius = 0.3, hoehe = 1.75, tuning, kantenSchutz, kollisionsId } = {}) {
   if (!welt || typeof welt.bodenHoehe !== 'function') throw new Error('createMotor: welt.bodenHoehe fehlt');
   const T = Object.assign({}, MOTOR_TUNING, tuning);
   if (kantenSchutz !== undefined) T.kantenSchutz = !!kantenSchutz;
-  const boden = (x, z) => numOr(welt.bodenHoehe(x, z), 0);
+  // Boden mit Fußhöhe als Hinweis: Kollisions-Welten (engine/world/kollision.js) liefern dann auch begehbare Oberseiten
+  const boden = (x, zz) => numOr(welt.bodenHoehe(x, zz, z.pos.y), 0);
+  const gelaende = (x, zz) => numOr(welt.bodenHoehe(x, zz), 0);          // nur Gelände (für die Hangnormale)
+  const filter = { y: 0, hoehe, ausser: kollisionsId };                    // Hinweis für welt.hindernisse (4. Argument)
   const wasser = (x, z) => { if (!welt.wasserHoehe) return null; const w = welt.wasserHoehe(x, z); return Number.isFinite(w) ? w : null; };
 
   const z = {
@@ -47,7 +53,7 @@ export function createMotor({ welt, pos = { x: 0, y: NaN, z: 0 }, yaw = 0, radiu
   const n = { x: 0, y: 1, z: 0 }, sicher = { x: 0, y: 0, z: 0 }; // Scratch: Bodennormale, letzte gültige Position
 
   function normale(x, zz) {
-    const hL = boden(x - NORMAL_E, zz), hR = boden(x + NORMAL_E, zz), hD = boden(x, zz - NORMAL_E), hU = boden(x, zz + NORMAL_E);
+    const hL = gelaende(x - NORMAL_E, zz), hR = gelaende(x + NORMAL_E, zz), hD = gelaende(x, zz - NORMAL_E), hU = gelaende(x, zz + NORMAL_E);
     const nx = hL - hR, ny = 2 * NORMAL_E, nz = hD - hU, l = Math.hypot(nx, ny, nz);
     n.x = nx / l; n.y = ny / l; n.z = nz / l;
     return n;
@@ -57,8 +63,9 @@ export function createMotor({ welt, pos = { x: 0, y: NaN, z: 0 }, yaw = 0, radiu
 
   function teleport(p, neuYaw) {
     z.pos.x = numOr(p?.x, 0); z.pos.z = numOr(p?.z, 0);
+    z.pos.y = Number.isFinite(+p?.y) ? +p.y : gelaende(z.pos.x, z.pos.z);
     const b = boden(z.pos.x, z.pos.z);
-    z.pos.y = Number.isFinite(+p?.y) ? Math.max(+p.y, b) : b;
+    z.pos.y = Math.max(z.pos.y, b);
     z.vel.x = z.vel.y = z.vel.z = 0; stossX = stossZ = 0;
     if (neuYaw !== undefined) z.yaw = numOr(neuYaw, z.yaw);
     z.amBoden = z.pos.y - b < 0.05; z.imWasser = false; z.rutscht = false; z.luftZeit = 0;
@@ -197,7 +204,8 @@ export function createMotor({ welt, pos = { x: 0, y: NaN, z: 0 }, yaw = 0, radiu
     p.x += mx; p.z += mz;
     if (welt.hindernisse) {
       for (let i = 0; i < 3; i++) {
-        const s = welt.hindernisse(p.x, p.z, radius);
+        filter.y = p.y; filter.hoehe = hoehe; filter.ausser = kollisionsId;
+        const s = welt.hindernisse(p.x, p.z, radius, filter);
         if (!s) break;
         const sx = numOr(s.x, 0), sz = numOr(s.z, 0), sl = Math.hypot(sx, sz);
         if (sl < 1e-9) break;
@@ -271,7 +279,9 @@ export function createMotor({ welt, pos = { x: 0, y: NaN, z: 0 }, yaw = 0, radiu
     let rollGedrueckt = rollGehalten && !rollVorher;
     rollVorher = rollGehalten;
     if (dt > 0) {
-      const anzahl = Math.ceil(dt / SCHRITT - 1e-9), h = dt / anzahl;
+      // Unterschritte: höchstens SCHRITT lang und (gegen Durchtunneln dünner Hindernisse) höchstens ~1 Radius weit
+      const schnell = Math.max(Math.hypot(z.vel.x + stossX, z.vel.z + stossZ), rollRest > 0 || rollGedrueckt || rollErzwungen ? Math.max(T.dashTempo, T.rollTempo) : 0);
+      const anzahl = Math.min(MAX_SCHRITTE, Math.max(Math.ceil(dt / SCHRITT - 1e-9), Math.ceil(schnell * dt / Math.max(radius, 0.1) - 1e-9))), h = dt / anzahl;
       sicher.x = z.pos.x; sicher.y = z.pos.y; sicher.z = z.pos.z;
       for (let i = 0; i < anzahl; i++) { schritt(h, ax, az, mag, ab, gedrueckt, rollGedrueckt); gedrueckt = rollGedrueckt = false; }
       if (!Number.isFinite(z.pos.x + z.pos.y + z.pos.z + z.vel.x + z.vel.y + z.vel.z)) {
@@ -292,11 +302,28 @@ export function createMotor({ welt, pos = { x: 0, y: NaN, z: 0 }, yaw = 0, radiu
     if (vy !== 0) { z.vel.y += vy; if (vy > 0) { z.amBoden = false; z.imWasser = false; volleHoehe = true; if (z.rollt) rollEnde(); } }
   }
 
+  /** Vollständiger Zustand als reine Daten (Spielstand, Netzwerk: Vorhersage zurückspulen). `laden` nimmt genau das zurück. */
+  function speichern() {
+    return { z: { ...z, pos: { ...z.pos }, vel: { ...z.vel } },
+      i: [coyote, puffer, gehaltenVorher, rollVorher, volleHoehe, stossX, stossZ, rollRest, rollGesamt, rollX, rollZ, dashVerbraucht] };
+  }
+  function laden(s) {
+    if (!s || !s.z || !Array.isArray(s.i)) return false;
+    const { pos: sp, vel: sv, ...rest } = s.z;
+    Object.assign(z, rest);
+    z.pos.x = numOr(sp?.x, z.pos.x); z.pos.y = numOr(sp?.y, z.pos.y); z.pos.z = numOr(sp?.z, z.pos.z);
+    z.vel.x = numOr(sv?.x, 0); z.vel.y = numOr(sv?.y, 0); z.vel.z = numOr(sv?.z, 0);
+    [coyote, puffer, gehaltenVorher, rollVorher, volleHoehe, stossX, stossZ, rollRest, rollGesamt, rollX, rollZ, dashVerbraucht] = s.i;
+    erzwungen = false; rollErzwungen = null; stossNeu = false;
+    return true;
+  }
+
   z.yaw = numOr(yaw, 0);
   teleport(pos, z.yaw);
 
   return {
-    zustand: z, tuning: T, update, teleport, stoss,
+    zustand: z, tuning: T, update, teleport, stoss, speichern, laden,
+    get kollisionsId() { return kollisionsId; }, set kollisionsId(v) { kollisionsId = v; },
     get radius() { return radius; }, set radius(v) { radius = Math.max(0.01, numOr(v, radius)); },
     get hoehe() { return hoehe; }, set hoehe(v) { hoehe = Math.max(0.1, numOr(v, hoehe)); },
     setTuning(teil) { Object.assign(T, teil); },
