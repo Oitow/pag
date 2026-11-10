@@ -1,5 +1,6 @@
 // Testwelt – begehbare 3D-Welt aus dem Baukasten: Weltgenerator (engine/world/worldgen) + Gelände/Objekte
 // (engine/world/terrain-mesh, scatter-mesh) + Spielfigur (Engine-Figurensystem, figur.js) + Dorfbewohner (dorf.js).
+// Gelände verändern: engine/world/welt-aenderung (Spielstand = Seed + Änderungen) · Lagerplatz: lager.js · Menü: pause.js
 import * as THREE from 'three';
 import { createWorld, PRESETS } from '../../../engine/world/worldgen/worldgen.js';
 import { createWeltAdapter } from '../../../engine/world/worldgen/worldgen-adapter.js';
@@ -20,6 +21,9 @@ import { createSpielerFigur } from './figur.js';
 import { createDorf } from './dorf.js';
 import { createSachen } from './sachen.js';
 import { createKollisionsWelt } from '../../../engine/world/kollision.js';
+import { createWeltAenderung } from '../../../engine/world/welt-aenderung.js';
+import { findeLagerPlatz, bereiteLagerPlatz } from './lager.js';
+import { createPause } from './pause.js';
 
 const $ = (id) => document.getElementById(id);
 const HOEHEN_SKALA = 60, METER_PRO_ZELLE = 2;
@@ -65,13 +69,16 @@ seedEl.value = url.get('seed') ?? 42;
 if (['128', '256'].includes(url.get('groesse'))) groesseEl.value = url.get('groesse');
 
 // ---- Welt ----
-let welt = null, adapter = null, gelaende = null, objekte = null, wege = null, figur = null, dorf = null, sachen = null, kollision = null;
+let welt = null, adapter = null, gelaende = null, objekte = null, wege = null, figur = null, dorf = null, sachen = null, kollision = null, aend = null;
+let frisch = url.has('frisch'), pausiert = false;
+const erde = (i) => Math.abs(aend.delta(i)) / 0.4;      // aufgegrabener/aufgeschütteter Boden wird erdfarben
+const standDaten = () => ({ welt: weltSchluessel, uhr: uhr.zustand(), wetter: wetter.zustand(), pos: [figur.position.x, figur.position.z], sachen: sachen?.zustand(), aenderung: aend?.zustand() });
 const schilder = createFigurSchilder();
 let weltSchluessel = '';
 let dorfNr = 0, gipfelNr = 0;
 const pause = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
 
-async function erzeuge() {
+async function erzeuge(vorgabe = null) {
   $('lade').hidden = false;
   await pause();
   const t0 = performance.now();
@@ -79,36 +86,49 @@ async function erzeuge() {
   const neu = createWorld({ preset: presetEl.value, seed: +seedEl.value | 0, breite: g, tiefe: g, qualitaet: 'normal', wege: { aktiv: true } });
   const msWelt = performance.now() - t0;
   sachen?.dispose(); sachen = null; kollision?.dispose();
-  gelaende?.dispose(); objekte?.dispose(); wege?.dispose(); adapter?.dispose();
+  gelaende?.dispose(); objekte?.dispose(); wege?.dispose(); adapter?.dispose(); aend?.dispose();
   welt = neu;
   adapter = createWeltAdapter(welt, { hoehenSkala: HOEHEN_SKALA, meterProZelle: METER_PRO_ZELLE });
+  // Änderungs-Schicht: erst der Bauplatz fürs Lager (gehört zur Ausgangswelt), dann die gespeicherten Änderungen des Spielers
+  aend = createWeltAenderung(adapter, { maxAbweichung: 4 });
+  const start = adapter.startPunkt();
+  const lagerPlatz = findeLagerPlatz(aend, adapter, start, welt.seed);
+  if (lagerPlatz) bereiteLagerPlatz(aend, lagerPlatz);
+  aend.festschreiben();
+  weltSchluessel = `${presetEl.value}|${seedEl.value}|${g}`;
+  const alt = vorgabe ?? (frisch ? null : speicher.lade('auto'));
+  const gleicheWelt = !!alt && alt.welt === weltSchluessel;
+  const geladen = gleicheWelt && alt.aenderung ? aend.lade(alt.aenderung) : null;
   gelaende = createTerrainMesh(adapter, { schatten: true });
+  if (geladen) gelaende.aktualisiere(geladen, { erde });
   const t1 = performance.now();
   objekte = createScatterMesh(adapter, { schatten: true, unterWasser: false, assets: createAssetCache, bodendeckerWeite: 110, kachel: 128, fernWeite: 160,
     typSkala: { fels: 1.4, felsbrocken: 1.8 } });   // Felsen etwas größer → passt zu den Hindernis-Radien des Adapters
   wege = createWegeMesh(adapter, { schatten: true });
+  for (const i of aend.entfernte()) { objekte.verstecke(i); adapter.setHindernis(i, false); }
+  aend.onAenderung(({ bereich, objekte: geaendert }) => {     // nur das geänderte Stück neu zeichnen
+    if (bereich) { gelaende.aktualisiere(bereich, { erde }); objekte.setzeAufBoden(bereich); }
+    for (const [i, weg] of geaendert) { objekte.verstecke(i, weg); adapter.setHindernis(i, !weg); }
+  });
   // Figur läuft über die Brücken; darüber die Kollisions-Welt (Kisten, Figuren-Körper, abbaubare Bäume)
   const begehbar = kollision = createKollisionsWelt({ welt: mitBruecken(adapter, wege.lagen) });
   szene.add(gelaende.gruppe, objekte.gruppe, wege.gruppe);
   himmel.setNebel(120, Math.max(300, adapter.groesse.x * 1.1));
   zeichneKarte();
-  const start = adapter.startPunkt();
   if (!figur) figur = createSpielerFigur({ szene, kamera, adapter: begehbar, element: canvas, start, seed: welt.seed, jetzt: () => uhr.tag + uhr.stunde / 24, schilder, npcs: () => dorf?.bewohner || [] });
   else figur.setAdapter(begehbar);
   figur.teleport(start.x, start.z);
   // Spielstand: Uhr + Wetter immer, Position nur in derselben Welt
-  weltSchluessel = `${presetEl.value}|${seedEl.value}|${g}`;
-  const alt = speicher.lade('auto');
-  if (alt && !url.has('frisch')) {
+  if (alt) {
     if (alt.uhr) uhr.lade(alt.uhr);
     if (alt.wetter) wetter.lade(alt.wetter);
-    if (alt.welt === weltSchluessel && alt.pos) figur.teleport(alt.pos[0], alt.pos[1]);
+    if (gleicheWelt && alt.pos) figur.teleport(alt.pos[0], alt.pos[1]);
   }
-  speicher.auto('auto', () => ({ welt: weltSchluessel, uhr: uhr.zustand(), wetter: wetter.zustand(), pos: [figur.position.x, figur.position.z], sachen: sachen?.zustand() }), 10);
+  speicher.auto('auto', standDaten, 10);
   dorf?.dispose();
   dorf = createDorf({ szene, adapter: begehbar, welt, schilder, spieler: () => figur.figur, seed: welt.seed });
   sachen = createSachen({ szene, welt: begehbar, objekte, bewohner: dorf.bewohner, start, seed: welt.seed, jetzt: () => uhr.tag + uhr.stunde / 24,
-    stand: alt && !url.has('frisch') && alt.welt === weltSchluessel ? alt.sachen : null });
+    stand: gleicheWelt ? alt.sachen : null, aend, lagerPlatz });
   dorfNr = gipfelNr = 0;
   const neueUrl = `?preset=${presetEl.value}&seed=${seedEl.value}&groesse=${g}`;
   history.replaceState(null, '', neueUrl);
@@ -171,6 +191,17 @@ $('kameraPreset').onclick = () => { $('kameraPreset').textContent = '🎥 ' + fi
 $('zeitVor').onclick = () => uhr.vor(3);
 $('wetterKnopf').onclick = () => wetter.setze(WETTER_NAMEN[(WETTER_NAMEN.indexOf(wetter.art) + 1) % WETTER_NAMEN.length]);
 addEventListener('pagehide', () => speicher.jetztSpeichern());
+// Pause-Menü: Spielstand laden = seine Welt neu erzeugen (Seed) und die gespeicherten Änderungen einspielen
+const menue = createPause({
+  speicher, holeStand: standDaten, aend: () => aend, uhr, renderer, szene, anpassen: groesseAnpassen, onPause: (an) => { pausiert = an; },
+  ladeStand(d) {
+    const [preset, seed, groesse] = String(d?.welt ?? '').split('|');
+    if (!PRESETS[preset]) return;
+    presetEl.value = preset; seedEl.value = seed; groesseEl.value = groesse; frisch = false;
+    erzeuge(d);
+  },
+});
+$('menueKnopf').onclick = () => menue.schalte('start');
 $('zumGipfel').onclick = () => { const g = welt.orte.poi.filter(p => p.art === 'gipfel'); if (g.length) springeZu(g[gipfelNr++ % g.length]); };
 // Fokus von Knöpfen/Auswahl lösen, damit Tasten (Leertaste!) wieder die Figur steuern
 for (const el of document.querySelectorAll('#oben button, #oben select')) el.addEventListener('click', () => el.blur());
@@ -186,7 +217,7 @@ function klimaBei(p) {
   return { temperatur: welt.temperatur[i] + Math.sin(uhr.jahresAnteil * Math.PI * 2) * 0.15, feuchte: welt.feuchte[i] };
 }
 function update(dt) {
-  if (!figur || !adapter) return;
+  if (!figur || !adapter || pausiert) return;
   echtZeit += dt;
   const stunden = uhr.update(dt);
   const p = figur.position;
@@ -214,4 +245,4 @@ function update(dt) {
 }
 const schleife = createSchleife({ update, render: () => { if (figur) renderer.render(szene, kamera); }, fehler: zeigeFehler });
 
-erzeuge().then(() => { schleife.start(); if (url.has("debug")) window.testwelt = { renderer, szene, kamera, uhr, wetter, himmel, speicher, get figur() { return figur; }, get adapter() { return adapter; }, get dorf() { return dorf; }, get objekte() { return objekte; }, get sachen() { return sachen; }, get kollision() { return kollision; } }; });
+erzeuge().then(() => { schleife.start(); if (url.has("debug")) window.testwelt = { renderer, szene, kamera, uhr, wetter, himmel, speicher, get figur() { return figur; }, get adapter() { return adapter; }, get dorf() { return dorf; }, get objekte() { return objekte; }, get sachen() { return sachen; }, get kollision() { return kollision; }, get aend() { return aend; }, get gelaende() { return gelaende; }, menue };  });

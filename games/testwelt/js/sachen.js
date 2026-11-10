@@ -3,6 +3,7 @@
 //   gameplay/welt-dinge + inventar + core/register (Gegenstände aufheben/ablegen) · gameplay/interaktion (E: aufheben, ansprechen, fällen)
 //   gameplay/rohstoffe (Bäume/Felsen abbauen, wachsen nach Spielzeit nach; Adapter-Hindernis + scatter-mesh aus/an)
 //   gameplay/rezepte (🔨 Herstellen) · gameplay/hand (Platz antippen = in die Hand; Axt/Hacke am Arm, nutzen sich ab)
+// Anzeige: anzeige.js (ui/hud, ui/inventar-ansicht, ui/menue) · Schuppen/Truhe/Werkbank: lager.js · Schaufel/Erde: graben.js
 import * as THREE from 'three';
 import { createKoerperWelt } from '../../../engine/gameplay/koerper.js';
 import { createWeltDinge } from '../../../engine/gameplay/welt-dinge.js';
@@ -15,6 +16,9 @@ import { createAusruestung } from '../../../engine/models/character/character-au
 import { createRegister } from '../../../engine/core/register.js';
 import { createEreignisse } from '../../../engine/core/ereignisse.js';
 import { rng, hashSeed, range } from '../../../engine/core/rng.js';
+import { createAnzeige } from './anzeige.js';
+import { createLager } from './lager.js';
+import { createGraben } from './graben.js';
 
 const GEGENSTAENDE = {
   holz: { name: 'Holz', zeichen: '🪵', farbe: 0x8a5a2b, form: 'zyl', radius: 0.16, reibung: 6, auftrieb: 1.5 },
@@ -23,6 +27,8 @@ const GEGENSTAENDE = {
   pilz: { name: 'Pilz', zeichen: '🍄', farbe: 0xe8d8b8, form: 'kegel', radius: 0.08, sprung: 0.1, auftrieb: 1.3 },
   axt: { name: 'Axt', zeichen: '🪓', farbe: 0x7a7f88, form: 'zyl', radius: 0.13, stapel: 1, haltbarkeit: 20, tempo: 1, tags: ['werkzeug', 'axt'], modell: 'axt' },
   hacke: { name: 'Hacke', zeichen: '⛏️', farbe: 0x6f747c, form: 'zyl', radius: 0.13, stapel: 1, haltbarkeit: 20, tempo: 1, tags: ['werkzeug', 'hacke'], modell: 'hacke' },
+  schaufel: { name: 'Schaufel', zeichen: '⚒️', farbe: 0x8b8f96, form: 'zyl', radius: 0.13, stapel: 1, haltbarkeit: 30, tags: ['werkzeug', 'schaufel'], modell: 'schaufel' },
+  erde: { name: 'Erde', zeichen: '🟫', farbe: 0x6b4a2e, form: 'ico', radius: 0.15, reibung: 12, auftrieb: 0.2 },
 };
 // dauer = mit passendem Werkzeug; von Hand dauert es ohneFaktor-mal so lang. nachwachsen in Spieltagen.
 const ROHSTOFFE = {
@@ -30,14 +36,15 @@ const ROHSTOFFE = {
   fels: { text: 'Abbauen', gibt: [{ id: 'stein', min: 2, max: 4 }], dauer: 1.6, werkzeug: 'hacke', ohneFaktor: 3, nachwachsen: 4 },
   kaktus: { text: 'Fällen', gibt: [{ id: 'holz', min: 1, max: 2 }], dauer: 0.9, werkzeug: 'axt', ohneFaktor: 2, nachwachsen: 3 },
 };
-const REZEPTE = { axt: { zutaten: { holz: 2, stein: 1 } }, hacke: { zutaten: { holz: 2, stein: 2 } } };
+const REZEPTE = { axt: { zutaten: { holz: 2, stein: 1 } }, hacke: { zutaten: { holz: 2, stein: 2 } }, schaufel: { zutaten: { holz: 2, stein: 1 }, station: 'werkbank' } };
 const PLAETZE = 8;
 
 /**
- * opts: { szene, welt (Kollisions-Welt über dem Adapter), objekte (scatter-mesh), bewohner [{figur, ansprechen}], start {x,z}, seed, stand (aus zustand()), jetzt () -> Spielzeit in Tagen }
- * Liefert { interaktion, inventar, ereignisse, update(dt, figur, gehalten) -> Ziel|null, zustand(), dispose() }.
+ * opts: { szene, welt (Kollisions-Welt über dem Adapter), objekte (scatter-mesh), bewohner [{figur, ansprechen}], start {x,z}, seed, stand (aus zustand()), jetzt () -> Spielzeit in Tagen,
+ *         aend (world/welt-aenderung, für Schaufel/Erde), lagerPlatz ({x, z, winkel} | null: Schuppen mit Truhe und Werkbank) }
+ * Liefert { interaktion, inventar, ereignisse, anzeige, lager, update(dt, figur, gehalten) -> Ziel|null, zustand(), dispose() }.
  */
-export function createSachen({ szene, welt, objekte, bewohner = [], start, seed = 1, stand = null, jetzt = () => 0 }) {
+export function createSachen({ szene, welt, objekte, bewohner = [], start, seed = 1, stand = null, jetzt = () => 0, aend = null, lagerPlatz = null }) {
   const r = rng(hashSeed('sachen', seed));
   const ereignisse = createEreignisse();
   const register = createRegister({ art: 'gegenstand', standard: { stapel: 20 } });
@@ -45,7 +52,7 @@ export function createSachen({ szene, welt, objekte, bewohner = [], start, seed 
   const inventar = createInventar({ plaetze: PLAETZE, register, ereignisse });
   const hand = createHand({ inventar, register, ereignisse });
   const rezepte = createRezepte({ gegenstaende: register, ereignisse });
-  rezepte.definiereAlle(REZEPTE);
+  rezepte.definiereAlle(lagerPlatz ? REZEPTE : { ...REZEPTE, schaufel: { ...REZEPTE.schaufel, station: null } });   // ohne Lager keine Werkbank
   const physik = createKoerperWelt({ welt });
   const interaktion = createInteraktion({ ereignisse });
   const gruppe = new THREE.Group(); gruppe.name = 'sachen';
@@ -135,52 +142,16 @@ export function createSachen({ szene, welt, objekte, bewohner = [], start, seed 
     }
   }
 
-  // ---- Anzeige: Hinweis + Inventarleiste (antippen = in die Hand, nochmal = ablegen) + Herstellen ----
-  const hud = document.createElement('div');
-  hud.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:max(124px,calc(env(safe-area-inset-bottom) + 124px));display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;z-index:3';
-  const hinweis = document.createElement('div');
-  hinweis.style.cssText = 'padding:5px 12px;border-radius:999px;background:rgba(18,22,28,.82);border:1px solid rgba(255,255,255,.14);font-size:13px;white-space:nowrap;visibility:hidden';
-  const leiste = document.createElement('div');
-  leiste.style.cssText = 'display:flex;justify-content:center;gap:4px;max-width:94vw;pointer-events:auto';
-  const felder = [];
+  // ---- Lagerplatz (Tür, Truhe, Werkbank), Graben, Anzeige ----
+  const lager = lagerPlatz ? createLager({ szene, welt, interaktion, ereignisse, register, platz: lagerPlatz, stand: stand?.lager ?? null }) : null;
   let wurfWunsch = -1;
-  for (let i = 0; i < PLAETZE; i++) {
-    const f = document.createElement('button');
-    f.style.cssText = '--b:min(44px,calc((94vw - 32px) / 9));width:var(--b);height:var(--b);min-width:0;min-height:0;padding:0;border-radius:8px;background:rgba(18,22,28,.82);border:1px solid rgba(255,255,255,.14);font-size:18px;position:relative;line-height:1';
-    f.title = 'Antippen = in die Hand, nochmal antippen = ablegen';
-    f.addEventListener('pointerdown', (e) => {
-      e.stopPropagation(); e.preventDefault();
-      if (hand.platz === i && inventar.plaetze[i]) wurfWunsch = i; else { hand.waehle(i); zeichneLeiste(); }
-    });
-    leiste.append(f); felder.push(f);
-  }
-  const bauKnopf = document.createElement('button');
-  bauKnopf.style.cssText = felder[0].style.cssText; bauKnopf.textContent = '🔨'; bauKnopf.title = 'Herstellen';
-  leiste.append(bauKnopf);
-  const bauListe = document.createElement('div');
-  bauListe.style.cssText = 'display:none;flex-direction:column;gap:4px;pointer-events:auto;padding:6px;border-radius:10px;background:rgba(18,22,28,.9);border:1px solid rgba(255,255,255,.14)';
-  bauKnopf.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); bauListe.style.display = bauListe.style.display === 'none' ? 'flex' : 'none'; });
-  const bauZeilen = rezepte.alle().map((rz) => {
-    const z = document.createElement('button');
-    z.style.cssText = 'min-height:40px;padding:4px 10px;border-radius:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);font-size:14px;color:#eef1f4;text-align:left;white-space:nowrap';
-    z.textContent = `${register.hole(rz.ergebnis.id).zeichen} ${rz.name}  ←  ` + Object.entries(rz.zutaten).map(([id, n]) => `${n}×${register.hole(id).zeichen}`).join(' ');
-    z.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault(); rezepte.stelleHer(rz.id, inventar, { wer }); });
-    bauListe.append(z);
-    return [rz, z];
+  const anzeige = createAnzeige({ inventar, register, hand, rezepte, ereignisse, wer, lager, onWurf: (platz) => { wurfWunsch = platz; } });
+  const graben = aend ? createGraben({ aend, interaktion, hand, inventar, dinge, welt, melde: (t, o) => anzeige.hud.melde(t, o) }) : null;
+  const abGelaende = aend?.onAenderung(({ bereich }) => {            // Boden hat sich bewegt → ruhende Dinge dort neu fallen lassen
+    if (!bereich) return;
+    const q = aend.zuWelt(bereich);
+    physik.weckeUmkreis((q.x0 + q.x1) / 2, (q.z0 + q.z1) / 2, Math.hypot(q.x1 - q.x0, q.z1 - q.z0) / 2 + 2);
   });
-  hud.append(hinweis, bauListe, leiste); document.body.append(hud);
-  function zeichneLeiste() {
-    inventar.plaetze.forEach((p, i) => {
-      const g = p && register.hole(p.id), anteil = g?.haltbarkeit ? (p.daten?.haltbarkeit ?? g.haltbarkeit) / g.haltbarkeit : 0;
-      felder[i].style.borderColor = hand.platz === i ? '#ffd45a' : 'rgba(255,255,255,.14)';
-      felder[i].innerHTML = !p ? '' : g.zeichen + `<span style="position:absolute;right:3px;bottom:1px;font-size:10px;color:#eef1f4">${p.anzahl > 1 ? p.anzahl : ''}</span>` +
-        (anteil ? `<span style="position:absolute;left:10%;bottom:3px;height:3px;border-radius:2px;background:${anteil > 0.3 ? '#7bd66a' : '#e0683c'};width:${Math.round(anteil * 80)}%"></span>` : '');
-    });
-    for (const [rz, z] of bauZeilen) z.style.opacity = rezepte.pruefe(rz.id, inventar).ok ? '1' : '.4';
-  }
-  const ab = inventar.onAenderung(zeichneLeiste);
-  zeichneLeiste();
-  let hinweisText = '';
 
   let handFigur = null, handModell = null, handObj = null;   // was die Figur gerade sichtbar in der Hand hält
   function zeigeHand(figur) {
@@ -190,11 +161,9 @@ export function createSachen({ szene, welt, objekte, bewohner = [], start, seed 
     handFigur = figur; handModell = m;
     if (m) figur.ausruesten('handR', handObj = createAusruestung(m));
   }
-  ereignisse.an('werkzeug:kaputt', (e) => { hinweisText = '?'; hinweis.textContent = `${register.hole(e.id).name} ist zerbrochen`; hinweis.style.visibility = 'visible'; kaputtZeit = 2; });
-  let kaputtZeit = 0;
   ereignisse.an('ding:aufgehoben', (e) => e.wer?.figur?.spiele('aufheben'));   // nur wenn wirklich etwas ins Inventar ging
   return {
-    interaktion, inventar, ereignisse, dinge, physik, hand, rezepte, rohstoffe: roh,
+    interaktion, inventar, ereignisse, dinge, physik, hand, rezepte, rohstoffe: roh, anzeige, lager, wer,
     /** Je Bild: Physik, Aufheben/Ansprechen/Abbauen. `gehalten` = Interaktions-Taste. Liefert das aktuelle Ziel (für den Touch-Knopf). */
     update(dt, figur, gehalten) {
       const z = figur.zustand, p = z.pos;
@@ -209,20 +178,24 @@ export function createSachen({ szene, welt, objekte, bewohner = [], start, seed 
       physik.update(dt);
       dinge.update(dt);
       if ((abbauZeit -= dt) <= 0) { abbauZeit = 0.15; abbauSuchen(p); }
+      lager?.update(dt, wer);
+      graben?.update(wer);
       interaktion.aktualisiere();
       const res = interaktion.halte(wer, dt, gehalten);
       const ziel = res.ziel;
       hackZeit -= dt;
-      if (ziel?.art === 'abbau' && res.anteil > 0 && hackZeit <= 0) { figur.spiele('hacken'); hackZeit = 0.8; figur.blickZu({ x: ziel.x, y: p.y + 1, z: ziel.z }); }
+      const arbeitet = (ziel?.art === 'abbau' || ziel?.art === 'graben') && res.anteil > 0;
+      if (arbeitet && hackZeit <= 0) { figur.spiele('hacken'); hackZeit = 0.8; if (ziel.art === 'abbau') figur.blickZu({ x: ziel.x, y: p.y + 1, z: ziel.z }); }
       if (ziel?.art !== 'npc' && !(ziel?.art === 'abbau' && res.anteil > 0)) figur.blickZu(null);
       for (const [d, mesh] of meshes) { const k = d.koerper; if (!k.ruht || mesh.position.y !== k.pos.y) mesh.position.set(k.pos.x, k.pos.y, k.pos.z); }
-      const text = ziel ? (ziel.dauer > 0 ? `E halten – ${ziel.text}${res.anteil > 0 ? ' ' + Math.round(res.anteil * 100) + ' %' : ''}` : `E – ${ziel.text}`) : '';
-      if ((kaputtZeit -= dt) <= 0 && text !== hinweisText) { hinweisText = text; hinweis.textContent = text; hinweis.style.visibility = text ? 'visible' : 'hidden'; }
+      anzeige.hinweis(ziel ? (ziel.dauer > 0 ? `E halten – ${ziel.text}` : `E – ${ziel.text}`) : '', ziel?.dauer > 0 && res.anteil > 0 ? res.anteil : null);
+      anzeige.update(dt);
       return ziel;
     },
-    zustand: () => ({ inv: inventar.zustand(), dinge: dinge.zustand(), roh: roh.zustand(), hand: hand.zustand() }),
+    zustand: () => ({ inv: inventar.zustand(), dinge: dinge.zustand(), roh: roh.zustand(), hand: hand.zustand(), lager: lager?.zustand() ?? null }),
     dispose() {
-      ab(); hud.remove(); if (handObj) { handFigur.ablegen('handR'); handObj.dispose?.(); }
+      abGelaende?.(); graben?.dispose(); anzeige.dispose(); lager?.dispose();
+      if (handObj) { handFigur.ablegen('handR'); handObj.dispose?.(); }
       hand.dispose(); rezepte.dispose(); roh.dispose(); dinge.dispose(); physik.dispose(); interaktion.dispose(); inventar.dispose(); ereignisse.dispose();
       for (const g of Object.values(geos)) g.dispose();
       for (const m of Object.values(mats)) m.dispose();
