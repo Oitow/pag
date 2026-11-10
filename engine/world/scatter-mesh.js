@@ -1,7 +1,7 @@
 /**
  * @modul    scatter-mesh
  * @zweck    Zeichnet die Objekte einer erzeugten Welt (welt.objekte) als InstancedMesh je (Typ, Variante): mit Asset-Cache prozedurale Natur-Assets in Metern (Bäume, Felsen, Büsche, Bodendecker …) mit Wind, sonst einfache Low-Poly-FORMEN; unbekannte Typen → Ersatz nach Art oder weglassen; Seerosen auf dem Wasser
- * @api      createScatterMesh(adapter, opts) -> {gruppe,anzahl,dreiecke,meshes,typen,update(zeit, { staerke, richtung, kamera }),dispose} ; FORMEN ; ERSATZ ; BODENDECKER ; baueForm(teile) -> BufferGeometry
+ * @api      createScatterMesh(adapter, opts) -> {gruppe,anzahl,dreiecke,meshes,typen,update(zeit, { staerke, richtung, kamera }),verstecke(objektIndex,versteckt?),lage(objektIndex),dispose} ; FORMEN ; ERSATZ ; BODENDECKER ; baueForm(teile) -> BufferGeometry
  * @beispiel
  *   import { createScatterMesh } from '../../engine/world/scatter-mesh.js';
  *   import { createAssetCache } from '../../engine/models/natur/natur-assets.js';
@@ -9,7 +9,7 @@
  *   szene.add(pflanzen.gruppe);
  *   // je Bild: pflanzen.update(zeit);
  * @tags     welt, objekte, baeume, felsen, instanzen, vegetation, mesh, wind, natur
- * @version  2.0.0
+ * @version  2.1.0
  * @status   entwurf
  * @three    ja
  */
@@ -138,6 +138,7 @@ export function createScatterMesh(adapter, opts = {}) {
   const lod = [];           // [nah, fern, mitte]
   let anzahl = 0, dreiecke = 0;
   const typen = new Set();
+  const instanzen = new Map();   // Objekt-Index → [InstancedMesh, Nummer, Gruppe] (fürs Verstecken)
   const baue = (geo, material, g, matrix) => {
     const im = new THREE.InstancedMesh(geo, material, g.idx.length);
     if (matrix) im.instanceMatrix = matrix; else im.instanceMatrix.array.set(g.m);
@@ -164,6 +165,7 @@ export function createScatterMesh(adapter, opts = {}) {
       lod.push([im, imF, g.mitte]);
     }
     typen.add(name);
+    g.idx.forEach((i, k) => instanzen.set(i, [im, k, g]));
     anzahl += g.idx.length; dreiecke += g.idx.length * geo.attributes.position.count / 3;
   }
   return {
@@ -177,7 +179,24 @@ export function createScatterMesh(adapter, opts = {}) {
         for (const [nah, weit, [mx, mz]] of lod) { const nahDran = (k.x - mx) ** 2 + (k.z - mz) ** 2 < w2; nah.visible = nahDran; weit.visible = !nahDran; }
       }
     },
+    /** Ein Objekt (Index in welt.objekte) aus-/einblenden – z. B. gefällter Baum. Liefert false, wenn es nicht gezeichnet wird. */
+    verstecke(objektIndex, versteckt = true) {
+      const e = instanzen.get(objektIndex);
+      if (!e) return false;
+      const [im, k, g] = e, a = im.instanceMatrix.array;
+      if (versteckt) a.fill(0, k * 16, k * 16 + 16); else for (let j = 0; j < 16; j++) a[k * 16 + j] = g.m[k * 16 + j];
+      im.instanceMatrix.needsUpdate = true;      // Nah- und Fern-Mesh teilen sich die Matrix
+      return true;
+    },
+    /** Weltposition { x, y, z } und Skala eines gezeichneten Objekts oder null. */
+    lage(objektIndex) {
+      const e = instanzen.get(objektIndex);
+      if (!e) return null;
+      const m = e[2].m, k = e[1] * 16;
+      return { x: m[k + 12], y: m[k + 13], z: m[k + 14], skala: Math.hypot(m[k], m[k + 1], m[k + 2]) };
+    },
     dispose() {
+      instanzen.clear();
       for (const g of geos.values()) g.dispose();
       for (const m of gruppe.children) m.dispose();
       mat.dispose(); if (matBoden !== mat) matBoden.dispose();

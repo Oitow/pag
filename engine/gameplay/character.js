@@ -11,7 +11,7 @@
  *   const bauer = createCharacter({ look, welt, name: 'Jupp', schilder });
  *   bauer.sage('Moin!', { geste: 'winken' }); bauer.blickZu(held); bauer.ausruesten('handR', mistgabel);
  * @tags     figur, charakter, spieler, npc, bewegung, animation, controller, avatar
- * @version  1.1.0
+ * @version  1.2.0
  * @status   entwurf
  * @three    nein
  */
@@ -31,6 +31,7 @@ const MOTOR_AKTIONEN = { springen: 'springeJetzt', rollen: 'rolleJetzt' };
 
 /**
  * opts: { look, seed = 1, welt (Adapter: bodenHoehe …), pos {x,y,z}, yaw = 0, tuning (Motor), animation (Animator-Optionen),
+ *         koerper = true (meldet sich in einer Kollisions-Welt als weicher Zylinder an, falls welt.fuege existiert), koerperWeich = 0.5,
  *         schatten = true, onSchritt(fuss, staerke, figur), name, schilder (engine/ui/figur-schild), schild: { leben, versatz, farbe },
  *         brain: fertiges Brain (character-brain) oder Optionen dafür (welt/heimat/seed werden ergänzt) }
  * update(dt, absicht): absicht = null/undefined und Brain vorhanden → Brain entscheidet (3. Argument = Kontext
@@ -45,6 +46,11 @@ export function createCharacter(opts = {}) {
     radius: m.radius, hoehe: m.hoehe, tuning: opts.tuning,
   });
   const figur = {};
+  // Kollisions-Welt (engine/world/kollision.js): eigenen Körper anmelden → Figuren schieben sich weich aneinander vorbei
+  const koerperId = opts.koerper !== false && typeof opts.welt?.fuege === 'function' && typeof opts.welt.bewege === 'function'
+    ? opts.welt.fuege({ x: motor.zustand.pos.x, z: motor.zustand.pos.z, y0: motor.zustand.pos.y, radius: m.radius, hoehe: m.hoehe,
+      weich: opts.koerperWeich ?? 0.5, daten: { figur } }) : null;
+  if (koerperId !== null) motor.kollisionsId = koerperId;
   const animator = createAnimator(model, {
     seed: opts.seed ?? 1,
     gehTempo: motor.tuning.gehTempo, laufTempo: motor.tuning.laufTempo, sprintTempo: motor.tuning.sprintTempo,
@@ -91,6 +97,7 @@ export function createCharacter(opts = {}) {
     const z = motor.zustand;
     root.position.set(z.pos.x, z.pos.y, z.pos.z);
     root.rotation.y = z.yaw;
+    if (koerperId !== null) opts.welt.bewege(koerperId, z.pos.x, z.pos.z, z.pos.y);
   }
 
   Object.defineProperties(figur, Object.getOwnPropertyDescriptors({
@@ -185,6 +192,7 @@ export function createCharacter(opts = {}) {
       if (weg) return; weg = true;
       blickPunkt = null; ausruestung.clear(); setBrain(null);
       schild?.entfernen();
+      if (koerperId !== null) opts.welt.entferne?.(koerperId);
       root.removeFromParent?.();
       animator.dispose(); motor.dispose(); model.dispose();
     },

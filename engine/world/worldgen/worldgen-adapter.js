@@ -1,13 +1,13 @@
 /**
  * @modul    worldgen-adapter
  * @zweck    Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md
- * @api      createWeltAdapter(welt, opts) -> {bodenHoehe,wasserHoehe,hindernisse,normale,biomBei,zuGitter,zuWelt,startPunkt,groesse,hoehenSkala,meterProZelle,dispose} ; HINDERNIS_RADIEN
+ * @api      createWeltAdapter(welt, opts) -> {bodenHoehe,wasserHoehe,hindernisse,hindernisNah(x,z,reichweite,filter?),setHindernis(objektIndex,aktiv),alleHindernisse(fn),normale,biomBei,zuGitter,zuWelt,startPunkt,groesse,hoehenSkala,meterProZelle,dispose} ; HINDERNIS_RADIEN
  * @beispiel
  *   import { createWeltAdapter } from '../../engine/world/worldgen/worldgen-adapter.js';
  *   const adapter = createWeltAdapter(createWorld({ preset: 'insel', seed: 42 }), { hoehenSkala: 60, meterProZelle: 2 });
  *   const s = adapter.startPunkt(); const y = adapter.bodenHoehe(s.x, s.z);
  * @tags     welt, worldgen, adapter, boden, wasser, kollision, figur
- * @version  1.1.0
+ * @version  1.2.0
  * @status   entwurf
  * @three    nein
  */
@@ -70,7 +70,8 @@ export function createWeltAdapter(welt, opts = {}) {
   // Hindernisse in ein Raster-Hash (Zellgröße in Metern) – schnell für viele Abfragen pro Frame
   const fach = opts.fachGroesse ?? 4;
   const faecher = new Map();
-  const hx = [], hz = [], hr = [];
+  const hx = [], hz = [], hr = [], hi = [], aus = [];   // je Hindernis: Lage, Radius, Objekt-Index, abgeschaltet
+  const vonObjekt = new Map();                          // Objekt-Index → Hindernis-Nummer
   const o = welt.objekte;
   if (o && opts.hindernisse !== false) {
     for (let i = 0; i < o.anzahl; i++) {
@@ -79,7 +80,7 @@ export function createWeltAdapter(welt, opts = {}) {
       if (r0 <= 0) continue;
       const p = zuWelt(o.x[i], o.y[i]);
       const k = hx.length;
-      hx.push(p.x); hz.push(p.z); hr.push(r0 * (o.skala[i] || 1) * m);
+      hx.push(p.x); hz.push(p.z); hr.push(r0 * (o.skala[i] || 1) * m); hi.push(i); aus.push(false); vonObjekt.set(i, k);
       const key = schluessel(Math.floor(p.x / fach), Math.floor(p.z / fach));
       let l = faecher.get(key); if (!l) faecher.set(key, l = []); l.push(k);
     }
@@ -97,6 +98,7 @@ export function createWeltAdapter(welt, opts = {}) {
       const l = faecher.get(schluessel(a, b));
       if (!l) continue;
       for (const k of l) {
+        if (aus[k]) continue;
         const dx = x - hx[k], dz = z - hz[k], min = radius + hr[k];
         const d2 = dx * dx + dz * dz;
         if (d2 >= min * min) continue;
@@ -109,6 +111,36 @@ export function createWeltAdapter(welt, opts = {}) {
     return schub;
   }
 
+  /** Nächstes (aktives) Hindernis, dessen Rand höchstens `reichweite` entfernt ist: { index (in welt.objekte), x, z, radius, typ, art, abstand } oder null. */
+  function hindernisNah(x, z, reichweite = 2, filter) {
+    let best = null, bestD = reichweite;
+    const reich = reichweite + 2;
+    for (let a = Math.floor((x - reich) / fach); a <= Math.floor((x + reich) / fach); a++) for (let b = Math.floor((z - reich) / fach); b <= Math.floor((z + reich) / fach); b++) {
+      const l = faecher.get(schluessel(a, b));
+      if (!l) continue;
+      for (const k of l) {
+        if (aus[k]) continue;
+        const d = Math.max(0, Math.hypot(x - hx[k], z - hz[k]) - hr[k]);
+        if (d > bestD || (best && d === bestD)) continue;
+        const i = hi[k], kandidat = { index: i, x: hx[k], z: hz[k], radius: hr[k], typ: o.typen[o.typ[i]], art: o.arten[o.art[i]], abstand: d };
+        if (filter && !filter(kandidat)) continue;
+        best = kandidat; bestD = d;
+      }
+    }
+    return best;
+  }
+  /** Hindernis eines Objekts ab-/anschalten (gefällter Baum, abgebauter Fels). Liefert false, wenn das Objekt kein Hindernis ist. */
+  function setHindernis(objektIndex, aktiv) {
+    const k = vonObjekt.get(objektIndex);
+    if (k === undefined) return false;
+    aus[k] = !aktiv;
+    return true;
+  }
+  /** Alle Hindernisse als { index, x, z, radius, typ, art, aktiv } (z. B. um fällbare Bäume anzumelden). */
+  function alleHindernisse(fn) {
+    for (let k = 0; k < hx.length; k++) { const i = hi[k]; fn({ index: i, x: hx[k], z: hz[k], radius: hr[k], typ: o.typen[o.typ[i]], art: o.arten[o.art[i]], aktiv: !aus[k] }); }
+  }
+
   /** Startplatz aus welt.orte.start (sonst Kartenmitte) in Metern, mit Bodenhöhe. */
   function startPunkt() {
     const s = welt.orte?.start;
@@ -117,8 +149,8 @@ export function createWeltAdapter(welt, opts = {}) {
   }
 
   return {
-    welt, bodenHoehe, wasserHoehe, hindernisse, normale, biomBei, zuGitter, zuWelt, startPunkt,
+    welt, bodenHoehe, wasserHoehe, hindernisse, hindernisNah, setHindernis, alleHindernisse, normale, biomBei, zuGitter, zuWelt, startPunkt,
     groesse: { x: W * m, z: T * m }, hoehenSkala, meterProZelle: m, anzahlHindernisse: hx.length,
-    dispose() { faecher.clear(); hx.length = hz.length = hr.length = 0; },
+    dispose() { faecher.clear(); hx.length = hz.length = hr.length = hi.length = aus.length = 0; vonObjekt.clear(); },
   };
 }
