@@ -93,7 +93,7 @@ async function erzeuge() {
   himmel.setNebel(120, Math.max(300, adapter.groesse.x * 1.1));
   zeichneKarte();
   const start = adapter.startPunkt();
-  if (!figur) figur = createSpielerFigur({ szene, kamera, adapter: begehbar, element: canvas, start, seed: welt.seed, schilder, npcs: () => dorf?.bewohner || [] });
+  if (!figur) figur = createSpielerFigur({ szene, kamera, adapter: begehbar, element: canvas, start, seed: welt.seed, jetzt: () => uhr.tag + uhr.stunde / 24, schilder, npcs: () => dorf?.bewohner || [] });
   else figur.setAdapter(begehbar);
   figur.teleport(start.x, start.z);
   // Spielstand: Uhr + Wetter immer, Position nur in derselben Welt
@@ -107,7 +107,7 @@ async function erzeuge() {
   speicher.auto('auto', () => ({ welt: weltSchluessel, uhr: uhr.zustand(), wetter: wetter.zustand(), pos: [figur.position.x, figur.position.z], sachen: sachen?.zustand() }), 10);
   dorf?.dispose();
   dorf = createDorf({ szene, adapter: begehbar, welt, schilder, spieler: () => figur.figur, seed: welt.seed });
-  sachen = createSachen({ szene, welt: begehbar, objekte, bewohner: dorf.bewohner, start, seed: welt.seed,
+  sachen = createSachen({ szene, welt: begehbar, objekte, bewohner: dorf.bewohner, start, seed: welt.seed, jetzt: () => uhr.tag + uhr.stunde / 24,
     stand: alt && !url.has('frisch') && alt.welt === weltSchluessel ? alt.sachen : null });
   dorfNr = gipfelNr = 0;
   const neueUrl = `?preset=${presetEl.value}&seed=${seedEl.value}&groesse=${g}`;

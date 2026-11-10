@@ -1,7 +1,7 @@
 /**
  * @modul    inventar
  * @zweck    Inventar mit festen Plätzen, Stapeln, Gewichtsgrenze, Speichern/Laden und Änderungs-Meldung
- * @api      createInventar({plaetze,register,stapel,maxGewicht,ereignisse,name}) -> {plaetze,gib(id,anzahl,daten)->rest,passt(id,anzahl),nimm(id,anzahl)->anzahl,nimmVon(platz,anzahl),hat(id,anzahl),zaehle(id),frei(),gewicht,verschiebe(von,nach),teile(platz,anzahl)->index,leere(),zustand(),lade(zustand),onAenderung(fn)->abmelden,dispose()}
+ * @api      createInventar({plaetze,register,stapel,maxGewicht,ereignisse,name}) -> {plaetze,gib(id,anzahl,daten)->rest,passt(id,anzahl),nimm(id,anzahl)->anzahl,nimmVon(platz,anzahl),hat(id,anzahl),zaehle(id),frei(),gewicht,verschiebe(von,nach),teile(platz,anzahl)->index,setzeDaten(platz,daten|null)->bool,leere(),zustand(),lade(zustand),onAenderung(fn)->abmelden,dispose()}
  * @beispiel
  *   import { createInventar } from '../../engine/gameplay/inventar.js';
  *   const inv = createInventar({ plaetze: 10, stapel: 50 });
@@ -9,7 +9,7 @@
  *   inv.nimm('holz', 5); inv.zaehle('holz');
  *   const sicher = JSON.stringify(inv.zustand());
  * @tags     inventar, gegenstand, stapel, gameplay, speichern
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
@@ -163,6 +163,15 @@ export function createInventar({
     return ziel;
   }
 
+  /** Daten eines Einzelstücks ersetzen (z. B. Haltbarkeit). Nur bei Anzahl 1; null entfernt die Daten. */
+  function setzeDaten(platz, daten) {
+    const s = gueltigPlatz(platz) ? slots[platz] : null;
+    if (!s || s.anzahl !== 1 || (daten !== null && !istDaten(daten))) return false;
+    if (daten === null) delete s.daten; else s.daten = kopie(daten);
+    aenderung();
+    return true;
+  }
+
   const frei = () => slots.reduce((n, s) => n + (s ? 0 : 1), 0);
 
   function leere() {
@@ -199,7 +208,7 @@ export function createInventar({
   function dispose() { hoerer = []; slots.fill(null); }
 
   const api = {
-    plaetze: slots, gib, passt, nimm, nimmVon, hat, zaehle, frei, verschiebe, teile,
+    plaetze: slots, gib, passt, nimm, nimmVon, hat, zaehle, frei, verschiebe, teile, setzeDaten,
     leere, zustand, lade, onAenderung, dispose,
     get gewicht() { return gewichtGesamt(); },
   };

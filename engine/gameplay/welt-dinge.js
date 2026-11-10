@@ -1,14 +1,14 @@
 /**
  * @modul    welt-dinge
  * @zweck    Gegenstände, die in der Welt liegen (ohne THREE): ablegen, werfen, aufheben ins Inventar, gleiche Stapel in der Nähe zusammenlegen, Lebensdauer, Speichern/Laden – verbindet Physik (koerper), Interaktion und Inventar
- * @api      createWeltDinge({physik,interaktion,register,ereignisse,lebensdauer,sammelRadius,onNeu,onWeg}) -> {lege(id,anzahl,pos,{vel,daten,alter}?)->ding,wirf(id,anzahl,von,yaw,{tempo,hoch,streuung}?)->ding,nimm(ding,inventar)->anzahl,entferne(ding),update(dt),alle(),anzahl,zustand(),lade(stand),dispose()}
+ * @api      createWeltDinge({physik,interaktion,register,ereignisse,lebensdauer,sammelRadius,onNeu,onWeg}) -> {lege(id,anzahl,pos,{vel,daten,alter}?)->ding,wirf(id,anzahl,von,yaw,{tempo,hoch,streuung,daten}?)->ding,nimm(ding,inventar)->anzahl,entferne(ding),update(dt),alle(),anzahl,zustand(),lade(stand),dispose()}
  * @beispiel
  *   import { createWeltDinge } from '../../engine/gameplay/welt-dinge.js';
  *   const dinge = createWeltDinge({ physik, interaktion, register: gegenstaende, onNeu: (d) => zeige(d), onWeg: (d) => verstecke(d) });
  *   dinge.wirf('holz', 3, held.zustand.pos, held.zustand.yaw);       // fällt, rollt aus, lässt sich mit der Interaktion aufheben
  *   // je Bild: physik.update(dt); dinge.update(dt);   Position zum Zeichnen: ding.koerper.pos
  * @tags     gegenstand, beute, aufheben, ablegen, werfen, inventar, welt, gameplay
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  *
@@ -49,11 +49,11 @@ export function createWeltDinge({ physik, interaktion = null, register = null, e
   }
 
   /** Aus Hüfthöhe nach vorn werfen (yaw: 0 = +z). Streuung per laufendem Zähler → deterministisch. */
-  function wirf(id, anzahl, von, yaw = 0, { tempo = 3.5, hoch = 3, streuung = 0.5, hoehe = 1 } = {}) {
+  function wirf(id, anzahl, von, yaw = 0, { tempo = 3.5, hoch = 3, streuung = 0.5, hoehe = 1, daten } = {}) {
     const n = wuerfe++;
     const w = yaw + (hash2(n, 17, 9001) - 0.5) * streuung, t = tempo * (0.8 + hash2(n, 23, 9001) * 0.4);
     return lege(id, anzahl, { x: von.x + Math.sin(yaw) * 0.4, y: numOr(von.y, 0) + hoehe, z: von.z + Math.cos(yaw) * 0.4 },
-      { vel: { x: Math.sin(w) * t, y: hoch, z: Math.cos(w) * t } });
+      { vel: { x: Math.sin(w) * t, y: hoch, z: Math.cos(w) * t }, daten });
   }
 
   function entferne(d) {

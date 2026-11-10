@@ -32,8 +32,9 @@
 - [x] `gameplay/koerper` (leichte Physik für lose Dinge), `gameplay/welt-dinge` (ablegen, werfen, aufheben)
 - [x] `gameplay/inventar`, `gameplay/interaktion` (ansehen → Aktion, auch gedrückt halten)
 - [x] Bäume/Felsen abbauen (Adapter `setHindernis`, `scatter-mesh.verstecke`) – in der Testwelt
-- [ ] `gameplay/rezepte` (Herstellen), `gameplay/rohstoffe` (Nachwachsen über die Spieluhr, Werkzeug nötig, Haltbarkeit)
-- [ ] Gegenstände in die Hand nehmen/benutzen (Inventar ↔ `character.ausruesten`), Türen/Truhen als Interaktions-Ziele
+- [x] `gameplay/rezepte` (Herstellen), `gameplay/rohstoffe` (Nachwachsen über die Spieluhr, Werkzeug nötig), `gameplay/hand` (Haltbarkeit)
+- [x] Gegenstände in die Hand nehmen/benutzen (Inventar ↔ `character.ausruesten`) – in der Testwelt
+- [ ] Türen/Truhen als Interaktions-Ziele, Stationen (Werkbank) für Rezepte
 - [ ] `ui/hud` (Leiste, Inventar, Hinweise), `ui/menue` (Pause, Optionen, Spielstände)
 
 ### 4 · Klang & Gefühl
