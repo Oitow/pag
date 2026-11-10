@@ -1,5 +1,16 @@
 # Engine-Changelog
 
+## 2026-11 – Lebendige Welt (Fahrplan Etappe 1)
+- core/zeit 1.0.0 (neu): Spieluhr mit Tagen, Jahreszeiten, Ereignissen, Pause/Tempo, Speicherstand
+- core/schleife 1.0.0 (neu): Spielschleife mit festem oder variablem Zeitschritt, FPS, Tab-Pause
+- core/speicher 1.0.0 (neu): Spielstände in Slots (Version + Migration, TypedArrays, Export/Import, Autospeichern, Ersatz ohne localStorage)
+- world/himmel-stand 1.0.0 (neu): Sonnen-/Mondbahn, Mondphase, Himmels- und Lichtfarben über den Tag, Wetter-Einfluss (reine Daten)
+- world/himmel 1.0.0 (neu): Himmelskuppel (Verlauf, Sonne, Mond, Wolken), Sterne, Sonnen-/Mondlicht mit mitlaufendem Schatten, Umgebungslicht, Nebel
+- world/wetter 1.0.0 (neu): Wetterverlauf per Seed nach Klima (klar … gewitter, schnee, nebel, sturm), weiche Übergänge, Wind, Blitz, Nässe
+- render/niederschlag 1.0.0 (neu): Regen/Schnee als ein Points-Objekt um die Kamera (Bewegung im Shader)
+- games/testwelt: Tag/Nacht, Wetter, Spieluhr mit Jahreszeiten, Autospeichern; Knöpfe ⏩ und Wetter
+- docs/ENGINE-FAHRPLAN.md: Etappenplan für die ganze Engine
+
 ## 2026-11 – Weltengine: Wege in 3D
 - world/wege-lage 1.0.0 (neu): Lage der Brücken in Metern, `mitBruecken(adapter, lagen)` macht sie begehbar
 - world/wege-mesh 1.0.0 (neu): Holzbrücken (Bohlen, Geländer, Pfeiler) je Flussquerung

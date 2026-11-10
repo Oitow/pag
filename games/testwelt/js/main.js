@@ -9,12 +9,18 @@ import { createWegeMesh } from '../../../engine/world/wege-mesh.js';
 import { mitBruecken } from '../../../engine/world/wege-lage.js';
 import { createAssetCache } from '../../../engine/models/natur/natur-assets.js';
 import { createFigurSchilder } from '../../../engine/ui/figur-schild.js';
+import { createHimmel } from '../../../engine/world/himmel.js';
+import { himmelStand } from '../../../engine/world/himmel-stand.js';
+import { createWetter, WETTER_ARTEN } from '../../../engine/world/wetter.js';
+import { createNiederschlag } from '../../../engine/render/niederschlag.js';
+import { createSpielzeit } from '../../../engine/core/zeit.js';
+import { createSchleife } from '../../../engine/core/schleife.js';
+import { createSpeicher } from '../../../engine/core/speicher.js';
 import { createSpielerFigur } from './figur.js';
 import { createDorf } from './dorf.js';
 
 const $ = (id) => document.getElementById(id);
 const HOEHEN_SKALA = 60, METER_PRO_ZELLE = 2;
-const HIMMEL = 0x9cc4e4;
 
 function zeigeFehler(e) { const f = $('fehler'); f.hidden = false; f.textContent = 'Fehler: ' + (e?.stack || e); }
 addEventListener('error', (e) => zeigeFehler(e.error || e.message));
@@ -28,16 +34,17 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 const szene = new THREE.Scene();
-szene.background = new THREE.Color(HIMMEL);
-szene.fog = new THREE.Fog(HIMMEL, 120, 520);
 const kamera = new THREE.PerspectiveCamera(60, 1, 0.1, 2000);
-szene.add(new THREE.HemisphereLight(0xcfe6ff, 0x5a5040, 1.1));
-const sonne = new THREE.DirectionalLight(0xfff1d6, 2.2);
-sonne.castShadow = true;
-sonne.shadow.mapSize.set(2048, 2048);
-Object.assign(sonne.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 300 });
-sonne.shadow.bias = -0.0005;
-szene.add(sonne, sonne.target);
+// Himmel (Tag/Nacht, Sonne, Mond, Sterne, Wolken, Licht + Nebel), Wetter, Spieluhr, Spielstand – alles aus der Engine
+const himmel = createHimmel({ szene });
+const regen = createNiederschlag();
+szene.add(regen.objekt);
+const uhr = createSpielzeit({ stunde: 9, sekundenProStunde: 30 });
+const wetter = createWetter({ seed: 1 });
+const speicher = createSpeicher({ schluessel: 'pag-testwelt', version: 1 });
+const stand = himmelStand({ stunde: 9 });
+const WETTER_NAMEN = Object.keys(WETTER_ARTEN);
+const WETTER_ZEICHEN = { klar: '☀️', heiter: '🌤', bewoelkt: '☁️', regen: '🌧', gewitter: '⛈', schnee: '🌨', nebel: '🌫', sturm: '🌬' };
 
 function groesseAnpassen() {
   renderer.setSize(innerWidth, innerHeight, false);
@@ -58,7 +65,7 @@ if (['128', '256'].includes(url.get('groesse'))) groesseEl.value = url.get('groe
 // ---- Welt ----
 let welt = null, adapter = null, gelaende = null, objekte = null, wege = null, figur = null, dorf = null;
 const schilder = createFigurSchilder();
-let stunde = 9;                                   // Spielzeit: 1 Stunde je 30 s (Tagesplan der Bewohner)
+let weltSchluessel = '';
 let dorfNr = 0, gipfelNr = 0;
 const pause = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
 
@@ -79,12 +86,21 @@ async function erzeuge() {
   wege = createWegeMesh(adapter, { schatten: true });
   const begehbar = mitBruecken(adapter, wege.lagen);   // Figur läuft über die Brücken
   szene.add(gelaende.gruppe, objekte.gruppe, wege.gruppe);
-  szene.fog.far = Math.max(300, adapter.groesse.x * 1.1);
+  himmel.setNebel(120, Math.max(300, adapter.groesse.x * 1.1));
   zeichneKarte();
   const start = adapter.startPunkt();
   if (!figur) figur = createSpielerFigur({ szene, kamera, adapter: begehbar, element: canvas, start, seed: welt.seed, schilder, npcs: () => dorf?.bewohner || [] });
   else figur.setAdapter(begehbar);
   figur.teleport(start.x, start.z);
+  // Spielstand: Uhr + Wetter immer, Position nur in derselben Welt
+  weltSchluessel = `${presetEl.value}|${seedEl.value}|${g}`;
+  const alt = speicher.lade('auto');
+  if (alt && !url.has('frisch')) {
+    if (alt.uhr) uhr.lade(alt.uhr);
+    if (alt.wetter) wetter.lade(alt.wetter);
+    if (alt.welt === weltSchluessel && alt.pos) figur.teleport(alt.pos[0], alt.pos[1]);
+  }
+  speicher.auto('auto', () => ({ welt: weltSchluessel, uhr: uhr.zustand(), wetter: wetter.zustand(), pos: [figur.position.x, figur.position.z] }), 10);
   dorf?.dispose();
   dorf = createDorf({ szene, adapter: begehbar, welt, schilder, spieler: () => figur.figur, seed: welt.seed });
   dorfNr = gipfelNr = 0;
@@ -146,37 +162,49 @@ const springeZu = (o) => { if (!o) return; const p = adapter.zuWelt(o.x, o.y); f
 $('zumStart').onclick = () => springeZu(welt.orte.start);
 $('zumDorf').onclick = () => { const d = welt.orte.doerfer; if (d.length) springeZu(d[dorfNr++ % d.length]); };
 $('kameraPreset').onclick = () => { $('kameraPreset').textContent = '🎥 ' + figur.naechstesPreset(); };
+$('zeitVor').onclick = () => uhr.vor(3);
+$('wetterKnopf').onclick = () => wetter.setze(WETTER_NAMEN[(WETTER_NAMEN.indexOf(wetter.art) + 1) % WETTER_NAMEN.length]);
+addEventListener('pagehide', () => speicher.jetztSpeichern());
 $('zumGipfel').onclick = () => { const g = welt.orte.poi.filter(p => p.art === 'gipfel'); if (g.length) springeZu(g[gipfelNr++ % g.length]); };
 // Fokus von Knöpfen/Auswahl lösen, damit Tasten (Leertaste!) wieder die Figur steuern
 for (const el of document.querySelectorAll('#oben button, #oben select')) el.addEventListener('click', () => el.blur());
 
 // ---- Schleife ----
-let statistik = '', alt = performance.now(), fpsZeit = 0, fpsBilder = 0, fps = 0, infoZeit = 0;
-function bild(jetzt) {
-  requestAnimationFrame(bild);
-  const echt = (jetzt - alt) / 1000, dt = Math.min(0.05, echt); alt = jetzt;
+let statistik = '', infoZeit = 0, echtZeit = 0;
+function klimaBei(p) {
+  const { gx, gy } = adapter.zuGitter(p.x, p.z);
+  const x = Math.floor(gx / welt.zelle), y = Math.floor(gy / welt.zelle);
+  if (x < 0 || y < 0 || x >= welt.breite || y >= welt.tiefe) return { temperatur: 0.5, feuchte: 0.6 };
+  const i = y * welt.breite + x;
+  // Jahreszeit verschiebt die Temperatur (Sommer wärmer, Winter kälter → Schnee statt Regen)
+  return { temperatur: welt.temperatur[i] + Math.sin(uhr.jahresAnteil * Math.PI * 2) * 0.15, feuchte: welt.feuchte[i] };
+}
+function update(dt) {
   if (!figur || !adapter) return;
-  stunde = (stunde + dt / 30) % 24;
-  dorf?.update(dt, stunde);
+  echtZeit += dt;
+  const stunden = uhr.update(dt);
+  const p = figur.position;
+  wetter.update(stunden, klimaBei(p));
+  wetter.blitzUpdate(dt);
+  speicher.update(dt);
+  dorf?.update(dt, uhr.stunde);
   figur.update(dt);
   schilder.update(kamera, dt);
-  const p = figur.position;
-  // Schattenkamera folgt der Figur
-  sonne.position.set(p.x + 60, p.y + 120, p.z + 40);
-  sonne.target.position.set(p.x, p.y, p.z);
-  objekte?.update(jetzt / 1000, { kamera });
-  renderer.render(szene, kamera);
+  himmelStand({ stunde: uhr.stunde, jahresAnteil: uhr.jahresAnteil, tag: uhr.tag, wetter }, stand);
+  himmel.update(stand, { kamera, mitte: p, zeit: echtZeit, wind: wetter.wind, windRichtung: wetter.windRichtung });
+  regen.update(dt, { kamera, regen: wetter.regen, schnee: wetter.schnee, wind: wetter.wind, windRichtung: wetter.windRichtung, hoehePx: innerHeight });
+  objekte?.update(echtZeit, { kamera });
 
-  fpsBilder++; fpsZeit += echt;
-  if (fpsZeit > 0.5) { fps = Math.round(fpsBilder / fpsZeit); fpsBilder = 0; fpsZeit = 0; }
   if ((infoZeit -= dt) <= 0) {
     infoZeit = 0.2;
     const biom = adapter.biomBei(p.x, p.z), w = adapter.wasserHoehe(p.x, p.z);
+    $('wetterKnopf').textContent = WETTER_ZEICHEN[wetter.art] ?? '🌦';
     $('info').innerHTML = `<b>${biom?.name ?? '–'}</b> · Höhe ${p.y.toFixed(1)} m${w !== null && w > p.y ? ' · 🌊' : ''}` +
-      ` · ${figur.tempo.toFixed(1)} m/s · 🕒 ${Math.floor(stunde)}:${String(Math.floor(stunde % 1 * 60)).padStart(2, '0')}` +
-      `<br>${figur.art} · 🎥 ${figur.preset} · ${dorf?.bewohner.length ?? 0} Bewohner · ${fps} fps · ${statistik}`;
+      ` · ${figur.tempo.toFixed(1)} m/s · 🕒 ${uhr.uhrText()} · Tag ${uhr.tag} (${uhr.jahreszeitName}) · ${WETTER_ZEICHEN[wetter.art] ?? ''} ${wetter.art}` +
+      `<br>${figur.art} · 🎥 ${figur.preset} · ${dorf?.bewohner.length ?? 0} Bewohner · ${Math.round(schleife.fps)} fps · ${statistik}`;
     karteMarker();
   }
 }
+const schleife = createSchleife({ update, render: () => { if (figur) renderer.render(szene, kamera); }, fehler: zeigeFehler });
 
-erzeuge().then(() => { requestAnimationFrame(bild); if (url.has("debug")) window.testwelt = { renderer, szene, kamera, get figur() { return figur; }, get adapter() { return adapter; }, get dorf() { return dorf; }, get objekte() { return objekte; } }; });
+erzeuge().then(() => { schleife.start(); if (url.has("debug")) window.testwelt = { renderer, szene, kamera, uhr, wetter, himmel, speicher, get figur() { return figur; }, get adapter() { return adapter; }, get dorf() { return dorf; }, get objekte() { return objekte; } }; });
