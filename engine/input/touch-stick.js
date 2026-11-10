@@ -8,7 +8,7 @@
  *     beiKnopf: (name, unten) => console.log(name, unten), beiErstemTouch: () => t.zeigen(true) });
  *   const { dx, dy, zoom } = t.nimmKamera();   // Pixel bzw. ln(Abstandsverhältnis) seit dem letzten Aufruf
  * @tags     eingabe, touch, joystick, handy, knoepfe, pinch, zoom
- * @version  1.1.0
+ * @version  1.1.1
  * @status   entwurf
  * @three    nein
  */
@@ -103,10 +103,10 @@ export function createTouchStick({
     b.type = 'button';
     b.setAttribute('aria-label', k.titel || k.name);
     const g = Math.round((gross ? 78 : 60) * skala);
-    // Sprungknopf in der Ecke, weitere auf Bögen (r = 100, ab dem 5. weiter außen)
+    // Sprungknopf in der Ecke, weitere auf Bögen (r = 100, ab dem 5. weiter außen: 184°, 150°, 116° – bleibt über dem unteren Rand)
     let rc = 39, bc = 39;           // Mittelpunkt: Abstand von rechter/unterer Kante
     if (!gross) {
-      const a = (plaetze[i - 1] ?? (200 - (i - 5) * 36)) * Math.PI / 180, r = i <= 4 ? 100 : 172;
+      const a = (plaetze[i - 1] ?? (184 - (i - 5) * 34)) * Math.PI / 180, r = i <= 4 ? 100 : 172;
       rc = 39 * skala - Math.cos(a) * r * skala; bc = 39 * skala + Math.sin(a) * r * skala;
     } else { rc = bc = 39 * skala; }
     Object.assign(b.style, { width: g + 'px', height: g + 'px', right: (rc - g / 2) + 'px', bottom: (bc - g / 2) + 'px' });

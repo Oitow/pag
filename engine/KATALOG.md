@@ -23,6 +23,7 @@
 | character-steering-extra | `engine/gameplay/character-steering-extra.js` | Reine Steering-Rechnungen: Patrouillen-Fortschritt (Schleife/Pingpong/einmal), Umkreisen, Abstand halten, Versteckpunkt hinter Deckung | entwurf |
 | character-steering | `engine/gameplay/character-steering.js` | NPC-Bewegungs-Gehirn: liefert dieselbe Absicht wie die Eingabe – Ziel/Ankommen, Wandern, Folgen, Fliehen, Pfad, Patrouille, Umkreisen, Abstand halten, Verstecken, Schwarm, Ausweichen, Steckenbleiben auflösen | entwurf |
 | character | `engine/gameplay/character.js` | Fertige Spielfigur in einem Objekt: Modell (Look) + Animator + Bewegungs-Motor, für Spieler und NPCs gleich | entwurf |
+| zauber | `engine/gameplay/zauber.js` | Zauber-System ohne THREE: 10 Zauber als Daten (Geschoss, Strahl, Kegel, Ort, Selbst, Teleport), Zauberbuch mit Mana, Abklingzeiten, Wirkzeit, Geschoss-Simulation und Treffer-Ereignissen | entwurf |
 | move-input | `engine/input/move-input.js` | Bewegungs-Eingabe für Figuren: Tastatur (WASD/Pfeile), Maus-Ziehen/Mausrad, Touch-Stick + Knöpfe, Gamepad → Stick, Kamera-Delta, Aktionen (Flanke/gehalten) | entwurf |
 | touch-stick | `engine/input/touch-stick.js` | Touch-Steuerung fürs Handy: dynamischer virtueller Joystick (linke Hälfte), Kamera-Wischen + Pinch-Zoom (rechte Hälfte), runde Aktionsknöpfe unten rechts | entwurf |
 | character-anim-blick | `engine/models/character/character-anim-blick.js` | Blick einer Figur (rein): Richtung oder Weltpunkt → verteilt auf Torso/Hals/Kopf mit Grenzen, Augen eilen voraus; Blinzeln per Seed; Werte für einen Mimik-Hook | entwurf |
@@ -32,7 +33,8 @@
 | character-animator | `engine/models/character/character-animator.js` | Prozedurale Figuren-Animation aus dem Motor-Zustand: idle/gehen/laufen/sprinten ohne Fußrutschen, Luft, Landung, Schwimmen, Ducken, Rutschen, Kurvenlage, Atmen, Hang, Idle-Varianten, sekundäre Bewegung, Treffer/Umfallen, Aktions-Clips mit Masken, Blick + Mimik-Hook | entwurf |
 | character-ausruestung | `engine/models/character/character-ausruestung.js` | Low-Poly-Gegenstände für Figuren-Sockel (Schwert, Dolch, Axt, Hammer, Hacke, Schaufel, Speer, Stab, Zauberstab, Schild, Bogen, Fackel, Laterne, Korb, Becher, Buch): je ein Mesh + optional Leucht-Mesh, passend ausgerichtet für model.befestigen(sockel, obj) | entwurf |
 | character-clips-mehr | `engine/models/character/character-clips-mehr.js` | Weitere Aktions-Clips als reine Keyframe-Daten (Emotes, Kampf, Arbeit, Ruhe, Idle-Varianten); wird von character-clips registriert | entwurf |
-| character-clips | `engine/models/character/character-clips.js` | Aktions-Clips einer Figur als Keyframe-Daten (winken, schlagen, hacken, werfen, aufheben, tod, rolle, sitzen, tanzen … + character-clips-mehr) und ihr Abtaster | entwurf |
+| character-clips-zauber | `engine/models/character/character-clips-zauber.js` | Zauber-Gesten als reine Keyframe-Daten (Wurf, Stoß, Fingerzeig, Himmelsruf, Bodenschlag, Selbstzauber); wird von character-clips registriert | entwurf |
+| character-clips | `engine/models/character/character-clips.js` | Aktions-Clips einer Figur als Keyframe-Daten (winken, schlagen, hacken, werfen, aufheben, tod, rolle, sitzen, tanzen … + character-clips-mehr + character-clips-zauber) und ihr Abtaster | entwurf |
 | character-gang | `engine/models/character/character-gang.js` | Fortbewegungs-Posen einer Figur (rein): Fußziele aus Gangphase (gehen/laufen/sprinten ohne Fußrutschen), Bein-IK, Rumpf/Arme, Luft- und Schwimm-Pose | entwurf |
 | character-look | `engine/models/character/character-look.js` | Aussehen einer Figur als reine Daten: Körperbau, Haut, Haar, Bart, Kleidung, Kopfbedeckung, Accessoires (Brille, Schal, Schmuck), Grund-Mimik; Vorlagen, Zufalls-Looks per Seed, abgeleitete Körpermaße | entwurf |
 | character-model | `engine/models/character/character-model.js` | Look → fertige Figur: Rig (Gelenk-Gruppen) + Low-Poly-Meshes je Knochen; Look live wechseln, Gegenstände an Sockeln befestigen | entwurf |
@@ -66,9 +68,11 @@
 | pflanze-wueste | `engine/models/natur/pflanze-wueste.js` | Prozedurale Low-Poly-Wüstenpflanzen: kaktus (Kandelaber mit Armen), saeulenkaktus (gerippte Säule, evtl. Blüte), agave (Rosette spitzer, gekielter Blätter) | entwurf |
 | totholz-form | `engine/models/natur/totholz-form.js` | Reine Röhren-Geometrie (ohne THREE) für Totholz/Äste: Ringe entlang eines Pfads, Enden zu/Spitze/Jahresring-Scheibe, Markierung je Dreieck | neu |
 | totholz | `engine/models/natur/totholz.js` | Prozedurales Low-Poly-Totholz (Vertrag NATUR-ASSETS): baumstumpf (Jahresringe, Wurzelansätze), liegenderStamm (Aststummel), ast | neu |
+| figur-material | `engine/render/figur-material.js` | Weiches Figuren-Material: Standard-Material mit Randlicht (Fresnel), aufgehellter Schattenseite und kräftigeren Farben – Figuren heben sich vom Gelände ab | entwurf |
 | mesh-builder | `engine/render/mesh-builder.js` | Low-Poly-Modelle aus Primitiven (Box, Kugel, Zylinder …) mit Vertexfarben zu EINER Geometrie verschmelzen; Farbvariation pro Dreieck per Seed | entwurf |
 | natur-material | `engine/render/natur-material.js` | Gemeinsames Material für Natur-Assets: MeshStandardMaterial (Vertexfarben, flatShading) mit Wind-Schwingen im Vertex-Shader über das Attribut 'wind' (0 starr … 1 voll); Phase je Instanz aus der Weltposition; passendes Schatten-Material; optional Ausblenden ab Kamera-Entfernung | entwurf |
 | niederschlag | `engine/render/niederschlag.js` | Regen/Schnee als ein Points-Objekt um die Kamera; Bewegung komplett im Vertex-Shader (kein CPU-Aufwand je Partikel) | entwurf |
+| zauber-effekte | `engine/render/zauber-effekte.js` | Leichte Zauber-Effekte fürs Handy: ein Partikel-Points-Objekt (Funken, Schweife), leuchtende Geschoss-Kugeln, Schockwellen-Ringe, Blitze, Erdstacheln, Schutz-Aura, Meteor-Sturz – alles aus Pools | entwurf |
 | fake-dom | `engine/test/fake-dom.mjs` | Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame | stabil |
 | figur-schild | `engine/ui/figur-schild.js` | Namensschild + Sprechblase + Lebensbalken über Figuren (DOM-Overlay): folgt dem Kopf, skaliert und blendet nach Abstand aus, verschwindet hinter der Kamera | entwurf |
 | himmel-stand | `engine/world/himmel-stand.js` | Himmel als reine Daten: Sonnen- und Mondbahn aus Stunde/Jahreszeit/Breitengrad, Mondphase, Himmels-, Nebel- und Lichtfarben über den Tag (Nacht, Dämmerung, goldene Stunde, Mittag), Sterne, Einfluss von Wolken/Nebel/Regen/Blitz | entwurf |
@@ -105,6 +109,7 @@
 |---|---|
 | abfluss | worldgen-hydrology, worldgen-rivers |
 | abfrage | worldgen-query |
+| abklingzeit | zauber |
 | abstand | worldgen-grid |
 | accessoire | character-parts-zubehoer |
 | accessoires | character-look |
@@ -113,7 +118,7 @@
 | aktion | character-animator, character-clips |
 | amulett | character-parts-zubehoer |
 | angriff | character-clips |
-| animation | character, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-clips-mehr, character-clips, character-gang, character-pose, character-reaktion, character-rig, character-sekundaer |
+| animation | character, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-pose, character-reaktion, character-rig, character-sekundaer |
 | arbeit | character-clips-mehr |
 | art | baum-arten |
 | ast | totholz-form, totholz |
@@ -138,6 +143,7 @@
 | biome | terrain-farben, terrain-mesh, worldgen-biomes, worldgen-query |
 | blick | character-anim-blick, character-parts-gesicht |
 | blinzeln | character-anim-blick, character-parts-gesicht |
+| blitz | zauber-effekte |
 | blue-noise | worldgen-scatter |
 | blume | pflanze-blume, pflanze-boden, pflanze-formen |
 | boden | wege-lage, worldgen-adapter |
@@ -149,9 +155,9 @@
 | busch | natur-assets, pflanze-busch |
 | cache | natur-assets |
 | cape | character-parts-ruecken |
-| charakter | character, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips, character-gang, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer |
+| charakter | character, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-material |
 | chunks | worldgen-chunkfluss, worldgen-chunks |
-| clip | character-animator, character-clips-mehr, character-clips |
+| clip | character-animator, character-clips-mehr, character-clips-zauber, character-clips |
 | controller | character-motor, character |
 | dash | character-motor, character-anim-zustand |
 | daten | baum-arten, worldgen-vegetation |
@@ -161,6 +167,7 @@
 | dreispitz | character-parts-hut |
 | dämmerung | himmel-stand |
 | editor | character-look, character-model |
+| effekt | zauber-effekte |
 | eingabe | move-input, touch-stick |
 | emote | character-clips-mehr, character-clips |
 | emotion | character-parts-gesicht |
@@ -175,14 +182,17 @@
 | fels | fels-basis, fels-form, fels, natur-assets |
 | felsen | scatter-mesh, worldgen-vegetation |
 | feuchte | worldgen-climate |
-| figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips, character-gang, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-schild, wege-lage, worldgen-adapter |
+| figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-material, figur-schild, wege-lage, worldgen-adapter |
 | first-person | follow-camera |
 | fluss | worldgen-chunkfluss, worldgen-rivers |
+| flächenschaden | zauber |
 | folgen | follow-camera |
 | form | pflanze-formen, worldgen-shape |
 | fps | schleife |
 | frisur | character-parts-haar, character-parts-kopf |
 | fuesse | character-anim-hang, character-gang |
+| funken | zauber-effekte |
+| fähigkeit | zauber |
 | gamepad | move-input |
 | gameplay | character-brain, character-gruppe, character-motor-tuning, character-motor, character-sinne, character-steering-extra, character-steering |
 | gang | character-animator, character-gang |
@@ -193,7 +203,9 @@
 | generator | worldgen |
 | geometrie | fels-basis, fels-form, natur-basis, pflanze-basis, totholz-form, mesh-builder |
 | geroell | fels |
+| geschoss | zauber |
 | gesicht | character-model, character-parts-gesicht, character-parts-kopf |
+| geste | character-clips-zauber |
 | gewicht | character-sekundaer |
 | gewitter | wetter |
 | ginster | pflanze-busch |
@@ -231,12 +243,12 @@
 | kalender | zeit |
 | kamera | follow-camera, ziel-wahl, math |
 | kamerafahrt | follow-camera |
-| kampf | ziel-wahl, character-steering-extra, character-steering, character-clips-mehr, character-reaktion |
+| kampf | ziel-wahl, character-steering-extra, character-steering, zauber, character-clips-mehr, character-reaktion |
 | kante | character-anim-zustand |
 | kapuze | character-parts-hut |
 | karte | worldgen |
 | kette | character-parts-zubehoer |
-| keyframe | character-clips-mehr, character-clips |
+| keyframe | character-clips-mehr, character-clips-zauber, character-clips |
 | ki | character-brain, character-gruppe, character-sinne, character-steering-extra, character-steering |
 | kleidung | character-parts-becken, character-parts-torso, character-parts |
 | klima | wetter, worldgen-biomes, worldgen-climate |
@@ -255,12 +267,14 @@
 | lock-on | follow-camera, ziel-wahl |
 | locken | character-parts-haar |
 | logik | pflanze-formen |
-| look | character-look |
+| look | character-look, figur-material |
 | loop | schleife |
 | lowpoly | character-parts, baum, fels-form, fels, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-wueste, totholz-form, totholz, mesh-builder |
+| magie | zauber, character-clips-zauber, zauber-effekte |
+| mana | zauber |
 | mantel | character-parts-becken, character-parts-torso |
 | maske | character-pose, worldgen-shape |
-| material | natur-material |
+| material | figur-material, natur-material |
 | mathe | math |
 | maus | move-input |
 | meer | terrain-mesh |
@@ -291,7 +305,7 @@
 | orte | worldgen-sites |
 | overlay | figur-schild |
 | parameter | baum-arten |
-| partikel | niederschlag |
+| partikel | niederschlag, zauber-effekte |
 | patrouille | character-steering-extra, character-steering |
 | persistenz | speicher |
 | pfad | character-steering, worldgen-path, worldgen-wege |
@@ -309,12 +323,14 @@
 | prozedural | noise, baum-skelett, baum, fels-form, fels, natur-assets, natur-basis, totholz, worldgen |
 | raf | schleife |
 | ragdoll | character-reaktion |
+| randlicht | figur-material |
 | rauschen | noise |
 | reaktion | character-reaktion |
 | regen | niederschlag, wetter, worldgen-climate |
 | registry | natur-assets |
 | render | natur-material |
 | rig | character-pose, character-rig |
+| rim | figur-material |
 | rock | character-parts-becken |
 | rolle | character-motor, character-anim-zustand |
 | rosette | pflanze-formen |
@@ -330,6 +346,7 @@
 | schleife | schleife |
 | schmuck | character-parts-zubehoer |
 | schnee | niederschlag, terrain-farben, wetter |
+| schockwelle | zauber-effekte |
 | schuetteln | follow-camera |
 | schuhe | character-parts |
 | schwarm | character-gruppe, character-steering |
@@ -341,12 +358,13 @@
 | seen | worldgen-hydrology |
 | seerose | pflanze-boden |
 | sekundaer | character-sekundaer |
-| shader | natur-material, niederschlag, himmel |
+| shader | figur-material, natur-material, niederschlag, zauber-effekte, himmel |
 | sicht | character-sinne |
 | skelett | character-rig, baum-skelett |
 | sockel | character-ausruestung, character-rig |
 | sonne | himmel-stand, himmel |
 | speichern | speicher, zeit, character-look |
+| spell | zauber |
 | spieler | character, character-animator, character-look, character-model |
 | spielstand | speicher |
 | sprechblase | figur-schild |
@@ -391,6 +409,7 @@
 | verteilung | worldgen-scatter |
 | vertexfarben | fels-basis, fels, natur-basis, pflanze-basis, totholz, mesh-builder, terrain-farben |
 | verzweigung | baum-skelett |
+| vfx | zauber-effekte |
 | waffe | character-ausruestung |
 | wahrnehmung | character-sinne |
 | wald | baum |
@@ -407,6 +426,7 @@
 | wolken | himmel |
 | worldgen | worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | wueste | pflanze-wueste |
+| zauber | zauber, character-clips-zauber, zauber-effekte |
 | zauberhut | character-parts-hut |
 | zeit | zeit |
 | zeitschritt | schleife |
@@ -701,6 +721,35 @@ bauer.sage('Moin!', { geste: 'winken' }); bauer.blickZu(held); bauer.ausruesten(
 
 Genutzt von: figuren-labor, testwelt · Tags: figur, charakter, spieler, npc, bewegung, animation, controller, avatar · THREE: nein
 
+### zauber · `engine/gameplay/zauber.js` · v1.0.0 · entwurf
+Zauber-System ohne THREE: 10 Zauber als Daten (Geschoss, Strahl, Kegel, Ort, Selbst, Teleport), Zauberbuch mit Mana, Abklingzeiten, Wirkzeit, Geschoss-Simulation und Treffer-Ereignissen
+
+- `createZauberbuch(opts) -> { wirke(name,{vorlauf,ziel}) -> {ok,grund,def}, kann(name) -> {ok,grund}, update(dt,ziele) -> ereignisse[], mana, manaMax, wirkt, abklingzeit(name), abklingAnteil(name), geschosse, setFreiesMana(bool), namen, zauber, dispose() }`
+- `ZAUBER`
+- `ZAUBER_NAMEN`
+- `zielImKegel(ziele,von,yaw,reichweite,winkel) -> ziel|null`
+- `richtungAusYaw(yaw) -> {x,z}`
+
+```js
+import { createZauberbuch, ZAUBER } from '../../engine/gameplay/zauber.js';
+const buch = createZauberbuch({ welt });                       // welt.bodenHoehe(x,z) für Einschläge am Boden
+const r = buch.wirke('feuerball', { vorlauf: figur.spiele(ZAUBER.feuerball.clip).trefferBei,
+ziel: () => ({ von: handPos, yaw: figur.zustand.yaw, ziel: gegner }) });   // ziel-Funktion wird beim Loslassen gefragt
+for (const e of buch.update(dt, gegnerListe))                   // gegnerListe: [{ id, x, y, z, radius, hoehe }]
+if (e.typ === 'einschlag') for (const t of e.treffer) schade(t.id, t.schaden, t.stoss);
+```
+
+Genutzt von: figuren-labor · Tags: zauber, magie, kampf, mana, abklingzeit, geschoss, flächenschaden, fähigkeit, spell · THREE: nein
+Ereignisse von update() (Array wird wiederverwendet – nicht aufheben): alle haben { typ, zauber (Name), def, treffer: [] }.
+'start'        Zauber verlässt die Hand: von, yaw
+'ankuendigung' Ort-Zauber angesagt: pos, radius, verzug (s bis zum Einschlag)
+'einschlag'    Geschoss/Ort trifft: pos, radius, geschossId?
+'strahl'       Blitz: punkte [{x,y,z} …] (Hand → Ziel → Kettenziele)
+'kegel'        Windstoß: von, yaw, reichweite, winkel
+'selbst'       Heilung/Schild: def.heilt / def.schild / def.dauer wertet das Spiel aus
+'teleport'     von, nach (das Spiel versetzt die Figur)
+treffer: [{ id, ziel, schaden, stoss {x,y,z}, umwerfen, verlangsamt (s) }]
+
 ### move-input · `engine/input/move-input.js` · v1.1.0 · entwurf
 Bewegungs-Eingabe für Figuren: Tastatur (WASD/Pfeile), Maus-Ziehen/Mausrad, Touch-Stick + Knöpfe, Gamepad → Stick, Kamera-Delta, Aktionen (Flanke/gehalten)
 
@@ -727,7 +776,7 @@ figur.update(dt, zuAbsicht(ein2.lesen(), kamera.blickYaw()));   // alle Aktions-
 
 Genutzt von: figuren-labor, testwelt · Tags: eingabe, tastatur, maus, touch, gamepad, joystick, figur, steuerung · THREE: nein
 
-### touch-stick · `engine/input/touch-stick.js` · v1.1.0 · entwurf
+### touch-stick · `engine/input/touch-stick.js` · v1.1.1 · entwurf
 Touch-Steuerung fürs Handy: dynamischer virtueller Joystick (linke Hälfte), Kamera-Wischen + Pinch-Zoom (rechte Hälfte), runde Aktionsknöpfe unten rechts
 
 - `createTouchStick(opts) -> { stick {x, y, an}, sprint, nimmKamera() -> {dx, dy, zoom}, benutzt, stickRadius, zeigen(bool), knopfZeigen(name, bool), reset(), dispose() }`
@@ -854,8 +903,20 @@ anim.spiele('verbeugen'); anim.spiele('fegen', { schleife: true }); anim.spiele(
 
 Genutzt von: – · Tags: figur, charakter, animation, clip, keyframe, emote, kampf, arbeit, idle · THREE: nein
 
-### character-clips · `engine/models/character/character-clips.js` · v1.1.0 · entwurf
-Aktions-Clips einer Figur als Keyframe-Daten (winken, schlagen, hacken, werfen, aufheben, tod, rolle, sitzen, tanzen … + character-clips-mehr) und ihr Abtaster
+### character-clips-zauber · `engine/models/character/character-clips-zauber.js` · v1.0.0 · entwurf
+Zauber-Gesten als reine Keyframe-Daten (Wurf, Stoß, Fingerzeig, Himmelsruf, Bodenschlag, Selbstzauber); wird von character-clips registriert
+
+- `ZAUBER_CLIPS`
+
+```js
+import { CLIPS } from '../../engine/models/character/character-clips.js';   // registriert ZAUBER_CLIPS automatisch
+const { trefferBei } = figur.spiele('zauberWurf');   // Zauber nach trefferBei Sekunden auslösen (siehe gameplay/zauber)
+```
+
+Genutzt von: – · Tags: figur, charakter, animation, clip, keyframe, zauber, magie, geste · THREE: nein
+
+### character-clips · `engine/models/character/character-clips.js` · v1.2.0 · entwurf
+Aktions-Clips einer Figur als Keyframe-Daten (winken, schlagen, hacken, werfen, aufheben, tod, rolle, sitzen, tanzen … + character-clips-mehr + character-clips-zauber) und ihr Abtaster
 
 - `CLIPS`
 - `CLIP_NAMEN`
@@ -919,7 +980,7 @@ Genutzt von: figuren-labor, testwelt · Tags: figur, charakter, aussehen, look, 
    Körper schultern/muskeln, Feld ausdruck (Grund-Mimik), neue Vorlagen. Alte Spielstände bleiben gültig
    (fehlende Felder → Standard; erste Einträge in STILE und Körper-Standards unverändert).
 
-### character-model · `engine/models/character/character-model.js` · v1.1.0 · entwurf
+### character-model · `engine/models/character/character-model.js` · v1.2.0 · entwurf
 Look → fertige Figur: Rig (Gelenk-Gruppen) + Low-Poly-Meshes je Knochen; Look live wechseln, Gegenstände an Sockeln befestigen
 
 - `createCharacterModel({ look, seed, material, schatten, mimik }) -> { root, rig, look, masse, meshes, gesicht, ausdruck, setLook(teilOderLook), befestigen(sockel,obj), loesen(sockelOderObj), setSichtbar(bool), setAusdruck(name), setLider(zu), blinzeln(dauer), setBlick(x,y), setAugen(yaw,nick,lid), updateGesicht(dt), dispose() }`
@@ -1446,6 +1507,20 @@ scene.add(new THREE.Mesh(geometrie, standardMaterial()));
 
 Genutzt von: – · Tags: natur, totholz, baumstumpf, stamm, ast, prozedural, lowpoly, vertexfarben · THREE: ja
 
+### figur-material · `engine/render/figur-material.js` · v1.0.0 · entwurf
+Weiches Figuren-Material: Standard-Material mit Randlicht (Fresnel), aufgehellter Schattenseite und kräftigeren Farben – Figuren heben sich vom Gelände ab
+
+- `figurMaterial(opts) -> THREE.MeshStandardMaterial (geteilt je Optionen)`
+- `FIGUR_MATERIAL_STANDARD`
+
+```js
+import { figurMaterial } from '../../engine/render/figur-material.js';
+const mat = figurMaterial();                              // eins für alle Figuren (ein Shader-Programm)
+const geist = figurMaterial({ rand: 1, randFarbe: 0x80c0ff, material: { transparent: true, opacity: 0.6 } });
+```
+
+Genutzt von: – · Tags: figur, charakter, material, shader, randlicht, rim, look · THREE: ja
+
 ### mesh-builder · `engine/render/mesh-builder.js` · v1.1.0 · entwurf
 Low-Poly-Modelle aus Primitiven (Box, Kugel, Zylinder …) mit Vertexfarben zu EINER Geometrie verschmelzen; Farbvariation pro Dreieck per Seed
 
@@ -1491,6 +1566,22 @@ ns.update(dt, { kamera, regen: wetter.regen, schnee: wetter.schnee, wind: wetter
 ```
 
 Genutzt von: testwelt · Tags: wetter, regen, schnee, partikel, shader · THREE: ja
+
+### zauber-effekte · `engine/render/zauber-effekte.js` · v1.0.0 · entwurf
+Leichte Zauber-Effekte fürs Handy: ein Partikel-Points-Objekt (Funken, Schweife), leuchtende Geschoss-Kugeln, Schockwellen-Ringe, Blitze, Erdstacheln, Schutz-Aura, Meteor-Sturz – alles aus Pools
+
+- `createZauberEffekte(opts) -> { gruppe, update(dt,{hoehePx}?), funken(pos,opts), kugel(id,pos,opts), entferneKugel(id), ring(pos,opts), blitz(punkte,opts), stacheln(pos,opts), aura(id,posFn,opts), entferneAura(id), sturz(pos,opts), aktiv, dispose() }`
+
+```js
+import { createZauberEffekte } from '../../engine/render/zauber-effekte.js';
+const fx = createZauberEffekte({ seed: 3 }); szene.add(fx.gruppe);
+fx.kugel(g.id, g, { farbe: 0xff7a2a });                       // pro Frame: Geschoss mitführen (zieht einen Schweif)
+fx.entferneKugel(g.id); fx.funken(pos, { farbe: 0xff7a2a, anzahl: 40, tempo: 6 }); fx.ring(pos, { radius: 2.6 });
+fx.blitz([hand, ziel1, ziel2]); fx.aura('schild', () => figur.zustand.pos, { dauer: 8 });
+fx.update(dt, { hoehePx: renderer.domElement.height });
+```
+
+Genutzt von: figuren-labor · Tags: zauber, magie, effekt, partikel, funken, blitz, schockwelle, shader, vfx · THREE: ja
 
 ### fake-dom · `engine/test/fake-dom.mjs` · v1.0.0 · stabil
 Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame

@@ -2,6 +2,9 @@
 import * as THREE from 'three';
 import { createWelt } from './welt.js';
 import { createEditor } from './editor.js';
+import { createOberflaeche } from './oberflaeche.js';
+import { createZauberSpiel } from './zauber-spiel.js';
+import { ZAUBER, ZAUBER_NAMEN } from '../../../engine/gameplay/zauber.js';
 import { createCharacter } from '../../../engine/gameplay/character.js';
 import { createSteering } from '../../../engine/gameplay/character-steering.js';
 import { createMoveInput, zuAbsicht } from '../../../engine/input/move-input.js';
@@ -16,7 +19,6 @@ import { AUSDRUECKE } from '../../../engine/models/character/character-look.js';
 
 const url = new URLSearchParams(location.search);
 const SEED = +url.get('seed') || 1;
-const TEST = url.has('test');
 const SPEICHER = 'figuren-labor:look';
 
 // ---- Renderer & Szene ----
@@ -51,25 +53,28 @@ const spieler = createCharacter({
   look: gespeichert || VORLAGEN.wanderer, seed: SEED, welt: welt.adapter, pos: { x: 0, y: 0, z: 4 }, yaw: Math.PI,
   onSchritt: () => { schritte.n++; }, schilder, name: (gespeichert || VORLAGEN.wanderer).name,
 });
-// Ausrüstung (character-ausruestung): 🗡 schaltet durch alle Gegenstände in der rechten Hand (Schild/Buch → linke Hand)
-let ausrNr = -1, ausrObj = null;
-function naechsteAusruestung() {
-  if (ausrObj) { spieler.ablegen(ausrObj); ausrObj.dispose?.(); ausrObj = null; }
-  ausrNr = ausrNr + 1 >= ausruestungsNamen.length ? -1 : ausrNr + 1;
-  if (ausrNr < 0) return 'leer';
-  const name = ausruestungsNamen[ausrNr];
-  const sockel = name === 'schild' ? 'handL' : 'handR';
-  ausrObj = createAusruestung(name, { sockel, seed: SEED, masse: spieler.model.masse });
-  spieler.ausruesten(sockel, ausrObj);
-  return name;
+// Ausrüstung (character-ausruestung): je Hand ein Gegenstand (Schild/Buch links, der Rest rechts); nochmal wählen = ablegen
+const haende = { handR: null, handL: null };
+function setAusruestung(name) {
+  const leeren = (s) => { const h = haende[s]; if (h) { spieler.ablegen(h.obj); h.obj.dispose?.(); haende[s] = null; } };
+  if (!name) { leeren('handR'); leeren('handL'); return []; }
+  const sockel = name === 'schild' || name === 'buch' ? 'handL' : 'handR', gleich = haende[sockel]?.name === name;
+  leeren(sockel);
+  if (!gleich) {
+    const obj = createAusruestung(name, { sockel, seed: SEED, masse: spieler.model.masse });
+    spieler.ausruesten(sockel, obj);
+    haende[sockel] = { name, obj };
+  }
+  return Object.values(haende).filter(Boolean).map(h => h.name);
 }
 szene.add(spieler.root);
 
 const eingabe = createMoveInput({
   element: renderer.domElement,
   aktionen: [
+    { name: 'zaubern', tasten: ['KeyR'], knopf: '✨', padKnopf: 7, titel: 'Zaubern' },
     { name: 'schlagen', tasten: ['KeyF'], knopf: '⚔', padKnopf: 2 },
-    { name: 'winken', tasten: ['KeyG'], padKnopf: 7 },
+    { name: 'winken', tasten: ['KeyG'], padKnopf: 6 },
     'rollen', 'gleiten', 'interagieren', 'ziel',
   ],
   vibration: true,
@@ -111,40 +116,63 @@ function npcsErzeugen() {
 }
 npcsErzeugen();
 const nachbarn = [], brains = [];
+const STEHEN = { x: 0, z: 0 };   // Absicht für umgeworfene NPCs: liegen bleiben
 const brainKontext = { nachbarn, npcs: brains, stunde: 10, ziele: [] };
 
-// ---- Oberfläche ----
+// ---- Oberfläche (Handy zuerst): ein ☰-Menü mit Reitern, Zauberleiste, Balken ----
+const $ = (id) => document.getElementById(id);
+let schilderAn = true, infoAn = false;
+const PRESETS = Object.keys(KAMERA_PRESETS);
+const ui = createOberflaeche({
+  zauber: ZAUBER, ausruestung: ausruestungsNamen, kameras: PRESETS,
+  onZauber: (name) => zauber.wirke(name),
+  onAusruestung: setAusruestung,
+  onKamera: (name) => kamera.setPreset(name),
+  onSchalter: (id, an) => {
+    if (id === 'npcs') { npcAn = an; for (const n of npcs) n.fig.setSichtbar(an); }
+    else if (id === 'schilder') { schilderAn = an; for (const f of [spieler, ...npcs.map(n => n.fig)]) f.schild?.zeige(an); }
+    else if (id === 'info') { infoAn = an; $('info').style.display = an ? '' : 'none'; }
+    else if (id === 'ichsicht') kamera.setErstePerson(an);
+    else if (id === 'freimana') zauber.buch.setFreiesMana(an);
+  },
+  onKnopf: (id) => {
+    if (id === 'fahrt') { ui.schliesse(); kamera.fahrt({ pos: { x: 8, y: 9, z: -22 }, blick: () => spieler.zustand.pos, dauer: 1.5, halten: 2 }); }
+    else if (id === 'treffen') zauber.spielerTreffen(25);
+    else if (id === 'heilen') zauber.alleHeilen();
+  },
+  onOffen: () => setTimeout(bildAusschnitt, 260),
+});
+const zauber = createZauberSpiel({
+  spieler, npcs, npcsAn: () => npcAn, szene, welt: welt.adapter, kamera, lockZiel: () => ziel, seed: SEED, onMeldung: (t) => ui.melde(t),
+});
 const editor = createEditor({
-  wurzel: document.body, look: spieler.look,
+  wurzel: ui.seite('aussehen'), look: spieler.look,
   onAenderung: (l) => { spieler.setLook(l); spieler.setName(l.name); try { localStorage.setItem(SPEICHER, JSON.stringify(l)); } catch { /* voll/privat */ } },
 });
-const $ = (id) => document.getElementById(id);
-$('bEditor').onclick = () => { editor.zeige(!editor.offen); $('bEditor').classList.toggle('an', editor.offen); eingabe.setAktiv(!editor.offen); };
-$('bAktionen').onclick = () => { $('aktionen').classList.toggle('offen'); $('bAktionen').classList.toggle('an'); };
-$('bNpc').onclick = () => { npcAn = !npcAn; for (const n of npcs) n.fig.setSichtbar(npcAn); $('bNpc').classList.toggle('an', !npcAn); };
-// Kamera-Presets (+ Ich-Sicht durch Reinzoomen am Minimum)
-const PRESETS = Object.keys(KAMERA_PRESETS);
-let presetNr = 0;
-$('bKamera').onclick = () => { presetNr = (presetNr + 1) % PRESETS.length; kamera.setPreset(PRESETS[presetNr]); $('bKamera').textContent = '🎥 ' + PRESETS[presetNr]; };
-$('bErste').onclick = () => kamera.setErstePerson(!kamera.erstePerson);
-$('bFahrt').onclick = () => kamera.fahrt({ pos: { x: 8, y: 9, z: -22 }, blick: () => spieler.zustand.pos, dauer: 1.5, halten: 2 });
-let schilderAn = true;
-$('bSchilder').onclick = () => {
-  schilderAn = !schilderAn; $('bSchilder').classList.toggle('an', !schilderAn);
-  for (const f of [spieler, ...npcs.map(n => n.fig)]) f.schild?.zeige(schilderAn);
-};
-let infoAn = !TEST && !matchMedia('(pointer: coarse)').matches;
-$('bInfo').onclick = () => { infoAn = !infoAn; $('info').style.display = infoAn ? '' : 'none'; };
-$('info').style.display = infoAn ? '' : 'none';
+// Beim Tippen (Name) keine Spiel-Eingabe; Zifferntasten 1–0 wählen und wirken sofort
+addEventListener('focusin', (e) => { if (e.target.matches?.('input[type=text], .ed-name')) eingabe.setAktiv(false); });
+addEventListener('focusout', () => eingabe.setAktiv(true));
+addEventListener('keydown', (e) => {
+  if (e.target.matches?.('input, select, textarea') || e.repeat) return;
+  const m = /^Digit(\d)$/.exec(e.code);
+  if (m) { const n = ZAUBER_NAMEN[(+m[1] + 9) % 10]; ui.waehle(n); zauber.wirke(n); }
+});
+// Offenes Blatt verdeckt die Figur → Bildausschnitt verschieben, damit sie im freien Teil steht
+function bildAusschnitt() {
+  const v = ui.verdeckt(), k = kamera.kamera;
+  if (v.unten || v.links) k.setViewOffset(innerWidth, innerHeight, -v.links / 2, v.unten / 2, innerWidth, innerHeight);
+  else k.clearViewOffset();
+}
+$('info').style.display = 'none';
 // Clip-Liste dynamisch aus character-clips (neue Clips tauchen automatisch auf), gruppiert nach Maske, ↻ = Schleife
 function clipListe() {
   const gruppen = {};
   for (const n of CLIP_NAMEN) {
     if (['schwimmen', 'wassertreten'].includes(n) || CLIPS[n]?.idle) continue;   // Idle-Varianten spielt der Animator selbst
-    const m = CLIPS[n]?.maske; const g = typeof m === 'string' ? m : 'eigen';
+    const m = CLIPS[n]?.maske; const g = n.startsWith('zauber') ? 'zauber' : typeof m === 'string' ? m : 'eigen';
     (gruppen[g] ??= []).push(n);
   }
-  const titel = { oben: 'Oberkörper', ganz: 'Ganzer Körper', eigen: 'Sonstige' };
+  const titel = { oben: 'Oberkörper', ganz: 'Ganzer Körper', eigen: 'Sonstige', zauber: 'Zauber-Gesten' };
   $('aktionen').innerHTML = '<button data-clip="" class="stopp">⏹ stopp</button>' + Object.entries(gruppen).map(([g, l]) =>
     `<div class="gruppe"><b>${titel[g] || g}</b>${l.map(n => `<button data-clip="${n}">${n}${CLIPS[n]?.schleife ? ' ↻' : ''}</button>`).join('')}</div>`).join('');
 }
@@ -155,8 +183,7 @@ $('aktionen').onclick = (e) => {
   else if (b.dataset.clip) spieler.spiele(b.dataset.clip); else spieler.stoppe();
   b.blur();
 };
-$('bAusr').onclick = () => { $('bAusr').textContent = '🗡 ' + naechsteAusruestung(); };
-// Ausdrücke: Knopfreihe aus AUSDRUECKE (character-look) im Aktionen-Panel → spieler.setAusdruck(name) für 4 s
+// Ausdrücke: Knopfreihe aus AUSDRUECKE (character-look) im Aktionen-Reiter → spieler.setAusdruck(name) für 4 s
 function ausdruckReihe() {
   const d = document.createElement('div');
   d.className = 'gruppe';
@@ -178,11 +205,12 @@ let grussNr = 0, nahKnopf = false;
 const absicht = {};
 let stoppAn = false;
 $('bStopp').onclick = () => spieler.stoppe();
-setTimeout(() => { $('hilfe').style.opacity = 0; }, 7000);
+setTimeout(() => { $('hilfe').style.opacity = 0; }, 9000);
 
 addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
   kamera.kamera.aspect = innerWidth / innerHeight;
+  bildAusschnitt();
   kamera.kamera.updateProjectionMatrix();
 });
 
@@ -202,7 +230,8 @@ function bild(jetzt) {
   if (eingabe.gedrueckt('ziel')) zielWaehlen();
   zuAbsicht(e, kamera.blickYaw(), absicht);       // inkl. rollen/gleiten/tauchen-Flags für den Motor
   const zp = ziel && zielPos(ziel);
-  absicht.blickYaw = kamera.erstePerson ? kamera.yaw : zp ? Math.atan2(zp.x - spieler.zustand.pos.x, zp.z - spieler.zustand.pos.z) : undefined;
+  if (eingabe.gedrueckt('zaubern')) zauber.wirke(ui.gewaehlt);
+  absicht.blickYaw = zauber.drehYaw ?? (kamera.erstePerson ? kamera.yaw : zp ? Math.atan2(zp.x - spieler.zustand.pos.x, zp.z - spieler.zustand.pos.z) : undefined);
   spieler.update(dt, absicht);
   // Dauer-Clips (tragen, sitzenBoden, schlafen …) laufen bis stoppe() → ⏹ in der Leiste, solange eine Aktion läuft
   const laeuft = !!spieler.animator.aktion;
@@ -227,13 +256,15 @@ function bild(jetzt) {
     for (const n of npcs) {
       if (n.hirn) {
         const absicht = n.hirn.update(dt, n.fig.zustand, nachbarn.filter(q => q.x !== n.fig.zustand.pos.x || q.z !== n.fig.zustand.pos.z));
-        n.fig.update(dt, absicht);
+        n.fig.update(n.langsam > 0 ? dt * 0.4 : dt, n.liegt > 0 ? STEHEN : absicht);
         if (n.hirn.modus === 'folgen' && n.hirn.angekommen && (n.pause -= dt) < 0) { n.fig.spiele('winken'); n.pause = 12; }
-      } else n.fig.update(dt, null, brainKontext);
+      } else n.fig.update(n.langsam > 0 ? dt * 0.4 : dt, n.liegt > 0 ? STEHEN : null, brainKontext);
       if (n.blickZeit > 0 && (n.blickZeit -= dt) <= 0) n.fig.blickZu(null);
     }
   }
 
+  zauber.update(dt, renderer.domElement.height);
+  ui.update(dt, zauber.buch, zauber.zustand);
   kamera.update(dt, z.pos, { tempo: z.tempo, sprintet: z.sprintet, yaw: z.yaw, amBoden: z.amBoden, augenHoehe: spieler.model.masse.augenHoehe });
   spieler.setSichtbar(!kamera.figurAusblenden);
   if (schilderAn) spieler.schild?.zeige(!kamera.erstePerson);
@@ -254,4 +285,4 @@ function bild(jetzt) {
 requestAnimationFrame(bild);
 
 // Für Tests/Debug
-window.labor = { spieler, npcs, kamera, eingabe, welt, schilder, createLook, clipListe };
+window.labor = { spieler, npcs, kamera, eingabe, welt, schilder, createLook, clipListe, zauber, ui };
