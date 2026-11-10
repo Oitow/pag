@@ -175,3 +175,17 @@ test('dispose', () => {
   inv.gib('a', 1);
   assert.equal(n, 0);
 });
+
+test('setzeDaten: nur Einzelstücke, null entfernt, meldet Änderung', () => {
+  const inv = createInventar({ plaetze: 3 });
+  inv.gib('holz', 2); inv.gib('axt', 1);
+  let n = 0; inv.onAenderung(() => n++);
+  assert.equal(inv.setzeDaten(0, { x: 1 }), false);
+  assert.equal(inv.setzeDaten(2, { x: 1 }), false);
+  assert.equal(inv.setzeDaten(1, 'nein'), false);
+  assert.equal(inv.setzeDaten(1, { haltbarkeit: 4 }), true);
+  assert.deepEqual(inv.zustand().plaetze[1], ['axt', 1, { haltbarkeit: 4 }]);
+  assert.equal(inv.setzeDaten(1, null), true);
+  assert.deepEqual(inv.zustand().plaetze[1], ['axt', 1]);
+  assert.equal(n, 2);
+});

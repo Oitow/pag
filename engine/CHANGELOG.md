@@ -1,5 +1,13 @@
 # Engine-Changelog
 
+## 2026-11 – Etappe 3: Herstellen, Rohstoffe, Hand
+- gameplay/rezepte 1.0.0 (neu): Rezepte als Daten (Zutaten, Werkzeug, Station), prüfen und herstellen – alles oder nichts
+- gameplay/rohstoffe 1.0.0 (neu): abbaubare Quellen mit Beute per Seed, Werkzeug nötig oder nur schneller, Abnutzung, Nachwachsen nach Spielzeit, Spielstand
+- gameplay/hand 1.0.0 (neu): gewählter Inventar-Platz als „in der Hand“, Wechsel-Meldung zum Ausrüsten, Haltbarkeit bis zum Zerbrechen
+- gameplay/inventar 1.1.0 (additiv): `setzeDaten(platz, daten|null)` für Einzelstücke
+- gameplay/welt-dinge 1.1.0 (additiv): `wirf(…, { daten })` – Werkzeuge behalten ihre Haltbarkeit beim Ablegen
+- games/testwelt: Axt und Hacke herstellen (🔨), in die Hand nehmen, damit schneller fällen/abbauen; Bäume und Felsen wachsen nach
+
 ## 2026-11 – Fundament: Kollision, leichte Physik, Dinge & Handeln
 - world/kollision 1.0.0 (neu): Kollisions-Welt über dem Adapter – bewegliche/entfernbare Zylinder und gedrehte Kästen mit Höhe (draufsteigen, drüberspringen, weich aneinander vorbei), Strahl-Test gegen Gelände und Körper
 - gameplay/koerper 1.0.0 (neu): leichte Physik für lose Dinge (fallen, abprallen, Reibung, haften/rutschen am Hang, schwimmen/sinken, einschlafen), fester Zeitschritt

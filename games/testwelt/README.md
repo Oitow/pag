@@ -20,7 +20,9 @@ Begehbare 3D-Welt zum Ausprobieren der Engine-Bausteine. Hier landet alles, was 
 - **Dinge & Handeln:** `js/sachen.js` – Kollisions-Welt (`engine/world/kollision`): Kisten-Treppe neben dem Start zum Draufspringen,
   Figuren schieben sich aneinander vorbei. Äpfel und Pilze liegen herum (`gameplay/welt-dinge` + leichte Physik `gameplay/koerper`:
   fallen, rollen, schwimmen, lassen sich wegkicken). E / 💬 = aufheben, ansprechen; **E halten** vor einem Baum/Fels = fällen/abbauen
-  (`gameplay/interaktion`), Holz und Steine fallen heraus. Inventarleiste unten (`gameplay/inventar`): Platz antippen = ablegen.
+  (`gameplay/interaktion`), Holz und Steine fallen heraus. Inventarleiste unten (`gameplay/inventar`): Platz antippen = in die Hand (`gameplay/hand`), nochmal antippen = ablegen.
+  🔨 = Axt/Hacke herstellen (`gameplay/rezepte`); mit dem Werkzeug in der Hand geht Fällen/Abbauen dreimal so schnell, es nutzt sich ab.
+  Bäume und Felsen wachsen nach einigen Spieltagen nach (`gameplay/rohstoffe`).
 - **Himmel & Wetter:** Tag/Nacht mit Sonne, Mond (Phasen), Sternen und Wolken (`engine/world/himmel`, `himmel-stand`), Wetter nach
   Biom-Klima und Jahreszeit (`engine/world/wetter`), Regen/Schnee (`engine/render/niederschlag`). ⏩ = 3 Stunden vor, Wetterknopf = nächstes Wetter.
 - **Zeit & Spielstand:** Spieluhr mit Tagen und Jahreszeiten (`engine/core/zeit`), Schleife (`engine/core/schleife`), Uhr, Wetter und

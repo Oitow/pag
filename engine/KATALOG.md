@@ -27,9 +27,12 @@
 | character-steering-extra | `engine/gameplay/character-steering-extra.js` | Reine Steering-Rechnungen: Patrouillen-Fortschritt (Schleife/Pingpong/einmal), Umkreisen, Abstand halten, Versteckpunkt hinter Deckung | entwurf |
 | character-steering | `engine/gameplay/character-steering.js` | NPC-Bewegungs-Gehirn: liefert dieselbe Absicht wie die Eingabe – Ziel/Ankommen, Wandern, Folgen, Fliehen, Pfad, Patrouille, Umkreisen, Abstand halten, Verstecken, Schwarm, Ausweichen, Steckenbleiben auflösen | entwurf |
 | character | `engine/gameplay/character.js` | Fertige Spielfigur in einem Objekt: Modell (Look) + Animator + Bewegungs-Motor, für Spieler und NPCs gleich | entwurf |
+| hand | `engine/gameplay/hand.js` | „In der Hand“: ein Inventar-Platz ist ausgewählt (Schnellleiste); liefert den gehaltenen Gegenstand samt Register-Eintrag, meldet Wechsel (zum Ausrüsten der Figur) und nutzt Werkzeuge ab, bis sie zerbrechen | entwurf |
 | interaktion | `engine/gameplay/interaktion.js` | „Ansehen → Aktion“: Dinge der Welt (NPC, Gegenstand, Baum, Tür) melden sich als Ziel an; für eine Figur wird das beste Ziel in Reichweite/Blickrichtung bestimmt (Hinweis „E – Aufheben“) und ausgelöst, auch als Gedrückt-halten mit Fortschritt | entwurf |
 | inventar | `engine/gameplay/inventar.js` | Inventar mit festen Plätzen, Stapeln, Gewichtsgrenze, Speichern/Laden und Änderungs-Meldung | entwurf |
 | koerper | `engine/gameplay/koerper.js` | Leichte Physik für lose Dinge (Gegenstände, Beute, Bälle, Kisten-Trümmer) ohne THREE: Kugeln mit Schwerkraft, Abprallen, Reibung, Haften am flachen Hang, Rutschen am steilen, Schwimmen/Sinken, Hindernisse, Einschlafen – fester Zeitschritt, deterministisch | entwurf |
+| rezepte | `engine/gameplay/rezepte.js` | Herstellen: Rezepte als Daten (Zutaten → Ergebnis, optional Werkzeug und Station), prüfen was mit einem Inventar möglich ist und sicher herstellen (alles oder nichts) | entwurf |
+| rohstoffe | `engine/gameplay/rohstoffe.js` | Abbaubare Quellen (Baum, Fels, Busch) ohne THREE: Beute per Seed, Werkzeug nötig oder nur schneller, Abnutzung, Nachwachsen nach Spielzeit, Speichern/Laden | entwurf |
 | welt-dinge | `engine/gameplay/welt-dinge.js` | Gegenstände, die in der Welt liegen (ohne THREE): ablegen, werfen, aufheben ins Inventar, gleiche Stapel in der Nähe zusammenlegen, Lebensdauer, Speichern/Laden – verbindet Physik (koerper), Interaktion und Inventar | entwurf |
 | zauber | `engine/gameplay/zauber.js` | Zauber-System ohne THREE: 10 Zauber als Daten (Geschoss, Strahl, Kegel, Ort, Selbst, Teleport), Zauberbuch mit Mana, Abklingzeiten, Wirkzeit, Geschoss-Simulation und Treffer-Ereignissen | entwurf |
 | move-input | `engine/input/move-input.js` | Bewegungs-Eingabe für Figuren: Tastatur (WASD/Pfeile), Maus-Ziehen/Mausrad, Touch-Stick + Knöpfe, Gamepad → Stick, Kamera-Delta, Aktionen (Flanke/gehalten) | entwurf |
@@ -116,6 +119,7 @@
 
 | Tag | Module |
 |---|---|
+| abbauen | rohstoffe |
 | abfluss | worldgen-hydrology, worldgen-rivers |
 | abfrage | raum-gitter, worldgen-query |
 | abklingzeit | zauber |
@@ -140,6 +144,7 @@
 | augen | character-anim-blick, character-parts-gesicht |
 | augenklappe | character-parts-zubehoer |
 | ausdruck | character-parts-gesicht |
+| ausruesten | hand |
 | ausrüstung | character-ausruestung, character-model |
 | aussehen | character-look |
 | auswahl | ziel-wahl |
@@ -153,7 +158,7 @@
 | beeren | pflanze-busch |
 | begehbar | kollision |
 | betaeubt | character-anim-zustand |
-| beute | welt-dinge |
+| beute | rohstoffe, welt-dinge |
 | bewegung | character-motor-tuning, character-motor, character-steering, character |
 | biome | terrain-farben, terrain-mesh, worldgen-biomes, worldgen-query |
 | blick | character-anim-blick, character-parts-gesicht |
@@ -175,6 +180,7 @@
 | chunks | worldgen-chunkfluss, worldgen-chunks |
 | clip | character-animator, character-clips-mehr, character-clips-zauber, character-clips |
 | controller | character-motor, character |
+| crafting | rezepte |
 | dash | character-motor, character-anim-zustand |
 | daten | register, baum-arten, worldgen-vegetation |
 | dialog | figur-schild |
@@ -192,6 +198,7 @@
 | event | ereignisse |
 | export | speicher |
 | fackel | character-ausruestung |
+| faellen | rohstoffe |
 | farbe | character-parts-basis |
 | farben | himmel-stand, terrain-farben |
 | farn | pflanze-boden |
@@ -212,7 +219,7 @@
 | funken | zauber-effekte |
 | fähigkeit | zauber |
 | gamepad | move-input |
-| gameplay | ereignisse, character-brain, character-gruppe, character-motor-tuning, character-motor, character-sinne, character-steering-extra, character-steering, interaktion, inventar, koerper, welt-dinge |
+| gameplay | ereignisse, character-brain, character-gruppe, character-motor-tuning, character-motor, character-sinne, character-steering-extra, character-steering, hand, interaktion, inventar, koerper, rezepte, rohstoffe, welt-dinge |
 | gang | character-animator, character-gang |
 | gebirge | worldgen-height |
 | gedaechtnis | character-sinne |
@@ -234,6 +241,8 @@
 | gürtel | character-parts-becken |
 | haar | character-parts-haar, character-parts-kopf, character-sekundaer |
 | halm | pflanze-formen |
+| haltbarkeit | hand |
+| hand | hand |
 | handy | touch-stick |
 | hang | character-anim-hang |
 | hash | rng |
@@ -241,6 +250,7 @@
 | heide | pflanze-busch |
 | helm | character-parts-hut, character-parts-kopf |
 | herde | character-gruppe |
+| herstellen | rezepte |
 | hilfen | character-parts-basis |
 | himmel | himmel-stand, himmel |
 | hindernis | kollision |
@@ -259,7 +269,7 @@
 | instanzen | natur-material, scatter-mesh |
 | interaktion | interaktion |
 | interpolation | math, schnappschuss-puffer |
-| inventar | inventar, welt-dinge |
+| inventar | hand, inventar, rezepte, welt-dinge |
 | jahreszeit | zeit, baum |
 | joystick | move-input, touch-stick |
 | kaktus | pflanze-wueste |
@@ -317,6 +327,7 @@
 | nachricht | ereignisse |
 | nachschwingen | character-sekundaer |
 | nacht | himmel-stand, himmel |
+| nachwachsen | rohstoffe |
 | namensschild | figur-schild |
 | natur | baum-arten, baum-skelett, baum, fels-basis, fels-form, fels, natur-assets, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-wueste, totholz-form, totholz, natur-material, scatter-mesh |
 | nebel | himmel, wetter |
@@ -363,10 +374,11 @@
 | registry | natur-assets |
 | reichweite | interaktion |
 | render | natur-material |
-| rezept | register |
+| rezept | register, rezepte |
 | rig | character-pose, character-rig |
 | rim | figur-material |
 | rock | character-parts-becken |
+| rohstoff | rohstoffe |
 | rolle | character-motor, character-anim-zustand |
 | rollen | koerper |
 | rosette | pflanze-formen |
@@ -382,6 +394,7 @@
 | schleife | schleife |
 | schmuck | character-parts-zubehoer |
 | schnee | niederschlag, terrain-farben, wetter |
+| schnellleiste | hand |
 | schockwelle | zauber-effekte |
 | schuetteln | follow-camera |
 | schuhe | character-parts |
@@ -461,7 +474,8 @@
 | wegfindung | worldgen-path |
 | welt | noise, rng, welt-dinge, kollision, scatter-mesh, terrain-farben, terrain-mesh, wege-lage, wege-mesh, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | werfen | welt-dinge |
-| werkzeug | character-ausruestung |
+| werkbank | rezepte |
+| werkzeug | hand, rohstoffe, character-ausruestung |
 | wetter | niederschlag, himmel-stand, wetter |
 | whittaker | worldgen-biomes |
 | wind | baum, natur-basis, pflanze-basis, pflanze-boden, pflanze-busch, natur-material, scatter-mesh, wetter |
@@ -478,6 +492,7 @@
 | zopf | character-parts-haar |
 | zufall | rng |
 | zustandsautomat | character-brain |
+| zutaten | rezepte |
 
 ## Module
 
@@ -828,6 +843,24 @@ bauer.sage('Moin!', { geste: 'winken' }); bauer.blickZu(held); bauer.ausruesten(
 
 Genutzt von: figuren-labor, testwelt · Tags: figur, charakter, spieler, npc, bewegung, animation, controller, avatar · THREE: nein
 
+### hand · `engine/gameplay/hand.js` · v1.0.0 · entwurf
+„In der Hand“: ein Inventar-Platz ist ausgewählt (Schnellleiste); liefert den gehaltenen Gegenstand samt Register-Eintrag, meldet Wechsel (zum Ausrüsten der Figur) und nutzt Werkzeuge ab, bis sie zerbrechen
+
+- `createHand({inventar,register,ereignisse,platz,name}) -> {platz,waehle(platz)->bool,weiter(richtung?)->platz,gegenstand(),eintrag(),hatTag(tag),haltbarkeit()->0..1|null,nutzeAb(n?)->{rest,kaputt}|null,onWechsel(fn)->abmelden,zustand(),lade(stand),dispose()}`
+
+```js
+import { createHand } from '../../engine/gameplay/hand.js';
+const hand = createHand({ inventar, register: gegenstaende });
+hand.onWechsel((e) => { figur.ablegen('handR'); if (e?.modell) figur.ausruesten('handR', createAusruestung(e.modell)); });
+hand.waehle(2); hand.hatTag('axt'); hand.nutzeAb(1);   // Haltbarkeit sinkt, bei 0 verschwindet das Werkzeug
+```
+
+Genutzt von: testwelt · Tags: hand, ausruesten, werkzeug, haltbarkeit, schnellleiste, inventar, gameplay · THREE: nein
+platz = -1: leere Hand. Der Platz bleibt gewählt, auch wenn er leer wird (wie eine Schnellleiste).
+Haltbarkeit: Register-Eintrag { haltbarkeit: 25 } = volle Haltbarkeit; der Stand liegt in den Daten des Platzes ({ haltbarkeit }).
+Solche Gegenstände brauchen `stapel: 1`. onWechsel(eintrag|null, platzInhalt|null) feuert nur, wenn sich die id in der Hand ändert.
+Ereignisse: 'hand:gewechselt' { hand, id }, 'werkzeug:kaputt' { hand, id }.
+
 ### interaktion · `engine/gameplay/interaktion.js` · v1.0.0 · entwurf
 „Ansehen → Aktion“: Dinge der Welt (NPC, Gegenstand, Baum, Tür) melden sich als Ziel an; für eine Figur wird das beste Ziel in Reichweite/Blickrichtung bestimmt (Hinweis „E – Aufheben“) und ausgelöst, auch als Gedrückt-halten mit Fortschritt
 
@@ -847,10 +880,10 @@ Höhe passt (nur wenn beide y endlich), im Blickkegel (nur wenn yaw endlich und 
 Wertung (kleiner = besser): randAbstand + winkelRad * 0.6 − prio; bei Gleichstand das zuerst gemeldete Ziel.
 Ziele liegen in einem Raum-Gitter (engine/core/raum-gitter.js). Funktions-pos wird in aktualisiere() nachgeführt.
 
-### inventar · `engine/gameplay/inventar.js` · v1.0.0 · entwurf
+### inventar · `engine/gameplay/inventar.js` · v1.1.0 · entwurf
 Inventar mit festen Plätzen, Stapeln, Gewichtsgrenze, Speichern/Laden und Änderungs-Meldung
 
-- `createInventar({plaetze,register,stapel,maxGewicht,ereignisse,name}) -> {plaetze,gib(id,anzahl,daten)->rest,passt(id,anzahl),nimm(id,anzahl)->anzahl,nimmVon(platz,anzahl),hat(id,anzahl),zaehle(id),frei(),gewicht,verschiebe(von,nach),teile(platz,anzahl)->index,leere(),zustand(),lade(zustand),onAenderung(fn)->abmelden,dispose()}`
+- `createInventar({plaetze,register,stapel,maxGewicht,ereignisse,name}) -> {plaetze,gib(id,anzahl,daten)->rest,passt(id,anzahl),nimm(id,anzahl)->anzahl,nimmVon(platz,anzahl),hat(id,anzahl),zaehle(id),frei(),gewicht,verschiebe(von,nach),teile(platz,anzahl)->index,setzeDaten(platz,daten|null)->bool,leere(),zustand(),lade(zustand),onAenderung(fn)->abmelden,dispose()}`
 
 ```js
 import { createInventar } from '../../engine/gameplay/inventar.js';
@@ -883,10 +916,52 @@ Körper (lebendes Objekt): { id, pos, vel, radius, amBoden, imWasser, ruht, date
 (nach dem Setzen wecke(k) rufen). Körper stoßen nicht untereinander zusammen (billig, reicht für Beute und Kleinkram).
 onAufprall(koerper, tempo, 'boden' | 'wand' | 'wasser') ab ~1 m/s – für Klang und Staub.
 
-### welt-dinge · `engine/gameplay/welt-dinge.js` · v1.0.0 · entwurf
+### rezepte · `engine/gameplay/rezepte.js` · v1.0.0 · entwurf
+Herstellen: Rezepte als Daten (Zutaten → Ergebnis, optional Werkzeug und Station), prüfen was mit einem Inventar möglich ist und sicher herstellen (alles oder nichts)
+
+- `createRezepte({gegenstaende,ereignisse}) -> {definiere(id,{zutaten,ergebnis,werkzeug,station,dauer,name}),definiereAlle({id:daten}),hole(id),alle(),pruefe(id,inventar,{stationen}?)->{ok,grund,fehlt},moeglich(inventar,{stationen}?)->[rezept],stelleHer(id,inventar,{stationen,wer}?)->{id,anzahl}|null,dispose()}`
+
+```js
+import { createRezepte } from '../../engine/gameplay/rezepte.js';
+const rezepte = createRezepte({ gegenstaende });
+rezepte.definiere('axt', { zutaten: { holz: 2, stein: 1 }, ergebnis: 'axt' });
+const p = rezepte.pruefe('axt', inventar);          // { ok: false, grund: 'zutaten', fehlt: { stein: 1 } }
+if (p.ok) rezepte.stelleHer('axt', inventar);       // nimmt Zutaten, legt die Axt ins Inventar
+```
+
+Genutzt von: testwelt · Tags: rezept, herstellen, crafting, werkbank, zutaten, inventar, gameplay · THREE: nein
+Rezept: { id, name, zutaten {id: anzahl}, ergebnis {id, anzahl, daten?}, werkzeug [id oder Tag, wird nicht verbraucht],
+        station (Text oder null), dauer (Sekunden, nur Angabe fürs Spiel) }.
+grund: null | 'unbekannt' | 'station' | 'werkzeug' | 'zutaten' | 'platz' (nur bei stelleHer, dann bleibt das Inventar unverändert).
+Hat der Gegenstand im Register eine `haltbarkeit`, bekommt das Ergebnis automatisch daten { haltbarkeit } (siehe gameplay/hand).
+Ereignis: 'hergestellt' { rezept, id, anzahl, wer }.
+
+### rohstoffe · `engine/gameplay/rohstoffe.js` · v1.0.0 · entwurf
+Abbaubare Quellen (Baum, Fels, Busch) ohne THREE: Beute per Seed, Werkzeug nötig oder nur schneller, Abnutzung, Nachwachsen nach Spielzeit, Speichern/Laden
+
+- `createRohstoffe({arten,seed,ereignisse,onWeg,onDa,warte}) -> {definiere(art,daten),hole(art),pruefe(art,werkzeug?)->{ok,grund,dauer,passt},baueAb(schluessel,art,{werkzeug,jetzt,wer}?)->{beute,abnutzung,reif}|null,istWeg(schluessel),update(jetzt)->anzahl,anzahl,zustand(),lade(stand),dispose()}`
+
+```js
+import { createRohstoffe } from '../../engine/gameplay/rohstoffe.js';
+const roh = createRohstoffe({ seed, onWeg: (k) => verstecke(k), onDa: (k) => zeige(k),
+arten: { baum: { gibt: [{ id: 'holz', min: 2, max: 4 }], dauer: 1.5, werkzeug: 'axt', ohneFaktor: 3, nachwachsen: 2 } } });
+const p = roh.pruefe('baum', hand.eintrag());                       // { ok, dauer, passt }
+const erg = roh.baueAb(baumIndex, 'baum', { werkzeug: hand.eintrag(), jetzt: uhr.tag + uhr.stunde / 24 });
+// erg.beute → in die Welt werfen; erg.abnutzung → hand.nutzeAb(…);   je Bild: roh.update(jetzt)
+```
+
+Genutzt von: testwelt · Tags: rohstoff, abbauen, faellen, nachwachsen, werkzeug, beute, gameplay · THREE: nein
+Art: { gibt [{id, min, max, chance}], dauer (s), werkzeug (Tag oder id, optional), noetig (ohne passendes Werkzeug geht nichts),
+     ohneFaktor (so viel länger ohne Werkzeug, Standard 3), abnutzung (je Abbau, Standard 1), nachwachsen (Zeit-Einheiten, 0 = nie), text }.
+werkzeug = Register-Eintrag des Gegenstands in der Hand ({ id, tags, tempo }) oder null. `tempo` teilt die Dauer.
+`jetzt` ist eine beliebige, wachsende Spielzeit (z. B. Tage als Kommazahl) – dieselbe Einheit wie `nachwachsen`.
+onDa(schluessel, art) darf false liefern („gerade steht jemand dort“) → neuer Versuch nach `warte` Zeit-Einheiten.
+Ereignisse: 'abgebaut' { schluessel, art, beute, wer }, 'nachgewachsen' { schluessel, art }.
+
+### welt-dinge · `engine/gameplay/welt-dinge.js` · v1.1.0 · entwurf
 Gegenstände, die in der Welt liegen (ohne THREE): ablegen, werfen, aufheben ins Inventar, gleiche Stapel in der Nähe zusammenlegen, Lebensdauer, Speichern/Laden – verbindet Physik (koerper), Interaktion und Inventar
 
-- `createWeltDinge({physik,interaktion,register,ereignisse,lebensdauer,sammelRadius,onNeu,onWeg}) -> {lege(id,anzahl,pos,{vel,daten,alter}?)->ding,wirf(id,anzahl,von,yaw,{tempo,hoch,streuung}?)->ding,nimm(ding,inventar)->anzahl,entferne(ding),update(dt),alle(),anzahl,zustand(),lade(stand),dispose()}`
+- `createWeltDinge({physik,interaktion,register,ereignisse,lebensdauer,sammelRadius,onNeu,onWeg}) -> {lege(id,anzahl,pos,{vel,daten,alter}?)->ding,wirf(id,anzahl,von,yaw,{tempo,hoch,streuung,daten}?)->ding,nimm(ding,inventar)->anzahl,entferne(ding),update(dt),alle(),anzahl,zustand(),lade(stand),dispose()}`
 
 ```js
 import { createWeltDinge } from '../../engine/gameplay/welt-dinge.js';
@@ -1062,7 +1137,7 @@ figur.befestigen('handL', createAusruestung('schild', { sockel: 'handL', farbe: 
 const fackel = createAusruestung('fackel'); licht.position.copy(fackel.userData.lichtPunkt); fackel.add(licht);
 ```
 
-Genutzt von: figuren-labor · Tags: figur, charakter, ausrüstung, waffe, werkzeug, schwert, axt, schild, bogen, fackel, laterne, korb, sockel · THREE: ja
+Genutzt von: figuren-labor, testwelt · Tags: figur, charakter, ausrüstung, waffe, werkzeug, schwert, axt, schild, bogen, fackel, laterne, korb, sockel · THREE: ja
 Gegenstand-Raum: Griffpunkt im Ursprung, Längsachse +Y, „vorn“ (Schneide, Schildfläche, Bogenbauch) +Z.
 Ausrichtung je Sockel (Hand-Raum: Arm hängt nach −Y, Daumen +Z):
 halt 'vorn' (Waffen, Werkzeug): +Y → +Z der Hand (Arm hängt: zeigt nach vorn; Arm vorgestreckt: zeigt nach oben)
