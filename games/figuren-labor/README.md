@@ -11,7 +11,7 @@ Testgelände für das Figuren-System der Engine (`docs/FIGUREN-SYSTEM.md`): Auss
 - ✨ 10 Zauber (`engine/gameplay/zauber` + `engine/render/zauber-effekte`): Feuerball, Eislanze, Arkane Geschosse, Kettenblitz, Windstoß,
   Erdstachel, Meteor, Heilung, Schutzschild, Blinzeln – mit Geste, Aufladen an der Hand, Mana und Abklingzeit; NPCs haben Leben, taumeln, fallen um
 - Figuren mit Randlicht und weicherer Schattenseite (`engine/render/figur-material`)
-- 🕹 PS1-Look aus Viniland (`engine/render/psx`): grobe Pixel (300 Zeilen), wackelnde Eckpunkte, 5 Bit Farbe mit Dithering –
+- 🕹 PS1-Look aus Viniland (`engine/render/psx`): grobe Pixel (rund 300 Zeilen, alle gleich groß), Eckpunkte rasten aufs Pixelraster, 5 Bit Farbe mit Dithering, das beim Umsehen mit der Welt mitwandert –
   liegt über der ganzen Szene, wird im Browser gemerkt; Kantenglättung wechselt erst nach Neuladen
 - Gelände zum Ausprobieren: Treppe + Plateau (Stufen hochgehen), steile Rampe (rutschen), Teich (schwimmen), Bäume/Felsen (Hindernisse)
 - 8 NPCs: einer folgt dir (und winkt), einer läuft eine Runde, der Rest lebt mit `character-brain` (wandern, arbeiten, plaudern)

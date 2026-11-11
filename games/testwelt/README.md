@@ -35,7 +35,9 @@ Begehbare 3D-Welt zum Ausprobieren der Engine-Bausteine. Hier landet alles, was 
 - **Menü:** ☰ oder Esc (`js/pause.js`) – pausiert, 3 Speicherplätze (Speichern/Laden/Löschen), Optionen (PS1-Look, Auflösung, Schatten, Zeit-Tempo),
   letzte Gelände-Änderung zurücknehmen, Gelände zurücksetzen.
 - **PS1-Look:** `engine/render/psx` (aus Viniland übernommen) liegt über der ganzen Szene – grobe Pixel, wackelnde Eckpunkte,
-  5 Bit Farbe mit Dithering, auch im Himmel. Unter ☰ → Optionen: an/aus, Pixel-Zeilen (180–480), Wackeln an/aus.
+  5 Bit Farbe mit Dithering, auch im Himmel. Ruhig in Bewegung: alle groben Pixel sind gleich groß, Eckpunkte rasten genau
+  aufs Pixelraster, das Farbmuster wandert beim Umsehen und seitlichen Gehen mit der Welt mit (klebt nicht am Bildschirm).
+  Unter ☰ → Optionen: an/aus, Pixel-Zeilen (ungefähr, 180–480), Wackeln an/aus, Farbmuster an/aus.
   Kantenglättung wechselt erst nach Neuladen.
 - **Himmel & Wetter:** Tag/Nacht mit Sonne, Mond (Phasen), Sternen und Wolken (`engine/world/himmel`, `himmel-stand`), Wetter nach
   Biom-Klima und Jahreszeit (`engine/world/wetter`), Regen/Schnee (`engine/render/niederschlag`). ⏩ = 3 Stunden vor, Wetterknopf = nächstes Wetter.

@@ -1,5 +1,13 @@
 # Engine-Changelog
 
+## 2026-11 – PS1-Look: ruhig in Bewegung
+- render/psx 1.1.0 (additiv, neue Standardwerte): das Bild flimmerte beim Umsehen, weil das Farbmuster am Bildschirm klebte, das Einrast-Raster (240) nicht zum Pixelraster passte und die groben Pixel ungleich groß waren
+  - `ditherFolgt` (Standard an): das Farbmuster wandert in ganzen Pixeln mit der Kamera mit – Drehen, seitlich Gehen, Umkreisen (je Tiefen-Schicht, auch Ortho-Kameras und Splitscreen); `false` = wie bisher
+  - `raster: 'pixel'` (neuer Standard statt 240): Eckpunkte rasten genau aufs Pixelraster der Ansicht; Zahlen gehen weiter
+  - `ganzePixel` (Standard an): `aufloesung()` rundet auf ganze Bildschirm-Pixel je grobem Pixel (`zeilen` ist dann ein Ungefähr-Wert), neue Option `geraet`; `psxAufloesung(…, geraet)` und Rückgabe-Feld `pixel`
+  - Messung Testwelt (Schwenk in ganzen Pixeln, Änderung je Pixel): 16,6 → 1,4
+- games/testwelt: Optionen „PS1: Wackeln“ nutzt das Pixelraster, neu „PS1: Farbmuster“ an/aus
+
 ## 2026-11 – PS1-Look aus Viniland
 - render/psx 1.0.1 (neu): PS1-Look für eine ganze Szene – `wendeAn(szene)` patcht alle Materialien (vorhandene Shader-Hooks wie Randlicht/Wind bleiben), Eckpunkte rasten ein, Farbstufen mit Bayer-Dithering, `aufloesung()` für grobe Pixel, Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen), live an/aus über `setze({ an })`
 - world/himmel 1.1.0 (additiv): Shader endet mit `#include <dithering_fragment>` – der Himmel macht beim PS1-Look mit (ohne `psx` unverändert)

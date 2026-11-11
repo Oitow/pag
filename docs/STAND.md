@@ -3,6 +3,7 @@
 > Wird von `/ende` überschrieben und von `/start` gelesen. Höchstens 40 Zeilen.
 
 ## Zuletzt gemacht
+- PS1-Look beruhigt (`render/psx` 1.1): Farbmuster wandert mit der Kamera mit (`ditherFolgt`), Einrasten aufs Pixelraster (`raster: 'pixel'`), gleich große Pixel (`ganzePixel`) – Schwenk-Flimmern gemessen 16,6 → 1,4; Testwelt-Option „PS1: Farbmuster“
 - PS1-Look aus Viniland in die Engine geholt: `render/psx` (`createPsx` → `wendeAn(szene)`, `aufloesung()`, `setze({ an })`), `himmel` 1.1 macht mit
 - Figuren-Labor (☰ → Mehr → 🕹 PS1-Look) und Testwelt (☰ → Optionen: an/aus, Pixel-Zeilen, Wackeln) zeigen ihn, Standard = an
 - Davor: Etappe 3 fertig (Türen, Truhen, Stationen, HUD, Menü) + Etappe 2 Kern (`world/welt-aenderung`)
@@ -12,7 +13,7 @@
 - Bekannt: Truhe lässt sich durch die Schuppenwand öffnen (Interaktion prüft keine Sichtlinie)
 - Bekannt: Gelände-Raster ist 2 m – Löcher werden breit und flach (Pinsel 3 m Radius)
 - Bekannt: Leisten-Plätze sind auf schmalen Handys ~36 px (8 Plätze + 🔨 in einer Reihe) – bei Bedarf zweizeilig
-- PS1-Look: Viniland nutzt noch die eigene `js/psx.js` (nicht umgestellt); Regen/Zauber-Funken (eigene Shader) ohne Farbstufen; Kantenglättung wechselt erst nach Neuladen
+- PS1-Look: beim Geradeaus-Laufen steht das Farbmuster still (Bild dehnt sich, Muster kann nicht mit); feine Dinge (Gräser, ferne Büsche) flimmern bei ~300 Zeilen weiter leicht – echte Abhilfe wäre Überabtastung über ein Render-Ziel; Viniland nutzt noch die eigene `js/psx.js` (nicht umgestellt); Regen/Zauber-Funken (eigene Shader) ohne Farbstufen; Kantenglättung wechselt erst nach Neuladen
 - Unter dem Schuppen (Radius 5,6 m), auf Wegen und am Wasser kann man nicht graben (`welt-aenderung.sperreUmkreis`)
 
 ## Nächster Schritt

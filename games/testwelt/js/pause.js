@@ -8,9 +8,9 @@ const ZEIT = [{ wert: 1, text: 'normal' }, { wert: 5, text: '5× schnell' }, { w
  * Liefert das Menü ({ schalte(), offen, dispose() … }). Optionen landen im Speicher-Platz 'optionen'.
  */
 export function createPause({ speicher, holeStand, ladeStand, aend, uhr, renderer, szene, psx, anpassen, onPause = () => {} }) {
-  const opt = { pixel: Math.min(globalThis.devicePixelRatio || 1, 2), schatten: true, psx: true, psxZeilen: 300, psxWackeln: true, ...(speicher.lade('optionen') || {}) };
+  const opt = { pixel: Math.min(globalThis.devicePixelRatio || 1, 2), schatten: true, psx: true, psxZeilen: 300, psxWackeln: true, psxMuster: true, ...(speicher.lade('optionen') || {}) };
   function wendeAn() {
-    psx.setze({ an: opt.psx, zeilen: opt.psxZeilen, raster: opt.psxWackeln ? 240 : 0 });
+    psx.setze({ an: opt.psx, zeilen: opt.psxZeilen, raster: opt.psxWackeln ? 'pixel' : 0, dither: opt.psxMuster ? 1 : 0 });
     if (renderer.shadowMap.enabled !== opt.schatten) {
       renderer.shadowMap.enabled = opt.schatten;
       szene.traverse((o) => { if (o.material) for (const m of [].concat(o.material)) m.needsUpdate = true; });
@@ -32,8 +32,9 @@ export function createPause({ speicher, holeStand, ladeStand, aend, uhr, rendere
   ] });
   menue.seite('optionen', { titel: 'Optionen', zurueck: 'start', eintraege: [
     { art: 'schalter', text: 'PS1-Look', wert: () => opt.psx, setze: (v) => setze('psx', v) },
-    { art: 'regler', text: 'PS1: Pixel-Zeilen', min: 180, max: 480, schritt: 20, wert: () => opt.psxZeilen, setze: (v) => setze('psxZeilen', v), format: (v) => v + ' Zeilen' },
+    { art: 'regler', text: 'PS1: Pixel-Zeilen', min: 180, max: 480, schritt: 20, wert: () => opt.psxZeilen, setze: (v) => setze('psxZeilen', v), format: (v) => '≈ ' + v + ' Zeilen' },
     { art: 'schalter', text: 'PS1: Wackeln', wert: () => opt.psxWackeln, setze: (v) => setze('psxWackeln', v) },
+    { art: 'schalter', text: 'PS1: Farbmuster', wert: () => opt.psxMuster, setze: (v) => setze('psxMuster', v) },
     { art: 'regler', text: 'Auflösung (ohne PS1)', min: 0.5, max: Math.max(1, Math.min(globalThis.devicePixelRatio || 1, 2)), schritt: 0.25, wert: () => opt.pixel, setze: (v) => setze('pixel', v), format: (v) => Math.round(v * 100) + ' %' },
     { art: 'schalter', text: 'Schatten', wert: () => opt.schatten, setze: (v) => setze('schatten', v) },
     { art: 'auswahl', text: 'Zeit', optionen: ZEIT, wert: () => (ZEIT.some((z) => z.wert === uhr.tempo) ? uhr.tempo : 1), setze: (v) => { uhr.tempo = v; } },

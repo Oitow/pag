@@ -11,12 +11,23 @@ const leererShader = () => ({
 });
 
 test('psxAufloesung: kurze Seite bekommt die Zeilen, nie größer als das Original', () => {
-  assert.deepEqual(psxAufloesung(1200, 600, 300), { breite: 600, hoehe: 300, faktor: 0.5 });
+  assert.deepEqual(psxAufloesung(1200, 600, 300), { breite: 600, hoehe: 300, faktor: 0.5, pixel: 2 });
   const hoch = psxAufloesung(390, 844, 300);
   assert.equal(hoch.breite, 300);
   assert.equal(hoch.hoehe, Math.round(844 * 300 / 390));
-  assert.deepEqual(psxAufloesung(200, 100, 300), { breite: 200, hoehe: 100, faktor: 1 });
-  assert.deepEqual(psxAufloesung(800, 600, 0), { breite: 800, hoehe: 600, faktor: 1 });
+  assert.deepEqual(psxAufloesung(200, 100, 300), { breite: 200, hoehe: 100, faktor: 1, pixel: 1 });
+  assert.deepEqual(psxAufloesung(800, 600, 0), { breite: 800, hoehe: 600, faktor: 1, pixel: 1 });
+});
+
+test('psxAufloesung mit geraet: jedes grobe Pixel ist gleich viele Bildschirm-Pixel groß', () => {
+  // 720 Bildschirm-Zeilen / 300 = 2,4 → 2 Bildschirm-Pixel je grobem Pixel → 360 Zeilen statt ungleicher Pixel
+  assert.deepEqual(psxAufloesung(1280, 720, 300, 1), { breite: 640, hoehe: 360, faktor: 0.5, pixel: 2 });
+  // Handy quer, devicePixelRatio 3: 1170 Zeilen / 300 = 3,9 → 4
+  const handy = psxAufloesung(844, 390, 300, 3);
+  assert.deepEqual([handy.breite, handy.hoehe, handy.pixel], [633, 293, 4]);
+  // nie feiner als der Bildschirm, 0 Zeilen = volle Auflösung wie bisher
+  assert.equal(psxAufloesung(400, 200, 300, 1).pixel, 1);
+  assert.deepEqual(psxAufloesung(800, 600, 0, 2), { breite: 800, hoehe: 600, faktor: 1, pixel: 1 });
 });
 
 test('patchePsxShader: baut Einrasten und Farbstufen genau einmal ein, lässt fremde Shader in Ruhe', () => {
@@ -73,6 +84,67 @@ test('setze / an: Uniforms folgen den Werten, aus = neutral', () => {
   assert.equal(PSX_STANDARD.farbtiefe, 5);
 });
 
+test("raster 'pixel' (Standard): Eckpunkte rasten genau aufs Pixelraster der jeweiligen Ansicht", () => {
+  const psx = createPsx();
+  const szene = new THREE.Scene();
+  psx.wendeAn(szene);
+  assert.equal(psx.werte.raster, 'pixel');
+  assert.equal(psx.uniforms.uPsxRaster.value, 240);          // vor dem ersten Bild
+  szene.onBeforeRender({ getCurrentViewport: (v) => v.set(0, 0, 640, 360) }, szene, null, null);
+  assert.equal(psx.uniforms.uPsxRaster.value, 360);
+  szene.onBeforeRender({ getCurrentViewport: (v) => v.set(0, 0, 320, 180) }, szene, null, null);   // Splitscreen-Hälfte
+  assert.equal(psx.uniforms.uPsxRaster.value, 180);
+  psx.setze({ raster: 200 });
+  szene.onBeforeRender({ getCurrentViewport: (v) => v.set(0, 0, 640, 360) }, szene, null, null);
+  assert.equal(psx.uniforms.uPsxRaster.value, 200);
+  psx.setze({ an: false, raster: 'pixel' });
+  szene.onBeforeRender({ getCurrentViewport: (v) => v.set(0, 0, 640, 360) }, szene, null, null);
+  assert.equal(psx.uniforms.uPsxRaster.value, 0);
+});
+
+test('ditherFolgt: das Farbmuster wandert mit Drehung und seitlicher Bewegung der Kamera mit', () => {
+  const psx = createPsx();
+  const szene = new THREE.Scene();
+  psx.wendeAn(szene);
+  const m = psx.uniforms.uPsxMuster.value;
+  const renderer = { getCurrentViewport: (v) => v.set(0, 0, 640, 360) };
+  const kamera = new THREE.PerspectiveCamera(60, 640 / 360, 0.1, 100);
+  const bild = () => { kamera.updateMatrixWorld(true); szene.onBeforeRender(renderer, szene, kamera, null); };
+  const f = 180 / Math.tan(Math.PI / 6);                     // Pixel je Einheit in 1 m Tiefe
+  bild();
+  assert.deepEqual(m.toArray(), [0, 0, 0, 0]);
+  // nach links drehen → die Welt wandert nach rechts, das Muster um genauso viele Pixel mit
+  kamera.rotation.y = Math.atan(1.5 / f);
+  bild();
+  assert.ok(Math.abs(m.x - 1.5) < 1e-4 && Math.abs(m.y) < 1e-4, `Drehung: ${m.toArray()}`);
+  assert.ok(Math.abs(m.z) < 1e-4 && Math.abs(m.w) < 1e-4);
+  // nach oben schauen → die Welt wandert nach unten (y nach oben positiv, im Bereich 0…4 gehalten)
+  kamera.rotation.set(0, 0, 0); bild();
+  kamera.rotation.x = Math.atan(1 / f); bild();
+  assert.ok(Math.abs(m.y - 3) < 1e-3, `Neigung: ${m.toArray()}`);
+  // zur Seite gehen → Versatz je Tiefe (zw × 1/Tiefe): 8 m entfernte Dinge wandern 1 Pixel nach links
+  const vorher = m.z;
+  kamera.translateX(8 / f); bild();
+  const dz = ((m.z - vorher) % 64 + 64) % 64;
+  assert.ok(Math.abs(dz - (64 - 8)) < 1e-3, `Bewegung: ${dz}`);
+  // vor/zurück ändert nichts, eine zweite Kamera (Splitscreen) zählt für sich
+  const stand = m.toArray();
+  kamera.translateZ(-3); bild();
+  assert.ok(m.toArray().every((x, i) => Math.abs(x - stand[i]) < 1e-3));
+  szene.onBeforeRender(renderer, szene, new THREE.PerspectiveCamera(), null);
+  assert.deepEqual(m.toArray(), [0, 0, 0, 0]);
+  // abgeschaltet klebt das Muster wieder am Bildschirm
+  psx.setze({ ditherFolgt: false });
+  kamera.rotation.y = 0.3; bild();
+  assert.deepEqual(m.toArray(), [0, 0, 0, 0]);
+  // Ortho-Kamera (Draufsicht): Verschieben wandert als Ganzes mit
+  psx.setze({ ditherFolgt: true });
+  const ortho = new THREE.OrthographicCamera(-16, 16, 9, -9, 0.1, 100);
+  ortho.updateMatrixWorld(true); szene.onBeforeRender(renderer, szene, ortho, null);
+  ortho.position.x = -0.1; ortho.updateMatrixWorld(true); szene.onBeforeRender(renderer, szene, ortho, null);
+  assert.ok(Math.abs(m.x - 2) < 1e-3 && m.z === 0, `Ortho: ${m.toArray()}`);   // 640 px / 32 m = 20 px je Meter
+});
+
 test('wendeAn: patcht alle Materialien der Szene, Ausnahmen bleiben, update fasst nach, Viewport wird gemerkt', () => {
   const psx = createPsx({ nachfassen: 0.5 });
   const szene = new THREE.Scene();
@@ -127,9 +199,15 @@ test('aufloesung: grobe Pixel bei aktivem Look, sonst volle Auflösung mit pixel
   const rufe = [];
   const renderer = { domElement: { style: {} }, setPixelRatio: (p) => rufe.push(['pr', p]), setSize: (b, h, stil) => rufe.push(['size', b, h, stil]) };
   const psx = createPsx({ zeilen: 300 });
-  assert.deepEqual(psx.aufloesung(renderer, 1200, 600, { pixelRatio: 2 }), { breite: 600, hoehe: 300, faktor: 0.5 });
+  assert.deepEqual(psx.aufloesung(renderer, 1200, 600, { pixelRatio: 2 }), { breite: 600, hoehe: 300, faktor: 0.5, pixel: 2 });
   assert.deepEqual(rufe, [['pr', 1], ['size', 600, 300, false]]);
   assert.deepEqual(renderer.domElement.style, { width: '1200px', height: '600px', imageRendering: 'pixelated' });
+  // ganze Pixel: 720 Zeilen → 360 statt 300 (je 2 Bildschirm-Pixel); ohne ganzePixel genau die gewünschten Zeilen
+  assert.deepEqual(psx.aufloesung(renderer, 1280, 720), { breite: 640, hoehe: 360, faktor: 0.5, pixel: 2 });
+  assert.equal(psx.aufloesung(renderer, 844, 390, { geraet: 3 }).hoehe, 293);
+  psx.setze({ ganzePixel: false });
+  assert.equal(psx.aufloesung(renderer, 1280, 720).hoehe, 300);
+  psx.setze({ ganzePixel: true });
   rufe.length = 0;
   psx.setze({ an: false });
   psx.aufloesung(renderer, 1200, 600, { pixelRatio: 2 });

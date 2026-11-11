@@ -86,7 +86,7 @@
 | mesh-builder | `engine/render/mesh-builder.js` | Low-Poly-Modelle aus Primitiven (Box, Kugel, Zylinder …) mit Vertexfarben zu EINER Geometrie verschmelzen; Farbvariation pro Dreieck per Seed | entwurf |
 | natur-material | `engine/render/natur-material.js` | Gemeinsames Material für Natur-Assets: MeshStandardMaterial (Vertexfarben, flatShading) mit Wind-Schwingen im Vertex-Shader über das Attribut 'wind' (0 starr … 1 voll); Phase je Instanz aus der Weltposition; passendes Schatten-Material; optional Ausblenden ab Kamera-Entfernung | entwurf |
 | niederschlag | `engine/render/niederschlag.js` | Regen/Schnee als ein Points-Objekt um die Kamera; Bewegung komplett im Vertex-Shader (kein CPU-Aufwand je Partikel) | entwurf |
-| psx | `engine/render/psx.js` | PS1-Look für eine ganze Szene (aus Viniland übernommen): Eckpunkte rasten auf ein grobes Bildraster (Wackeln), wenige Farbstufen mit Bayer-Dithering, grobe Pixel (kleine interne Auflösung, hart hochskaliert), Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen) – live an/aus ohne Neu-Kompilieren | entwurf |
+| psx | `engine/render/psx.js` | PS1-Look für eine ganze Szene (aus Viniland übernommen): Eckpunkte rasten aufs Pixelraster (Wackeln), wenige Farbstufen mit Bayer-Dithering, grobe Pixel (kleine interne Auflösung, hart hochskaliert, alle Pixel gleich groß), Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen) – ruhig in Bewegung: das Farbmuster wandert mit der Kamera mit statt am Bildschirm zu kleben; live an/aus ohne Neu-Kompilieren | entwurf |
 | zauber-effekte | `engine/render/zauber-effekte.js` | Leichte Zauber-Effekte fürs Handy: ein Partikel-Points-Objekt (Funken, Schweife), leuchtende Geschoss-Kugeln, Schockwellen-Ringe, Blitze, Erdstacheln, Schutz-Aura, Meteor-Sturz – alles aus Pools | entwurf |
 | fake-dom | `engine/test/fake-dom.mjs` | Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame | stabil |
 | figur-schild | `engine/ui/figur-schild.js` | Namensschild + Sprechblase + Lebensbalken über Figuren (DOM-Overlay): folgt dem Kopf, skaliert und blendet nach Abstand aus, verschwindet hinter der Kamera | entwurf |
@@ -226,6 +226,7 @@
 | feuerstelle | stationen |
 | figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-material, figur-schild, wege-lage, worldgen-adapter |
 | first-person | follow-camera |
+| flimmern | psx |
 | fluss | worldgen-chunkfluss, worldgen-rivers |
 | flächenschaden | zauber |
 | folgen | follow-camera |
@@ -418,6 +419,7 @@
 | rucksack | character-parts-ruecken, character-parts, inventar-ansicht |
 | rueckgaengig | welt-aenderung |
 | ruhe | character-anim-idle |
+| ruhig | psx |
 | rüstung | character-parts-torso |
 | salto | character-anim-zustand |
 | schal | character-parts-zubehoer |
@@ -1933,11 +1935,11 @@ ns.update(dt, { kamera, regen: wetter.regen, schnee: wetter.schnee, wind: wetter
 
 Genutzt von: testwelt · Tags: wetter, regen, schnee, partikel, shader · THREE: ja
 
-### psx · `engine/render/psx.js` · v1.0.1 · entwurf
-PS1-Look für eine ganze Szene (aus Viniland übernommen): Eckpunkte rasten auf ein grobes Bildraster (Wackeln), wenige Farbstufen mit Bayer-Dithering, grobe Pixel (kleine interne Auflösung, hart hochskaliert), Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen) – live an/aus ohne Neu-Kompilieren
+### psx · `engine/render/psx.js` · v1.1.0 · entwurf
+PS1-Look für eine ganze Szene (aus Viniland übernommen): Eckpunkte rasten aufs Pixelraster (Wackeln), wenige Farbstufen mit Bayer-Dithering, grobe Pixel (kleine interne Auflösung, hart hochskaliert, alle Pixel gleich groß), Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen) – ruhig in Bewegung: das Farbmuster wandert mit der Kamera mit statt am Bildschirm zu kleben; live an/aus ohne Neu-Kompilieren
 
-- `createPsx({ an, raster, farbtiefe, dither, zeilen, kontrast, saettigung, belichtung, vignette, toenung, nachfassen }) -> { an, werte, uniforms, setze(teil), wendeAn(wurzel), patche(material), material(opts), aufloesung(renderer, breite, hoehe, { pixelRatio }), update(dt, wurzel?), dispose() }`
-- `psxAufloesung(breite, hoehe, zeilen) -> { breite, hoehe, faktor }`
+- `createPsx({ an, raster, farbtiefe, dither, ditherFolgt, zeilen, ganzePixel, kontrast, saettigung, belichtung, vignette, toenung, nachfassen }) -> { an, werte, uniforms, setze(teil), wendeAn(wurzel), patche(material), material(opts), aufloesung(renderer, breite, hoehe, { pixelRatio, geraet }), update(dt, wurzel?), dispose() }`
+- `psxAufloesung(breite, hoehe, zeilen, geraet?) -> { breite, hoehe, faktor, pixel }`
 - `patchePsxShader(shader, uniforms) -> shader`
 - `PSX_STANDARD`
 
@@ -1950,7 +1952,7 @@ psx.aufloesung(renderer, innerWidth, innerHeight);    // statt renderer.setSize 
 psx.setze({ an: false });                             // Vergleich: normaler Look (danach wieder psx.aufloesung(…))
 ```
 
-Genutzt von: figuren-labor, testwelt · Tags: psx, ps1, retro, look, shader, dithering, pixel, vertex-snap, splitscreen, stimmung, grading · THREE: ja
+Genutzt von: figuren-labor, testwelt · Tags: psx, ps1, retro, look, shader, dithering, pixel, vertex-snap, splitscreen, stimmung, grading, flimmern, ruhig · THREE: ja
 
 ### zauber-effekte · `engine/render/zauber-effekte.js` · v1.0.0 · entwurf
 Leichte Zauber-Effekte fürs Handy: ein Partikel-Points-Objekt (Funken, Schweife), leuchtende Geschoss-Kugeln, Schockwellen-Ringe, Blitze, Erdstacheln, Schutz-Aura, Meteor-Sturz – alles aus Pools
