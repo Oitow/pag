@@ -19,14 +19,15 @@
 - [x] `world/himmel-stand` + `world/himmel` – Tag/Nacht, Sonne, Mond mit Phase, Sterne, Wolken, Licht, Nebel
 - [x] `world/wetter` + `render/niederschlag` – Wetter nach Klima, Regen/Schnee/Gewitter
 
-### 2 · Welt verändern (der „Bau“-Kern)
-- [ ] `world/welt-aenderung` – Änderungs-Schicht über der erzeugten Welt: Gelände heben/senken/glätten, Objekte setzen/entfernen; nur Unterschiede zum Seed speichern
-- [ ] `world/terrain-mesh` – Teilstücke neu aufbauen statt alles (Kacheln)
-- [ ] `gameplay/bau-raster` + `models/bau/*` – Bauteile (Boden, Wand, Dach, Zaun, Tür) mit Einrasten, Vorschau, Abriss
+### 2 · Welt verändern (der „Bau“-Kern) – Kern fertig
+- [x] `world/welt-aenderung` – Änderungs-Schicht über der erzeugten Welt: Gelände heben/senken/glätten/ebnen, Objekte entfernen, Rückgängig; nur Unterschiede zum Seed speichern
+- [x] `world/terrain-mesh` 1.2 – Teilstück neu aufbauen statt alles (`aktualisiere(bereich)`), `scatter-mesh` 2.2 setzt Objekte nach (`setzeAufBoden`)
+- [x] Spielstand = Seed + Änderungen (`core/speicher`) – in der Testwelt (Schaufel/Erde)
+- [ ] Objekte neu setzen (pflanzen, Bauteile) – `scatter-mesh` braucht dafür Instanzen zur Laufzeit
+- [ ] `gameplay/bau-raster` + `models/bau/*` – Bauteile (Boden, Wand, Dach, Zaun, Tür) mit Einrasten, Vorschau, Abriss (Türen-Logik gibt es schon: `gameplay/tueren`)
 - [ ] `ui/werkzeug-leiste` – Werkzeuge für Maus und Finger (Pinsel, Setzen, Löschen, Rückgängig)
-- [ ] Spielstand = Seed + Änderungen (`core/speicher`)
 
-### 3 · Dinge & Handeln (Kern fertig)
+### 3 · Dinge & Handeln ✅
 - [x] `core/ereignisse` (Event-Bus), `core/register` (Datenkatalog für Gegenstände/Rezepte)
 - [x] `world/kollision` (Körper mit Höhe, begehbar, beweglich, Strahl), `core/raum-gitter`, Motor 1.2 (draufsteigen, kein Tunneln)
 - [x] `gameplay/koerper` (leichte Physik für lose Dinge), `gameplay/welt-dinge` (ablegen, werfen, aufheben)
@@ -34,8 +35,8 @@
 - [x] Bäume/Felsen abbauen (Adapter `setHindernis`, `scatter-mesh.verstecke`) – in der Testwelt
 - [x] `gameplay/rezepte` (Herstellen), `gameplay/rohstoffe` (Nachwachsen über die Spieluhr, Werkzeug nötig), `gameplay/hand` (Haltbarkeit)
 - [x] Gegenstände in die Hand nehmen/benutzen (Inventar ↔ `character.ausruesten`) – in der Testwelt
-- [ ] Türen/Truhen als Interaktions-Ziele, Stationen (Werkbank) für Rezepte
-- [ ] `ui/hud` (Leiste, Inventar, Hinweise), `ui/menue` (Pause, Optionen, Spielstände)
+- [x] `gameplay/tueren`, `gameplay/behaelter` (Truhen), `gameplay/stationen` (Werkbank für Rezepte) – als Schuppen in der Testwelt
+- [x] `ui/hud` (Hinweise, Meldungen, Balken), `ui/inventar-ansicht` (Leiste, Rucksack, Truhe), `ui/menue` (Pause, Optionen, Spielstände, Fenster)
 
 ### 4 · Klang & Gefühl
 - [ ] `audio/sfx` (prozedural, WebAudio), `audio/musik` (Schichten nach Tageszeit/Wetter), `audio/umgebung` (Wind, Regen, Vögel, Wasser nach Standort)

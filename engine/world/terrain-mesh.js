@@ -1,13 +1,15 @@
 /**
  * @modul    terrain-mesh
  * @zweck    Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit weich gemischten Biomfarben, Wiesenflecken, Hangfels, Ufern (Sand/Kies/Schlamm) und Schnee (terrain-farben), Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont
- * @api      createTerrainMesh(adapter, opts) -> {gruppe,boden,wasser,meer,dispose} ; biomFarben(welt) -> Float32Array
+ * @api      createTerrainMesh(adapter, opts) -> {gruppe,boden,wasser,meer,aktualisiere(bereich,{erde,erdFarbe}?)->vertices,dispose} ; biomFarben(welt) -> Float32Array
  * @beispiel
  *   import { createTerrainMesh } from '../../engine/world/terrain-mesh.js';
  *   const gelaende = createTerrainMesh(adapter, { schritt: 1, schatten: true });
  *   szene.add(gelaende.gruppe);
- * @tags     welt, terrain, gelaende, wasser, meer, mesh, biome
- * @version  1.1.0
+ *   // nach einer Gelände-Änderung (engine/world/welt-aenderung.js) nur das Stück neu aufbauen:
+ *   aend.onAenderung(({ bereich }) => bereich && gelaende.aktualisiere(bereich, { erde: (i) => Math.abs(aend.delta(i)) / 0.4 }));
+ * @tags     welt, terrain, gelaende, wasser, meer, mesh, biome, teilupdate
+ * @version  1.2.0
  * @status   entwurf
  * @three    ja
  */
@@ -31,6 +33,8 @@ export function biomFarben(welt) {
  * Ab 1.1 (Farben aus terrain-farben): farben {biomKey: 0xRRGGBB}, details (false = nur weich gemischte Biomfarben),
  * schnee (false = kein Temperatur-Schnee), felsAb (Steigung für Hangfels), mulden, weich (Mischradius in Zellen),
  * weichesUfer (false = Wasserfläche endet an Zellkanten wie in 1.0).
+ * Ab 1.2: aktualisiere(bereich {x0,y0,x1,y1} in Gitterzellen, { erde: (zellIndex) => 0…1, erdFarbe }) baut nur dieses Stück neu
+ * (Höhen + Normalen); `erde` mischt die Zellfarbe zur Erdfarbe (aufgegrabener Boden). Wasserflächen bleiben, wie sie sind.
  */
 export function createTerrainMesh(adapter, opts = {}) {
   const welt = adapter.welt;
@@ -131,8 +135,54 @@ export function createTerrainMesh(adapter, opts = {}) {
   grund.name = 'meeresgrund';
   gruppe.add(grund);
 
+  // ---- Teilstück neu aufbauen (nach welt-aenderung): Höhen, Normalen wie computeVertexNormals, optional Erd-Tönung ----
+  const erdTon = new THREE.Color();
+  function aktualisiere(bereich, { erde = null, erdFarbe = 0x6b4a2e } = {}) {
+    if (!bereich) return 0;
+    // betroffene Vertices: die geänderten plus ein Ring (deren Normalen hängen an den Nachbarhöhen)
+    const i0 = Math.max(0, Math.ceil(bereich.x0 / schritt) - 1), i1 = Math.min(nx - 1, Math.floor(bereich.x1 / schritt) + 1);
+    const j0 = Math.max(0, Math.ceil(bereich.y0 / schritt) - 1), j1 = Math.min(nz - 1, Math.floor(bereich.y1 / schritt) + 1);
+    if (i0 > i1 || j0 > j1) return 0;
+    const nor = geo.attributes.normal.array;
+    if (erde) erdTon.setHex(erdFarbe);
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const gx = Math.min(B - 1, i * schritt), gy = Math.min(T - 1, j * schritt), s = gy * B + gx, v = (j * nx + i) * 3;
+      pos[v + 1] = welt.hoehe[s] * hs;
+      nor[v] = nor[v + 1] = nor[v + 2] = 0;
+      if (erde) {
+        const t = Math.min(1, Math.max(0, erde(s)));
+        col[v] = zf[s * 3] + (erdTon.r - zf[s * 3]) * t; col[v + 1] = zf[s * 3 + 1] + (erdTon.g - zf[s * 3 + 1]) * t; col[v + 2] = zf[s * 3 + 2] + (erdTon.b - zf[s * 3 + 2]) * t;
+      }
+    }
+    // Flächennormalen aller Dreiecke, die einen betroffenen Vertex berühren (ungenormt = nach Fläche gewichtet)
+    const drin = (i, j) => i >= i0 && i <= i1 && j >= j0 && j <= j1;
+    const plus = (i, j, x, y, z) => { if (!drin(i, j)) return; const v = (j * nx + i) * 3; nor[v] += x; nor[v + 1] += y; nor[v + 2] += z; };
+    const dreieck = (ai, aj, bi, bj, ci, cj) => {         // wie THREE: (C − B) × (A − B)
+      const a = (aj * nx + ai) * 3, b = (bj * nx + bi) * 3, c = (cj * nx + ci) * 3;
+      const ux = pos[c] - pos[b], uy = pos[c + 1] - pos[b + 1], uz = pos[c + 2] - pos[b + 2];
+      const vx = pos[a] - pos[b], vy = pos[a + 1] - pos[b + 1], vz = pos[a + 2] - pos[b + 2];
+      const x = uy * vz - uz * vy, y = uz * vx - ux * vz, z = ux * vy - uy * vx;
+      plus(ai, aj, x, y, z); plus(bi, bj, x, y, z); plus(ci, cj, x, y, z);
+    };
+    for (let j = Math.max(0, j0 - 1); j <= Math.min(nz - 2, j1); j++) for (let i = Math.max(0, i0 - 1); i <= Math.min(nx - 2, i1); i++) {
+      dreieck(i, j, i, j + 1, i + 1, j);                  // a, c, b
+      dreieck(i + 1, j, i, j + 1, i + 1, j + 1);          // b, c, d
+    }
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const v = (j * nx + i) * 3, l = Math.hypot(nor[v], nor[v + 1], nor[v + 2]) || 1;
+      nor[v] /= l; nor[v + 1] /= l; nor[v + 2] /= l;
+    }
+    // nur die betroffenen Zeilen zur Grafikkarte schicken
+    const start = j0 * nx * 3, laenge = (j1 - j0 + 1) * nx * 3;
+    for (const name of erde ? ['position', 'normal', 'color'] : ['position', 'normal']) {
+      const a = geo.attributes[name];
+      a.addUpdateRange?.(start, laenge); a.needsUpdate = true;
+    }
+    return (i1 - i0 + 1) * (j1 - j0 + 1);
+  }
+
   return {
-    gruppe, boden, wasser, meer,
+    gruppe, boden, wasser, meer, aktualisiere,
     dispose() {
       gruppe.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
       gruppe.removeFromParent();

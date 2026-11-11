@@ -86,3 +86,30 @@ test('Kacheln + Fern-Detail: zwei Meshes je Kachel, update schaltet nach Kamera-
   assert.ok(fern[0].geometry.attributes.position.count < nah[0].geometry.attributes.position.count || fern[0].name !== nah[0].name + '#fern');
   s.dispose();
 });
+
+test('setzeAufBoden: Objekte folgen dem geänderten Gelände, versteckte bleiben versteckt', () => {
+  const w = createWorld({ preset: 'insel', seed: 3, breite: 96, tiefe: 96, qualitaet: 'schnell' });
+  const a = createWeltAdapter(w, { hoehenSkala: 40, meterProZelle: 2 });
+  const s = createScatterMesh(a, { assets: createAssetCache, varianten: 2, detail: 0 });
+  const o = w.objekte;
+  let i = -1, j = -1;
+  for (let k = 0; k < o.anzahl && j < 0; k++) { if (!s.lage(k) || o.arten[o.art[k]] === 'seerose') continue; if (i < 0) i = k; else if (Math.hypot(o.x[k] - o.x[i], o.y[k] - o.y[i]) > 6) j = k; }
+  assert.ok(i >= 0 && j >= 0);
+  const vorher = s.lage(i).y, fern = s.lage(j).y;
+  const cx = Math.floor(o.x[i]), cy = Math.floor(o.y[i]);
+  for (let y = cy - 1; y <= cy + 2; y++) for (let x = cx - 1; x <= cx + 2; x++) w.hoehe[y * 96 + x] -= 0.05;   // 2 m tiefer
+  assert.equal(s.setzeAufBoden(null), 0);
+  const n = s.setzeAufBoden({ x0: cx - 1, y0: cy - 1, x1: cx + 2, y1: cy + 2 });
+  assert.ok(n >= 1);
+  assert.ok(Math.abs(s.lage(i).y - (vorher - 2)) < 1e-3);
+  assert.equal(s.lage(j).y, fern);
+  // versteckt → Matrix bleibt null, nach dem Einblenden steht es auf dem neuen Boden
+  s.verstecke(i);
+  for (let y = cy - 1; y <= cy + 2; y++) for (let x = cx - 1; x <= cx + 2; x++) w.hoehe[y * 96 + x] += 0.025;
+  s.setzeAufBoden({ x0: cx, y0: cy, x1: cx + 1, y1: cy + 1 });
+  const mesh = s.gruppe.children.find((m) => { for (let k = 0; k < m.count; k++) if (m.instanceMatrix.array[k * 16 + 15] === 0) return true; return false; });
+  assert.ok(mesh);
+  s.verstecke(i, false);
+  assert.ok(Math.abs(s.lage(i).y - (vorher - 1)) < 1e-3);
+  s.dispose();
+});

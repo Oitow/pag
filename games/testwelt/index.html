@@ -25,6 +25,7 @@
   #lade[hidden] { display: none; }
   #fehler { position: fixed; left: 8px; right: 8px; top: 120px; padding: 10px; background: #5a1f1f; border-radius: 8px; white-space: pre-wrap; font: 12px monospace; z-index: 6; }
   #fehler[hidden] { display: none; }
+  @media (pointer: coarse) { #menueKnopf { min-width: 44px; min-height: 44px; } }
   @media (max-width: 600px) { #karte { width: 104px; height: 104px; top: 108px; } #oben { font-size: 13px; } }
 </style>
 </head>
@@ -43,6 +44,7 @@
   <button id="zeitVor" title="Zeit 3 Stunden vor">⏩</button>
   <button id="wetterKnopf" title="Wetter wechseln">🌦</button>
   <button id="kameraPreset" title="Kamera-Ansicht wechseln (Reinzoomen = Ich-Sicht)">🎥</button>
+  <button id="menueKnopf" title="Menü: Pause, Spielstände, Optionen (Esc)">☰</button>
 </div>
 <canvas id="karte" width="128" height="128" title="Karte – antippen zum Hinspringen"></canvas>
 <div id="info" class="panel">…</div>

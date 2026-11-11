@@ -1,5 +1,22 @@
 # Engine-Changelog
 
+## 2026-11 – Etappe 2 (Kern): Welt verändern
+- world/welt-aenderung 1.1.0 (neu): Änderungs-Schicht über der erzeugten Welt – Pinsel heben/senken/glätten/ebnen in Metern, Objekte entfernen, Sperrzonen (Wasser, Ufer, Wege, eigene per `sperreUmkreis`), Grenzen, Rückgängig/Wiederholen, `festschreiben()` für Bauplätze, Spielstand = nur Unterschiede zum Seed
+- world/terrain-mesh 1.2.0 (additiv): `aktualisiere(bereich, { erde, erdFarbe })` baut nur das geänderte Stück neu (Höhen, Normalen exakt wie beim Komplettbau, Erd-Tönung), lädt nur die betroffenen Zeilen hoch
+- world/scatter-mesh 2.2.0 (additiv): `setzeAufBoden(bereich)` setzt Objekte nach einer Gelände-Änderung wieder auf den Boden
+- games/testwelt: Schaufel = graben (gibt Erde), Erde = aufschütten; Gelände-Änderungen im Spielstand; Bauplatz fürs Lager wird eingeebnet
+
+## 2026-11 – Etappe 3 (Rest): Türen, Truhen, Stationen, HUD und Menü
+- gameplay/tueren 1.0.1 (neu): Türen/Tore – auf/zu mit weicher Animation, Kollisions-Körper nur solange zu, Schlüssel, Selbstschließen, blockiert wenn jemand in der Öffnung steht
+- gameplay/behaelter 1.0.0 (neu): Truhen mit eigenem Inventar – öffnen je Figur, Schloss, umlagern, schließt beim Weggehen, Spielstand
+- gameplay/stationen 1.0.0 (neu): Werkbank & Co. als Orte; `beiWem(wer)` passt direkt in `rezepte.pruefe(…, { stationen })`
+- gameplay/inventar 1.2.0 (additiv): `uebertrage(von, platz, nach, anzahl?)` zwischen zwei Inventaren (Daten bleiben erhalten)
+- ui/hud 1.0.0 (neu): Hinweis-Zeile mit Fortschritt, Kurzmeldungen (zusammenzählbar), Balken, Bereiche für Leisten
+- ui/inventar-ansicht 1.0.1 (neu): Inventar als Reihe/Raster (Schnellleiste, Rucksack, Truhe) mit Anzahl, Haltbarkeit, Tippen/Halten
+- ui/menue 1.0.0 (neu): Menü/Fenster mit Seiten (Knopf, Schalter, Regler, Auswahl, eigene Elemente) + `spielstandEintraege()` für Speicherplätze
+- test/fake-dom 1.1.0 (additiv): echte Eltern/Kinder (append, remove, insertBefore, replaceChildren), abmeldbare Hörer, `dispatch` mit Ereignis-Objekt, `click()`
+- games/testwelt: Schuppen mit Tür, Truhe und Werkbank neben dem Start; Leiste, Hinweise und Fenster kommen aus der Engine; ☰ Pause-Menü mit Spielständen und Optionen
+
 ## 2026-11 – Etappe 3: Herstellen, Rohstoffe, Hand
 - gameplay/rezepte 1.0.0 (neu): Rezepte als Daten (Zutaten, Werkzeug, Station), prüfen und herstellen – alles oder nichts
 - gameplay/rohstoffe 1.0.0 (neu): abbaubare Quellen mit Beute per Seed, Werkzeug nötig oder nur schneller, Abnutzung, Nachwachsen nach Spielzeit, Spielstand

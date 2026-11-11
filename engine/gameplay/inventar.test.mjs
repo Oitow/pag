@@ -189,3 +189,26 @@ test('setzeDaten: nur Einzelstücke, null entfernt, meldet Änderung', () => {
   assert.deepEqual(inv.zustand().plaetze[1], ['axt', 1]);
   assert.equal(n, 2);
 });
+
+test('uebertrage: ganzer Stapel, Teilmenge, Ziel voll, daten, leerer Platz', async () => {
+  const { uebertrage } = await import('./inventar.js');
+  const a = createInventar({ plaetze: 3, stapel: 10 });
+  const b = createInventar({ plaetze: 1, stapel: 10 });
+  a.gib('holz', 7);
+  assert.equal(uebertrage(a, 0, b, 3), 3);
+  assert.equal(a.zaehle('holz'), 4); assert.equal(b.zaehle('holz'), 3);
+  assert.equal(uebertrage(a, 0, b), 4);
+  assert.equal(a.zaehle('holz'), 0); assert.equal(b.zaehle('holz'), 7);
+  a.gib('holz', 8);
+  assert.equal(uebertrage(a, 0, b), 3);            // Ziel voll bis 10
+  assert.equal(a.zaehle('holz'), 5); assert.equal(b.zaehle('holz'), 10);
+  assert.equal(uebertrage(a, 0, b), 0);            // nichts passt mehr
+  assert.equal(a.zaehle('holz'), 5);
+  assert.equal(uebertrage(a, 2, b), 0);            // leerer Platz
+  assert.equal(uebertrage(a, 99, b), 0);           // ungültig
+  const c = createInventar({ plaetze: 2 });
+  a.leere(); a.gib('axt', 1, { haltbarkeit: 4 });
+  assert.equal(uebertrage(a, 0, c), 1);
+  assert.deepEqual(c.plaetze[0].daten, { haltbarkeit: 4 });
+  assert.equal(a.frei(), 3);
+});

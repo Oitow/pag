@@ -14,7 +14,7 @@ Alle Spiele: Single-File HTML, mobil-tauglich. Startseite: [index.html](index.ht
 | [🌳 Wurzelwerk](games/wurzelwerk/) | Baum-Roguelite: Wurzeln, Äste, Schädlingswellen |
 | [🧪 Weltlabor](games/weltlabor/) | Weltgenerator der Engine: 13 Presets, Seed, Regler, Ebenen (Höhe, Biome, Flüsse …), Chunk-Modus mit Flussnetz und Seen |
 | [🌳 Natur-Labor](games/natur-labor/) | Prozedurale Bäume, Felsen, Büsche und Pflanzen der Engine ansehen: Typ, Seed, Detail, Jahreszeit, Wind |
-| [🌍 Testwelt](games/testwelt/) | Begehbare 3D-Welt aus Weltgenerator + echter Figur, Dorfbewohner mit Tagesablauf, Tag/Nacht, Wetter, Dinge aufheben/ablegen, Werkzeug herstellen, Bäume fällen (wachsen nach) und Spielstand |
+| [🌍 Testwelt](games/testwelt/) | Begehbare 3D-Welt aus Weltgenerator + echter Figur, Dorfbewohner mit Tagesablauf, Tag/Nacht, Wetter, Dinge aufheben/ablegen, Werkzeug herstellen, Bäume fällen (wachsen nach), Schuppen mit Tür/Truhe/Werkbank, Graben und Aufschütten, Pause-Menü mit Spielständen |
 
 ## 🧰 Baukasten (Engine)
 

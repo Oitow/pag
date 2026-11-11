@@ -23,10 +23,22 @@ Begehbare 3D-Welt zum Ausprobieren der Engine-Bausteine. Hier landet alles, was 
   (`gameplay/interaktion`), Holz und Steine fallen heraus. Inventarleiste unten (`gameplay/inventar`): Platz antippen = in die Hand (`gameplay/hand`), nochmal antippen = ablegen.
   🔨 = Axt/Hacke herstellen (`gameplay/rezepte`); mit dem Werkzeug in der Hand geht Fällen/Abbauen dreimal so schnell, es nutzt sich ab.
   Bäume und Felsen wachsen nach einigen Spieltagen nach (`gameplay/rohstoffe`).
+  Leiste, Hinweis („E halten – Fällen“ mit Fortschritt), Kurzmeldungen („+3 🪵 Holz“) und Fenster kommen aus der Engine
+  (`js/anzeige.js`: `ui/hud`, `ui/inventar-ansicht`, `ui/menue`).
+- **Lagerplatz:** `js/lager.js` – ein paar Schritte neben dem Start steht ein Schuppen auf eingeebnetem Boden: Tür auf/zu mit E
+  (`gameplay/tueren`, Kollision nur solange zu), drinnen eine Truhe (`gameplay/behaelter`: antippen = nehmen/ablegen, „Alles nehmen“;
+  am Anfang liegen eine Schaufel, Holz, Steine und Äpfel drin), davor die Werkbank (`gameplay/stationen`): dort gibt es mehr Rezepte (Schaufel).
+- **Graben:** `js/graben.js` – Schaufel in der Hand + **E halten** = Loch graben (gibt Erde, kleine Pflanzen verschwinden),
+  Erde in der Hand + E halten = aufschütten (`engine/world/welt-aenderung`). Nur das geänderte Stück wird neu gezeichnet
+  (`terrain-mesh.aktualisiere`, `scatter-mesh.setzeAufBoden`), aufgegrabener Boden wird erdfarben. Am Wasser und auf Wegen geht es nicht,
+  höchstens 4 m tiefer/höher als die Ausgangswelt.
+- **Menü:** ☰ oder Esc (`js/pause.js`) – pausiert, 3 Speicherplätze (Speichern/Laden/Löschen), Optionen (Auflösung, Schatten, Zeit-Tempo),
+  letzte Gelände-Änderung zurücknehmen, Gelände zurücksetzen.
 - **Himmel & Wetter:** Tag/Nacht mit Sonne, Mond (Phasen), Sternen und Wolken (`engine/world/himmel`, `himmel-stand`), Wetter nach
   Biom-Klima und Jahreszeit (`engine/world/wetter`), Regen/Schnee (`engine/render/niederschlag`). ⏩ = 3 Stunden vor, Wetterknopf = nächstes Wetter.
 - **Zeit & Spielstand:** Spieluhr mit Tagen und Jahreszeiten (`engine/core/zeit`), Schleife (`engine/core/schleife`), Uhr, Wetter und
-  Position, Inventar, herumliegende Dinge und gefällte Bäume werden alle 10 s gespeichert (`engine/core/speicher`); `&frisch` in der URL ignoriert den Spielstand.
+  Position, Inventar, herumliegende Dinge, gefällte Bäume, Tür, Truhe und das veränderte Gelände (Seed + Unterschiede) werden alle 10 s
+  gespeichert (`engine/core/speicher`); `&frisch` in der URL ignoriert den Spielstand.
 - **Steuerung:** WASD/Pfeile, Shift = rennen, Leertaste = springen, Q = Rolle/Dash, V = gleiten, E = aufheben/ansprechen (halten = fällen),
   T = Ziel erfassen/wechseln (Lock-On), Maus ziehen = Kamera, Mausrad = Zoom (ganz rein = Ich-Sicht), 🎥 = Kamera-Ansicht.
   Handy: Stick links (erscheint unter dem Finger), rechte Hälfte ziehen = Kamera, zwei Finger = Zoom, Knöpfe unten rechts
