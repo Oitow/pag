@@ -1933,7 +1933,7 @@ ns.update(dt, { kamera, regen: wetter.regen, schnee: wetter.schnee, wind: wetter
 
 Genutzt von: testwelt · Tags: wetter, regen, schnee, partikel, shader · THREE: ja
 
-### psx · `engine/render/psx.js` · v1.0.0 · entwurf
+### psx · `engine/render/psx.js` · v1.0.1 · entwurf
 PS1-Look für eine ganze Szene (aus Viniland übernommen): Eckpunkte rasten auf ein grobes Bildraster (Wackeln), wenige Farbstufen mit Bayer-Dithering, grobe Pixel (kleine interne Auflösung, hart hochskaliert), Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen) – live an/aus ohne Neu-Kompilieren
 
 - `createPsx({ an, raster, farbtiefe, dither, zeilen, kontrast, saettigung, belichtung, vignette, toenung, nachfassen }) -> { an, werte, uniforms, setze(teil), wendeAn(wurzel), patche(material), material(opts), aufloesung(renderer, breite, hoehe, { pixelRatio }), update(dt, wurzel?), dispose() }`

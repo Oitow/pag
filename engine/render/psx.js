@@ -10,7 +10,7 @@
  *   // je Bild: psx.update(dt, szene);                    // fasst später hinzugekommene Dinge nach
  *   psx.setze({ an: false });                             // Vergleich: normaler Look (danach wieder psx.aufloesung(…))
  * @tags     psx, ps1, retro, look, shader, dithering, pixel, vertex-snap, splitscreen, stimmung, grading
- * @version  1.0.0
+ * @version  1.0.1
  * @status   entwurf
  * @three    ja
  */
@@ -36,7 +36,8 @@ const VERT = /* glsl */`
     gl_Position.xyz = psxP * gl_Position.w;
   }
 `;
-const FRAG_KOPF = 'uniform vec4 uPsxStimmung;\nuniform vec3 uPsxToenung;\nuniform vec4 uPsxAnsicht;\nuniform vec2 uPsxFarbe;\n';
+const FRAG_KOPF = 'uniform vec4 uPsxStimmung;\nuniform vec3 uPsxToenung;\nuniform vec4 uPsxAnsicht;\nuniform vec2 uPsxFarbe;\n' +
+  'const float psxB[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.);\n';
 const FRAG = /* glsl */`
   #include <dithering_fragment>
   {
@@ -54,7 +55,6 @@ const FRAG = /* glsl */`
     if (uPsxFarbe.x > 0.5) {
       int psxX = int(mod(gl_FragCoord.x, 4.0));
       int psxY = int(mod(gl_FragCoord.y, 4.0));
-      float psxB[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.);
       float psxD = ((psxB[psxY * 4 + psxX] + 0.5) / 16.0 - 0.5) * uPsxFarbe.y;
       psxC = floor(psxC * uPsxFarbe.x + psxD + 0.5) / uPsxFarbe.x;
     }
@@ -116,9 +116,12 @@ export function createPsx(opts = {}) {
   }
   uebertrage();
 
-  /** Ein Material mit dem PS1-Look versehen (vorhandene Shader-Hooks bleiben erhalten). Gibt das Material zurück. */
+  /**
+   * Ein Material mit dem PS1-Look versehen (vorhandene Shader-Hooks bleiben erhalten). Gibt das Material zurück.
+   * Eigene Hooks (onBeforeCompile, customProgramCacheKey) VOR dem Patchen setzen; ein createPsx je Szene.
+   */
   function patche(material) {
-    if (!material || gepatcht.has(material) || material.userData?.psx === false) return material;
+    if (!material || tot || gepatcht.has(material) || material.userData?.psx === false) return material;
     gepatcht.add(material);
     const hook = material.onBeforeCompile;
     const eigenerSchluessel = Object.prototype.hasOwnProperty.call(material, 'customProgramCacheKey') ? material.customProgramCacheKey : null;
@@ -140,8 +143,8 @@ export function createPsx(opts = {}) {
     szenen.set(szene, vorher);
     szene.onBeforeRender = function (renderer, sz, kamera, ziel) {
       if (vorher) vorher.call(this, renderer, sz, kamera, ziel);
-      if (ziel) uniforms.uPsxAnsicht.value.set(0, 0, ziel.width, ziel.height);
-      else { renderer.getCurrentViewport(vp); uniforms.uPsxAnsicht.value.copy(vp); }
+      renderer.getCurrentViewport(vp);                      // gilt auch für Render-Ziele (deren Viewport)
+      uniforms.uPsxAnsicht.value.copy(vp);
     };
   }
 
@@ -203,7 +206,7 @@ export function createPsx(opts = {}) {
       seit += dt;
       if (seit >= w.nachfassen) { seit = 0; wendeAn(wurzel); }
     },
-    /** Look abschalten (gepatchte Materialien rendern wieder normal), Szenen-Hooks lösen, eigene Materialien freigeben. */
+    /** Look abschalten (gepatchte Materialien rendern wieder normal), Szenen-Hooks lösen, eigene Materialien freigeben. Danach die Größe selbst neu setzen (renderer.setSize). */
     dispose() {
       tot = true;
       uebertrage();

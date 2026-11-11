@@ -98,15 +98,15 @@ test('wendeAn: patcht alle Materialien der Szene, Ausnahmen bleiben, update fass
   szene.onBeforeRender(renderer, szene, null, null);
   assert.equal(vorherGerufen, 1);
   assert.deepEqual(psx.uniforms.uPsxAnsicht.value.toArray(), [10, 20, 320, 240]);
-  szene.onBeforeRender(renderer, szene, null, { width: 64, height: 32 });
-  assert.deepEqual(psx.uniforms.uPsxAnsicht.value.toArray(), [0, 0, 64, 32]);
 
   psx.dispose();
   assert.equal(psx.an, false);
   assert.equal(psx.uniforms.uPsxFarbe.value.x, 0);
   szene.onBeforeRender(renderer, szene, null, null);
-  assert.equal(vorherGerufen, 3);
-  assert.deepEqual(psx.uniforms.uPsxAnsicht.value.toArray(), [0, 0, 64, 32]);
+  assert.equal(vorherGerufen, 2);
+  const danach = new THREE.MeshBasicMaterial();
+  psx.patche(danach);
+  assert.doesNotMatch(danach.customProgramCacheKey(), /psx-1$/);
 });
 
 test('material: geteilt je Optionen, einzeln auf Wunsch, dispose gibt frei', () => {

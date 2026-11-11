@@ -1,7 +1,7 @@
 # Engine-Changelog
 
 ## 2026-11 – PS1-Look aus Viniland
-- render/psx 1.0.0 (neu): PS1-Look für eine ganze Szene – `wendeAn(szene)` patcht alle Materialien (vorhandene Shader-Hooks wie Randlicht/Wind bleiben), Eckpunkte rasten ein, Farbstufen mit Bayer-Dithering, `aufloesung()` für grobe Pixel, Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen), live an/aus über `setze({ an })`
+- render/psx 1.0.1 (neu): PS1-Look für eine ganze Szene – `wendeAn(szene)` patcht alle Materialien (vorhandene Shader-Hooks wie Randlicht/Wind bleiben), Eckpunkte rasten ein, Farbstufen mit Bayer-Dithering, `aufloesung()` für grobe Pixel, Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen), live an/aus über `setze({ an })`
 - world/himmel 1.1.0 (additiv): Shader endet mit `#include <dithering_fragment>` – der Himmel macht beim PS1-Look mit (ohne `psx` unverändert)
 - games/figuren-labor, games/testwelt: PS1-Look eingebaut und abschaltbar (☰ → Mehr bzw. ☰ → Optionen)
 
