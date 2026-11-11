@@ -9,7 +9,7 @@
  *   // je Bild:
  *   himmel.update(himmelStand({ stunde, wetter }, stand), { kamera, mitte: figur.position, zeit });
  * @tags     himmel, sonne, mond, sterne, wolken, licht, schatten, nebel, tag, nacht, shader
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    ja
  */
@@ -71,6 +71,7 @@ void main() {
   gl_FragColor = vec4(farbe, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
+  #include <dithering_fragment>
 }`;
 
 const setzeFarbe = (ziel, c) => ziel.setRGB(c[0], c[1], c[2], THREE.SRGBColorSpace);

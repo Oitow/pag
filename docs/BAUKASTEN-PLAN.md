@@ -51,7 +51,7 @@ tests/    smoke.mjs
 | core/save | siedlung `serialize/applySave`, viniland `options.js` | alle |
 | render/renderer, quality | siedlung (ACES, Schatten, Qualitätsstufen, Auto < 30 fps) | alle 3D |
 | render/atmosphere | siedlung Z. 443–483 (Nebel, Streulicht, Grading, Korn) | siedlung, viniland, planet |
-| render/psx | `viniland/js/psx.js` | Retro-Spiele |
+| render/psx ✅ | `viniland/js/psx.js` → `engine/render/psx.js` (Viniland selbst nutzt noch die eigene Datei) | Retro-Spiele, figuren-labor, testwelt |
 | render/cinst | siedlung `class CInst` (Instanzen mit Culling) | siedlung, viniland, planet |
 | render/geo, textures | siedlung `mergeGeos`, Canvas-Texturen; viniland `MeshBuilder` | alle Generatoren |
 | world/terrain-grid | siedlung (64 Chunks, 3 LOD, Splat-Shader) | siedlung, viniland |

@@ -86,6 +86,7 @@
 | mesh-builder | `engine/render/mesh-builder.js` | Low-Poly-Modelle aus Primitiven (Box, Kugel, Zylinder …) mit Vertexfarben zu EINER Geometrie verschmelzen; Farbvariation pro Dreieck per Seed | entwurf |
 | natur-material | `engine/render/natur-material.js` | Gemeinsames Material für Natur-Assets: MeshStandardMaterial (Vertexfarben, flatShading) mit Wind-Schwingen im Vertex-Shader über das Attribut 'wind' (0 starr … 1 voll); Phase je Instanz aus der Weltposition; passendes Schatten-Material; optional Ausblenden ab Kamera-Entfernung | entwurf |
 | niederschlag | `engine/render/niederschlag.js` | Regen/Schnee als ein Points-Objekt um die Kamera; Bewegung komplett im Vertex-Shader (kein CPU-Aufwand je Partikel) | entwurf |
+| psx | `engine/render/psx.js` | PS1-Look für eine ganze Szene (aus Viniland übernommen): Eckpunkte rasten auf ein grobes Bildraster (Wackeln), wenige Farbstufen mit Bayer-Dithering, grobe Pixel (kleine interne Auflösung, hart hochskaliert), Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen) – live an/aus ohne Neu-Kompilieren | entwurf |
 | zauber-effekte | `engine/render/zauber-effekte.js` | Leichte Zauber-Effekte fürs Handy: ein Partikel-Points-Objekt (Funken, Schweife), leuchtende Geschoss-Kugeln, Schockwellen-Ringe, Blitze, Erdstacheln, Schutz-Aura, Meteor-Sturz – alles aus Pools | entwurf |
 | fake-dom | `engine/test/fake-dom.mjs` | Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame | stabil |
 | figur-schild | `engine/ui/figur-schild.js` | Namensschild + Sprechblase + Lebensbalken über Figuren (DOM-Overlay): folgt dem Kopf, skaliert und blendet nach Abstand aus, verschwindet hinter der Kamera | entwurf |
@@ -196,6 +197,7 @@
 | dash | character-motor, character-anim-zustand |
 | daten | register, baum-arten, worldgen-vegetation |
 | dialog | figur-schild, menue |
+| dithering | psx |
 | dom | fake-dom, menue |
 | dorf | worldgen-sites, worldgen-wege |
 | dreispitz | character-parts-hut |
@@ -253,6 +255,7 @@
 | gitter | raum-gitter, worldgen-grid |
 | gleiten | character-motor, character-anim-zustand |
 | graben | welt-aenderung |
+| grading | psx |
 | gras | pflanze-boden |
 | gürtel | character-parts-becken |
 | haar | character-parts-haar, character-parts-kopf, character-sekundaer |
@@ -322,7 +325,7 @@
 | lock-on | follow-camera, ziel-wahl |
 | locken | character-parts-haar |
 | logik | pflanze-formen |
-| look | character-look, figur-material |
+| look | character-look, figur-material, psx |
 | loop | schleife |
 | lowpoly | character-parts, baum, fels-form, fels, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-wueste, totholz-form, totholz, mesh-builder |
 | magie | zauber, character-clips-zauber, zauber-effekte |
@@ -379,6 +382,7 @@
 | pilz | pflanze-blume, pflanze-boden |
 | pinch | touch-stick |
 | pinsel | welt-aenderung |
+| pixel | psx |
 | poi | worldgen-sites |
 | poisson | worldgen-scatter |
 | pose | character-pose |
@@ -387,6 +391,8 @@
 | primitive | mesh-builder |
 | priority-flood | worldgen-hydrology |
 | prozedural | noise, baum-skelett, baum, fels-form, fels, natur-assets, natur-basis, totholz, worldgen |
+| ps1 | psx |
+| psx | psx |
 | raf | schleife |
 | ragdoll | character-reaktion |
 | randlicht | figur-material |
@@ -400,6 +406,7 @@
 | registry | natur-assets |
 | reichweite | interaktion |
 | render | natur-material |
+| retro | psx |
 | rezept | register, rezepte |
 | rig | character-pose, character-rig |
 | rim | figur-material |
@@ -437,7 +444,7 @@
 | seen | worldgen-hydrology |
 | seerose | pflanze-boden |
 | sekundaer | character-sekundaer |
-| shader | figur-material, natur-material, niederschlag, zauber-effekte, himmel |
+| shader | figur-material, natur-material, niederschlag, psx, zauber-effekte, himmel |
 | sicht | character-sinne |
 | skelett | character-rig, baum-skelett |
 | sockel | character-ausruestung, character-rig |
@@ -446,6 +453,7 @@
 | spell | zauber |
 | spieler | character, character-animator, character-look, character-model |
 | spielstand | speicher, menue |
+| splitscreen | psx |
 | sprechblase | figur-schild |
 | springen | character-animator |
 | sprung | character-motor |
@@ -457,6 +465,7 @@
 | stein | fels-form, fels |
 | sterne | himmel-stand, himmel |
 | steuerung | move-input |
+| stimmung | psx |
 | strahl | kollision |
 | strassen | worldgen-wege |
 | strauch | pflanze-busch |
@@ -496,6 +505,7 @@
 | verhalten | character-brain |
 | verstecken | character-steering-extra |
 | verteilung | worldgen-scatter |
+| vertex-snap | psx |
 | vertexfarben | fels-basis, fels, natur-basis, pflanze-basis, totholz, mesh-builder, terrain-farben |
 | verzweigung | baum-skelett |
 | vfx | zauber-effekte |
@@ -1923,6 +1933,25 @@ ns.update(dt, { kamera, regen: wetter.regen, schnee: wetter.schnee, wind: wetter
 
 Genutzt von: testwelt · Tags: wetter, regen, schnee, partikel, shader · THREE: ja
 
+### psx · `engine/render/psx.js` · v1.0.0 · entwurf
+PS1-Look für eine ganze Szene (aus Viniland übernommen): Eckpunkte rasten auf ein grobes Bildraster (Wackeln), wenige Farbstufen mit Bayer-Dithering, grobe Pixel (kleine interne Auflösung, hart hochskaliert), Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen) – live an/aus ohne Neu-Kompilieren
+
+- `createPsx({ an, raster, farbtiefe, dither, zeilen, kontrast, saettigung, belichtung, vignette, toenung, nachfassen }) -> { an, werte, uniforms, setze(teil), wendeAn(wurzel), patche(material), material(opts), aufloesung(renderer, breite, hoehe, { pixelRatio }), update(dt, wurzel?), dispose() }`
+- `psxAufloesung(breite, hoehe, zeilen) -> { breite, hoehe, faktor }`
+- `patchePsxShader(shader, uniforms) -> shader`
+- `PSX_STANDARD`
+
+```js
+import { createPsx } from '../../engine/render/psx.js';
+const psx = createPsx({ zeilen: 300 });
+psx.wendeAn(szene);                                   // alle Materialien der Szene (auch figurMaterial, Natur, Gelände, Himmel)
+psx.aufloesung(renderer, innerWidth, innerHeight);    // statt renderer.setSize – auch bei 'resize'
+// je Bild: psx.update(dt, szene);                    // fasst später hinzugekommene Dinge nach
+psx.setze({ an: false });                             // Vergleich: normaler Look (danach wieder psx.aufloesung(…))
+```
+
+Genutzt von: figuren-labor, testwelt · Tags: psx, ps1, retro, look, shader, dithering, pixel, vertex-snap, splitscreen, stimmung, grading · THREE: ja
+
 ### zauber-effekte · `engine/render/zauber-effekte.js` · v1.0.0 · entwurf
 Leichte Zauber-Effekte fürs Handy: ein Partikel-Points-Objekt (Funken, Schweife), leuchtende Geschoss-Kugeln, Schockwellen-Ringe, Blitze, Erdstacheln, Schutz-Aura, Meteor-Sturz – alles aus Pools
 
@@ -2037,7 +2066,7 @@ himmel.update(stand, { kamera, mitte: figur.position });
 
 Genutzt von: testwelt · Tags: himmel, tag, nacht, sonne, mond, sterne, licht, farben, dämmerung, wetter · THREE: nein
 
-### himmel · `engine/world/himmel.js` · v1.0.0 · entwurf
+### himmel · `engine/world/himmel.js` · v1.1.0 · entwurf
 Zeichnet den Himmel aus einem himmel-stand: Himmelskuppel mit Farbverlauf, Sonnenscheibe mit Schein, Mond mit Phase, ziehende Wolken, Sterne; steuert Sonnen-/Mondlicht mit mitlaufendem Schatten, Umgebungslicht und Nebel der Szene
 
 - `createHimmel({ szene, schatten=true, schattenWeite=45, schattenAufloesung=2048, schattenAbstand=150, radius=900, sterne=900, seed=1, nebel={nah:120,fern:520}, wolken=true }) -> { gruppe, licht, umgebung, uniforms, update(stand, { kamera, mitte?, zeit?, wind?, windRichtung? }), setNebel(nah, fern), dispose() }`

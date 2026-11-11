@@ -32,8 +32,11 @@ Begehbare 3D-Welt zum Ausprobieren der Engine-Bausteine. Hier landet alles, was 
   Erde in der Hand + E halten = aufschütten (`engine/world/welt-aenderung`). Nur das geänderte Stück wird neu gezeichnet
   (`terrain-mesh.aktualisiere`, `scatter-mesh.setzeAufBoden`), aufgegrabener Boden wird erdfarben. Am Wasser und auf Wegen geht es nicht,
   höchstens 4 m tiefer/höher als die Ausgangswelt.
-- **Menü:** ☰ oder Esc (`js/pause.js`) – pausiert, 3 Speicherplätze (Speichern/Laden/Löschen), Optionen (Auflösung, Schatten, Zeit-Tempo),
+- **Menü:** ☰ oder Esc (`js/pause.js`) – pausiert, 3 Speicherplätze (Speichern/Laden/Löschen), Optionen (PS1-Look, Auflösung, Schatten, Zeit-Tempo),
   letzte Gelände-Änderung zurücknehmen, Gelände zurücksetzen.
+- **PS1-Look:** `engine/render/psx` (aus Viniland übernommen) liegt über der ganzen Szene – grobe Pixel, wackelnde Eckpunkte,
+  5 Bit Farbe mit Dithering, auch im Himmel. Unter ☰ → Optionen: an/aus, Pixel-Zeilen (180–480), Wackeln an/aus.
+  Kantenglättung wechselt erst nach Neuladen.
 - **Himmel & Wetter:** Tag/Nacht mit Sonne, Mond (Phasen), Sternen und Wolken (`engine/world/himmel`, `himmel-stand`), Wetter nach
   Biom-Klima und Jahreszeit (`engine/world/wetter`), Regen/Schnee (`engine/render/niederschlag`). ⏩ = 3 Stunden vor, Wetterknopf = nächstes Wetter.
 - **Zeit & Spielstand:** Spieluhr mit Tagen und Jahreszeiten (`engine/core/zeit`), Schleife (`engine/core/schleife`), Uhr, Wetter und

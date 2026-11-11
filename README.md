@@ -10,7 +10,7 @@ Alle Spiele: Single-File HTML, mobil-tauglich. Startseite: [index.html](index.ht
 | [🐾 Voxel-Tiere](games/voxel-tiere/) | 148 süße Voxel-Tiere zum Anschauen |
 | [📖 Tier-Sammelspiel](games/sammelspiel/) | Ressourcen sammeln, Lebensräume bauen, Tiere anlocken, Regionen freischalten |
 | [🏘️ Siedlung](games/siedlung/) | Aufbauspiel mit prozeduraler Welt und Trampelpfaden |
-| [🧍 Figuren-Labor](games/figuren-labor/) | Testgelände fürs Figuren-System der Engine: Aussehen-Editor mit Mimik, Ausrüstung, 40+ Animationen, 10 Zauber, Handy-Menü, Rolle/Gleiten, NPCs mit KI |
+| [🧍 Figuren-Labor](games/figuren-labor/) | Testgelände fürs Figuren-System der Engine: Aussehen-Editor mit Mimik, Ausrüstung, 40+ Animationen, 10 Zauber, Handy-Menü, Rolle/Gleiten, NPCs mit KI, PS1-Look |
 | [🌳 Wurzelwerk](games/wurzelwerk/) | Baum-Roguelite: Wurzeln, Äste, Schädlingswellen |
 | [🧪 Weltlabor](games/weltlabor/) | Weltgenerator der Engine: 13 Presets, Seed, Regler, Ebenen (Höhe, Biome, Flüsse …), Chunk-Modus mit Flussnetz und Seen |
 | [🌳 Natur-Labor](games/natur-labor/) | Prozedurale Bäume, Felsen, Büsche und Pflanzen der Engine ansehen: Typ, Seed, Detail, Jahreszeit, Wind |
