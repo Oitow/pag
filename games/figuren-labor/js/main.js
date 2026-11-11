@@ -15,6 +15,7 @@ import { VORLAGEN, randomLook, createLook } from '../../../engine/models/charact
 import { CLIP_NAMEN, CLIPS } from '../../../engine/models/character/character-clips.js';
 import { hashSeed, rng, range, pick } from '../../../engine/core/rng.js';
 import { createAusruestung, ausruestungsNamen } from '../../../engine/models/character/character-ausruestung.js';
+import { createPsx } from '../../../engine/render/psx.js';
 import { AUSDRUECKE } from '../../../engine/models/character/character-look.js';
 
 const url = new URLSearchParams(location.search);
@@ -22,9 +23,14 @@ const SEED = +url.get('seed') || 1;
 const SPEICHER = 'figuren-labor:look';
 
 // ---- Renderer & Szene ----
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
-renderer.setSize(innerWidth, innerHeight);
+// PS1-Look (engine/render/psx): grobe Pixel, wackelnde Eckpunkte, wenige Farben – im Menü unter „Mehr“ abschaltbar
+const PSX_SPEICHER = 'pag-figuren-labor-psx';
+let psxAn = true;
+try { psxAn = localStorage.getItem(PSX_SPEICHER) !== '0'; } catch { /* privat */ }
+const psx = createPsx({ an: psxAn });
+const renderer = new THREE.WebGLRenderer({ antialias: !psxAn });   // Kantenglättung passt nicht zu groben Pixeln (gilt ab Neuladen)
+const groesseSetzen = () => psx.aufloesung(renderer, innerWidth, innerHeight, { pixelRatio: Math.min(devicePixelRatio, 1.5) });
+groesseSetzen();
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -134,6 +140,10 @@ const ui = createOberflaeche({
     else if (id === 'info') { infoAn = an; $('info').style.display = an ? '' : 'none'; }
     else if (id === 'ichsicht') kamera.setErstePerson(an);
     else if (id === 'freimana') zauber.buch.setFreiesMana(an);
+    else if (id === 'psx') {
+      psx.setze({ an }); groesseSetzen();
+      try { localStorage.setItem(PSX_SPEICHER, an ? '1' : '0'); } catch { /* voll/privat */ }
+    }
   },
   onKnopf: (id) => {
     if (id === 'fahrt') { ui.schliesse(); kamera.fahrt({ pos: { x: 8, y: 9, z: -22 }, blick: () => spieler.zustand.pos, dauer: 1.5, halten: 2 }); }
@@ -208,7 +218,7 @@ $('bStopp').onclick = () => spieler.stoppe();
 setTimeout(() => { $('hilfe').style.opacity = 0; }, 9000);
 
 addEventListener('resize', () => {
-  renderer.setSize(innerWidth, innerHeight);
+  groesseSetzen();
   kamera.kamera.aspect = innerWidth / innerHeight;
   bildAusschnitt();
   kamera.kamera.updateProjectionMatrix();
@@ -279,10 +289,13 @@ function bild(jetzt) {
     `Aktion ${spieler.animator.aktion || '–'} · Eingabe ${e.aktiv}\n` +
     `Kamera ${kamera.erstePerson ? 'Ich-Sicht' : kamera.preset}${ziel ? ' · Ziel ' + ziel.name : ''}${z.rollt ? ' · Rolle' : ''}${z.gleitet ? ' · Gleiten' : ''}`;
 
+  psx.update(dt, szene);
   renderer.render(szene, kamera.kamera);
   requestAnimationFrame(bild);
 }
+psx.wendeAn(szene);
+document.querySelector('[data-schalter="psx"]')?.classList.toggle('an', psxAn);
 requestAnimationFrame(bild);
 
 // Für Tests/Debug
-window.labor = { spieler, npcs, kamera, eingabe, welt, schilder, createLook, clipListe, zauber, ui };
+window.labor = { psx, renderer, spieler, npcs, kamera, eingabe, welt, schilder, createLook, clipListe, zauber, ui };

@@ -1,5 +1,10 @@
 # Engine-Changelog
 
+## 2026-11 – PS1-Look aus Viniland
+- render/psx 1.0.1 (neu): PS1-Look für eine ganze Szene – `wendeAn(szene)` patcht alle Materialien (vorhandene Shader-Hooks wie Randlicht/Wind bleiben), Eckpunkte rasten ein, Farbstufen mit Bayer-Dithering, `aufloesung()` für grobe Pixel, Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen), live an/aus über `setze({ an })`
+- world/himmel 1.1.0 (additiv): Shader endet mit `#include <dithering_fragment>` – der Himmel macht beim PS1-Look mit (ohne `psx` unverändert)
+- games/figuren-labor, games/testwelt: PS1-Look eingebaut und abschaltbar (☰ → Mehr bzw. ☰ → Optionen)
+
 ## 2026-11 – Etappe 2 (Kern): Welt verändern
 - world/welt-aenderung 1.1.0 (neu): Änderungs-Schicht über der erzeugten Welt – Pinsel heben/senken/glätten/ebnen in Metern, Objekte entfernen, Sperrzonen (Wasser, Ufer, Wege, eigene per `sperreUmkreis`), Grenzen, Rückgängig/Wiederholen, `festschreiben()` für Bauplätze, Spielstand = nur Unterschiede zum Seed
 - world/terrain-mesh 1.2.0 (additiv): `aktualisiere(bereich, { erde, erdFarbe })` baut nur das geänderte Stück neu (Höhen, Normalen exakt wie beim Komplettbau, Erd-Tönung), lädt nur die betroffenen Zeilen hoch

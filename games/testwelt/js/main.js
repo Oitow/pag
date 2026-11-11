@@ -16,6 +16,7 @@ import { createWetter, WETTER_ARTEN } from '../../../engine/world/wetter.js';
 import { createNiederschlag } from '../../../engine/render/niederschlag.js';
 import { createSpielzeit } from '../../../engine/core/zeit.js';
 import { createSchleife } from '../../../engine/core/schleife.js';
+import { createPsx } from '../../../engine/render/psx.js';
 import { createSpeicher } from '../../../engine/core/speicher.js';
 import { createSpielerFigur } from './figur.js';
 import { createDorf } from './dorf.js';
@@ -34,8 +35,11 @@ addEventListener('unhandledrejection', (e) => zeigeFehler(e.reason));
 
 // ---- Renderer & Szene ----
 const canvas = $('c');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const speicher = createSpeicher({ schluessel: 'pag-testwelt', version: 1 });
+// PS1-Look (engine/render/psx): grobe Pixel, wackelnde Eckpunkte, wenige Farben – unter ☰ → Optionen abschaltbar
+const psx = createPsx({ an: speicher.lade('optionen')?.psx !== false });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !psx.an });   // Kantenglättung passt nicht zu groben Pixeln (gilt ab Neuladen)
+let pixelWunsch = Math.min(devicePixelRatio, 2);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -47,17 +51,17 @@ const regen = createNiederschlag();
 szene.add(regen.objekt);
 const uhr = createSpielzeit({ stunde: 9, sekundenProStunde: 30 });
 const wetter = createWetter({ seed: 1 });
-const speicher = createSpeicher({ schluessel: 'pag-testwelt', version: 1 });
 const stand = himmelStand({ stunde: 9 });
 const WETTER_NAMEN = Object.keys(WETTER_ARTEN);
 const WETTER_ZEICHEN = { klar: '☀️', heiter: '🌤', bewoelkt: '☁️', regen: '🌧', gewitter: '⛈', schnee: '🌨', nebel: '🌫', sturm: '🌬' };
 
-function groesseAnpassen() {
-  renderer.setSize(innerWidth, innerHeight, false);
+function groesseAnpassen(pixel) {
+  if (typeof pixel === 'number') pixelWunsch = pixel;
+  psx.aufloesung(renderer, innerWidth, innerHeight, { pixelRatio: pixelWunsch });
   kamera.aspect = innerWidth / innerHeight;
   kamera.updateProjectionMatrix();
 }
-addEventListener('resize', groesseAnpassen);
+addEventListener('resize', () => groesseAnpassen());
 groesseAnpassen();
 
 // ---- Einstellungen (URL ↔ Oberfläche) ----
@@ -194,7 +198,7 @@ $('wetterKnopf').onclick = () => wetter.setze(WETTER_NAMEN[(WETTER_NAMEN.indexOf
 addEventListener('pagehide', () => speicher.jetztSpeichern());
 // Pause-Menü: Spielstand laden = seine Welt neu erzeugen (Seed) und die gespeicherten Änderungen einspielen
 const menue = createPause({
-  speicher, holeStand: standDaten, aend: () => aend, uhr, renderer, szene, anpassen: groesseAnpassen, onPause: (an) => { pausiert = an; if (an) sachen?.anzeige.fenster.schliesse(); },
+  speicher, holeStand: standDaten, aend: () => aend, uhr, renderer, szene, psx, anpassen: groesseAnpassen, onPause: (an) => { pausiert = an; if (an) sachen?.anzeige.fenster.schliesse(); },
   ladeStand(d) {
     const [preset, seed, groesse] = String(d?.welt ?? '').split('|');
     if (!PRESETS[preset]) return;
@@ -231,8 +235,9 @@ function update(dt) {
   schilder.update(kamera, dt);
   himmelStand({ stunde: uhr.stunde, jahresAnteil: uhr.jahresAnteil, tag: uhr.tag, wetter }, stand);
   himmel.update(stand, { kamera, mitte: p, zeit: echtZeit, wind: wetter.wind, windRichtung: wetter.windRichtung });
-  regen.update(dt, { kamera, regen: wetter.regen, schnee: wetter.schnee, wind: wetter.wind, windRichtung: wetter.windRichtung, hoehePx: innerHeight });
+  regen.update(dt, { kamera, regen: wetter.regen, schnee: wetter.schnee, wind: wetter.wind, windRichtung: wetter.windRichtung, hoehePx: psx.an ? canvas.height : innerHeight });
   objekte?.update(echtZeit, { kamera });
+  psx.update(dt, szene);
 
   if ((infoZeit -= dt) <= 0) {
     infoZeit = 0.2;
@@ -246,4 +251,4 @@ function update(dt) {
 }
 const schleife = createSchleife({ update, render: () => { if (figur) renderer.render(szene, kamera); }, fehler: zeigeFehler });
 
-erzeuge().then(() => { schleife.start(); if (url.has("debug")) window.testwelt = { renderer, szene, kamera, uhr, wetter, himmel, speicher, get figur() { return figur; }, get adapter() { return adapter; }, get dorf() { return dorf; }, get objekte() { return objekte; }, get sachen() { return sachen; }, get kollision() { return kollision; }, get aend() { return aend; }, get gelaende() { return gelaende; }, menue };  });
+erzeuge().then(() => { psx.wendeAn(szene); schleife.start(); if (url.has("debug")) window.testwelt = { psx, renderer, szene, kamera, uhr, wetter, himmel, speicher, get figur() { return figur; }, get adapter() { return adapter; }, get dorf() { return dorf; }, get objekte() { return objekte; }, get sachen() { return sachen; }, get kollision() { return kollision; }, get aend() { return aend; }, get gelaende() { return gelaende; }, menue };  });
