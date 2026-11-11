@@ -7,6 +7,7 @@
 
 | Modul | Pfad | Zweck | Status |
 |---|---|---|---|
+| klang | `engine/audio/klang.js` | Synthetische WebAudio-Geräusche (Zauber, Horden-Kampf) ohne Audiodateien; ohne AudioContext still | entwurf |
 | follow-camera | `engine/camera/follow-camera.js` | Third-Person-Orbitkamera: weiches Folgen (vertikal träger), Kollision entlang des Sichtstrahls (Boden + Hindernisse, sanftes Zurückfahren), Auto-Ausrichtung, Sprint-FOV, Zoom, Schütteln, weiches Lock-On mit Zielwechsel, Erste-Person beim Reinzoomen, Presets (nah/weit/Schulter), Kamerafahrten | entwurf |
 | ziel-wahl | `engine/camera/ziel-wahl.js` | Lock-On-Ziel auswählen: bestes Ziel vor der Figur (Winkel + Abstand) oder nächstes Ziel links/rechts vom aktuellen (Ziel wechseln) | entwurf |
 | ereignisse | `engine/core/ereignisse.js` | Event-Bus mit Prioritäten, einmaligen Hörern, Platzhalter '*' und Warteschlange für deterministische Reihenfolge | entwurf |
@@ -29,6 +30,7 @@
 | character-steering | `engine/gameplay/character-steering.js` | NPC-Bewegungs-Gehirn: liefert dieselbe Absicht wie die Eingabe – Ziel/Ankommen, Wandern, Folgen, Fliehen, Pfad, Patrouille, Umkreisen, Abstand halten, Verstecken, Schwarm, Ausweichen, Steckenbleiben auflösen | entwurf |
 | character | `engine/gameplay/character.js` | Fertige Spielfigur in einem Objekt: Modell (Look) + Animator + Bewegungs-Motor, für Spieler und NPCs gleich | entwurf |
 | hand | `engine/gameplay/hand.js` | „In der Hand“: ein Inventar-Platz ist ausgewählt (Schnellleiste); liefert den gehaltenen Gegenstand samt Register-Eintrag, meldet Wechsel (zum Ausrüsten der Figur) und nutzt Werkzeuge ab, bis sie zerbrechen | entwurf |
+| horde | `engine/gameplay/horde.js` | Horden-Gegner ohne THREE (Ratten & Co. zu Dutzenden): verfolgen ein Ziel, drängeln sich ohne Überlappen, umzingeln, springen an und beißen, werden weggeschleudert, betäubt, verlangsamt, in einen Sog gezogen und sterben im Flug – deterministisch per Seed | entwurf |
 | interaktion | `engine/gameplay/interaktion.js` | „Ansehen → Aktion“: Dinge der Welt (NPC, Gegenstand, Baum, Tür) melden sich als Ziel an; für eine Figur wird das beste Ziel in Reichweite/Blickrichtung bestimmt (Hinweis „E – Aufheben“) und ausgelöst, auch als Gedrückt-halten mit Fortschritt | entwurf |
 | inventar | `engine/gameplay/inventar.js` | Inventar mit festen Plätzen, Stapeln, Gewichtsgrenze, Speichern/Laden und Änderungs-Meldung | entwurf |
 | koerper | `engine/gameplay/koerper.js` | Leichte Physik für lose Dinge (Gegenstände, Beute, Bälle, Kisten-Trümmer) ohne THREE: Kugeln mit Schwerkraft, Abprallen, Reibung, Haften am flachen Hang, Rutschen am steilen, Schwimmen/Sinken, Hindernisse, Einschlafen – fester Zeitschritt, deterministisch | entwurf |
@@ -37,7 +39,8 @@
 | stationen | `engine/gameplay/stationen.js` | Stationen als Orte in der Welt (Werkbank, Feuerstelle, Amboss): wer steht an welcher Art Station, nächste Station, benutzen – das Ergebnis von beiWem() passt direkt in rezepte.pruefe(…, {stationen}) | entwurf |
 | tueren | `engine/gameplay/tueren.js` | Türen und Tore als reine Logik: auf/zu mit weicher Animation, Kollisions-Körper nur solange zu, Schlüssel/Sperre, Selbstschließen, Interaktions-Ziel | entwurf |
 | welt-dinge | `engine/gameplay/welt-dinge.js` | Gegenstände, die in der Welt liegen (ohne THREE): ablegen, werfen, aufheben ins Inventar, gleiche Stapel in der Nähe zusammenlegen, Lebensdauer, Speichern/Laden – verbindet Physik (koerper), Interaktion und Inventar | entwurf |
-| zauber | `engine/gameplay/zauber.js` | Zauber-System ohne THREE: 10 Zauber als Daten (Geschoss, Strahl, Kegel, Ort, Selbst, Teleport), Zauberbuch mit Mana, Abklingzeiten, Wirkzeit, Geschoss-Simulation und Treffer-Ereignissen | entwurf |
+| zauber-daten | `engine/gameplay/zauber-daten.js` | Die Zauber-Tabelle als reine Daten: 12 wuchtige Zauber (Geschoss, Strahl, Kegel, Ort, Nova, Selbst, Teleport) mit Wirkzeit, Gewicht, Überladen, Durchschlag und Feldern (Brandboden, Sog) – gemacht für Horden | entwurf |
+| zauber | `engine/gameplay/zauber.js` | Zauber-System ohne THREE: Zauberbuch mit Mana, Abklingzeiten und wuchtigem Aufladen (Wirkzeit, Halten = Überladen, Schlag), Geschosse (Bogen, Zielsuche, Durchschlag), Strahl, Kegel, Ort, Nova, Felder (Brandboden, Sog) und Treffer-Ereignisse | entwurf |
 | move-input | `engine/input/move-input.js` | Bewegungs-Eingabe für Figuren: Tastatur (WASD/Pfeile), Maus-Ziehen/Mausrad, Touch-Stick + Knöpfe, Gamepad → Stick, Kamera-Delta, Aktionen (Flanke/gehalten) | entwurf |
 | touch-stick | `engine/input/touch-stick.js` | Touch-Steuerung fürs Handy: dynamischer virtueller Joystick (linke Hälfte), Kamera-Wischen + Pinch-Zoom (rechte Hälfte), runde Aktionsknöpfe unten rechts | entwurf |
 | character-anim-blick | `engine/models/character/character-anim-blick.js` | Blick einer Figur (rein): Richtung oder Weltpunkt → verteilt auf Torso/Hals/Kopf mit Grenzen, Augen eilen voraus; Blinzeln per Seed; Werte für einen Mimik-Hook | entwurf |
@@ -47,7 +50,7 @@
 | character-animator | `engine/models/character/character-animator.js` | Prozedurale Figuren-Animation aus dem Motor-Zustand: idle/gehen/laufen/sprinten ohne Fußrutschen, Luft, Landung, Schwimmen, Ducken, Rutschen, Kurvenlage, Atmen, Hang, Idle-Varianten, sekundäre Bewegung, Treffer/Umfallen, Aktions-Clips mit Masken, Blick + Mimik-Hook | entwurf |
 | character-ausruestung | `engine/models/character/character-ausruestung.js` | Low-Poly-Gegenstände für Figuren-Sockel (Schwert, Dolch, Axt, Hammer, Hacke, Schaufel, Speer, Stab, Zauberstab, Schild, Bogen, Fackel, Laterne, Korb, Becher, Buch): je ein Mesh + optional Leucht-Mesh, passend ausgerichtet für model.befestigen(sockel, obj) | entwurf |
 | character-clips-mehr | `engine/models/character/character-clips-mehr.js` | Weitere Aktions-Clips als reine Keyframe-Daten (Emotes, Kampf, Arbeit, Ruhe, Idle-Varianten); wird von character-clips registriert | entwurf |
-| character-clips-zauber | `engine/models/character/character-clips-zauber.js` | Zauber-Gesten als reine Keyframe-Daten (Wurf, Stoß, Fingerzeig, Himmelsruf, Bodenschlag, Selbstzauber); wird von character-clips registriert | entwurf |
+| character-clips-zauber | `engine/models/character/character-clips-zauber.js` | Wuchtige Zauber-Gesten als reine Keyframe-Daten (Wurf, Stoß, Fingerzeig, Himmelsruf, Bodenschlag, Griff, Selbstzauber) mit Spann-Moment zum Aufladen; wird von character-clips registriert | entwurf |
 | character-clips | `engine/models/character/character-clips.js` | Aktions-Clips einer Figur als Keyframe-Daten (winken, schlagen, hacken, werfen, aufheben, tod, rolle, sitzen, tanzen … + character-clips-mehr + character-clips-zauber) und ihr Abtaster | entwurf |
 | character-gang | `engine/models/character/character-gang.js` | Fortbewegungs-Posen einer Figur (rein): Fußziele aus Gangphase (gehen/laufen/sprinten ohne Fußrutschen), Bein-IK, Rumpf/Arme, Luft- und Schwimm-Pose | entwurf |
 | character-look | `engine/models/character/character-look.js` | Aussehen einer Figur als reine Daten: Körperbau, Haut, Haar, Bart, Kleidung, Kopfbedeckung, Accessoires (Brille, Schal, Schmuck), Grund-Mimik; Vorlagen, Zufalls-Looks per Seed, abgeleitete Körpermaße | entwurf |
@@ -66,6 +69,7 @@
 | character-reaktion | `engine/models/character/character-reaktion.js` | Prozedurale Treffer-Reaktion (rein): Stoß aus Richtung + Stärke als abklingende additive Pose; Umfallen als Ragdoll-Ersatz ohne Physik-Engine (Kippen, Aufprall, schlaffe Glieder) | entwurf |
 | character-rig | `engine/models/character/character-rig.js` | Prozedurales Skelett einer Menschen-Figur aus Gruppen (keine Skinning-Knochen): feste Gelenknamen, Ruhepose, Sockel für Hut/Waffe/Rucksack | entwurf |
 | character-sekundaer | `engine/models/character/character-sekundaer.js` | Sekundäre Bewegung (rein): Feder-Dämpfer für Kopf-Nachschwingen, Gewichtsverlagerung beim Anhalten/Anfahren, Umhang- und Haar-Winkel – additiv auf eine Pose | entwurf |
+| ratte | `engine/models/kreaturen/ratte.js` | Low-Poly-Riesenratte als Horden-Gegner: liefert zwei Lauf-Bild-Geometrien (Vertexfarben) für InstancedMesh | entwurf |
 | baum-arten | `engine/models/natur/baum-arten.js` | Reine Parameter-Daten der Baumarten (Wuchs, Verzweigung, Laubform, Farben, Jahreszeiten) für baum-skelett/baum | entwurf |
 | baum-skelett | `engine/models/natur/baum-skelett.js` | Ast-Skelett eines Baums aus Art-Parametern + Seed: rekursive Verzweigung mit Tropismus, Krümmung, Verjüngung, Laub-Knoten und Nadel-Etagen (reine Logik) | entwurf |
 | baum | `engine/models/natur/baum.js` | Prozedurale Low-Poly-Bäume (14 Arten) als EINE Geometrie mit Vertexfarben + Wind-Attribut; Jahreszeit, Alter, Detailstufe | entwurf |
@@ -83,6 +87,7 @@
 | totholz-form | `engine/models/natur/totholz-form.js` | Reine Röhren-Geometrie (ohne THREE) für Totholz/Äste: Ringe entlang eines Pfads, Enden zu/Spitze/Jahresring-Scheibe, Markierung je Dreieck | neu |
 | totholz | `engine/models/natur/totholz.js` | Prozedurales Low-Poly-Totholz (Vertrag NATUR-ASSETS): baumstumpf (Jahresringe, Wurzelansätze), liegenderStamm (Aststummel), ast | neu |
 | figur-material | `engine/render/figur-material.js` | Weiches Figuren-Material: Standard-Material mit Randlicht (Fresnel), aufgehellter Schattenseite und kräftigeren Farben – Figuren heben sich vom Gelände ab | entwurf |
+| horde-mesh | `engine/render/horde-mesh.js` | Zeichnet eine Horde (gameplay/horde) mit wenigen Draw-Calls: je Modell und Lauf-Bild ein InstancedMesh; Hüpfer, Überschlag im Flug, Treffer-Aufblitzen, Leichen auf der Seite, Versinken | entwurf |
 | mesh-builder | `engine/render/mesh-builder.js` | Low-Poly-Modelle aus Primitiven (Box, Kugel, Zylinder …) mit Vertexfarben zu EINER Geometrie verschmelzen; Farbvariation pro Dreieck per Seed | entwurf |
 | natur-material | `engine/render/natur-material.js` | Gemeinsames Material für Natur-Assets: MeshStandardMaterial (Vertexfarben, flatShading) mit Wind-Schwingen im Vertex-Shader über das Attribut 'wind' (0 starr … 1 voll); Phase je Instanz aus der Weltposition; passendes Schatten-Material; optional Ausblenden ab Kamera-Entfernung | entwurf |
 | niederschlag | `engine/render/niederschlag.js` | Regen/Schnee als ein Points-Objekt um die Kamera; Bewegung komplett im Vertex-Shader (kein CPU-Aufwand je Partikel) | entwurf |
@@ -93,6 +98,7 @@
 | hud | `engine/ui/hud.js` | Spiel-Anzeige als DOM-Overlay: Hinweis-Zeile mit Fortschritt, Kurzmeldungen (zusammenzählbar), Lebens-/Ausdauer-Balken und Bereiche für Leisten | entwurf |
 | inventar-ansicht | `engine/ui/inventar-ansicht.js` | Zeigt ein Inventar als Reihe/Raster von Plätzen (Schnellleiste, Rucksack, Truhe): Zeichen, Anzahl, Haltbarkeits-Strich, gewählter Platz, Tippen und Gedrückt-halten | entwurf |
 | menue | `engine/ui/menue.js` | Menü/Fenster als DOM-Overlay mit Seiten (Pause, Optionen, Spielstände, Truhe, Werkbank …): Knöpfe, Schalter, Regler, Auswahl, eigene Elemente; Escape/Rand-Tipp, fingerfreundlich, alle Stile inline | entwurf |
+| treffer-zahlen | `engine/ui/treffer-zahlen.js` | Schadens-Zahlen als DOM-Overlay: ploppen über Treffern auf, schweben nach oben und blenden aus (fester Pool, handytauglich) | entwurf |
 | himmel-stand | `engine/world/himmel-stand.js` | Himmel als reine Daten: Sonnen- und Mondbahn aus Stunde/Jahreszeit/Breitengrad, Mondphase, Himmels-, Nebel- und Lichtfarben über den Tag (Nacht, Dämmerung, goldene Stunde, Mittag), Sterne, Einfluss von Wolken/Nebel/Regen/Blitz | entwurf |
 | himmel | `engine/world/himmel.js` | Zeichnet den Himmel aus einem himmel-stand: Himmelskuppel mit Farbverlauf, Sonnenscheibe mit Schein, Mond mit Phase, ziehende Wolken, Sterne; steuert Sonnen-/Mondlicht mit mitlaufendem Schatten, Umgebungslicht und Nebel der Szene | entwurf |
 | kollision | `engine/world/kollision.js` | Kollisions-Welt über einem Welt-Adapter: bewegliche und entfernbare Körper (Zylinder, gedrehte Kästen) mit Höhe – man kann draufsteigen, drüberspringen, sich aneinander vorbeischieben; dazu ein Strahl-Test gegen Gelände und Körper (Zielen, Sichtlinie, Ablegen) | entwurf |
@@ -150,7 +156,9 @@
 | ast | totholz-form, totholz |
 | astar | worldgen-path |
 | attrappe | fake-dom |
+| audio | klang |
 | aufheben | interaktion, welt-dinge |
+| aufladen | zauber |
 | augen | character-anim-blick, character-parts-gesicht |
 | augenklappe | character-parts-zubehoer |
 | ausdruck | character-parts-gesicht |
@@ -195,10 +203,10 @@
 | controller | character-motor, character |
 | crafting | rezepte, stationen |
 | dash | character-motor, character-anim-zustand |
-| daten | register, baum-arten, worldgen-vegetation |
+| daten | register, zauber-daten, baum-arten, worldgen-vegetation |
 | dialog | figur-schild, menue |
 | dithering | psx |
-| dom | fake-dom, menue |
+| dom | fake-dom, menue, treffer-zahlen |
 | dorf | worldgen-sites, worldgen-wege |
 | dreispitz | character-parts-hut |
 | dämmerung | himmel-stand |
@@ -227,7 +235,7 @@
 | figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-material, figur-schild, wege-lage, worldgen-adapter |
 | first-person | follow-camera |
 | fluss | worldgen-chunkfluss, worldgen-rivers |
-| flächenschaden | zauber |
+| flächenschaden | zauber-daten, zauber |
 | folgen | follow-camera |
 | form | pflanze-formen, worldgen-shape |
 | fps | schleife |
@@ -236,11 +244,12 @@
 | funken | zauber-effekte |
 | fähigkeit | zauber |
 | gamepad | move-input |
-| gameplay | ereignisse, behaelter, character-brain, character-gruppe, character-motor-tuning, character-motor, character-sinne, character-steering-extra, character-steering, hand, interaktion, inventar, koerper, rezepte, rohstoffe, stationen, tueren, welt-dinge |
+| gameplay | ereignisse, behaelter, character-brain, character-gruppe, character-motor-tuning, character-motor, character-sinne, character-steering-extra, character-steering, hand, horde, interaktion, inventar, koerper, rezepte, rohstoffe, stationen, tueren, welt-dinge |
 | gang | character-animator, character-gang |
 | gebirge | worldgen-height |
 | gedaechtnis | character-sinne |
 | gegenstand | register, inventar, koerper, welt-dinge |
+| gegner | horde, ratte, horde-mesh |
 | gelaende | character-anim-hang, terrain-farben, terrain-mesh, welt-aenderung |
 | gelenke | character-rig |
 | generator | worldgen |
@@ -277,6 +286,7 @@
 | hoehe | worldgen-height, worldgen-query |
 | hoeren | character-sinne |
 | holz | wege-mesh |
+| horde | horde, zauber-daten, zauber, ratte, horde-mesh |
 | hotbar | inventar-ansicht |
 | hp | figur-schild |
 | hud | figur-schild, hud, inventar-ansicht |
@@ -286,6 +296,8 @@
 | idle | character-anim-idle, character-clips-mehr |
 | ik | character-anim-hang, character-gang |
 | insel | worldgen-presets, worldgen-shape, worldgen |
+| instancedmesh | horde-mesh |
+| instancing | ratte, horde-mesh |
 | instanzen | natur-material, scatter-mesh |
 | interaktion | interaktion, tueren |
 | interpolation | math, schnappschuss-puffer |
@@ -296,14 +308,15 @@
 | kalender | zeit |
 | kamera | follow-camera, ziel-wahl, math |
 | kamerafahrt | follow-camera |
-| kampf | ziel-wahl, character-steering-extra, character-steering, zauber, character-clips-mehr, character-reaktion |
+| kampf | klang, ziel-wahl, character-steering-extra, character-steering, horde, zauber-daten, zauber, character-clips-mehr, character-reaktion |
 | kante | character-anim-zustand |
 | kapuze | character-parts-hut |
 | karte | worldgen |
 | katalog | register |
 | kette | character-parts-zubehoer |
 | keyframe | character-clips-mehr, character-clips-zauber, character-clips |
-| ki | character-brain, character-gruppe, character-sinne, character-steering-extra, character-steering |
+| ki | character-brain, character-gruppe, character-sinne, character-steering-extra, character-steering, horde |
+| klang | klang |
 | kleidung | character-parts-becken, character-parts-torso, character-parts |
 | klima | wetter, worldgen-biomes, worldgen-climate |
 | knoepfe | touch-stick |
@@ -311,6 +324,7 @@
 | kollision | follow-camera, raum-gitter, tueren, kollision, worldgen-adapter |
 | kopf | character-anim-blick, character-parts-haar, character-parts-hut, character-parts-kopf |
 | korb | character-ausruestung |
+| kreatur | ratte |
 | krone | character-parts-hut, character-parts-kopf |
 | körper | character-parts |
 | l-system | baum-skelett |
@@ -327,8 +341,8 @@
 | logik | pflanze-formen |
 | look | character-look, figur-material, psx |
 | loop | schleife |
-| lowpoly | character-parts, baum, fels-form, fels, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-wueste, totholz-form, totholz, mesh-builder |
-| magie | zauber, character-clips-zauber, zauber-effekte |
+| lowpoly | character-parts, ratte, baum, fels-form, fels, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-wueste, totholz-form, totholz, mesh-builder |
+| magie | zauber-daten, zauber, character-clips-zauber, zauber-effekte |
 | mana | zauber |
 | mantel | character-parts-becken, character-parts-torso |
 | maske | character-pose, worldgen-shape |
@@ -344,9 +358,10 @@
 | migration | speicher |
 | mimik | character-anim-blick, character-look, character-model, character-parts-gesicht |
 | mischen | character-pose |
-| modell | character-model, mesh-builder |
+| modell | character-model, ratte, mesh-builder |
 | mond | himmel-stand, himmel |
 | monokel | character-parts-zubehoer |
+| monster | horde, horde-mesh |
 | motor | character-anim-zustand |
 | nachbarn | raum-gitter |
 | nachricht | ereignisse |
@@ -370,7 +385,7 @@
 | orbit | follow-camera |
 | ort | stationen |
 | orte | worldgen-sites |
-| overlay | figur-schild, hud, menue |
+| overlay | figur-schild, hud, menue, treffer-zahlen |
 | parameter | baum-arten |
 | partikel | niederschlag, zauber-effekte |
 | patrouille | character-steering-extra, character-steering |
@@ -397,6 +412,7 @@
 | ragdoll | character-reaktion |
 | randlicht | figur-material |
 | raster | raum-gitter, inventar-ansicht |
+| ratte | horde, ratte, horde-mesh |
 | raum | raum-gitter |
 | rauschen | noise |
 | raycast | kollision |
@@ -406,6 +422,7 @@
 | registry | natur-assets |
 | reichweite | interaktion |
 | render | natur-material |
+| rendern | horde-mesh |
 | retro | psx |
 | rezept | register, rezepte |
 | rig | character-pose, character-rig |
@@ -418,8 +435,10 @@
 | rucksack | character-parts-ruecken, character-parts, inventar-ansicht |
 | rueckgaengig | welt-aenderung |
 | ruhe | character-anim-idle |
+| rückstoß | horde |
 | rüstung | character-parts-torso |
 | salto | character-anim-zustand |
+| schaden | treffer-zahlen |
 | schal | character-parts-zubehoer |
 | schatten | himmel |
 | schild | character-ausruestung |
@@ -434,7 +453,7 @@
 | schrank | behaelter |
 | schuetteln | follow-camera |
 | schuhe | character-parts |
-| schwarm | character-gruppe, character-steering |
+| schwarm | character-gruppe, character-steering, horde, horde-mesh |
 | schwerkraft | koerper |
 | schwert | character-ausruestung |
 | schwimmen | character-motor, koerper, character-animator, character-gang |
@@ -449,8 +468,9 @@
 | skelett | character-rig, baum-skelett |
 | sockel | character-ausruestung, character-rig |
 | sonne | himmel-stand, himmel |
+| sound | klang |
 | speichern | speicher, zeit, behaelter, inventar, character-look, welt-aenderung |
-| spell | zauber |
+| spell | zauber-daten, zauber |
 | spieler | character, character-animator, character-look, character-model |
 | spielstand | speicher, menue |
 | splitscreen | psx |
@@ -471,6 +491,8 @@
 | strauch | pflanze-busch |
 | streaming | worldgen-chunks |
 | sukkulente | pflanze-wueste |
+| synth | klang |
+| tabelle | zauber-daten |
 | tag | himmel-stand, himmel |
 | tagesablauf | character-brain |
 | tageszeit | zeit |
@@ -486,14 +508,14 @@
 | tor | tueren |
 | totholz | totholz-form, totholz |
 | touch | move-input, touch-stick, inventar-ansicht |
-| treffer | character-reaktion |
+| treffer | character-reaktion, treffer-zahlen |
 | truhe | behaelter, inventar-ansicht |
 | tuer | interaktion, tueren |
 | tuning | character-motor-tuning |
 | turban | character-parts-hut |
 | ufer | terrain-farben |
 | uhr | zeit |
-| ui | figur-schild, hud, inventar-ansicht, menue |
+| ui | figur-schild, hud, inventar-ansicht, menue, treffer-zahlen |
 | umfallen | character-reaktion |
 | umhang | character-parts-ruecken, character-parts, character-sekundaer |
 | umkreis | raum-gitter |
@@ -502,6 +524,7 @@
 | varianten | natur-assets |
 | variation | character-anim-idle |
 | vegetation | baum, natur-assets, natur-material, scatter-mesh, worldgen-vegetation |
+| verfolgen | horde |
 | verhalten | character-brain |
 | verstecken | character-steering-extra |
 | verteilung | worldgen-scatter |
@@ -514,6 +537,7 @@
 | wald | baum |
 | wandern | character-steering |
 | wasser | terrain-mesh, worldgen-adapter, worldgen-hydrology, worldgen-rivers |
+| webaudio | klang |
 | wedel | pflanze-formen |
 | wege | wege-lage, wege-mesh, worldgen-wege |
 | wegfindung | worldgen-path |
@@ -527,7 +551,8 @@
 | wolken | himmel |
 | worldgen | worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | wueste | pflanze-wueste |
-| zauber | zauber, character-clips-zauber, zauber-effekte |
+| zahlen | treffer-zahlen |
+| zauber | klang, zauber-daten, zauber, character-clips-zauber, zauber-effekte |
 | zauberhut | character-parts-hut |
 | zeit | schnappschuss-puffer, zeit |
 | zeitschritt | schleife |
@@ -540,6 +565,21 @@
 | zutaten | rezepte |
 
 ## Module
+
+### klang · `engine/audio/klang.js` · v1.0.0 · entwurf
+Synthetische WebAudio-Geräusche (Zauber, Horden-Kampf) ohne Audiodateien; ohne AudioContext still
+
+- `createKlang({lautstaerke=0.6, seed=1, kontext=null, maxStimmen=4, abstand=0.035}) -> {spiele(name,{staerke,tonhoehe,verzug})->bool, dauerton('laden',{staerke,tonhoehe}|null), setLautstaerke(v), stumm, entsperren(), bereit, namen, dispose()}`
+- `KLAENGE`
+
+```js
+import { createKlang } from '../../engine/audio/klang.js';
+const klang = createKlang({ lautstaerke: 0.6 });
+klang.spiele('wumms', { staerke: 1.5, tonhoehe: 0.8 });
+klang.dauerton('laden', { staerke: 0.4, tonhoehe: 1.3 }); // jedes Bild; null = aus
+```
+
+Genutzt von: figuren-labor · Tags: audio, klang, sound, zauber, kampf, synth, webaudio · THREE: nein
 
 ### follow-camera · `engine/camera/follow-camera.js` · v1.1.0 · entwurf
 Third-Person-Orbitkamera: weiches Folgen (vertikal träger), Kollision entlang des Sichtstrahls (Boden + Hindernisse, sanftes Zurückfahren), Auto-Ausrichtung, Sprint-FOV, Zoom, Schütteln, weiches Lock-On mit Zielwechsel, Erste-Person beim Reinzoomen, Presets (nah/weit/Schulter), Kamerafahrten
@@ -895,10 +935,10 @@ Genutzt von: figuren-labor · Tags: npc, ki, steering, bewegung, wandern, pfad, 
 Absicht: { x, z, sprint, springen (Puls beim Steckenbleiben), ducken, blickYaw (beim Umkreisen/Abstand/Wartepunkt) }.
 Steckenbleiben eskaliert: seitlich ausweichen → andere Seite + Hüpfer → Wanderziel/Wegpunkt überspringen bzw. `steckt = true`.
 
-### character · `engine/gameplay/character.js` · v1.2.0 · entwurf
+### character · `engine/gameplay/character.js` · v1.3.0 · entwurf
 Fertige Spielfigur in einem Objekt: Modell (Look) + Animator + Bewegungs-Motor, für Spieler und NPCs gleich
 
-- `createCharacter(opts) -> { root, model, animator, motor, zustand, look, name, schild, brain, update(dt,absicht?,brainKontext?), setBrain(brain|opts|null), spiele(name,opts), stoppe(name?), aktion(name,opts), sage(text,{dauer,geste,ausdruck}), setName(t), setLeben(anteil|null), ausruesten(sockel,obj), ablegen(sockel|obj), ausruestung, setAusdruck(name|null,opts), treffer(richtung,staerke,opts), umfallen(richtung,opts), aufstehen(dauer), blickZu(punkt|figur|fn|null), setSichtbar(bool), abstandZu(punkt|figur), setLook(teil), teleport(pos,yaw?), stoss(x,y,z,opts?), dispose() }`
+- `createCharacter(opts) -> { root, model, animator, motor, zustand, look, name, schild, brain, update(dt,absicht?,brainKontext?), setBrain(brain|opts|null), spiele(name,opts), loese(opts), stoppe(name?), aktion(name,opts), sage(text,{dauer,geste,ausdruck}), setName(t), setLeben(anteil|null), ausruesten(sockel,obj), ablegen(sockel|obj), ausruestung, setAusdruck(name|null,opts), treffer(richtung,staerke,opts), umfallen(richtung,opts), aufstehen(dauer), blickZu(punkt|figur|fn|null), setSichtbar(bool), abstandZu(punkt|figur), setLook(teil), teleport(pos,yaw?), stoss(x,y,z,opts?), dispose() }`
 
 ```js
 import { createCharacter } from '../../engine/gameplay/character.js';
@@ -929,6 +969,28 @@ platz = -1: leere Hand. Der Platz bleibt gewählt, auch wenn er leer wird (wie e
 Haltbarkeit: Register-Eintrag { haltbarkeit: 25 } = volle Haltbarkeit; der Stand liegt in den Daten des Platzes ({ haltbarkeit }).
 Solche Gegenstände brauchen `stapel: 1`. onWechsel(eintrag|null, platzInhalt|null) feuert nur, wenn sich die id in der Hand ändert.
 Ereignisse: 'hand:gewechselt' { hand, id }, 'werkzeug:kaputt' { hand, id }.
+
+### horde · `engine/gameplay/horde.js` · v1.0.0 · entwurf
+Horden-Gegner ohne THREE (Ratten & Co. zu Dutzenden): verfolgen ein Ziel, drängeln sich ohne Überlappen, umzingeln, springen an und beißen, werden weggeschleudert, betäubt, verlangsamt, in einen Sog gezogen und sterben im Flug – deterministisch per Seed
+
+- `createHorde(opts) -> { wesen, ziele, anzahl, getoetet, arten, spawne(art,x,z,{skala}) -> wesen|null, spawneRing(art,anzahl,mitte,{radius,breite,winkel,bogen}) -> anzahl, schade(wesen,schaden,{stoss,umwerfen,verlangsamt,zug}) -> {tot,schaden}, update(dt,ziel) -> ereignisse[], leeren(), dispose() }`
+- `HORDEN_ARTEN`
+
+```js
+import { createHorde } from '../../engine/gameplay/horde.js';
+const horde = createHorde({ seed: 7, welt });                    // welt: Adapter mit bodenHoehe (+ wasserHoehe, hindernisse)
+horde.spawneRing('ratte', 30, held.zustand.pos, { radius: 20 });
+for (const e of horde.update(dt, { x, y, z, radius: 0.35 }))      // Ziel = Spieler (null = Horde streunt)
+if (e.typ === 'biss') spielerSchaden(e.schaden);
+for (const t of einschlag.treffer) horde.schade(t.ziel, t.schaden, t);   // horde.ziele passt direkt in zauberbuch.update(dt, ziele)
+```
+
+Genutzt von: figuren-labor · Tags: gegner, horde, schwarm, monster, ratte, ki, kampf, verfolgen, rückstoß, gameplay · THREE: nein
+Wesen (lebendes Objekt, vom Renderer gelesen – engine/render/horde-mesh.js): { id, art, def, x, y, z, vx, vy, vz, yaw, skala,
+radius, hoehe, leben, lebenMax, tot, zustand ('lauf' | 'sprung' | 'flug' | 'benommen' | 'tot'), t (s im Zustand), phase (Lauf-Takt),
+hub (m Hüpfer beim Anspringen), dreh (rad Überschlag im Flug), blitz (1 → 0 Treffer-Aufleuchten), langsam (s Rest), verfall (0 → 1
+Leiche verschwindet), ton (Farbfaktor) }
+Ereignisse von update() (Array wird wiederverwendet): { typ: 'biss', wesen, schaden } · { typ: 'weg', wesen } (Leiche entfernt)
 
 ### interaktion · `engine/gameplay/interaktion.js` · v1.0.0 · entwurf
 „Ansehen → Aktion“: Dinge der Welt (NPC, Gegenstand, Baum, Tür) melden sich als Ziel an; für eine Figur wird das beste Ziel in Reichweite/Blickrichtung bestimmt (Hinweis „E – Aufheben“) und ausgelöst, auch als Gedrückt-halten mit Fortschritt
@@ -1087,10 +1149,37 @@ Register-Einträge dürfen die Physik bestimmen: { radius, sprung, reibung, haft
 Aufheben läuft über die Interaktion: das Ziel ruft nimm(ding, wer.inventar) – `wer` braucht also ein Feld `inventar`.
 Ereignisse (falls Bus gesetzt): 'ding:neu' { ding }, 'ding:aufgehoben' { wer, id, anzahl, rest }, 'ding:weg' { ding }.
 
-### zauber · `engine/gameplay/zauber.js` · v1.0.0 · entwurf
-Zauber-System ohne THREE: 10 Zauber als Daten (Geschoss, Strahl, Kegel, Ort, Selbst, Teleport), Zauberbuch mit Mana, Abklingzeiten, Wirkzeit, Geschoss-Simulation und Treffer-Ereignissen
+### zauber-daten · `engine/gameplay/zauber-daten.js` · v1.0.0 · entwurf
+Die Zauber-Tabelle als reine Daten: 12 wuchtige Zauber (Geschoss, Strahl, Kegel, Ort, Nova, Selbst, Teleport) mit Wirkzeit, Gewicht, Überladen, Durchschlag und Feldern (Brandboden, Sog) – gemacht für Horden
 
-- `createZauberbuch(opts) -> { wirke(name,{vorlauf,ziel}) -> {ok,grund,def}, kann(name) -> {ok,grund}, update(dt,ziele) -> ereignisse[], mana, manaMax, wirkt, abklingzeit(name), abklingAnteil(name), geschosse, setFreiesMana(bool), namen, zauber, dispose() }`
+- `ZAUBER`
+- `ZAUBER_NAMEN`
+- `LADEN`
+
+```js
+import { ZAUBER, ZAUBER_NAMEN } from '../../engine/gameplay/zauber-daten.js';   // oder aus zauber.js (reicht beides durch)
+const def = ZAUBER.feuerball;   // def.wirkzeit = Mindest-Aufladezeit, def.gewicht = wie schwer er sich anfühlt (0 … 1)
+```
+
+Genutzt von: – · Tags: zauber, magie, daten, tabelle, kampf, flächenschaden, horde, spell · THREE: nein
+Felder je Zauber:
+name, symbol, text, farbe, clip (Geste aus character-clips-zauber), mana, abkling (s)
+art        'geschoss' | 'strahl' | 'kegel' | 'ort' | 'nova' | 'selbst' | 'teleport'
+wirkzeit   Sekunden Aufladen, bevor er die Hand verlassen kann (schwer = lang)
+gewicht    0 … 1: Wucht für Kamera, Rückstoß, Bremsen beim Aufladen, Treffer-Stopp (wertet das Spiel aus)
+schaden, radius (Fläche, 0 = nur das getroffene Ziel), stoss (m/s Wegschleudern), umwerfen, verlangsamt (s)
+Geschoss:  tempo, reichweite, fall (m/s² – fliegt im Bogen und schlägt am Boden ein), anzahl, suchend, durchschlag (Ziele, die es durchbohrt)
+Strahl:    reichweite, winkel, kette (Sprünge), kettenRadius
+Kegel:     reichweite, winkel (halber Öffnungswinkel)
+Ort:       reichweite, verzug (s zwischen Ansage und Einschlag)
+feld       { dauer, takt, schaden, sog (m/s zur Mitte), verlangsamt, anteil (Radius-Anteil) } – bleibt nach dem Einschlag liegen
+feldEnde   { schaden, radius, stoss, umwerfen } – Schluss-Schlag des Feldes (Implosion)
+mehr       { anzahl, kette } – Zuwachs bei voller Überladung
+
+### zauber · `engine/gameplay/zauber.js` · v2.0.0 · entwurf
+Zauber-System ohne THREE: Zauberbuch mit Mana, Abklingzeiten und wuchtigem Aufladen (Wirkzeit, Halten = Überladen, Schlag), Geschosse (Bogen, Zielsuche, Durchschlag), Strahl, Kegel, Ort, Nova, Felder (Brandboden, Sog) und Treffer-Ereignisse
+
+- `createZauberbuch(opts) -> { wirke(name,{vorlauf,schlag,ziel,halten}) -> {ok,grund,def}, lasseLos(), brichAb() -> bool, kann(name) -> {ok,grund,def}, update(dt,ziele) -> ereignisse[], ladung -> {name,def,phase,anteil,ueber,kraft}|null, mana, manaMax, wirkt, abklingzeit(name), abklingAnteil(name), geschosse, felder, setFreiesMana(bool), namen, zauber, dispose() }`
 - `ZAUBER`
 - `ZAUBER_NAMEN`
 - `zielImKegel(ziele,von,yaw,reichweite,winkel) -> ziel|null`
@@ -1099,22 +1188,30 @@ Zauber-System ohne THREE: 10 Zauber als Daten (Geschoss, Strahl, Kegel, Ort, Sel
 ```js
 import { createZauberbuch, ZAUBER } from '../../engine/gameplay/zauber.js';
 const buch = createZauberbuch({ welt });                       // welt.bodenHoehe(x,z) für Einschläge am Boden
-const r = buch.wirke('feuerball', { vorlauf: figur.spiele(ZAUBER.feuerball.clip).trefferBei,
-ziel: () => ({ von: handPos, yaw: figur.zustand.yaw, ziel: gegner }) });   // ziel-Funktion wird beim Loslassen gefragt
+buch.wirke('feuerball', { halten: true, schlag: 0.1,           // lädt mindestens def.wirkzeit, solange gehalten: überlädt
+ziel: () => ({ von: handPos, fuss: figur.zustand.pos, yaw, ziel: gegner, punkt: bodenPunkt }) });   // wird beim Loslassen gefragt
+if (!taste) buch.lasseLos();                                   // → Ereignis 'schlag' (Geste auslösen), nach `schlag` s 'start'
 for (const e of buch.update(dt, gegnerListe))                   // gegnerListe: [{ id, x, y, z, radius, hoehe }]
-if (e.typ === 'einschlag') for (const t of e.treffer) schade(t.id, t.schaden, t.stoss);
+for (const t of e.treffer) schade(t.ziel, t.schaden, t);      // t: { stoss, umwerfen, verlangsamt, zug }
 ```
 
-Genutzt von: figuren-labor · Tags: zauber, magie, kampf, mana, abklingzeit, geschoss, flächenschaden, fähigkeit, spell · THREE: nein
-Ereignisse von update() (Array wird wiederverwendet – nicht aufheben): alle haben { typ, zauber (Name), def, treffer: [] }.
+Genutzt von: figuren-labor · Tags: zauber, magie, kampf, mana, abklingzeit, geschoss, flächenschaden, aufladen, horde, fähigkeit, spell · THREE: nein
+Ablauf eines Zaubers: wirke() → Phase 'laden' (mindestens vorlauf s; mit halten bis lasseLos(), dabei wächst die Kraft
+von 1 auf def.ueberladen bzw. LADEN.kraft) → Ereignis 'schlag' (Abklingzeit beginnt) → nach `schlag` s verlässt er die Hand.
+Kraft vergrößert Schaden, Radius und Stoß (und def.mehr: zusätzliche Geschosse/Kettenglieder).
+Ereignisse von update() (Array wird wiederverwendet – nicht aufheben): alle haben { typ, zauber (Name), def (mit Kraft verrechnet), kraft, treffer: [] }.
+'schlag'       Aufladen fertig, Geste schlägt zu (noch kein Effekt)
 'start'        Zauber verlässt die Hand: von, yaw
 'ankuendigung' Ort-Zauber angesagt: pos, radius, verzug (s bis zum Einschlag)
 'einschlag'    Geschoss/Ort trifft: pos, radius, geschossId?
+'durchschlag'  Geschoss durchbohrt ein Ziel und fliegt weiter: pos, geschossId
 'strahl'       Blitz: punkte [{x,y,z} …] (Hand → Ziel → Kettenziele)
-'kegel'        Windstoß: von, yaw, reichweite, winkel
+'kegel'        Druckwelle: von, yaw, reichweite, winkel
+'nova'         Ring um die Figur: pos, radius
+'feld' / 'feldTakt' / 'feldEnde'   liegendes Feld beginnt (pos, radius, dauer, sog) / trifft / endet (mit Schluss-Schlag, falls def.feldEnde)
 'selbst'       Heilung/Schild: def.heilt / def.schild / def.dauer wertet das Spiel aus
 'teleport'     von, nach (das Spiel versetzt die Figur)
-treffer: [{ id, ziel, schaden, stoss {x,y,z}, umwerfen, verlangsamt (s) }]
+treffer: [{ id, ziel, schaden, stoss {x,y,z}, umwerfen, verlangsamt (s), zug {x,z} | null (Sog: Geschwindigkeit zur Mitte) }]
 
 ### move-input · `engine/input/move-input.js` · v1.1.0 · entwurf
 Bewegungs-Eingabe für Figuren: Tastatur (WASD/Pfeile), Maus-Ziehen/Mausrad, Touch-Stick + Knöpfe, Gamepad → Stick, Kamera-Delta, Aktionen (Flanke/gehalten)
@@ -1214,10 +1311,10 @@ zs.update(dt, motor.zustand, masse.hueftHoehe / 0.89); zs.anwenden(pose);   // n
 
 Genutzt von: – · Tags: figur, charakter, animation, rolle, dash, salto, gleiten, kante, betaeubt, motor · THREE: nein
 
-### character-animator · `engine/models/character/character-animator.js` · v1.1.0 · entwurf
+### character-animator · `engine/models/character/character-animator.js` · v1.2.0 · entwurf
 Prozedurale Figuren-Animation aus dem Motor-Zustand: idle/gehen/laufen/sprinten ohne Fußrutschen, Luft, Landung, Schwimmen, Ducken, Rutschen, Kurvenlage, Atmen, Hang, Idle-Varianten, sekundäre Bewegung, Treffer/Umfallen, Aktions-Clips mit Masken, Blick + Mimik-Hook
 
-- `createAnimator(model,opts) -> { update(dt,zustand) -> pose, spiele(name,{tempo,mischung,schleife}) -> {dauer,trefferBei}, stoppe(name?), aktion, aktionGewicht, blickZu(dirLokal|null), blickZuPunkt(welt|null), treffer(richtung,staerke,{welt}), umfallen(richtung,{staerke,welt}), aufstehen(dauer), ausdruck, mimik, idleVariante, faellt, liegt, sekundaer, hang, gewicht, griff, pose, phase, dispose() }`
+- `createAnimator(model,opts) -> { update(dt,zustand) -> pose, spiele(name,{tempo,mischung,schleife,halteBei}) -> {dauer,trefferBei,spannBei}, loese({tempo}) -> s, stoppe(name?), aktion, aktionGewicht, blickZu(dirLokal|null), blickZuPunkt(welt|null), treffer(richtung,staerke,{welt}), umfallen(richtung,{staerke,welt}), aufstehen(dauer), ausdruck, mimik, idleVariante, faellt, liegt, sekundaer, hang, gewicht, griff, pose, phase, dispose() }`
 - `createCharacterAnimator = createAnimator`
 
 ```js
@@ -1269,19 +1366,20 @@ anim.spiele('verbeugen'); anim.spiele('fegen', { schleife: true }); anim.spiele(
 
 Genutzt von: – · Tags: figur, charakter, animation, clip, keyframe, emote, kampf, arbeit, idle · THREE: nein
 
-### character-clips-zauber · `engine/models/character/character-clips-zauber.js` · v1.0.0 · entwurf
-Zauber-Gesten als reine Keyframe-Daten (Wurf, Stoß, Fingerzeig, Himmelsruf, Bodenschlag, Selbstzauber); wird von character-clips registriert
+### character-clips-zauber · `engine/models/character/character-clips-zauber.js` · v2.0.0 · entwurf
+Wuchtige Zauber-Gesten als reine Keyframe-Daten (Wurf, Stoß, Fingerzeig, Himmelsruf, Bodenschlag, Griff, Selbstzauber) mit Spann-Moment zum Aufladen; wird von character-clips registriert
 
 - `ZAUBER_CLIPS`
 
 ```js
 import { CLIPS } from '../../engine/models/character/character-clips.js';   // registriert ZAUBER_CLIPS automatisch
-const { trefferBei } = figur.spiele('zauberWurf');   // Zauber nach trefferBei Sekunden auslösen (siehe gameplay/zauber)
+figur.spiele('zauberWurf', { halteBei: true });       // holt aus und bleibt gespannt (clip.spannBei) – Aufladen
+const bisTreffer = figur.loese();                     // schlägt zu; nach bisTreffer Sekunden verlässt der Zauber die Hand
 ```
 
 Genutzt von: – · Tags: figur, charakter, animation, clip, keyframe, zauber, magie, geste · THREE: nein
 
-### character-clips · `engine/models/character/character-clips.js` · v1.2.0 · entwurf
+### character-clips · `engine/models/character/character-clips.js` · v1.3.0 · entwurf
 Aktions-Clips einer Figur als Keyframe-Daten (winken, schlagen, hacken, werfen, aufheben, tod, rolle, sitzen, tanzen … + character-clips-mehr + character-clips-zauber) und ihr Abtaster
 
 - `CLIPS`
@@ -1615,6 +1713,21 @@ umhang.rotation.x = sek.werte.umhangX;      // Umhang/Haar-Teile selbst drehen
 
 Genutzt von: – · Tags: figur, charakter, animation, feder, sekundaer, nachschwingen, umhang, haar, gewicht · THREE: nein
 
+### ratte · `engine/models/kreaturen/ratte.js` · v1.0.0 · entwurf
+Low-Poly-Riesenratte als Horden-Gegner: liefert zwei Lauf-Bild-Geometrien (Vertexfarben) für InstancedMesh
+
+- `createRatte({ seed, fell, bauch, haut, augen, laenge }) -> { frames:[geoBild0, geoBild1], laenge, hoehe, breite, dispose() }`
+
+```js
+import { createRatte } from '../../engine/models/kreaturen/ratte.js';
+import { standardMaterial } from '../../engine/render/mesh-builder.js';
+const ratte = createRatte({ seed: 1 });
+const bilder = ratte.frames.map((g) => new THREE.InstancedMesh(g, standardMaterial(), 120));
+// Nase zeigt nach +Z, Füße auf y = 0, Ursprung unter der Rumpfmitte, Schwanz nach −Z
+```
+
+Genutzt von: figuren-labor · Tags: ratte, kreatur, gegner, horde, lowpoly, instancing, modell · THREE: ja
+
 ### baum-arten · `engine/models/natur/baum-arten.js` · v1.0.0 · entwurf
 Reine Parameter-Daten der Baumarten (Wuchs, Verzweigung, Laubform, Farben, Jahreszeiten) für baum-skelett/baum
 
@@ -1887,6 +2000,23 @@ const geist = figurMaterial({ rand: 1, randFarbe: 0x80c0ff, material: { transpar
 
 Genutzt von: – · Tags: figur, charakter, material, shader, randlicht, rim, look · THREE: ja
 
+### horde-mesh · `engine/render/horde-mesh.js` · v1.0.0 · entwurf
+Zeichnet eine Horde (gameplay/horde) mit wenigen Draw-Calls: je Modell und Lauf-Bild ein InstancedMesh; Hüpfer, Überschlag im Flug, Treffer-Aufblitzen, Leichen auf der Seite, Versinken
+
+- `createHordeMesh({ modelle: { name: [geoBild0, geoBild1 …] }, max, material, schatten }) -> { gruppe, update(wesen), sichtbar, dispose() }`
+
+```js
+import { createHordeMesh } from '../../engine/render/horde-mesh.js';
+import { createRatte } from '../../engine/models/kreaturen/ratte.js';
+const ratte = createRatte({ seed: 3 });
+const hm = createHordeMesh({ modelle: { ratte: ratte.frames }, max: 140 }); szene.add(hm.gruppe);
+hm.update(horde.wesen);   // jedes Bild nach horde.update()
+```
+
+Genutzt von: figuren-labor · Tags: horde, gegner, instancing, instancedmesh, rendern, schwarm, ratte, monster · THREE: ja
+Erwartet je Wesen (wie gameplay/horde): { def: { modell }, x, y, z, yaw, skala, phase, hub, dreh, zustand, blitz, verfall, ton, hoehe }.
+Modelle: Nase nach +Z, Füße auf y = 0. Die Geometrien gehören dem Aufrufer (dispose() gibt sie nicht frei).
+
 ### mesh-builder · `engine/render/mesh-builder.js` · v1.1.0 · entwurf
 Low-Poly-Modelle aus Primitiven (Box, Kugel, Zylinder …) mit Vertexfarben zu EINER Geometrie verschmelzen; Farbvariation pro Dreieck per Seed
 
@@ -2050,6 +2180,20 @@ eintraege: spielstandEintraege(speicher, { holeDaten: () => stand(), onLade: d =
 
 Genutzt von: testwelt · Tags: ui, menue, pause, optionen, fenster, overlay, dialog, spielstand, dom, handy · THREE: nein
 Einträge einer Seite (art fehlt → knopf): knopf{text,zeichen,hinweis,aktiv,aktion,nach,schliesst} | schalter{text,wert,setze} | regler{text,min,max,schritt,wert,setze,format} | auswahl{text,optionen,wert,setze} | text | trenner | element | reihe{eintraege}
+
+### treffer-zahlen · `engine/ui/treffer-zahlen.js` · v1.0.0 · entwurf
+Schadens-Zahlen als DOM-Overlay: ploppen über Treffern auf, schweben nach oben und blenden aus (fester Pool, handytauglich)
+
+- `createTrefferZahlen({eltern=document.body, max=28, zIndex=6, seed=1}) -> { zeige(pos,text,{farbe,groesse,dauer,steigen,streuung}), update(kamera,dt), anzahl, dispose() }`
+
+```js
+import { createTrefferZahlen } from '../../engine/ui/treffer-zahlen.js';
+const zahlen = createTrefferZahlen({ max: 28 });
+zahlen.zeige({ x, y, z }, '−30', { farbe: '#ffd870', groesse: 1.4 });
+zahlen.update(kamera, dt); // jedes Bild
+```
+
+Genutzt von: figuren-labor · Tags: ui, treffer, schaden, zahlen, overlay, dom · THREE: ja
 
 ### himmel-stand · `engine/world/himmel-stand.js` · v1.0.0 · entwurf
 Himmel als reine Daten: Sonnen- und Mondbahn aus Stunde/Jahreszeit/Breitengrad, Mondphase, Himmels-, Nebel- und Lichtfarben über den Tag (Nacht, Dämmerung, goldene Stunde, Mittag), Sterne, Einfluss von Wolken/Nebel/Regen/Blitz

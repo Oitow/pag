@@ -1,5 +1,18 @@
 # Engine-Changelog
 
+## 2026-11 – Schweres Zaubern und Horden
+- gameplay/zauber 2.0.0 (brechend): Aufladen statt Sofort-Zauber – `wirke(name, { halten, schlag, vorlauf = def.wirkzeit })`, `lasseLos()`, `brichAb()` (Mana zurück), `ladung` (Anteil, Überladung, Kraft); Abklingzeit zählt erst ab dem Schlag; neue Ereignisse `schlag`, `durchschlag`, `nova`, `feld`/`feldTakt`/`feldEnde`; Treffer haben `zug` (Sog); Ziel kann ein Bodenpunkt sein (`punkt`). Nutzer angepasst: games/figuren-labor
+- gameplay/zauber-daten 1.0.0 (neu): Zauber-Tabelle als Daten, 12 Zauber (neu: Frostnova, Sog) mit `wirkzeit`, `gewicht`, Bogenflug (`fall`), `durchschlag`, Feldern (Brandboden, Sog mit Schluss-Schlag), `mehr` beim Überladen
+- gameplay/horde 1.0.0 (neu): Horden-Gegner (Ratte, Riesenratte, Rattenkönig) – verfolgen, drängeln (Raum-Gitter), umzingeln, springen an und beißen, fliegen weg, Leichen verschwinden; `ziele`/`schade()` passen direkt zum Zauberbuch
+- render/horde-mesh 1.0.0 (neu): Horde als InstancedMesh je Modell und Lauf-Bild (Hüpfer, Überschlag, Aufblitzen, Leichen auf der Seite)
+- models/kreaturen/ratte 1.0.0 (neu): Low-Poly-Riesenratte, zwei Lauf-Bilder (≤ 260 Dreiecke)
+- ui/treffer-zahlen 1.0.0 (neu): aufploppende Schadens-Zahlen aus festem Pool
+- audio/klang 1.0.0 (neu, neue Schicht audio): synthetische WebAudio-Klänge (Einschlag, Explosion, Zisch, Blitz, Eis, Quieken, Biss …) + Dauerton zum Aufladen, Drosselung je Klang, stumm ohne AudioContext
+- models/character/character-clips 1.3.0 (additiv): `spannBei` je Clip (Standard 0.7 × trefferBei)
+- models/character/character-clips-zauber 2.0.0: Gesten schwerer und länger (tiefes Ausholen, Knie, Rückstoß), neue Geste `zauberGriff`, alle mit `spannBei`
+- models/character/character-animator 1.2.0 (additiv): `spiele(name, { halteBei })` hält gespannt, `loese({ tempo })` lässt zuschlagen
+- gameplay/character 1.3.0 (additiv): `loese(opts)`
+
 ## 2026-11 – PS1-Look aus Viniland
 - render/psx 1.0.1 (neu): PS1-Look für eine ganze Szene – `wendeAn(szene)` patcht alle Materialien (vorhandene Shader-Hooks wie Randlicht/Wind bleiben), Eckpunkte rasten ein, Farbstufen mit Bayer-Dithering, `aufloesung()` für grobe Pixel, Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen), live an/aus über `setze({ an })`
 - world/himmel 1.1.0 (additiv): Shader endet mit `#include <dithering_fragment>` – der Himmel macht beim PS1-Look mit (ohne `psx` unverändert)

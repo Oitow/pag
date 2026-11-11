@@ -1,7 +1,7 @@
 /**
  * @modul    character
  * @zweck    Fertige Spielfigur in einem Objekt: Modell (Look) + Animator + Bewegungs-Motor, für Spieler und NPCs gleich
- * @api      createCharacter(opts) -> { root, model, animator, motor, zustand, look, name, schild, brain, update(dt,absicht?,brainKontext?), setBrain(brain|opts|null), spiele(name,opts), stoppe(name?), aktion(name,opts), sage(text,{dauer,geste,ausdruck}), setName(t), setLeben(anteil|null), ausruesten(sockel,obj), ablegen(sockel|obj), ausruestung, setAusdruck(name|null,opts), treffer(richtung,staerke,opts), umfallen(richtung,opts), aufstehen(dauer), blickZu(punkt|figur|fn|null), setSichtbar(bool), abstandZu(punkt|figur), setLook(teil), teleport(pos,yaw?), stoss(x,y,z,opts?), dispose() }
+ * @api      createCharacter(opts) -> { root, model, animator, motor, zustand, look, name, schild, brain, update(dt,absicht?,brainKontext?), setBrain(brain|opts|null), spiele(name,opts), loese(opts), stoppe(name?), aktion(name,opts), sage(text,{dauer,geste,ausdruck}), setName(t), setLeben(anteil|null), ausruesten(sockel,obj), ablegen(sockel|obj), ausruestung, setAusdruck(name|null,opts), treffer(richtung,staerke,opts), umfallen(richtung,opts), aufstehen(dauer), blickZu(punkt|figur|fn|null), setSichtbar(bool), abstandZu(punkt|figur), setLook(teil), teleport(pos,yaw?), stoss(x,y,z,opts?), dispose() }
  * @beispiel
  *   import { createCharacter } from '../../engine/gameplay/character.js';
  *   const held = createCharacter({ look: VORLAGEN.wanderer, welt, pos: { x: 0, y: 0, z: 0 } });
@@ -11,7 +11,7 @@
  *   const bauer = createCharacter({ look, welt, name: 'Jupp', schilder });
  *   bauer.sage('Moin!', { geste: 'winken' }); bauer.blickZu(held); bauer.ausruesten('handR', mistgabel);
  * @tags     figur, charakter, spieler, npc, bewegung, animation, controller, avatar
- * @version  1.2.0
+ * @version  1.3.0
  * @status   entwurf
  * @three    nein
  */
@@ -121,6 +121,8 @@ export function createCharacter(opts = {}) {
       model.updateGesicht?.(dt);                         // Blinzeln/Mimik des Modells (falls vorhanden)
     },
     spiele: (clip, o) => animator.spiele(clip, o),
+    /** Gehaltenen Clip (spiele mit halteBei) auslösen → Sekunden bis zum Treffer-Moment. */
+    loese: (o) => animator.loese(o),
     stoppe: (clip) => animator.stoppe(clip),
     get name() { return name; },
     get brain() { return brain; },

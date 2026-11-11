@@ -14,11 +14,17 @@
   #kopf { position: fixed; right: 10px; top: calc(8px + env(safe-area-inset-top, 0px)); z-index: 51; display: flex; gap: 6px; }
   #kopf button { font: inherit; font-size: 15px; font-weight: 600; border: 0; border-radius: 12px; min-height: 40px; padding: 0 14px; background: #fffd; color: #2a2218; box-shadow: 0 2px 6px #0003; cursor: pointer; }
   #kopf button.an { background: #ffd870; }
-  #hud { position: fixed; left: 100px; right: 112px; top: calc(12px + env(safe-area-inset-top, 0px)); z-index: 5; display: flex; flex-direction: column; gap: 5px; max-width: 320px; margin: 0 auto; pointer-events: none; }
+  #hud { position: fixed; left: 100px; right: 160px; top: calc(12px + env(safe-area-inset-top, 0px)); z-index: 5; display: flex; flex-direction: column; gap: 5px; max-width: 320px; margin: 0 auto; pointer-events: none; }
   .balken { position: relative; height: 11px; border-radius: 6px; background: #0007; overflow: hidden; box-shadow: 0 0 0 1.5px #fff8; }
   .balken i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; transition: width .2s; }
   .balken u { position: absolute; left: 0; top: 0; bottom: 0; background: #9cd0ffcc; transition: width .2s; }
   .leben i { background: linear-gradient(#ff7a6a, #d8382a); } .mana i { background: linear-gradient(#7ac4ff, #2a78e0); }
+  /* Ladebalken: weiß = Wirkzeit, Gold = Überladung; voll pulsiert */
+  .ladung { visibility: hidden; height: 8px; } .ladung i { background: linear-gradient(#fff, #c8d8f0); transition: none; }
+  .ladung u { background: linear-gradient(#ffe070, #ff9a20); transition: none; }
+  .ladung.voll { animation: puls .25s infinite alternate; } @keyframes puls { to { box-shadow: 0 0 0 2px #ffd870, 0 0 12px #ff9a20; } }
+  #welle { position: fixed; left: 50%; transform: translateX(-50%); top: calc(116px + env(safe-area-inset-top, 0px)); font-size: 13px; font-weight: 700; color: #fff; background: #0009; padding: 3px 10px; border-radius: 9px; white-space: nowrap; }
+  #schmerz { position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, #0000 55%, #c00a 100%); }
   /* Zauberleiste: wischbar, große Tippflächen */
   #zleiste { position: fixed; left: 0; right: 0; top: calc(54px + env(safe-area-inset-top, 0px)); z-index: 5; display: flex; gap: 7px; padding: 4px 10px 8px; overflow-x: auto; scrollbar-width: none; touch-action: pan-x; justify-content: safe center; }
   #zleiste::-webkit-scrollbar { display: none; }
@@ -29,7 +35,7 @@
   .zk.leer span { opacity: .4; } .zk.leer small { color: #ff8a7a; }
   #bZaubern { position: fixed; left: 50%; bottom: 46px; transform: translateX(-50%); z-index: 5; font: inherit; font-size: 16px; font-weight: 600; border: 0; border-radius: 14px; padding: 12px 20px; background: #ffd870; color: #2a2218; box-shadow: 0 3px 10px #0005; cursor: pointer; }
   @media (pointer: coarse) { #bZaubern { display: none; } }
-  #meldung { position: fixed; left: 50%; top: 124px; transform: translateX(-50%); z-index: 6; background: #000a; color: #fff; padding: 7px 14px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .25s; pointer-events: none; white-space: nowrap; }
+  #meldung { position: fixed; left: 50%; top: 148px; transform: translateX(-50%); z-index: 6; background: #000a; color: #fff; padding: 7px 14px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .25s; pointer-events: none; white-space: nowrap; }
   #meldung.an { opacity: 1; }
   #info { position: fixed; left: 10px; bottom: 10px; z-index: 4; font: 12px/1.4 monospace; background: #0008; color: #e8f0e0; padding: 6px 8px; border-radius: 8px; pointer-events: none; white-space: pre; }
   @media (max-width: 600px) { #info { font-size: 10px; bottom: auto; top: 124px; } }
@@ -79,9 +85,11 @@
 <a id="back" href="../../">← Spiele</a>
 <div id="kopf">
   <button id="bStopp" title="Laufende Aktion beenden" style="display:none">⏹</button>
+  <button id="bPlage" title="Rattenplage starten/stoppen">🐀</button>
   <button id="bMenue" title="Aussehen, Zauber, Ausrüstung, Aktionen, Einstellungen">☰ Menü</button>
 </div>
-<div id="hud"><div class="balken leben"><u></u><i></i></div><div class="balken mana"><i></i></div></div>
+<div id="hud"><div class="balken leben"><u></u><i></i></div><div class="balken mana"><i></i></div><div class="balken ladung"><i></i><u></u></div><div id="welle" style="display:none"></div></div>
+<div id="schmerz"></div>
 <div id="zleiste"></div>
 <button id="bZaubern">✨ Zaubern (R)</button>
 <div id="meldung"></div>
@@ -129,12 +137,14 @@
         <button data-schalter="freimana">♾ Unendlich Mana</button>
         <button data-knopf="treffen">💥 Mich treffen (−25)</button>
         <button data-knopf="heilen">❤ Alle heilen</button>
+        <button data-knopf="plage">🐀 Rattenplage</button>
+        <button data-schalter="ton" class="an">🔊 Ton</button>
       </div>
     </section>
   </div>
 </div>
 <pre id="info"></pre>
-<div class="hilfe" id="hilfe">Stick/WASD laufen · Zauber oben wählen, ✨ / R wirken (1–0 = sofort) · ☰ Menü: Aussehen, Ausrüstung, Aktionen</div>
+<div class="hilfe" id="hilfe">Stick/WASD laufen · Zauber oben wählen · ✨ / R halten = aufladen, loslassen = Schlag (1–0 ebenso) · 🐀 = Rattenplage</div>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>
