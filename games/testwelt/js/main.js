@@ -22,7 +22,7 @@ import { createDorf } from './dorf.js';
 import { createSachen } from './sachen.js';
 import { createKollisionsWelt } from '../../../engine/world/kollision.js';
 import { createWeltAenderung } from '../../../engine/world/welt-aenderung.js';
-import { findeLagerPlatz, bereiteLagerPlatz } from './lager.js';
+import { findeLagerPlatz, bereiteLagerPlatz, LAGER_RADIUS } from './lager.js';
 import { createPause } from './pause.js';
 
 const $ = (id) => document.getElementById(id);
@@ -95,6 +95,7 @@ async function erzeuge(vorgabe = null) {
   const lagerPlatz = findeLagerPlatz(aend, adapter, start, welt.seed);
   if (lagerPlatz) bereiteLagerPlatz(aend, lagerPlatz);
   aend.festschreiben();
+  if (lagerPlatz) aend.sperreUmkreis(lagerPlatz.x, lagerPlatz.z, LAGER_RADIUS + 1);   // unter dem Schuppen wird nicht gegraben
   weltSchluessel = `${presetEl.value}|${seedEl.value}|${g}`;
   const alt = vorgabe ?? (frisch ? null : speicher.lade('auto'));
   const gleicheWelt = !!alt && alt.welt === weltSchluessel;
@@ -193,7 +194,7 @@ $('wetterKnopf').onclick = () => wetter.setze(WETTER_NAMEN[(WETTER_NAMEN.indexOf
 addEventListener('pagehide', () => speicher.jetztSpeichern());
 // Pause-Menü: Spielstand laden = seine Welt neu erzeugen (Seed) und die gespeicherten Änderungen einspielen
 const menue = createPause({
-  speicher, holeStand: standDaten, aend: () => aend, uhr, renderer, szene, anpassen: groesseAnpassen, onPause: (an) => { pausiert = an; },
+  speicher, holeStand: standDaten, aend: () => aend, uhr, renderer, szene, anpassen: groesseAnpassen, onPause: (an) => { pausiert = an; if (an) sachen?.anzeige.fenster.schliesse(); },
   ladeStand(d) {
     const [preset, seed, groesse] = String(d?.welt ?? '').split('|');
     if (!PRESETS[preset]) return;

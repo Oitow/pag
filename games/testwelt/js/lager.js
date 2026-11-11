@@ -8,6 +8,7 @@ import { createStationen } from '../../../engine/gameplay/stationen.js';
 import { rng, hashSeed, range } from '../../../engine/core/rng.js';
 
 const PLATZ_RADIUS = 4.6;   // so viel wird eingeebnet und von Bäumen/Felsen befreit
+export const LAGER_RADIUS = PLATZ_RADIUS;
 const TRUHE_INHALT = [{ id: 'schaufel', anzahl: 1 }, { id: 'holz', anzahl: 4 }, { id: 'stein', anzahl: 3 }, { id: 'apfel', anzahl: 2 }];
 
 /** Trockenen, halbwegs flachen, änderbaren Platz in der Nähe des Starts suchen: { x, z, winkel } (Tür zeigt zum Start) oder null. */

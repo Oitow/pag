@@ -8,7 +8,7 @@
  *   const t = tueren.neu('haus', { x: 4, z: 2, winkel: 0, breite: 1.2, angel: 'links', schluessel: 'schluessel' });
  *   // je Bild: tueren.update(dt);  Mesh: pivot.position.set(t.angelPos.x, t.y, t.angelPos.z); pivot.rotation.y = t.winkel + t.drehung;
  * @tags     tuer, tor, oeffnen, schluessel, kollision, interaktion, gameplay
- * @version  1.0.0
+ * @version  1.0.1
  * @status   entwurf
  * @three    nein
  *
@@ -165,7 +165,7 @@ export function createTueren({ welt = null, interaktion = null, ereignisse = nul
 
   function zustand() {
     const s = {};
-    for (const t of tueren.values()) s[t.id] = { o: t.offen ? 1 : 0, v: t.verschlossen ? 1 : 0 };
+    for (const t of tueren.values()) s[t.id] = { o: t.offen ? 1 : 0, v: t.verschlossen ? 1 : 0, s: t.seite };
     return s;
   }
 
@@ -175,6 +175,7 @@ export function createTueren({ welt = null, interaktion = null, ereignisse = nul
       if (!t || !e) continue;
       t.offen = !!e.o;
       t.verschlossen = !!e.v;
+      if (e.s === 1 || e.s === -1) t.seite = e.s;       // offene Tür schwingt nach dem Laden zur selben Seite
       t.anteil = t.offen ? 1 : 0;
       wartezeit.set(id, 0);
       koerperSetzen(t);

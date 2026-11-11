@@ -1,7 +1,7 @@
 /**
  * @modul    welt-aenderung
  * @zweck    Änderungs-Schicht über einer erzeugten Welt (ohne THREE): Gelände mit Pinseln heben, senken, glätten, einebnen und Objekte entfernen; gemerkt werden nur die Unterschiede zum Seed (kleiner Spielstand), mit Rückgängig/Wiederholen, Sperrzonen (Wasser, Wege) und Meldung des geänderten Bereichs fürs Neuzeichnen
- * @api      createWeltAenderung(adapter|welt, {maxSchritte,maxAbweichung,minHoehe,maxHoehe,sperrFlags,ereignisse}) -> {pinsel(art,x,z,{radius,staerke,ziel,form})->bereich|null,kannAendern(x,z),delta(zellIndex)->m,entferneObjekt(index),stelleObjektHer(index),istEntfernt(index),entfernte()->[index],objekteImUmkreis(x,z,radius,filter?)->[index],beginne(),beende()->bool,rueckgaengig()->aenderung|null,wiederholen()->aenderung|null,kannRueckgaengig,kannWiederholen,festschreiben(),zuruecksetzen()->bereich|null,zustand(),lade(stand)->bereich|null,zuWelt(bereich)->{x0,z0,x1,z1},onAenderung(fn)->abmelden,anzahl,dispose()} ; PINSEL_ARTEN
+ * @api      createWeltAenderung(adapter|welt, {maxSchritte,maxAbweichung,minHoehe,maxHoehe,sperrFlags,ereignisse}) -> {pinsel(art,x,z,{radius,staerke,ziel,form})->bereich|null,kannAendern(x,z),sperreUmkreis(x,z,radius,an?)->zellen,delta(zellIndex)->m,entferneObjekt(index),stelleObjektHer(index),istEntfernt(index),entfernte()->[index],objekteImUmkreis(x,z,radius,filter?)->[index],beginne(),beende()->bool,rueckgaengig()->aenderung|null,wiederholen()->aenderung|null,kannRueckgaengig,kannWiederholen,festschreiben(),zuruecksetzen()->bereich|null,zustand(),lade(stand)->bereich|null,zuWelt(bereich)->{x0,z0,x1,z1},onAenderung(fn)->abmelden,anzahl,dispose()} ; PINSEL_ARTEN
  * @beispiel
  *   import { createWeltAenderung } from '../../engine/world/welt-aenderung.js';
  *   const aend = createWeltAenderung(adapter, { maxAbweichung: 4 });
@@ -10,7 +10,7 @@
  *   aend.rueckgaengig();
  *   speicher.speichere('welt', { seed, aenderung: aend.zustand() });        // Spielstand = Seed + Änderungen
  * @tags     welt, gelaende, terrain, aendern, graben, pinsel, editor, bauen, rueckgaengig, undo, speichern, objekte
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
@@ -22,7 +22,8 @@
 // bereich = { x0, y0, x1, y1 } in Gitterzellen (einschließlich), bei pinsel() zusätzlich `volumen` (m³, + = aufgeschüttet).
 // Schritte: Alles zwischen beginne() und beende() ist EIN Rückgängig-Schritt (ein Pinselstrich); ohne Klammer jede Änderung für sich.
 // onAenderung(fn) / Ereignis 'welt:geaendert': { bereich | null, objekte: [[index, entfernt]], grund }.
-// Gesperrt sind Zellen mit sperrFlags (Standard: Wasser + Wege) und die direkten Nachbarn von Wasser (Uferlinie bleibt heil).
+// Gesperrt sind Zellen mit sperrFlags (Standard: Wasser + Wege) und die direkten Nachbarn von Wasser (Uferlinie bleibt heil);
+// dazu eigene Zonen des Spiels über sperreUmkreis() (z. B. unter Gebäuden).
 // festschreiben(): der jetzige Stand gilt als Ausgangswelt (z. B. vom Spiel eingeebneter Bauplatz) – kommt nicht in den Spielstand.
 import { FLAG, WASSER } from './worldgen/worldgen-grid.js';
 
@@ -84,10 +85,10 @@ export function createWeltAenderung(quelle, opts = {}) {
     return true;
   }
   function schreibe(i, wert) {
-    const alt = H[i];
+    const alt = H[i], b = basis.has(i) ? basis.get(i) : alt;
+    wert = Math.fround(klemme(wert, Math.max(minHoehe / hs, b - maxAbweichung / hs), Math.min(maxHoehe / hs, b + maxAbweichung / hs)));
+    if (wert === alt) return 0;                          // nichts zu tun (Grenze erreicht) → kein leerer Rückgängig-Schritt
     if (!basis.has(i)) basis.set(i, alt);
-    const b = basis.get(i);
-    wert = klemme(wert, Math.max(minHoehe / hs, b - maxAbweichung / hs), Math.min(maxHoehe / hs, b + maxAbweichung / hs));
     const s = schrittAuf();
     if (!s.zellen.has(i)) s.zellen.set(i, alt);
     H[i] = wert;
@@ -197,6 +198,18 @@ export function createWeltAenderung(quelle, opts = {}) {
 
   return {
     welt, pinsel, objekteImUmkreis,
+    /** Zellen im Umkreis sperren (an = false: wieder freigeben) – z. B. unter einem Gebäude. Gilt für Pinsel und kannAendern, nicht für lade(). */
+    sperreUmkreis(x, z, radius, an = true) {
+      const S = sperre(), cx = zx(x, z), cy = zy(x, z), r = radius / zell;
+      let n = 0;
+      for (let b = Math.max(0, Math.ceil(cy - r)); b <= Math.min(T - 1, Math.floor(cy + r)); b++) for (let a = Math.max(0, Math.ceil(cx - r)); a <= Math.min(B - 1, Math.floor(cx + r)); a++) {
+        if (Math.hypot(a - cx, b - cy) > r) continue;
+        const i = b * B + a;
+        if (an) S[i] |= 2; else S[i] &= ~2;
+        n++;
+      }
+      return n;
+    },
     /** Darf an (x, z) gegraben/aufgeschüttet werden (nicht gesperrt, in der Karte)? */
     kannAendern(x, z) {
       const a = Math.round(zx(x, z)), b = Math.round(zy(x, z));

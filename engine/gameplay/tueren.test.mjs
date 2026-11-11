@@ -144,7 +144,7 @@ test('zustand/lade über JSON, Körper passend', () => {
   t.neu('a', { x: 0, z: 0 }); t.neu('b', { x: 5, z: 0, schluessel: 's' });
   t.oeffne('a');
   const stand = JSON.parse(JSON.stringify(t.zustand()));
-  assert.deepEqual(stand, { a: { o: 1, v: 0 }, b: { o: 0, v: 1 } });
+  assert.deepEqual(stand, { a: { o: 1, v: 0, s: 1 }, b: { o: 0, v: 1, s: 1 } });
   const w2 = basis(), t2 = createTueren({ welt: w2 });
   t2.neu('a', { x: 0, z: 0 }); t2.neu('b', { x: 5, z: 0, schluessel: 's' });
   t2.lade(stand);
@@ -168,4 +168,18 @@ test('entferne/dispose räumen Körper und Ziele ab', () => {
   assert.equal(welt.anzahl, 0);
   assert.equal(ia.anzahl, 0);
   assert.equal(t.anzahl, 0);
+});
+
+test('1.0.1: Schwenkrichtung einer offenen Tür übersteht Speichern/Laden', () => {
+  const a = createTueren(), b = createTueren();
+  const t = a.neu('t', { x: 0, z: 0 }), u = b.neu('t', { x: 0, z: 0 });
+  a.oeffne('t', { x: 0, z: -2 }); a.update(1);
+  const s1 = t.seite;
+  a.schliesse('t'); a.update(1);
+  a.oeffne('t', { x: 0, z: 2 }); a.update(1);
+  assert.equal(t.seite, -s1);
+  b.lade(JSON.parse(JSON.stringify(a.zustand())));
+  assert.equal(u.offen, true);
+  assert.equal(u.seite, t.seite);
+  assert.equal(u.drehung, t.drehung);
 });

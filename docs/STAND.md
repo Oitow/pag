@@ -11,6 +11,8 @@
 - Alles grün (Engine-Tests, Build, Smoke); neue Funktionen im Browser durchgespielt (Desktop + Handy-Format)
 - Bekannt: Truhe lässt sich durch die Schuppenwand öffnen (Interaktion prüft keine Sichtlinie)
 - Bekannt: Gelände-Raster ist 2 m – Löcher werden breit und flach (Pinsel 3 m Radius)
+- Bekannt: Leisten-Plätze sind auf schmalen Handys ~36 px (8 Plätze + 🔨 in einer Reihe) – bei Bedarf zweizeilig
+- Unter dem Schuppen (Radius 5,6 m), auf Wegen und am Wasser kann man nicht graben (`welt-aenderung.sperreUmkreis`)
 
 ## Nächster Schritt
 - Etappe 2 Rest: `gameplay/bau-raster` + `models/bau/*` (Wand, Boden, Dach, Zaun – Tür-Logik steht), dafür Instanzen zur Laufzeit in `scatter-mesh`; `ui/werkzeug-leiste`

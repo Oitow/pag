@@ -8,7 +8,7 @@
  *     gewaehlt: () => hand.platz, onTipp: (platz) => hand.waehle(platz) });
  *   // jedes Bild: leiste.update(dt);   // dt in Sekunden; nötig für onLang und für den Wechsel des gewählten Platzes
  * @tags     ui, inventar, schnellleiste, hotbar, rucksack, truhe, raster, hud, touch
- * @version  1.0.0
+ * @version  1.0.1
  * @status   entwurf
  * @three    nein
  */
@@ -115,7 +115,7 @@ export function createInventarAnsicht({
     });
     b.addEventListener('pointerup', (e) => ende(e, false));
     b.addEventListener('pointercancel', (e) => ende(e, true));
-    b.addEventListener('pointerleave', (e) => ende(e, false));
+    b.addEventListener('pointerleave', (e) => ende(e, true));    // Finger rutscht vom Feld = abgebrochen
     felder.push(b);
     el.append(b);
   }

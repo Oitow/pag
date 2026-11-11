@@ -179,7 +179,7 @@ export function createSachen({ szene, welt, objekte, bewohner = [], start, seed 
       dinge.update(dt);
       if ((abbauZeit -= dt) <= 0) { abbauZeit = 0.15; abbauSuchen(p); }
       lager?.update(dt, wer);
-      graben?.update(wer);
+      const sperrText = graben?.update(wer) || '';
       interaktion.aktualisiere();
       const res = interaktion.halte(wer, dt, gehalten);
       const ziel = res.ziel;
@@ -188,7 +188,7 @@ export function createSachen({ szene, welt, objekte, bewohner = [], start, seed 
       if (arbeitet && hackZeit <= 0) { figur.spiele('hacken'); hackZeit = 0.8; if (ziel.art === 'abbau') figur.blickZu({ x: ziel.x, y: p.y + 1, z: ziel.z }); }
       if (ziel?.art !== 'npc' && !(ziel?.art === 'abbau' && res.anteil > 0)) figur.blickZu(null);
       for (const [d, mesh] of meshes) { const k = d.koerper; if (!k.ruht || mesh.position.y !== k.pos.y) mesh.position.set(k.pos.x, k.pos.y, k.pos.z); }
-      anzeige.hinweis(ziel ? (ziel.dauer > 0 ? `E halten – ${ziel.text}` : `E – ${ziel.text}`) : '', ziel?.dauer > 0 && res.anteil > 0 ? res.anteil : null);
+      anzeige.hinweis(ziel ? (ziel.dauer > 0 ? `E halten – ${ziel.text}` : `E – ${ziel.text}`) : sperrText, ziel?.dauer > 0 && res.anteil > 0 ? res.anteil : null);
       anzeige.update(dt);
       return ziel;
     },

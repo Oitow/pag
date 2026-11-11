@@ -1037,7 +1037,7 @@ beiWem() liefert die verschiedenen Arten als Array (darf per `aus` wiederverwend
 Mit `interaktion` wird jede Station als Ziel 'station:<id>' gemeldet (Hinweistext, Aktion = benutze); inaktiv = Ziel nicht aktiv.
 Ereignis: 'station:benutzt' { station, wer }. zustand()/lade() sichern nur den Aktiv-Zustand ({id: 0|1}).
 
-### tueren · `engine/gameplay/tueren.js` · v1.0.0 · entwurf
+### tueren · `engine/gameplay/tueren.js` · v1.0.1 · entwurf
 Türen und Tore als reine Logik: auf/zu mit weicher Animation, Kollisions-Körper nur solange zu, Schlüssel/Sperre, Selbstschließen, Interaktions-Ziel
 
 - `createTueren({welt,interaktion,ereignisse,dauer,autoZu,maxWinkel}) -> {neu(id,{x,z,y,winkel,breite,dicke,hoehe,offen,angel,schluessel,verbraucht,name,autoZu,daten})->tuer,entferne(id),hole(id),alle(),anzahl,schalte(id,wer?)->{ok,grund,offen},oeffne(id,wer?),schliesse(id,wer?),sperre(id,an?),update(dt)->Anzahl bewegter,zustand(),lade(stand),dispose()}`
@@ -1985,7 +1985,7 @@ hud.update(dt);                                    // jedes Bild (lässt Meldung
 
 Genutzt von: testwelt · Tags: ui, hud, hinweis, meldung, toast, balken, leben, leiste, overlay · THREE: nein
 
-### inventar-ansicht · `engine/ui/inventar-ansicht.js` · v1.0.0 · entwurf
+### inventar-ansicht · `engine/ui/inventar-ansicht.js` · v1.0.1 · entwurf
 Zeigt ein Inventar als Reihe/Raster von Plätzen (Schnellleiste, Rucksack, Truhe): Zeichen, Anzahl, Haltbarkeits-Strich, gewählter Platz, Tippen und Gedrückt-halten
 
 - `createInventarAnsicht({inventar,register,eltern,von,bis,spalten,groesse,breite,gewaehlt,titel,onTipp,onLang,langMs,zeichen,farben}) -> {element,felder,zeichne(),update(dt),dispose()}`
@@ -2154,10 +2154,10 @@ const begehbar = mitBruecken(adapter, wege.lagen);   // diesen Adapter der Figur
 
 Genutzt von: testwelt · Tags: welt, wege, bruecke, holz, mesh · THREE: ja
 
-### welt-aenderung · `engine/world/welt-aenderung.js` · v1.0.0 · entwurf
+### welt-aenderung · `engine/world/welt-aenderung.js` · v1.1.0 · entwurf
 Änderungs-Schicht über einer erzeugten Welt (ohne THREE): Gelände mit Pinseln heben, senken, glätten, einebnen und Objekte entfernen; gemerkt werden nur die Unterschiede zum Seed (kleiner Spielstand), mit Rückgängig/Wiederholen, Sperrzonen (Wasser, Wege) und Meldung des geänderten Bereichs fürs Neuzeichnen
 
-- `createWeltAenderung(adapter|welt, {maxSchritte,maxAbweichung,minHoehe,maxHoehe,sperrFlags,ereignisse}) -> {pinsel(art,x,z,{radius,staerke,ziel,form})->bereich|null,kannAendern(x,z),delta(zellIndex)->m,entferneObjekt(index),stelleObjektHer(index),istEntfernt(index),entfernte()->[index],objekteImUmkreis(x,z,radius,filter?)->[index],beginne(),beende()->bool,rueckgaengig()->aenderung|null,wiederholen()->aenderung|null,kannRueckgaengig,kannWiederholen,festschreiben(),zuruecksetzen()->bereich|null,zustand(),lade(stand)->bereich|null,zuWelt(bereich)->{x0,z0,x1,z1},onAenderung(fn)->abmelden,anzahl,dispose()}`
+- `createWeltAenderung(adapter|welt, {maxSchritte,maxAbweichung,minHoehe,maxHoehe,sperrFlags,ereignisse}) -> {pinsel(art,x,z,{radius,staerke,ziel,form})->bereich|null,kannAendern(x,z),sperreUmkreis(x,z,radius,an?)->zellen,delta(zellIndex)->m,entferneObjekt(index),stelleObjektHer(index),istEntfernt(index),entfernte()->[index],objekteImUmkreis(x,z,radius,filter?)->[index],beginne(),beende()->bool,rueckgaengig()->aenderung|null,wiederholen()->aenderung|null,kannRueckgaengig,kannWiederholen,festschreiben(),zuruecksetzen()->bereich|null,zustand(),lade(stand)->bereich|null,zuWelt(bereich)->{x0,z0,x1,z1},onAenderung(fn)->abmelden,anzahl,dispose()}`
 - `PINSEL_ARTEN`
 
 ```js

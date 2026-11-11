@@ -202,3 +202,24 @@ test('onAenderung meldet Bereich, zuWelt rechnet in Meter; rohe Welt ohne Adapte
   assert.throws(() => createWeltAenderung({}));
   roh.dispose(); aend.dispose();
 });
+
+test('1.1: sperreUmkreis schützt Bauplätze; Pinsel an der Grenze erzeugt keinen leeren Rückgängig-Schritt', () => {
+  const a = mitAdapter(), aend = createWeltAenderung(a, { maxAbweichung: 1 }), H = a.welt.hoehe;
+  assert.ok(aend.sperreUmkreis(0, 0, 4) >= 9);
+  assert.equal(aend.kannAendern(0, 0), false);
+  assert.equal(aend.kannAendern(2, 2), false);
+  assert.equal(aend.kannAendern(8, 0), true);
+  aend.pinsel('senken', 0, 0, { radius: 10, staerke: 1 });
+  assert.equal(H[16 * 32 + 16], Math.fround(0.1));        // Mitte unberührt
+  assert.ok(H[16 * 32 + 19] < 0.1);                       // außerhalb der Zone gegraben
+  aend.sperreUmkreis(0, 0, 4, false);
+  assert.equal(aend.kannAendern(0, 0), true);
+  assert.equal(aend.kannAendern(a.zuWelt(3, 10).x, a.zuWelt(3, 10).z), false);   // Fluss bleibt gesperrt
+  // bis an die Grenze graben, dann weiter: keine neuen Schritte
+  aend.zuruecksetzen();
+  for (let k = 0; k < 4; k++) aend.pinsel('senken', 20, 20, { radius: 2, staerke: 1, form: 'hart' });
+  const schritte = aend.anzahl.schritte;
+  assert.equal(aend.pinsel('senken', 20, 20, { radius: 2, staerke: 1, form: 'hart' }), null);
+  assert.equal(aend.anzahl.schritte, schritte);
+  assert.ok(schritte <= 2);
+});

@@ -5,7 +5,7 @@ const KLEIN = new Set(['bodendecker', 'blume', 'unterholz', 'busch', 'schilf', '
 
 /**
  * opts: { aend (welt-aenderung), interaktion, hand, inventar, dinge (welt-dinge), welt (bodenHoehe), melde(text, opts) }
- * Liefert { update(wer), dispose() } – update je Bild nach hand/inventar, vor interaktion.halte().
+ * Liefert { update(wer) -> Hinweistext ('' oder „hier geht das nicht“), dispose() } – update je Bild nach hand/inventar, vor interaktion.halte().
  */
 export function createGraben({ aend, interaktion, hand, inventar, dinge, welt, melde = () => {} }) {
   const punkt = { x: 0, y: 0, z: 0 };
@@ -34,12 +34,13 @@ export function createGraben({ aend, interaktion, hand, inventar, dinge, welt, m
       const neu = hand.hatTag('schaufel') ? 'graben' : hand.gegenstand()?.id === 'erde' ? 'schuetten' : null;
       punkt.x = wer.x + Math.sin(wer.yaw) * VOR; punkt.z = wer.z + Math.cos(wer.yaw) * VOR; punkt.y = wer.y;
       const geht = neu && aend.kannAendern(punkt.x, punkt.z);
-      if (!geht) { if (art) { interaktion.entferne('graben'); art = null; } return; }
-      if (neu === art) return;
+      if (!geht) { if (art) { interaktion.entferne('graben'); art = null; } return neu ? 'Hier geht das nicht (Weg, Wasser oder Schuppen)' : ''; }
+      if (neu === art) return '';
       art = neu;
       interaktion.entferne('graben');
       interaktion.melde('graben', { pos: () => punkt, radius: 0.3, reichweite: VOR + 0.5, art: 'graben', prio: -1.5,
         text: art === 'graben' ? 'Graben' : 'Aufschütten', dauer: art === 'graben' ? 0.7 : 0.4, aktion });
+      return '';
     },
     dispose() { interaktion.entferne('graben'); },
   };

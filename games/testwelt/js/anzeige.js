@@ -36,7 +36,7 @@ export function createAnzeige({ inventar, register, hand, rezepte, ereignisse, w
         const p = rezepte.pruefe(rz.id, inventar, { stationen });
         const zutaten = Object.entries(rz.zutaten).map(([id, n]) => `${n}× ${name(id)}`).join(' · ');
         return { text: name(rz.ergebnis.id), hinweis: zutaten + (p.grund === 'station' ? ' · nur an der Werkbank' : ''), aktiv: p.ok,
-          aktion: () => { rezepte.stelleHer(rz.id, inventar, { stationen, wer }); } };
+          aktion: () => { rezepte.stelleHer(rz.id, inventar, { stationen: stationenNah(), wer }); } };   // frisch prüfen: Fenster pausiert nicht
       });
       return [{ art: 'text', text: stationen.includes('werkbank') ? 'An der Werkbank – alle Rezepte.' : 'Von Hand. An der Werkbank beim Schuppen geht mehr.' }, ...zeilen];
     },
