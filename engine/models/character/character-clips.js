@@ -8,7 +8,7 @@
  *   registriereClip('verbeugen', { dauer: 1.2, maske: 'ganz', fuesseFest: true,
  *     keys: [{ t: 0, pose: {} }, { t: 0.5, pose: { torso: [1.0, 0, 0] } }, { t: 1.2, pose: {} }] });
  * @tags     figur, charakter, animation, clip, keyframe, aktion, angriff, emote
- * @version  1.2.0
+ * @version  1.3.0
  * @status   entwurf
  * @three    nein
  */
@@ -20,7 +20,7 @@ import { ZAUBER_CLIPS } from './character-clips-zauber.js';
 export { IDLE_VARIANTEN };
 
 /*
- * Clip = { dauer (s), trefferBei (s), maske: 'ganz'|'oben'|'arme'|'armL'|'armR'|'kopf'|'rumpf', schleife, schleifeAb (s), halten, fuesseFest, ease, keys,
+ * Clip = { dauer (s), trefferBei (s), spannBei (s, Moment größter Spannung vor dem Schlag – dort hält der Animator bei halteBei; Standard 0.7 × trefferBei), maske: 'ganz'|'oben'|'arme'|'armL'|'armR'|'kopf'|'rumpf', schleife, schleifeAb (s), halten, fuesseFest, ease, keys,
  *          einblenden (s, Standard 0.12), ausblenden (s, Standard = einblenden), ausdruck (Mimik-Name|null), idle (Idle-Variante) }
  *   keys: [{ t, pose: { <knochen>: [x,y,z] | {x,y,z}, basisPos: [x,y,z] }, ease? }] – fehlende Kanäle = 0 (Ruhe).
  *   ease (Clip-Standard oder je Key für das Stück davor): 'weich' | 'linear' | 'rein' (beschleunigt, für Schläge) | 'raus'.
@@ -223,12 +223,13 @@ export function registriereClip(name, def) {
   if (!keys.length) keys.push({ t: 0, pose: {}, ease: null });
   const dauer = Math.max(+def.dauer || keys[keys.length - 1].t, 1e-3);
   const clip = {
-    name, dauer, trefferBei: clamp(+def.trefferBei || 0, 0, dauer), maske: MASKEN[def.maske] ? def.maske : 'ganz',
+    name, dauer, trefferBei: clamp(+def.trefferBei || 0, 0, dauer), spannBei: 0, maske: MASKEN[def.maske] ? def.maske : 'ganz',
     schleife: !!def.schleife, schleifeAb: clamp(+def.schleifeAb || 0, 0, dauer), halten: !!def.halten,
     fuesseFest: !!def.fuesseFest, ease: EASE[def.ease] ? def.ease : 'weich', keys,
     einblenden: Math.max(0, Number.isFinite(+def.einblenden) && def.einblenden != null ? +def.einblenden : 0.12),
     ausdruck: typeof def.ausdruck === 'string' ? def.ausdruck : null, idle: !!def.idle,
   };
+  clip.spannBei = clamp(Number.isFinite(+def.spannBei) && def.spannBei != null ? +def.spannBei : clip.trefferBei * 0.7, 0, clip.trefferBei);
   clip.ausblenden = Math.max(0, def.ausblenden != null && Number.isFinite(+def.ausblenden) ? +def.ausblenden : clip.einblenden);
   if (!CLIPS[name]) CLIP_NAMEN.push(name);
   CLIPS[name] = clip;

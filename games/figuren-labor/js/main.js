@@ -4,6 +4,8 @@ import { createWelt } from './welt.js';
 import { createEditor } from './editor.js';
 import { createOberflaeche } from './oberflaeche.js';
 import { createZauberSpiel } from './zauber-spiel.js';
+import { createHordeSpiel } from './horde-spiel.js';
+import { createKlang } from '../../../engine/audio/klang.js';
 import { ZAUBER, ZAUBER_NAMEN } from '../../../engine/gameplay/zauber.js';
 import { createCharacter } from '../../../engine/gameplay/character.js';
 import { createSteering } from '../../../engine/gameplay/character-steering.js';
@@ -56,8 +58,8 @@ let gespeichert = null;
 try { gespeichert = JSON.parse(localStorage.getItem(SPEICHER) || 'null'); } catch { /* egal */ }
 const schritte = { n: 0 };
 const spieler = createCharacter({
-  look: gespeichert || VORLAGEN.wanderer, seed: SEED, welt: welt.adapter, pos: { x: 0, y: 0, z: 4 }, yaw: Math.PI,
-  onSchritt: () => { schritte.n++; }, schilder, name: (gespeichert || VORLAGEN.wanderer).name,
+  look: gespeichert || VORLAGEN.magier, seed: SEED, welt: welt.adapter, pos: { x: 0, y: 0, z: 4 }, yaw: Math.PI,
+  onSchritt: () => { schritte.n++; }, schilder, name: (gespeichert || VORLAGEN.magier).name,
 });
 // Ausrüstung (character-ausruestung): je Hand ein Gegenstand (Schild/Buch links, der Rest rechts); nochmal wählen = ablegen
 const haende = { handR: null, handL: null };
@@ -74,6 +76,8 @@ function setAusruestung(name) {
   return Object.values(haende).filter(Boolean).map(h => h.name);
 }
 szene.add(spieler.root);
+setAusruestung('zauberstab');
+const klang = createKlang({ lautstaerke: 0.55, seed: SEED });
 
 const eingabe = createMoveInput({
   element: renderer.domElement,
@@ -131,7 +135,7 @@ let schilderAn = true, infoAn = false;
 const PRESETS = Object.keys(KAMERA_PRESETS);
 const ui = createOberflaeche({
   zauber: ZAUBER, ausruestung: ausruestungsNamen, kameras: PRESETS,
-  onZauber: (name) => zauber.wirke(name),
+  onZauber: (name) => zauber.wirke(name),   // Leiste antippen: ohne Überladen
   onAusruestung: setAusruestung,
   onKamera: (name) => kamera.setPreset(name),
   onSchalter: (id, an) => {
@@ -140,6 +144,7 @@ const ui = createOberflaeche({
     else if (id === 'info') { infoAn = an; $('info').style.display = an ? '' : 'none'; }
     else if (id === 'ichsicht') kamera.setErstePerson(an);
     else if (id === 'freimana') zauber.buch.setFreiesMana(an);
+    else if (id === 'ton') klang.stumm = !an;
     else if (id === 'psx') {
       psx.setze({ an }); groesseSetzen();
       try { localStorage.setItem(PSX_SPEICHER, an ? '1' : '0'); } catch { /* voll/privat */ }
@@ -149,12 +154,28 @@ const ui = createOberflaeche({
     if (id === 'fahrt') { ui.schliesse(); kamera.fahrt({ pos: { x: 8, y: 9, z: -22 }, blick: () => spieler.zustand.pos, dauer: 1.5, halten: 2 }); }
     else if (id === 'treffen') zauber.spielerTreffen(25);
     else if (id === 'heilen') zauber.alleHeilen();
+    else if (id === 'plage') plageUmschalten();
   },
   onOffen: () => setTimeout(bildAusschnitt, 260),
 });
-const zauber = createZauberSpiel({
-  spieler, npcs, npcsAn: () => npcAn, szene, welt: welt.adapter, kamera, lockZiel: () => ziel, seed: SEED, onMeldung: (t) => ui.melde(t),
+// Rattenplage (Horden-Gegner für Flächenzauber); Bisse gehen an zauber.spielerTreffen
+const plage = createHordeSpiel({
+  szene, welt: welt.adapter, spieler, seed: SEED, klang, onMeldung: (t) => ui.melde(t),
+  onBiss: (schaden, w) => zauber.spielerTreffen(schaden, { leise: true, von: w, toedlich: true }),
 });
+let schmerz = 0;
+const zauber = createZauberSpiel({
+  spieler, npcs, npcsAn: () => npcAn, horde: plage.horde, szene, welt: welt.adapter, kamera, lockZiel: () => ziel, seed: SEED, klang,
+  onMeldung: (t) => ui.melde(t), onSchmerz: (a) => { schmerz = Math.max(schmerz, a); },
+});
+function plageUmschalten() {
+  if (plage.an) plage.stopp(); else { plage.start(); ui.schliesse(); }
+  $('bPlage').classList.toggle('an', plage.an);
+  document.querySelector('[data-knopf="plage"]')?.classList.toggle('an', plage.an);
+  $('welle').style.display = plage.an ? '' : 'none';
+}
+$('bPlage').onclick = (e) => { plageUmschalten(); e.currentTarget.blur(); };
+ui.setAusruestung(['zauberstab']);
 const editor = createEditor({
   wurzel: ui.seite('aussehen'), look: spieler.look,
   onAenderung: (l) => { spieler.setLook(l); spieler.setName(l.name); try { localStorage.setItem(SPEICHER, JSON.stringify(l)); } catch { /* voll/privat */ } },
@@ -162,11 +183,16 @@ const editor = createEditor({
 // Beim Tippen (Name) keine Spiel-Eingabe; Zifferntasten 1–0 wählen und wirken sofort
 addEventListener('focusin', (e) => { if (e.target.matches?.('input[type=text], .ed-name')) eingabe.setAktiv(false); });
 addEventListener('focusout', () => eingabe.setAktiv(true));
+// Zifferntasten 1–0, ß/- und ´/= wählen und laden sofort; loslassen = auslösen (halten = überladen)
+const ZIFFERN = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal'];
+let zifferGehalten = null;
 addEventListener('keydown', (e) => {
   if (e.target.matches?.('input, select, textarea') || e.repeat) return;
-  const m = /^Digit(\d)$/.exec(e.code);
-  if (m) { const n = ZAUBER_NAMEN[(+m[1] + 9) % 10]; ui.waehle(n); zauber.wirke(n); }
+  const i = ZIFFERN.indexOf(e.code);
+  if (i >= 0 && ZAUBER_NAMEN[i]) { ui.waehle(ZAUBER_NAMEN[i]); if (zauber.wirke(ZAUBER_NAMEN[i], { halten: true })) zifferGehalten = e.code; }
 });
+addEventListener('keyup', (e) => { if (e.code === zifferGehalten) zifferGehalten = null; });
+addEventListener('blur', () => { zifferGehalten = null; });
 // Offenes Blatt verdeckt die Figur → Bildausschnitt verschieben, damit sie im freien Teil steht
 function bildAusschnitt() {
   const v = ui.verdeckt(), k = kamera.kamera;
@@ -224,27 +250,53 @@ addEventListener('resize', () => {
   kamera.kamera.updateProjectionMatrix();
 });
 
+// Rattenplage-Anzeige, Ladebalken und roter Schmerz-Rand
+const ladeEl = $('hud').querySelector('.ladung'), ladeI = ladeEl.querySelector('i'), ladeU = ladeEl.querySelector('u');
+let welleText = '';
+function hudPlage(dt) {
+  const l = zauber.buch.ladung;
+  ladeEl.style.visibility = l ? 'visible' : 'hidden';
+  if (l) {
+    ladeI.style.width = Math.round((l.phase === 'laden' ? l.anteil : 1) * 100) + '%';
+    ladeU.style.width = Math.round(l.ueber * 100) + '%';
+    ladeEl.classList.toggle('voll', l.ueber > 0.98);
+  }
+  if (schmerz > 0) { $('schmerz').style.opacity = schmerz.toFixed(2); schmerz = Math.max(0, schmerz - dt * 2.2); if (!schmerz) $('schmerz').style.opacity = 0; }
+  if (plage.an) {
+    const t = `🐀 Welle ${plage.zustand.welle} · übrig ${plage.horde.anzahl} · ☠ ${plage.horde.getoetet}`;
+    if (t !== welleText) { welleText = t; $('welle').textContent = t; }
+  }
+}
+
 // ---- Schleife ----
 let letzte = performance.now(), fpsZeit = 0, fpsN = 0, fps = 0;
 function bild(jetzt) {
-  const dt = Math.min((jetzt - letzte) / 1000, 0.1);
+  const echtDt = Math.min((jetzt - letzte) / 1000, 0.1);
   letzte = jetzt;
+  const dt = echtDt * zauber.zeitFaktor(echtDt);   // Treffer-Stopp: die Welt hält kurz die Luft an
   fpsZeit += dt; fpsN++;
   if (fpsZeit > 0.5) { fps = Math.round(fpsN / fpsZeit); fpsZeit = 0; fpsN = 0; }
 
   const e = eingabe.lesen();
   kamera.drehen(e.kameraX, e.kameraY);
   if (e.zoom) kamera.zoomen(e.zoom);
-  if (eingabe.gedrueckt('schlagen')) spieler.aktion('schlagen');
+  const laedt = !!zauber.buch.wirkt;
+  if (eingabe.gedrueckt('schlagen') && !laedt) spieler.aktion('schlagen');
   if (eingabe.gedrueckt('winken')) spieler.aktion('winken');
   if (eingabe.gedrueckt('ziel')) zielWaehlen();
   zuAbsicht(e, kamera.blickYaw(), absicht);       // inkl. rollen/gleiten/tauchen-Flags für den Motor
   const zp = ziel && zielPos(ziel);
-  if (eingabe.gedrueckt('zaubern')) zauber.wirke(ui.gewaehlt);
+  // Zaubern: drücken = Aufladen beginnt, halten = überladen, loslassen = Schlag; Rolle bricht ab (Mana zurück)
+  if (eingabe.gedrueckt('zaubern')) zauber.wirke(ui.gewaehlt, { halten: true });
+  if (!eingabe.gehalten('zaubern') && !zifferGehalten) zauber.loslassen();
+  if (eingabe.gedrueckt('rollen') && laedt) zauber.abbrechen();
+  const schwer = zauber.tempoFaktor;
+  if (zauber.tot) { absicht.x = absicht.z = 0; absicht.springen = false; }
+  else if (schwer < 1) { absicht.x *= schwer; absicht.z *= schwer; absicht.sprint = false; absicht.springen = false; }
   absicht.blickYaw = zauber.drehYaw ?? (kamera.erstePerson ? kamera.yaw : zp ? Math.atan2(zp.x - spieler.zustand.pos.x, zp.z - spieler.zustand.pos.z) : undefined);
   spieler.update(dt, absicht);
   // Dauer-Clips (tragen, sitzenBoden, schlafen …) laufen bis stoppe() → ⏹ in der Leiste, solange eine Aktion läuft
-  const laeuft = !!spieler.animator.aktion;
+  const laeuft = !!spieler.animator.aktion && !spieler.animator.aktion.startsWith('zauber');   // Zauber-Gesten enden von selbst
   if (laeuft !== stoppAn) { stoppAn = laeuft; $('bStopp').style.display = laeuft ? '' : 'none'; }
   const z = spieler.zustand;
   // NPC in Reichweite → 💬 / E: NPC dreht den Kopf her und antwortet
@@ -273,12 +325,14 @@ function bild(jetzt) {
     }
   }
 
+  plage.update(dt, !zauber.tot);
   zauber.update(dt, renderer.domElement.height);
-  ui.update(dt, zauber.buch, zauber.zustand);
-  kamera.update(dt, z.pos, { tempo: z.tempo, sprintet: z.sprintet, yaw: z.yaw, amBoden: z.amBoden, augenHoehe: spieler.model.masse.augenHoehe });
+  ui.update(echtDt, zauber.buch, zauber.zustand);
+  hudPlage(echtDt);
+  kamera.update(echtDt, z.pos, { tempo: z.tempo, sprintet: z.sprintet, yaw: z.yaw, amBoden: z.amBoden, augenHoehe: spieler.model.masse.augenHoehe });
   spieler.setSichtbar(!kamera.figurAusblenden);
   if (schilderAn) spieler.schild?.zeige(!kamera.erstePerson);
-  schilder.update(kamera.kamera, dt);
+  schilder.update(kamera.kamera, echtDt);
   sonne.position.set(z.pos.x + 12, z.pos.y + 25, z.pos.z + 8);
   sonne.target.position.set(z.pos.x, z.pos.y, z.pos.z);
 
@@ -289,7 +343,7 @@ function bild(jetzt) {
     `Aktion ${spieler.animator.aktion || '–'} · Eingabe ${e.aktiv}\n` +
     `Kamera ${kamera.erstePerson ? 'Ich-Sicht' : kamera.preset}${ziel ? ' · Ziel ' + ziel.name : ''}${z.rollt ? ' · Rolle' : ''}${z.gleitet ? ' · Gleiten' : ''}`;
 
-  psx.update(dt, szene);
+  psx.update(echtDt, szene);
   renderer.render(szene, kamera.kamera);
   requestAnimationFrame(bild);
 }
@@ -298,4 +352,5 @@ document.querySelector('[data-schalter="psx"]')?.classList.toggle('an', psxAn);
 requestAnimationFrame(bild);
 
 // Für Tests/Debug
-window.labor = { psx, renderer, spieler, npcs, kamera, eingabe, welt, schilder, createLook, clipListe, zauber, ui };
+window.labor = { psx, renderer, spieler, npcs, kamera, eingabe, welt, schilder, createLook, clipListe, zauber, ui, plage, klang };
+if (url.get('plage') === '1') plageUmschalten();

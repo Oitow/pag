@@ -1,7 +1,7 @@
 /**
  * @modul    character-animator
  * @zweck    Prozedurale Figuren-Animation aus dem Motor-Zustand: idle/gehen/laufen/sprinten ohne Fußrutschen, Luft, Landung, Schwimmen, Ducken, Rutschen, Kurvenlage, Atmen, Hang, Idle-Varianten, sekundäre Bewegung, Treffer/Umfallen, Aktions-Clips mit Masken, Blick + Mimik-Hook
- * @api      createAnimator(model,opts) -> { update(dt,zustand) -> pose, spiele(name,{tempo,mischung,schleife}) -> {dauer,trefferBei}, stoppe(name?), aktion, aktionGewicht, blickZu(dirLokal|null), blickZuPunkt(welt|null), treffer(richtung,staerke,{welt}), umfallen(richtung,{staerke,welt}), aufstehen(dauer), ausdruck, mimik, idleVariante, faellt, liegt, sekundaer, hang, gewicht, griff, pose, phase, dispose() } ; createCharacterAnimator = createAnimator
+ * @api      createAnimator(model,opts) -> { update(dt,zustand) -> pose, spiele(name,{tempo,mischung,schleife,halteBei}) -> {dauer,trefferBei,spannBei}, loese({tempo}) -> s, stoppe(name?), aktion, aktionGewicht, blickZu(dirLokal|null), blickZuPunkt(welt|null), treffer(richtung,staerke,{welt}), umfallen(richtung,{staerke,welt}), aufstehen(dauer), ausdruck, mimik, idleVariante, faellt, liegt, sekundaer, hang, gewicht, griff, pose, phase, dispose() } ; createCharacterAnimator = createAnimator
  * @beispiel
  *   import { createAnimator } from '../../engine/models/character/character-animator.js';
  *   const anim = createAnimator({ rig, masse }, { seed: 7, onSchritt: (fuss, st) => schrittGeraeusch(st) });
@@ -10,7 +10,7 @@
  *   anim.treffer({ x: 0, z: -1 }, 0.7);              // Stoß von vorn (Figur-Raum), klingt von selbst ab
  *   anim.blickZuPunkt(spieler.zustand.pos);           // Kopf + Augen folgen (braucht zustand.pos/yaw)
  * @tags     figur, charakter, animation, gang, laufen, schwimmen, springen, aktion, clip, npc, spieler
- * @version  1.1.0
+ * @version  1.2.0
  * @status   entwurf
  * @three    nein
  */
@@ -136,6 +136,7 @@ export function createAnimator(model, opts = {}) {
     const skal = m.hueftHoehe / 0.89;
     if (akt) {
       akt.t += dt * akt.tempo; akt.zeit += dt;
+      if (akt.halteBei != null && akt.t >= akt.halteBei) akt.t = akt.halteBei;   // gespannt halten bis loese()
       const c = akt.clip;
       clipPose(c, akt.t, P.clip, akt.schleife);
       P.clip.basisPos.x *= skal; P.clip.basisPos.y *= skal; P.clip.basisPos.z *= skal;
@@ -248,8 +249,9 @@ export function createAnimator(model, opts = {}) {
     if (o.mimik) o.mimik(mimik);
   }
 
-  /** Spielt einen Clip. mischung (s) = Einblenden (Standard clip.einblenden); schleife überstimmt clip.schleife (Daueraktion bis stoppe()). */
-  function spiele(name, { tempo = 1, mischung, schleife } = {}) {
+  /** Spielt einen Clip. mischung (s) = Einblenden (Standard clip.einblenden); schleife überstimmt clip.schleife (Daueraktion bis stoppe()).
+   *  halteBei (true = clip.spannBei, oder Clip-Sekunden): bleibt dort gespannt stehen, bis loese() ihn weiterlaufen lässt (Aufladen). */
+  function spiele(name, { tempo = 1, mischung, schleife, halteBei } = {}) {
     const clip = CLIPS[name];
     if (!clip) return { dauer: 0, trefferBei: 0 };
     tempo = Math.max(0.05, numOr(tempo, 1));
@@ -258,11 +260,20 @@ export function createAnimator(model, opts = {}) {
     if (laeuft) schnappschuss(ein);
     idle?.abbrechen();
     akt = { name, clip, t: 0, zeit: 0, tempo, mischung: laeuft ? 0 : ein, aus: mischung != null ? ein : clip.ausblenden,
-      schleife: schleife == null ? clip.schleife : !!schleife, w: 0 };
-    return { dauer: clip.dauer / tempo, trefferBei: clip.trefferBei / tempo };
+      schleife: schleife == null ? clip.schleife : !!schleife, w: 0,
+      halteBei: halteBei === true ? clip.spannBei : Number.isFinite(halteBei) ? clamp(halteBei, 0, clip.dauer) : null };
+    return { dauer: clip.dauer / tempo, trefferBei: clip.trefferBei / tempo, spannBei: clip.spannBei / tempo };
   }
 
   const lokal = (rich, welt) => (welt ? richtungLokal(rich, st.yaw) : rich);
+
+  /** Gehaltenen Clip (spiele mit halteBei) weiterlaufen lassen, optional mit neuem Tempo → Sekunden bis trefferBei. */
+  function loese({ tempo } = {}) {
+    if (!akt) return 0;
+    akt.halteBei = null;
+    if (tempo != null) akt.tempo = Math.max(0.05, numOr(tempo, 1));
+    return Math.max(0, akt.clip.trefferBei - akt.t) / akt.tempo;
+  }
 
   function stoppe(name) {
     if (!akt || (name && akt.name !== name)) return;
@@ -284,7 +295,7 @@ export function createAnimator(model, opts = {}) {
     blick: { get: () => blick, enumerable: true },
   });
   Object.assign(api, {
-    update, spiele, stoppe,
+    update, spiele, stoppe, loese,
     blickZu(dir) { blick.zu(dir); },
     /** Weltpunkt {x,y,z} ansehen (nutzt zustand.pos/yaw aus update; ohne pos = wie Richtung ab Ursprung). */
     blickZuPunkt(p) { blick.zuPunkt(p); },
