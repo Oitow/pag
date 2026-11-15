@@ -3,22 +3,20 @@
 > Wird von `/ende` überschrieben und von `/start` gelesen. Höchstens 40 Zeilen.
 
 ## Zuletzt gemacht
-- PS1-Look aus Viniland in die Engine geholt: `render/psx` (`createPsx` → `wendeAn(szene)`, `aufloesung()`, `setze({ an })`), `himmel` 1.1 macht mit
-- Figuren-Labor (☰ → Mehr → 🕹 PS1-Look) und Testwelt (☰ → Optionen: an/aus, Pixel-Zeilen, Wackeln) zeigen ihn, Standard = an
-- Davor: Etappe 3 fertig (Türen, Truhen, Stationen, HUD, Menü) + Etappe 2 Kern (`world/welt-aenderung`)
+- Kampfsystem fürs spätere MMO (Bauplan `docs/KAMPF-SYSTEM.md`): Engine `gameplay/kampf-werte`, `zustaende`, `bedrohung`, `kampf`, `nahkampf`(+daten), `faehigkeiten`(+daten), `ui/kampf-leiste`, `ui/ziel-rahmen`; `zauber-daten` 1.1 (element)
+- Figuren-Labor: Reiter ⚔ Kampf – Kombos (F tippen/halten), Block/Parade (B/🛡), Ausweichen mit Unverwundbarkeit (Q), Rivale mit KI, Trainingspuppe mit DPS, MMO-Leiste (Krieger/Magier/Heiler, GCD, Wirkzeit), Ziel-Rahmen; `?kampf=1`
+- Startseite in Spiele / Labore gegliedert
 
 ## Läuft / kaputt
-- Alles grün (Engine-Tests, Build, Smoke); neue Funktionen im Browser durchgespielt (Desktop + Handy-Format)
-- Bekannt: Truhe lässt sich durch die Schuppenwand öffnen (Interaktion prüft keine Sichtlinie)
-- Bekannt: Gelände-Raster ist 2 m – Löcher werden breit und flach (Pinsel 3 m Radius)
-- Bekannt: Leisten-Plätze sind auf schmalen Handys ~36 px (8 Plätze + 🔨 in einer Reihe) – bei Bedarf zweizeilig
-- PS1-Look: Viniland nutzt noch die eigene `js/psx.js` (nicht umgestellt); Regen/Zauber-Funken (eigene Shader) ohne Farbstufen; Kantenglättung wechselt erst nach Neuladen
-- Unter dem Schuppen (Radius 5,6 m), auf Wegen und am Wasser kann man nicht graben (`welt-aenderung.sperreUmkreis`)
+- Alles grün (618 Tests, Smoke 5 Spiele); Handy-Layout einmal per Screenshot geprüft
+- Nicht abgestimmt: Vorwärtsschritt/Ansturm-Tempo, Parade-/Ausweich-Gefühl gegen den Rivalen (nur Logik getestet)
+- Meldung „−6 Leben“ überlappt am Handy kurz den Spieler-Rahmen
+- Bekannt (alt): Truhe durch Schuppenwand, Gelände-Raster 2 m, Viniland noch eigene `js/psx.js`
 
 ## Nächster Schritt
-- PS1-Look abstimmen (Zeilen/Wackeln/Stimmung am Handy ansehen), danach Viniland auf `engine/render/psx` umstellen
-- Etappe 2 Rest: `gameplay/bau-raster` + `models/bau/*` (Wand, Boden, Dach, Zaun – Tür-Logik steht), dafür Instanzen zur Laufzeit in `scatter-mesh`; `ui/werkzeug-leiste`
-- oder Etappe 4: `audio/sfx` + `render/partikel` (Graben, Fällen, Tür hätten gern Geräusch und Staub)
+- Kampf im Browser abstimmen (Tempo, Treffer-Stopp, Rivale fairer/härter), dann Testwelt: Gegner im Wald nutzen `kampf`
+- MMO-Fundament: stabile Entitäts-IDs + Befehls-Schicht (`kampf.schade`/`leiste.nutze` als Befehle mit Prüfung), Schnappschüsse von `kampf.zustand()`
+- Mehr Waffen-Fähigkeiten (Bogen/Fernkampf), Gruppen-Heilung, Rollen-Talente
 
 ## Entscheidungen
 - PS1-Look liegt als Schicht über der Szene (Materialien werden gepatcht, nicht ersetzt) – Module müssen nichts davon wissen
