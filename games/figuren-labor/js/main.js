@@ -6,6 +6,7 @@ import { createOberflaeche } from './oberflaeche.js';
 import { createZauberSpiel } from './zauber-spiel.js';
 import { createHordeSpiel } from './horde-spiel.js';
 import { createKampfSpiel } from './kampf-spiel.js';
+import { createGrosszauberSpiel } from './grosszauber-spiel.js';
 import { createMmoLeiste } from './mmo-leiste.js';
 import { WAFFEN_NAMEN } from '../../../engine/gameplay/nahkampf.js';
 import { createKlang } from '../../../engine/audio/klang.js';
@@ -184,7 +185,10 @@ const zauber = createZauberSpiel({
   spieler, npcs, npcsAn: () => npcAn, horde: plage.horde, szene, welt: welt.adapter, kamera, lockZiel: () => ziel, seed: SEED, klang,
   onMeldung: (t) => ui.melde(t), onSchmerz: (a) => { schmerz = Math.max(schmerz, a); },
   kampf: ks.kampf, spielerSchaden: ks.schadeSpieler, extraZiele: () => ks.gegner.ziele(),
+  onGross: (e) => gross.wirke(e),
 });
+// Großzauber (Flutwelle, Erdwall, Zyklon, Erdriss): erweitern welt.adapter um Wände, Gräben und Fluten
+const gross = createGrosszauberSpiel({ szene, adapter: welt.adapter, kamera, klang, zauber: () => zauber, spieler, seed: SEED, onMeldung: (t) => ui.melde(t) });
 // Kampfmodus: ✨ Action-Zauber ↔ 🎯 MMO-Leiste (Rolle, GCD, Ressourcen), dazu Spieler- und Ziel-Rahmen
 const mmo = createMmoLeiste({
   ks, zauber: () => zauber, spieler, kamera, lockZiel: () => ziel, freiMana: () => freiMana, wurzel: ui.seite('kampf'), waffen: WAFFEN_NAMEN,
@@ -357,6 +361,7 @@ function bild(jetzt) {
 
   plage.update(dt, !zauber.tot);
   zauber.update(dt, renderer.domElement.height);
+  gross.update(dt);
   mmo.update(dt, Math.hypot(absicht.x, absicht.z) > 0.1);
   ui.update(echtDt, zauber.buch, zauber.zustand);
   hudPlage(echtDt);
@@ -383,6 +388,6 @@ document.querySelector('[data-schalter="psx"]')?.classList.toggle('an', psxAn);
 requestAnimationFrame(bild);
 
 // Für Tests/Debug
-window.labor = { psx, renderer, spieler, npcs, kamera, eingabe, welt, schilder, createLook, clipListe, zauber, ui, plage, klang, kampf: ks, mmo };
+window.labor = { gross, psx, renderer, spieler, npcs, kamera, eingabe, welt, schilder, createLook, clipListe, zauber, ui, plage, klang, kampf: ks, mmo };
 if (url.get('plage') === '1') plageUmschalten();
 if (url.get('kampf') === '1') { ks.gegner.stellePuppe(); ks.gegner.rufeRivale(); waffeWaehlen('schwert'); kampfKnoepfe(); }

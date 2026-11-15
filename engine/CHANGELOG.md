@@ -1,5 +1,11 @@
 # Engine-Changelog
 
+## 2026-11 – Großzauber (episch)
+- gameplay/grosszauber 1.0.0 (neu): Register für Großzauber-Arten, laufende Wirkungen, Ereignis-Vokabular (treffer, beben, klang, stopp, funken, ring, meldung) und Welt-Adapter (Wände = Hindernis, Podest/Graben = Boden, Flut = Wasser)
+- render/grosszauber-mesh 1.0.0 (neu): je Wirkung eine Ansicht aus einer Ansichts-Fabrik je Art
+- gameplay/zauber 2.1.0 (additiv): Art 'gross' → Ereignis 'gross' (von, punkt, yaw)
+- gameplay/zauber-daten 1.2.0 (additiv): Flutwelle, Erdwall, Zyklon, Erdriss (Feld `gross`)
+
 ## 2026-11 – Kampfsystem im Figuren-Labor
 - gameplay/zauber-daten 1.1.0 (additiv): jeder Zauber hat ein Feld `element` ('feuer','eis','blitz','arkan','natur','heilig') für `kampf.schade({ art })`; bestehende Felder unverändert
 

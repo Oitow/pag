@@ -32,6 +32,11 @@
 | character | `engine/gameplay/character.js` | Fertige Spielfigur in einem Objekt: Modell (Look) + Animator + Bewegungs-Motor, für Spieler und NPCs gleich | entwurf |
 | faehigkeiten-daten | `engine/gameplay/faehigkeiten-daten.js` | Beispiel-Fähigkeiten (Krieger, Magier, Heiler) für die MMO-Leiste; reine Daten | entwurf |
 | faehigkeiten | `engine/gameplay/faehigkeiten.js` | Klassische MMO-Fähigkeitsleiste ohne THREE: globale Abklingzeit (GCD), Ressourcen (Mana, Wut, Energie), Wirkzeit mit Abbruch bei Bewegung und Pushback, Kanalisieren mit Takten, Ladungen, Reichweite/Ziel-Prüfung, Sperren | entwurf |
+| grosszauber-riss | `engine/gameplay/grosszauber-riss.js` | Platzhalter – wird gerade gebaut (Großzauber 'riss' für gameplay/grosszauber) | entwurf |
+| grosszauber-sturm | `engine/gameplay/grosszauber-sturm.js` | Platzhalter – wird gerade gebaut (Großzauber 'sturm' für gameplay/grosszauber) | entwurf |
+| grosszauber-wand | `engine/gameplay/grosszauber-wand.js` | Platzhalter – wird gerade gebaut (Großzauber 'wand' für gameplay/grosszauber) | entwurf |
+| grosszauber-welle | `engine/gameplay/grosszauber-welle.js` | Platzhalter – wird gerade gebaut (Großzauber 'welle' für gameplay/grosszauber) | entwurf |
+| grosszauber | `engine/gameplay/grosszauber.js` | Großzauber, die die Welt verändern (Flutwelle, Erdwall, Zyklon, Erdriss …): Register für Zauber-Arten, laufende Wirkungen, gemeinsames Ereignis-Vokabular und ein Welt-Adapter, über den Wände/Gräben/Wasser für Figuren, Horden und Körper sofort gelten | entwurf |
 | hand | `engine/gameplay/hand.js` | „In der Hand“: ein Inventar-Platz ist ausgewählt (Schnellleiste); liefert den gehaltenen Gegenstand samt Register-Eintrag, meldet Wechsel (zum Ausrüsten der Figur) und nutzt Werkzeuge ab, bis sie zerbrechen | entwurf |
 | horde | `engine/gameplay/horde.js` | Horden-Gegner ohne THREE (Ratten & Co. zu Dutzenden): verfolgen ein Ziel, drängeln sich ohne Überlappen, umzingeln, springen an und beißen, werden weggeschleudert, betäubt, verlangsamt, in einen Sog gezogen und sterben im Flug – deterministisch per Seed | entwurf |
 | interaktion | `engine/gameplay/interaktion.js` | „Ansehen → Aktion“: Dinge der Welt (NPC, Gegenstand, Baum, Tür) melden sich als Ziel an; für eine Figur wird das beste Ziel in Reichweite/Blickrichtung bestimmt (Hinweis „E – Aufheben“) und ausgelöst, auch als Gedrückt-halten mit Fortschritt | entwurf |
@@ -95,6 +100,11 @@
 | totholz-form | `engine/models/natur/totholz-form.js` | Reine Röhren-Geometrie (ohne THREE) für Totholz/Äste: Ringe entlang eines Pfads, Enden zu/Spitze/Jahresring-Scheibe, Markierung je Dreieck | neu |
 | totholz | `engine/models/natur/totholz.js` | Prozedurales Low-Poly-Totholz (Vertrag NATUR-ASSETS): baumstumpf (Jahresringe, Wurzelansätze), liegenderStamm (Aststummel), ast | neu |
 | figur-material | `engine/render/figur-material.js` | Weiches Figuren-Material: Standard-Material mit Randlicht (Fresnel), aufgehellter Schattenseite und kräftigeren Farben – Figuren heben sich vom Gelände ab | entwurf |
+| grosszauber-mesh | `engine/render/grosszauber-mesh.js` | Zeichnet laufende Großzauber (gameplay/grosszauber): je Wirkung eine Ansicht aus einer Ansichts-Fabrik je Art, legt sie an und räumt sie ab, sobald die Wirkung endet | entwurf |
+| grosszauber-riss-ansicht | `engine/render/grosszauber-riss.js` | Platzhalter – wird gerade gebaut (Ansicht für Großzauber 'riss') | entwurf |
+| grosszauber-sturm-ansicht | `engine/render/grosszauber-sturm.js` | Platzhalter – wird gerade gebaut (Ansicht für Großzauber 'sturm') | entwurf |
+| grosszauber-wand-ansicht | `engine/render/grosszauber-wand.js` | Platzhalter – wird gerade gebaut (Ansicht für Großzauber 'wand') | entwurf |
+| grosszauber-welle-ansicht | `engine/render/grosszauber-welle.js` | Platzhalter – wird gerade gebaut (Ansicht für Großzauber 'welle') | entwurf |
 | horde-mesh | `engine/render/horde-mesh.js` | Zeichnet eine Horde (gameplay/horde) mit wenigen Draw-Calls: je Modell und Lauf-Bild ein InstancedMesh; Hüpfer, Überschlag im Flug, Treffer-Aufblitzen, Leichen auf der Seite, Versinken | entwurf |
 | mesh-builder | `engine/render/mesh-builder.js` | Low-Poly-Modelle aus Primitiven (Box, Kugel, Zylinder …) mit Vertexfarben zu EINER Geometrie verschmelzen; Farbvariation pro Dreieck per Seed | entwurf |
 | natur-material | `engine/render/natur-material.js` | Gemeinsames Material für Natur-Assets: MeshStandardMaterial (Vertexfarben, flatShading) mit Wind-Schwingen im Vertex-Shader über das Attribut 'wind' (0 starr … 1 voll); Phase je Instanz aus der Weltposition; passendes Schatten-Material; optional Ausblenden ab Kamera-Entfernung | entwurf |
@@ -187,6 +197,7 @@
 | bauen | welt-aenderung |
 | baum | baum-arten, baum-skelett, baum, natur-assets, natur-basis |
 | baumstumpf | totholz |
+| beben | grosszauber, grosszauber-mesh |
 | bedrohung | bedrohung |
 | beeren | pflanze-busch |
 | begehbar | kollision |
@@ -229,10 +240,11 @@
 | dreispitz | character-parts-hut |
 | dämmerung | himmel-stand |
 | editor | character-look, character-model, welt-aenderung |
-| effekt | zauber-effekte |
+| effekt | grosszauber-mesh, zauber-effekte |
 | eingabe | move-input, touch-stick |
 | emote | character-clips-mehr, character-clips |
 | emotion | character-parts-gesicht |
+| episch | grosszauber, grosszauber-mesh |
 | ereignis | ereignisse |
 | erosion | worldgen-erosion |
 | event | ereignisse |
@@ -253,7 +265,7 @@
 | figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-material, figur-schild, wege-lage, worldgen-adapter |
 | first-person | follow-camera |
 | fluss | worldgen-chunkfluss, worldgen-rivers |
-| flächenschaden | zauber-daten, zauber |
+| flächenschaden | grosszauber, zauber-daten, zauber |
 | folgen | follow-camera |
 | form | pflanze-formen, worldgen-shape |
 | fps | schleife |
@@ -285,6 +297,7 @@
 | graben | welt-aenderung |
 | grading | psx |
 | gras | pflanze-boden |
+| großzauber | grosszauber-riss, grosszauber-sturm, grosszauber-wand, grosszauber-welle, grosszauber, grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht |
 | gürtel | character-parts-becken |
 | haar | character-parts-haar, character-parts-kopf, character-sekundaer |
 | halm | pflanze-formen |
@@ -329,7 +342,7 @@
 | kalender | zeit |
 | kamera | follow-camera, ziel-wahl, math |
 | kamerafahrt | follow-camera |
-| kampf | klang, ziel-wahl, bedrohung, character-steering-extra, character-steering, faehigkeiten-daten, faehigkeiten, horde, kampf-werte, kampf, nahkampf-daten, nahkampf, zauber-daten, zauber, zustaende, character-clips-mehr, character-reaktion, kampf-leiste, ziel-rahmen |
+| kampf | klang, ziel-wahl, bedrohung, character-steering-extra, character-steering, faehigkeiten-daten, faehigkeiten, grosszauber, horde, kampf-werte, kampf, nahkampf-daten, nahkampf, zauber-daten, zauber, zustaende, character-clips-mehr, character-reaktion, kampf-leiste, ziel-rahmen |
 | kanal | faehigkeiten |
 | kante | character-anim-zustand |
 | kapuze | character-parts-hut |
@@ -343,7 +356,7 @@
 | klima | wetter, worldgen-biomes, worldgen-climate |
 | knoepfe | touch-stick |
 | koerper | koerper, kollision |
-| kollision | follow-camera, raum-gitter, tueren, kollision, worldgen-adapter |
+| kollision | follow-camera, raum-gitter, grosszauber, tueren, kollision, worldgen-adapter |
 | kombo | nahkampf-daten, nahkampf |
 | kopf | character-anim-blick, character-parts-haar, character-parts-hut, character-parts-kopf |
 | korb | character-ausruestung |
@@ -367,7 +380,7 @@
 | look | character-look, figur-material, psx |
 | loop | schleife |
 | lowpoly | character-parts, ratte, baum, fels-form, fels, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-wueste, totholz-form, totholz, mesh-builder |
-| magie | zauber-daten, zauber, character-clips-zauber, zauber-effekte |
+| magie | grosszauber, zauber-daten, zauber, character-clips-zauber, zauber-effekte |
 | mana | zauber |
 | mantel | character-parts-becken, character-parts-torso |
 | maske | character-pose, worldgen-shape |
@@ -383,7 +396,7 @@
 | migration | speicher |
 | mimik | character-anim-blick, character-look, character-model, character-parts-gesicht |
 | mischen | character-pose |
-| mmo | bedrohung, faehigkeiten-daten, faehigkeiten, kampf-werte, kampf, nahkampf-daten, nahkampf, zustaende, kampf-leiste, ziel-rahmen |
+| mmo | bedrohung, faehigkeiten-daten, faehigkeiten, grosszauber, kampf-werte, kampf, nahkampf-daten, nahkampf, zustaende, kampf-leiste, ziel-rahmen |
 | modell | character-model, ratte, mesh-builder |
 | mond | himmel-stand, himmel |
 | monokel | character-parts-zubehoer |
@@ -449,7 +462,7 @@
 | register | register |
 | registry | natur-assets |
 | reichweite | faehigkeiten, interaktion |
-| render | natur-material |
+| render | grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht, natur-material |
 | rendern | horde-mesh |
 | ressource | faehigkeiten, kampf-leiste |
 | retro | psx |
@@ -522,6 +535,7 @@
 | strassen | worldgen-wege |
 | strauch | pflanze-busch |
 | streaming | worldgen-chunks |
+| sturm | grosszauber, grosszauber-mesh |
 | sukkulente | pflanze-wueste |
 | synth | klang |
 | tabelle | zauber-daten |
@@ -568,13 +582,15 @@
 | waffe | nahkampf-daten, nahkampf, character-ausruestung |
 | wahrnehmung | character-sinne |
 | wald | baum |
+| wand | grosszauber, grosszauber-mesh |
 | wandern | character-steering |
 | wasser | terrain-mesh, worldgen-adapter, worldgen-hydrology, worldgen-rivers |
 | webaudio | klang |
 | wedel | pflanze-formen |
 | wege | wege-lage, wege-mesh, worldgen-wege |
 | wegfindung | worldgen-path |
-| welt | noise, rng, kampf, welt-dinge, kollision, scatter-mesh, terrain-farben, terrain-mesh, wege-lage, wege-mesh, welt-aenderung, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
+| welle | grosszauber, grosszauber-mesh |
+| welt | noise, rng, grosszauber, kampf, welt-dinge, kollision, scatter-mesh, terrain-farben, terrain-mesh, wege-lage, wege-mesh, welt-aenderung, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | werfen | welt-dinge |
 | werkbank | rezepte, stationen |
 | werkzeug | hand, rohstoffe, character-ausruestung |
@@ -587,7 +603,7 @@
 | worldgen | worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | wueste | pflanze-wueste |
 | zahlen | treffer-zahlen |
-| zauber | klang, zauber-daten, zauber, character-clips-zauber, zauber-effekte |
+| zauber | klang, grosszauber-riss, grosszauber-sturm, grosszauber-wand, grosszauber-welle, grosszauber, zauber-daten, zauber, character-clips-zauber, grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht, zauber-effekte |
 | zauberhut | character-parts-hut |
 | zeit | schnappschuss-puffer, zeit |
 | zeitschritt | schleife |
@@ -1039,6 +1055,84 @@ Kosten werden beim Start bezahlt und bei Unterbrechung erstattet. Ziel = { id, f
 sperren = { kannHandeln, kannZaubern } (false = gesperrt; wie zustaende.faktoren()). Zauber-Fähigkeiten: wirkung.typ 'zauber' oder ressource 'mana'.
 Wirkzeit/Kanal bricht bei Bewegung ab (außer beiBewegung:'erlaubt'). Treffer in der Wirkzeit: +0.2 s, höchstens 2x.
 
+### grosszauber-riss · `engine/gameplay/grosszauber-riss.js` · v0.0.1 · entwurf
+Platzhalter – wird gerade gebaut (Großzauber 'riss' für gameplay/grosszauber)
+
+- `createRiss(opts, umgebung) -> instanz`
+
+```js
+import { createRiss } from '../../engine/gameplay/grosszauber-riss.js';
+```
+
+Genutzt von: figuren-labor · Tags: zauber, großzauber · THREE: nein
+
+### grosszauber-sturm · `engine/gameplay/grosszauber-sturm.js` · v0.0.1 · entwurf
+Platzhalter – wird gerade gebaut (Großzauber 'sturm' für gameplay/grosszauber)
+
+- `createSturm(opts, umgebung) -> instanz`
+
+```js
+import { createSturm } from '../../engine/gameplay/grosszauber-sturm.js';
+```
+
+Genutzt von: figuren-labor · Tags: zauber, großzauber · THREE: nein
+
+### grosszauber-wand · `engine/gameplay/grosszauber-wand.js` · v0.0.1 · entwurf
+Platzhalter – wird gerade gebaut (Großzauber 'wand' für gameplay/grosszauber)
+
+- `createWand(opts, umgebung) -> instanz`
+
+```js
+import { createWand } from '../../engine/gameplay/grosszauber-wand.js';
+```
+
+Genutzt von: figuren-labor · Tags: zauber, großzauber · THREE: nein
+
+### grosszauber-welle · `engine/gameplay/grosszauber-welle.js` · v0.0.1 · entwurf
+Platzhalter – wird gerade gebaut (Großzauber 'welle' für gameplay/grosszauber)
+
+- `createWelle(opts, umgebung) -> instanz`
+
+```js
+import { createWelle } from '../../engine/gameplay/grosszauber-welle.js';
+```
+
+Genutzt von: figuren-labor · Tags: zauber, großzauber · THREE: nein
+
+### grosszauber · `engine/gameplay/grosszauber.js` · v1.0.0 · entwurf
+Großzauber, die die Welt verändern (Flutwelle, Erdwall, Zyklon, Erdriss …): Register für Zauber-Arten, laufende Wirkungen, gemeinsames Ereignis-Vokabular und ein Welt-Adapter, über den Wände/Gräben/Wasser für Figuren, Horden und Körper sofort gelten
+
+- `createGrosszauber({arten,seed,welt,max}) -> { registriere(name,fabrik), wirke(art,{von,punkt,yaw,kraft,def,quelle}) -> id|null, update(dt,ziele) -> ereignisse[], adapter(basis) -> {bodenHoehe,wasserHoehe,hindernisse,…basis}, aktive, entferne(id), leeren(), zustand(), dispose() }`
+
+```js
+import { createGrosszauber } from '../../engine/gameplay/grosszauber.js';
+import { createWelle } from '../../engine/gameplay/grosszauber-welle.js';
+const gross = createGrosszauber({ arten: { welle: createWelle }, welt: adapter, seed: 7 });
+Object.assign(adapter, gross.adapter({ ...adapter }));          // ab jetzt kollidiert alles mit Wänden, schwimmt in Fluten
+gross.wirke('welle', { von: fuss, punkt, yaw, kraft: 1.4, def: ZAUBER.flutwelle.gross });
+for (const e of gross.update(dt, ziele)) if (e.typ === 'treffer') for (const t of e.treffer) schade(t);
+```
+
+Genutzt von: figuren-labor · Tags: zauber, magie, großzauber, episch, welle, wand, sturm, beben, kollision, welt, kampf, flächenschaden, mmo · THREE: nein
+Eine Zauber-Art ist eine Fabrik  fabrik(opts, umgebung) -> instanz.
+opts      { von {x,y,z} (Füße des Zaubernden), punkt {x,y,z} (Zielpunkt am Boden, auf Reichweite begrenzt), yaw (Blick = sin/cos), kraft (1 … ~1.6), def (Daten, z. B. ZAUBER.x.gross), quelle }
+umgebung  { boden(x,z) (Gelände ohne Großzauber), wasser(x,z), zufall () -> [0,1) (geseedet) }
+instanz   { daten        reines Objekt für die Darstellung (Phase, Lage, Maße …) – render/grosszauber-mesh reicht es an die Ansicht
+            update(dt, ziele, melde) -> bool   false = vorbei (Abbau-Phase gehört noch dazu)
+            hindernis?(x, z, radius) -> {x,z}|null   Wegdrück-Vektor (Wand)
+            boden?(x, z) -> delta|null                 Höhe über (+) / unter (−) dem Gelände (Podest, Graben)
+            wasser?(x, z) -> hoehe|null                absolute Wasserhöhe (Flut: Figuren schwimmen)
+            zustand?() , dispose?() }
+ziele     [{ id, x, y, z, radius, hoehe, … }] wie bei zauber.update
+Ereignis-Vokabular (melde({ typ, … }); id + art ergänzt der Kern, treffer ist immer ein Array):
+'treffer'  treffer: [{ id, ziel, schaden, stoss {x,y,z}, umwerfen, verlangsamt, zug {x,z}|null }]  (wie zauber.js)
+'beben'    pos, staerke (0 … 2), dauer          → Kamera wackelt (nach Abstand abgeschwächt)
+'klang'    name, staerke, tonhoehe              → audio/klang
+'stopp'    dauer                                → Treffer-Stopp
+'funken'   pos, opts (wie zauber-effekte.funken) · 'ring' pos, opts (wie zauber-effekte.ring)
+'meldung'  text
+Der Kern meldet selbst 'start' (von, punkt, yaw, kraft) und 'ende'.
+
 ### hand · `engine/gameplay/hand.js` · v1.0.0 · entwurf
 „In der Hand“: ein Inventar-Platz ist ausgewählt (Schnellleiste); liefert den gehaltenen Gegenstand samt Register-Eintrag, meldet Wechsel (zum Ausrüsten der Figur) und nutzt Werkzeuge ab, bis sie zerbrechen
 
@@ -1297,7 +1391,7 @@ Register-Einträge dürfen die Physik bestimmen: { radius, sprung, reibung, haft
 Aufheben läuft über die Interaktion: das Ziel ruft nimm(ding, wer.inventar) – `wer` braucht also ein Feld `inventar`.
 Ereignisse (falls Bus gesetzt): 'ding:neu' { ding }, 'ding:aufgehoben' { wer, id, anzahl, rest }, 'ding:weg' { ding }.
 
-### zauber-daten · `engine/gameplay/zauber-daten.js` · v1.1.0 · entwurf
+### zauber-daten · `engine/gameplay/zauber-daten.js` · v1.2.0 · entwurf
 Die Zauber-Tabelle als reine Daten: 12 wuchtige Zauber (Geschoss, Strahl, Kegel, Ort, Nova, Selbst, Teleport) mit Wirkzeit, Gewicht, Überladen, Durchschlag und Feldern (Brandboden, Sog) – gemacht für Horden
 
 - `ZAUBER`
@@ -1324,8 +1418,9 @@ Ort:       reichweite, verzug (s zwischen Ansage und Einschlag)
 feld       { dauer, takt, schaden, sog (m/s zur Mitte), verlangsamt, anteil (Radius-Anteil) } – bleibt nach dem Einschlag liegen
 feldEnde   { schaden, radius, stoss, umwerfen } – Schluss-Schlag des Feldes (Implosion)
 mehr       { anzahl, kette } – Zuwachs bei voller Überladung
+Großzauber (art 'gross', seit 1.2.0): gross { art: 'welle'|'wand'|'sturm'|'riss', … } – Daten für gameplay/grosszauber-<art>
 
-### zauber · `engine/gameplay/zauber.js` · v2.0.0 · entwurf
+### zauber · `engine/gameplay/zauber.js` · v2.1.0 · entwurf
 Zauber-System ohne THREE: Zauberbuch mit Mana, Abklingzeiten und wuchtigem Aufladen (Wirkzeit, Halten = Überladen, Schlag), Geschosse (Bogen, Zielsuche, Durchschlag), Strahl, Kegel, Ort, Nova, Felder (Brandboden, Sog) und Treffer-Ereignisse
 
 - `createZauberbuch(opts) -> { wirke(name,{vorlauf,schlag,ziel,halten}) -> {ok,grund,def}, lasseLos(), brichAb() -> bool, kann(name) -> {ok,grund,def}, update(dt,ziele) -> ereignisse[], ladung -> {name,def,phase,anteil,ueber,kraft}|null, mana, manaMax, wirkt, abklingzeit(name), abklingAnteil(name), geschosse, felder, setFreiesMana(bool), namen, zauber, dispose() }`
@@ -1360,6 +1455,7 @@ Ereignisse von update() (Array wird wiederverwendet – nicht aufheben): alle ha
 'feld' / 'feldTakt' / 'feldEnde'   liegendes Feld beginnt (pos, radius, dauer, sog) / trifft / endet (mit Schluss-Schlag, falls def.feldEnde)
 'selbst'       Heilung/Schild: def.heilt / def.schild / def.dauer wertet das Spiel aus
 'teleport'     von, nach (das Spiel versetzt die Figur)
+'gross'        Großzauber (art 'gross', seit 2.1.0): von (Füße), punkt (Ziel am Boden, auf Reichweite begrenzt), yaw → gameplay/grosszauber.wirke(def.gross.art, …)
 treffer: [{ id, ziel, schaden, stoss {x,y,z}, umwerfen, verlangsamt (s), zug {x,z} | null (Sog: Geschwindigkeit zur Mitte) }]
 
 ### zustaende · `engine/gameplay/zustaende.js` · v1.0.0 · entwurf
@@ -2164,6 +2260,67 @@ const geist = figurMaterial({ rand: 1, randFarbe: 0x80c0ff, material: { transpar
 ```
 
 Genutzt von: – · Tags: figur, charakter, material, shader, randlicht, rim, look · THREE: ja
+
+### grosszauber-mesh · `engine/render/grosszauber-mesh.js` · v1.0.0 · entwurf
+Zeichnet laufende Großzauber (gameplay/grosszauber): je Wirkung eine Ansicht aus einer Ansichts-Fabrik je Art, legt sie an und räumt sie ab, sobald die Wirkung endet
+
+- `createGrosszauberMesh({arten,welt}) -> { gruppe, registriere(name,fabrik), update(dt,aktive), anzahl, dispose() }`
+
+```js
+import { createGrosszauberMesh } from '../../engine/render/grosszauber-mesh.js';
+import { createWelleAnsicht } from '../../engine/render/grosszauber-welle.js';
+const bilder = createGrosszauberMesh({ arten: { welle: createWelleAnsicht }, welt: adapter });
+szene.add(bilder.gruppe);
+bilder.update(dt, gross.aktive);     // jedes Bild
+```
+
+Genutzt von: figuren-labor · Tags: zauber, großzauber, episch, effekt, render, welle, wand, sturm, beben · THREE: ja
+Ansichts-Fabrik:  fabrik(daten, umgebung) -> { objekt (THREE.Object3D), update(dt, daten, zeit), dispose() }
+daten = instanz.daten aus der Logik (wird jedes Bild neu gereicht), umgebung = { welt (bodenHoehe/wasserHoehe des Grund-Geländes) }
+
+### grosszauber-riss-ansicht · `engine/render/grosszauber-riss.js` · v0.0.1 · entwurf
+Platzhalter – wird gerade gebaut (Ansicht für Großzauber 'riss')
+
+- `createRissAnsicht(daten, umgebung) -> { objekt, update(dt,daten,zeit), dispose() }`
+
+```js
+import { createRissAnsicht } from '../../engine/render/grosszauber-riss.js';
+```
+
+Genutzt von: figuren-labor · Tags: zauber, großzauber, render · THREE: ja
+
+### grosszauber-sturm-ansicht · `engine/render/grosszauber-sturm.js` · v0.0.1 · entwurf
+Platzhalter – wird gerade gebaut (Ansicht für Großzauber 'sturm')
+
+- `createSturmAnsicht(daten, umgebung) -> { objekt, update(dt,daten,zeit), dispose() }`
+
+```js
+import { createSturmAnsicht } from '../../engine/render/grosszauber-sturm.js';
+```
+
+Genutzt von: figuren-labor · Tags: zauber, großzauber, render · THREE: ja
+
+### grosszauber-wand-ansicht · `engine/render/grosszauber-wand.js` · v0.0.1 · entwurf
+Platzhalter – wird gerade gebaut (Ansicht für Großzauber 'wand')
+
+- `createWandAnsicht(daten, umgebung) -> { objekt, update(dt,daten,zeit), dispose() }`
+
+```js
+import { createWandAnsicht } from '../../engine/render/grosszauber-wand.js';
+```
+
+Genutzt von: figuren-labor · Tags: zauber, großzauber, render · THREE: ja
+
+### grosszauber-welle-ansicht · `engine/render/grosszauber-welle.js` · v0.0.1 · entwurf
+Platzhalter – wird gerade gebaut (Ansicht für Großzauber 'welle')
+
+- `createWelleAnsicht(daten, umgebung) -> { objekt, update(dt,daten,zeit), dispose() }`
+
+```js
+import { createWelleAnsicht } from '../../engine/render/grosszauber-welle.js';
+```
+
+Genutzt von: figuren-labor · Tags: zauber, großzauber, render · THREE: ja
 
 ### horde-mesh · `engine/render/horde-mesh.js` · v1.0.0 · entwurf
 Zeichnet eine Horde (gameplay/horde) mit wenigen Draw-Calls: je Modell und Lauf-Bild ein InstancedMesh; Hüpfer, Überschlag im Flug, Treffer-Aufblitzen, Leichen auf der Seite, Versinken
