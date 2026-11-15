@@ -70,3 +70,11 @@ test('Dauerton: ein Satz Knoten, dispose schließt fremden Kontext nicht', () =>
   k.dispose();
   assert.equal(ctx.z.closed, 0);
 });
+
+test('Großzauber-Klänge vorhanden und ohne AudioContext still', () => {
+  const k = createKlang();
+  for (const n of ['grollen', 'rauschen', 'heulen', 'bersten']) {
+    assert.ok(k.namen.includes(n), n);
+    assert.equal(k.spiele(n, { staerke: 1.5 }), false);
+  }
+});

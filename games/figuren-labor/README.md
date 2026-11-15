@@ -33,6 +33,15 @@ Testgelände für das Figuren-System der Engine (`docs/FIGUREN-SYSTEM.md`): Auss
 - 🎯 Lock-On auf NPCs (T, nochmal = nächstes Ziel) – Zauber zielen darauf, sonst auf das Ziel in Blickrichtung
 - 🏷 Namensschilder + Sprechblasen (`engine/ui/figur-schild`); in der Nähe eines NPCs E / 💬 = ansprechen
 
+## 🌋 Großzauber
+Vier Zauber, die die Welt verändern (`engine/gameplay/grosszauber-*`): **🌊 Flutwelle** (haushohe Welle, reißt alles mit, Figuren schwimmen),
+**🧱 Erdwall** (Fels bricht aus dem Boden, wirft Gegner hoch, sperrt den Weg), **⛈️ Zyklon** (Wirbelsturm saugt Gegner hoch, schleudert Blitze),
+**🌋 Erdriss** (Graben mit Lava, wirft alles in die Luft). Wählen: in der Zauberleiste oben tippen oder **Shift+1…4** (halten = überladen).
+Bei jedem Großzauber: kurze Zeitlupe, Kamera zieht heraus und hebt sich (~2 s), heller Blitz.
+- ⚔ **Schlachtfeld** (☰ → ⚔ Kampf → „Zum Schlachtfeld“ oder `?schlachtfeld=1`): 160 × 160 m offene, leicht wellige Ebene ohne Hindernisse; Nebel ab 90 m.
+- 🐀 **Große Plage** (☰ → ⚔ Kampf oder `?grossplage=1`, dann 🐀 oben rechts): bis ~400 Wesen, breite Fronten von vorn und von der Seite.
+- Neue Klänge: Grollen, Rauschen, Heulen, Bersten (`engine/audio/klang` 1.1).
+
 ## Steuerung
 WASD/Pfeile laufen · Shift Sprint · Leertaste springen · Q Rolle/Dash (bricht Aufladen ab) · V gleiten · C ducken/tauchen · T Ziel · E ansprechen ·
 Ziehen = Kamera · Rad = Zoom · F Schlag/Kombo (halten = schwer) · B/rechte Maus Block · G winken · R halten = aufladen, loslassen = zaubern · 1–0, ß, ´ = Zauber wählen und aufladen.

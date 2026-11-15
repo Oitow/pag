@@ -1,6 +1,7 @@
 # Engine-Changelog
 
 ## 2026-11 – Großzauber (episch)
+- audio/klang 1.1.0 (additiv): neue Klänge `grollen`, `rauschen`, `heulen`, `bersten` für Großzauber
 - gameplay/grosszauber 1.0.0 (neu): Register für Großzauber-Arten, laufende Wirkungen, Ereignis-Vokabular (treffer, beben, klang, stopp, funken, ring, meldung) und Welt-Adapter (Wände = Hindernis, Podest/Graben = Boden, Flut = Wasser)
 - render/grosszauber-mesh 1.0.0 (neu): je Wirkung eine Ansicht aus einer Ansichts-Fabrik je Art
 - gameplay/zauber 2.1.0 (additiv): Art 'gross' → Ereignis 'gross' (von, punkt, yaw)

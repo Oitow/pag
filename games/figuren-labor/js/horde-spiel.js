@@ -9,36 +9,51 @@ function welle(n) {
   return { ratte: 18 + n * 10, riesenratte: n >= 2 ? n - 1 : 0, rattenkoenig: n % 5 === 0 ? 1 : 0 };
 }
 
+const MAX_NORMAL = 160, MAX_GROSS = 420;
+
+/** Große Plage (Schlachtfeld): breite Fronten, bis ~400 Wesen. */
+function welleGross(n) {
+  return { ratte: 70 + n * 45, riesenratte: 2 + n * 2, rattenkoenig: n % 3 === 0 ? 1 + Math.floor(n / 6) : 0 };
+}
+
 /** opts: { szene, welt (Adapter), spieler, seed, klang, onBiss(schaden, wesen) -> true wenn Spieler gefallen, onMeldung(text) } */
-export function createHordeSpiel({ szene, welt, spieler, seed = 1, klang = null, onBiss = () => false, onMeldung = () => {} }) {
-  const horde = createHorde({ seed, welt, max: 160 });
+export function createHordeSpiel({ szene, welt, spieler, seed = 1, klang = null, onBiss = () => false, onMeldung = () => {}, gross = false }) {
+  const horde = createHorde({ seed, welt, max: MAX_GROSS });
   const ratte = createRatte({ seed });
-  const bild = createHordeMesh({ modelle: { ratte: ratte.frames }, max: 160 });
+  const bild = createHordeMesh({ modelle: { ratte: ratte.frames }, max: MAX_GROSS });
   szene.add(bild.gruppe);
-  const st = { an: false, welle: 0, pause: 0, bestes: 0 };
+  const st = { an: false, welle: 0, pause: 0, bestes: 0, gross };   // gross = Große Plage (jederzeit umschaltbar)
   const zielObj = { x: 0, y: 0, z: 0, radius: 0.35 };
   let quiekUhr = 0, bissSchutz = 0;
 
   function naechsteWelle() {
     st.welle++;
-    const w = welle(st.welle), p = spieler.zustand.pos;
+    const w = st.gross ? welleGross(st.welle) : welle(st.welle), p = spieler.zustand.pos;
     // aus zwei Richtungen, ab Welle 3 von überall
-    const rund = st.welle >= 3, winkel = (st.welle * 2.1) % 6.283;
-    for (const [art, n] of Object.entries(w)) {
+    const rund = st.welle >= 3 && !st.gross, winkel = (st.welle * 2.1) % 6.283;
+    let platz = (st.gross ? MAX_GROSS : MAX_NORMAL) - horde.wesen.length;   // Platz in der Horde (Leichen zählen mit)
+    for (const [art, n0] of Object.entries(w)) {
+      const n = Math.max(0, Math.min(n0, platz)); platz -= n;
       if (!n) continue;
-      if (rund) horde.spawneRing(art, n, p, { radius: 20, breite: 8 });
+      if (st.gross) {   // breite Fronten: zwei Bögen von vorn und von hinten, 40 m entfernt, tief gestaffelt
+        const y = spieler.zustand.yaw;
+        horde.spawneRing(art, Math.ceil(n * 0.65), p, { radius: 40, breite: 14, winkel: y, bogen: 1.6 });
+        horde.spawneRing(art, Math.floor(n * 0.35), p, { radius: 40, breite: 14, winkel: y + Math.PI * (0.5 + (st.welle % 2)), bogen: 1.2 });
+      } else if (rund) horde.spawneRing(art, n, p, { radius: 20, breite: 8 });
       else {
         horde.spawneRing(art, Math.ceil(n / 2), p, { radius: 18, breite: 6, winkel, bogen: 1 });
         horde.spawneRing(art, Math.floor(n / 2), p, { radius: 18, breite: 6, winkel: winkel + 2.6, bogen: 1 });
       }
     }
-    onMeldung(`🐀 Welle ${st.welle}: ${horde.anzahl} Ratten${w.rattenkoenig ? ' + Rattenkönig!' : ''}`);
+    onMeldung(`🐀 ${st.gross ? 'Große Plage – ' : ''}Welle ${st.welle}: ${horde.anzahl} Ratten${w.rattenkoenig ? ' + Rattenkönig!' : ''}`);
     klang?.spiele('quiek', { staerke: 1.4, tonhoehe: 0.7 });
   }
 
   return {
     horde, zustand: st,
     get an() { return st.an; },
+    /** Große Plage an/aus (wirkt ab der nächsten Welle). */
+    setGross(an) { st.gross = !!an; },
     start() { horde.leeren(); st.an = true; st.welle = 0; st.pause = 1.2; onMeldung('🐀 Rattenplage! Halte den Zauber für mehr Wucht.'); },
     stopp() { st.an = false; horde.leeren(); bild.update(horde.wesen); },
     /** Spieler ist gefallen: Horde zieht sich zurück, Plage beginnt neu. */
@@ -63,7 +78,7 @@ export function createHordeSpiel({ szene, welt, spieler, seed = 1, klang = null,
         quiekUhr = 0.6 + 2.5 / Math.max(1, horde.anzahl / 6);
         klang?.spiele('quiek', { staerke: 0.25, tonhoehe: 0.8 + (quiekUhr % 0.4) });
       }
-      if (st.an && horde.anzahl <= 2 && (st.pause -= dt) <= 0) { naechsteWelle(); st.pause = 2.5; }
+      if (st.an && horde.anzahl <= (st.gross ? 6 : 2) && (st.pause -= dt) <= 0) { naechsteWelle(); st.pause = 2.5; }
       bild.update(horde.wesen);
     },
     dispose() { bild.dispose(); ratte.dispose(); horde.dispose(); },

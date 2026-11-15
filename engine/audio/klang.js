@@ -8,7 +8,7 @@
  *   klang.spiele('wumms', { staerke: 1.5, tonhoehe: 0.8 });
  *   klang.dauerton('laden', { staerke: 0.4, tonhoehe: 1.3 }); // jedes Bild; null = aus
  * @tags     audio, klang, sound, zauber, kampf, synth, webaudio
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
@@ -36,6 +36,13 @@ export const KLAENGE = Object.freeze({
   heilen: K([O('sine', 660, 660, 0.3, 0.3, 0), O('sine', 880, 880, 0.3, 0.3, 0.09), O('sine', 1320, 1320, 0.4, 0.3, 0.18)], []),
   fehl: K([O('square', 140, 140, 0.09, 0.2)], []),
   schritt: K([], [R('lowpass', 500, 300, 0.03, 0.15)]),
+  // Großzauber (lang, tief, episch)
+  grollen: K([O('sine', 55, 28, 1.5, 1.1), O('sine', 41, 24, 1.4, 0.7, 0.1)], [R('lowpass', 260, 70, 1.5, 1.3, 1.2)]),
+  rauschen: K([], [R('bandpass', 250, 900, 1.0, 0.9, 0.8), R('bandpass', 900, 200, 1.0, 0.8, 0.8, 1.0)]),
+  heulen: K([O('sine', 180, 260, 2, 0.12)],
+    [R('bandpass', 350, 1100, 1.0, 0.8, 5), R('bandpass', 1100, 400, 1.0, 0.8, 5, 1.0)]),
+  bersten: K([O('sine', 110, 35, 0.5, 0.9, 0.03)],
+    [R('highpass', 2500, 2500, 0.04, 0.9, 0.7), R('lowpass', 1800, 200, 0.7, 1.1, 0.8, 0.03)]),
 });
 
 const HOERER = ['pointerdown', 'keydown', 'touchend'];

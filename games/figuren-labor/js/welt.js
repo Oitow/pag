@@ -10,13 +10,21 @@ const TEICH = { x: -14, z: 10, r: 9 };
 const WASSER_Y = 0;
 // Treppe (5 Stufen à 0,25 m) und Plateau, nördlich vom Start
 const TREPPE = { x0: -3, x1: 3, z0: -10, stufe: 0.25, tiefe: 0.8, n: 5 };
+// Schlachtfeld: große, offene, leicht wellige Ebene ohne Hindernisse, weit hinter dem Randwall (nach +Z); der Rand steigt zum Wall an
+export const SCHLACHTFELD = { x: 0, z: 240, halb: 80 };
 // Steile Rampe (zum Rutschen) östlich
 const RAMPE = { x0: 12, x1: 20, z0: -4, z1: 4, hoehe: 10 };   // ~51° → zu steil, man rutscht
 
 export function createWelt(seed = 1) {
   const n = createNoise2D(hashSeed('labor', seed));
 
+  const im = (x, z) => Math.abs(x - SCHLACHTFELD.x) <= SCHLACHTFELD.halb && Math.abs(z - SCHLACHTFELD.z) <= SCHLACHTFELD.halb;
+  function feld(x, z) {
+    const rand = SCHLACHTFELD.halb - Math.max(Math.abs(x - SCHLACHTFELD.x), Math.abs(z - SCHLACHTFELD.z));
+    return 0.4 + fbm2(n, x * 0.02 + 40, z * 0.02 + 40, 3) * 0.7 + (1 - smoothstep(0, 8, rand)) * 9;
+  }
   function natur(x, z) {
+    if (im(x, z)) return feld(x, z);
     const d = Math.hypot(x, z);
     let h = fbm2(n, x * 0.025, z * 0.025, 4) * 2.2 * smoothstep(8, 30, d);   // flache Mitte, Hügel außen
     h += smoothstep(40, 58, d) * 9;                                           // Randwall
@@ -34,7 +42,7 @@ export function createWelt(seed = 1) {
     if (x > RAMPE.x0 && x < RAMPE.x1 && z > RAMPE.z0 && z < RAMPE.z1) h = Math.max(h, 0.4 + (x - RAMPE.x0) / (RAMPE.x1 - RAMPE.x0) * RAMPE.hoehe);
     return h;
   }
-  const bodenHoehe = (x, z) => Math.max(natur(x, z), bauten(x, z));
+  const bodenHoehe = (x, z) => (im(x, z) ? feld(x, z) : Math.max(natur(x, z), bauten(x, z)));
   const wasserHoehe = (x, z) => (Math.hypot(x - TEICH.x, z - TEICH.z) < TEICH.r + 2 ? WASSER_Y : null);
 
   // Hindernisse: Kreise (Baumstämme, Felsen)
@@ -78,6 +86,25 @@ export function createWelt(seed = 1) {
   boden.receiveShadow = true;
   gruppe.add(boden);
 
+  // Schlachtfeld-Boden (160 × 160 m, 1,6-m-Raster)
+  {
+    const g = new THREE.PlaneGeometry(SCHLACHTFELD.halb * 2, SCHLACHTFELD.halb * 2, 100, 100);
+    g.rotateX(-Math.PI / 2);
+    g.translate(SCHLACHTFELD.x, 0, SCHLACHTFELD.z);
+    const p = g.attributes.position, fa = new Float32Array(p.count * 3), erde = new THREE.Color('#8a8a52'), erdeH = new THREE.Color('#a69a60');
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), z = p.getZ(i), h = feld(x, z);
+      p.setY(i, h);
+      c.copy(erde).lerp(erdeH, (fbm2(n, x * 0.08, z * 0.08, 2) + 1) / 2);
+      if (h > 3) c.lerp(fels, smoothstep(3, 7, h));
+      fa.set([c.r, c.g, c.b], i * 3);
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(fa, 3));
+    g.computeVertexNormals();
+    const m = new THREE.Mesh(g, boden.material);
+    m.receiveShadow = true; gruppe.add(m);
+  }
+
   // Treppe + Plateau als Blöcke, Rampe als Keil (exakt wie bauten())
   const steinM = new THREE.MeshStandardMaterial({ color: stein, roughness: 0.9, flatShading: true });
   const block = (x0, x1, z0, z1, hoch, keil) => {
@@ -115,7 +142,7 @@ export function createWelt(seed = 1) {
   }
 
   return {
-    gruppe, kreise, teich: TEICH,
+    gruppe, kreise, teich: TEICH, schlachtfeld: SCHLACHTFELD,
     adapter: { bodenHoehe, wasserHoehe, hindernisse },
     dispose() { gruppe.traverse(o => { o.geometry?.dispose(); o.material?.dispose?.(); }); gruppe.removeFromParent(); },
   };
