@@ -9,7 +9,7 @@
  *   s.sage('Schönes Wetter heute!');
  *   schilder.update(kamera, dt);   // jedes Bild nach der Kamera, vor/nach dem Rendern
  * @tags     ui, namensschild, sprechblase, dialog, lebensbalken, hp, figur, npc, overlay, hud
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    ja
  */
@@ -61,7 +61,7 @@ export function createFigurSchilder({
     balken.appendChild(fuell);
     dom.appendChild(blase); dom.appendChild(nameEl); dom.appendChild(balken);
     ebene.appendChild(dom);
-    const st = { ziel, versatz, nameAb, an: true, sichtbar: false, blaseRest: 0, blaseDauer: 0, leben: null, name: '' };
+    const st = { ziel, versatz, nameAb, an: true, sichtbar: false, blaseRest: 0, blaseDauer: 0, leben: null, name: '', zeigt: true, z: '', oN: '', oB: '' };
     const s = {
       get ziel() { return st.ziel; }, set ziel(z) { st.ziel = z; },
       get spricht() { return st.blaseRest > 0; },
@@ -73,11 +73,11 @@ export function createFigurSchilder({
       sage(text, { dauer } = {}) {
         if (leer(text)) return s.schweige();
         text = String(text);
-        blase.textContent = text;
+        blase.textContent = text; st.sprichtAn = undefined;
         st.blaseDauer = st.blaseRest = Number.isFinite(dauer) && dauer > 0 ? dauer : clamp(1.5 + text.length * 0.06, 2, 8);
         return s;
       },
-      schweige() { st.blaseRest = 0; blase.style.display = 'none'; return s; },
+      schweige() { st.blaseRest = 0; blase.style.display = 'none'; st.sprichtAn = false; return s; },
       /** anteil 0…1 (Farbe grün → gelb → rot) oder null = Balken aus. */
       setLeben(anteil) {
         st.leben = anteil == null || !Number.isFinite(+anteil) ? null : clamp(+anteil, 0, 1);
@@ -85,7 +85,7 @@ export function createFigurSchilder({
         if (st.leben != null) { fuell.style.width = (st.leben * 100).toFixed(1) + '%'; fuell.style.background = `hsl(${Math.round(st.leben * 120)},70%,45%)`; }
         return s;
       },
-      zeige(an) { st.an = !!an; if (!an) { dom.style.display = 'none'; st.sichtbar = false; } return s; },
+      zeige(an) { st.an = !!an; if (!an) { dom.style.display = 'none'; st.zeigt = false; st.sichtbar = false; } return s; },
       entfernen() { if (!liste.delete(s)) return; dom.remove(); },
       _st: st, _dom: { dom, blase, nameEl, balken, fuell },
     };
@@ -105,23 +105,25 @@ export function createFigurSchilder({
       if (st.blaseRest > 0) st.blaseRest = Math.max(0, st.blaseRest - dt);
       if (!st.an) continue;
       const p = weltPos(st.ziel, v);
-      if (!p) { d.dom.style.display = 'none'; st.sichtbar = false; continue; }
+      if (!p) { if (st.zeigt) { d.dom.style.display = 'none'; st.zeigt = false; } st.sichtbar = false; continue; }
       p.y += st.versatz;
       w.copy(p).applyMatrix4(kamera.matrixWorldInverse);
       const abstand = w.length();               // Kamera-Raum: Länge = Abstand zur Kamera
       const spricht = st.blaseRest > 0;
       const aName = (st.name || st.leben != null) && abstand >= st.nameAb ? 1 - smoothstep(ausblendAb, maxAbstand, abstand) : 0;
       const aBlase = spricht ? (1 - smoothstep(blaseMaxAbstand * 0.7, blaseMaxAbstand, abstand)) * clamp(st.blaseRest / 0.3, 0, 1) : 0;
-      if (w.z > -0.1 || (aName <= 0.01 && aBlase <= 0.01)) { d.dom.style.display = 'none'; st.sichtbar = false; continue; }
+      if (w.z > -0.1 || (aName <= 0.01 && aBlase <= 0.01)) { if (st.zeigt) { d.dom.style.display = 'none'; st.zeigt = false; } st.sichtbar = false; continue; }
       p.project(kamera);
       const x = (p.x + 1) / 2 * g.breite, y = (1 - p.y) / 2 * g.hoehe;
       const k = clamp(refAbstand / Math.max(0.1, abstand), minSkala, maxSkala);
-      d.dom.style.display = '';
+      if (!st.zeigt) { d.dom.style.display = ''; st.zeigt = true; }
       d.dom.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) translate(-50%,-100%) scale(${k.toFixed(3)})`;
-      d.dom.style.zIndex = String(Math.max(0, Math.round(10000 - abstand * 10)));
-      d.nameEl.style.opacity = d.balken.style.opacity = aName.toFixed(2);
-      d.blase.style.display = spricht ? '' : 'none';
-      if (spricht) d.blase.style.opacity = aBlase.toFixed(2);
+      const zi = String(Math.max(0, Math.round(10000 - abstand * 10)));
+      if (st.z !== zi) { st.z = zi; d.dom.style.zIndex = zi; }
+      const oN = aName.toFixed(2);
+      if (st.oN !== oN) { st.oN = oN; d.nameEl.style.opacity = d.balken.style.opacity = oN; }
+      if (st.sprichtAn !== spricht) { st.sprichtAn = spricht; d.blase.style.display = spricht ? '' : 'none'; }
+      if (spricht) { const oB = aBlase.toFixed(2); if (st.oB !== oB) { st.oB = oB; d.blase.style.opacity = oB; } }
       st.sichtbar = true;
     }
   }

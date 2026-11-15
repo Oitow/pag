@@ -10,7 +10,7 @@
  *     if (e.typ === 'biss') spielerSchaden(e.schaden);
  *   for (const t of einschlag.treffer) horde.schade(t.ziel, t.schaden, t);   // horde.ziele passt direkt in zauberbuch.update(dt, ziele)
  * @tags     gegner, horde, schwarm, monster, ratte, ki, kampf, verfolgen, rückstoß, gameplay
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  *
@@ -55,6 +55,7 @@ export function createHorde({ seed = 1, welt = null, arten = HORDEN_ARTEN, max =
     const w = wesen[i];
     gitter.entferne(w.id);
     if (!w.tot) lebend--;
+    w.entfernt = true;
     wesen.splice(i, 1);
   }
   function spawne(art, x, z, { skala } = {}) {
@@ -66,7 +67,7 @@ export function createHorde({ seed = 1, welt = null, arten = HORDEN_ARTEN, max =
     const w = { id: 'h' + naechsteId++, art, def, x, y: boden(x, z), z, vx: 0, vy: 0, vz: 0, yaw: zuf(-Math.PI, Math.PI), skala: s,
       radius: def.radius * s, hoehe: def.hoehe * s, leben: def.leben, lebenMax: def.leben, tot: false, zustand: 'lauf', t: 0, phase: zuf(0, 1),
       hub: 0, dreh: 0, drehTempo: 0, blitz: 0, langsam: 0, verfall: 0, ton: zuf(0.75, 1.15), keim: zuf(0, 6.283), seite: zuf(-1, 1),
-      tempoF: zuf(0.85, 1.15), bissRest: zuf(0, def.biss), uhr: zuf(0, 10), zx: 0, zz: 0, gebissen: false, geprallt: false, benommen: 0 };
+      tempoF: zuf(0.85, 1.15), bissRest: zuf(0, def.biss), uhr: zuf(0, 10), zx: 0, zz: 0, gebissen: false, geprallt: false, benommen: 0, entfernt: false };
     wesen.push(w); lebend++;
     return w;
   }
@@ -90,7 +91,7 @@ export function createHorde({ seed = 1, welt = null, arten = HORDEN_ARTEN, max =
   }
   /** Schaden + Wirkung (passt zu den Treffern aus gameplay/zauber). Tote fliegen in Stoßrichtung davon. */
   function schade(w, schaden = 0, { stoss = null, umwerfen = false, verlangsamt = 0, zug = null } = {}) {
-    if (!w || w.tot || !wesen.includes(w)) return { tot: false, schaden: 0 };
+    if (!w || w.tot || w.entfernt || !w.def) return { tot: false, schaden: 0 };
     schaden = Math.max(0, Math.round(+schaden || 0));
     w.leben -= schaden;
     if (schaden > 0) w.blitz = 1;
@@ -195,10 +196,10 @@ export function createHorde({ seed = 1, welt = null, arten = HORDEN_ARTEN, max =
         }
         if (w.zustand === 'flug') flug(w, dt); else laufen(w, dt, ziel);
       }
-      for (const w of wesen) if (!w.tot) ziele.push(w);
+      for (let i = 0; i < wesen.length; i++) if (!wesen[i].tot) ziele.push(wesen[i]);
       return ereignisse;
     },
-    leeren() { wesen.length = 0; ziele.length = 0; ereignisse.length = 0; gitter.leeren(); lebend = 0; getoetet = 0; },
+    leeren() { for (const w of wesen) w.entfernt = true; wesen.length = 0; ziele.length = 0; ereignisse.length = 0; gitter.leeren(); lebend = 0; getoetet = 0; },
     dispose() { wesen.length = 0; ziele.length = 0; ereignisse.length = 0; gitter.dispose(); lebend = 0; },
   };
 }

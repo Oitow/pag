@@ -1,7 +1,7 @@
 /**
  * @modul    zauber-effekte
  * @zweck    Leichte Zauber-Effekte fürs Handy: ein Partikel-Points-Objekt (Funken, Schweife), leuchtende Geschoss-Kugeln, Schockwellen-Ringe, Blitze, Erdstacheln, Schutz-Aura, Meteor-Sturz – alles aus Pools
- * @api      createZauberEffekte(opts) -> { gruppe, update(dt,{hoehePx}?), funken(pos,opts), kugel(id,pos,opts), entferneKugel(id), ring(pos,opts), blitz(punkte,opts), stacheln(pos,opts), aura(id,posFn,opts), entferneAura(id), sturz(pos,opts), aktiv, dispose() }
+ * @api      createZauberEffekte(opts) -> { gruppe, anteil (0…1, Partikel-Anteil, Standard 1), update(dt,{hoehePx}?), funken(pos,opts), kugel(id,pos,opts), entferneKugel(id), ring(pos,opts), blitz(punkte,opts), stacheln(pos,opts), aura(id,posFn,opts), entferneAura(id), sturz(pos,opts), aktiv, dispose() }
  * @beispiel
  *   import { createZauberEffekte } from '../../engine/render/zauber-effekte.js';
  *   const fx = createZauberEffekte({ seed: 3 }); szene.add(fx.gruppe);
@@ -10,7 +10,7 @@
  *   fx.blitz([hand, ziel1, ziel2]); fx.aura('schild', () => figur.zustand.pos, { dauer: 8 });
  *   fx.update(dt, { hoehePx: renderer.domElement.height });
  * @tags     zauber, magie, effekt, partikel, funken, blitz, schockwelle, shader, vfx
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    ja
  */
@@ -55,11 +55,13 @@ export function createZauberEffekte({ maxPartikel = 700, seed = 1 } = {}) {
   const punkte = new THREE.Points(geo, pMat);
   punkte.frustumCulled = false;
   gruppe.add(punkte);
-  let zeiger = 0, lebendig = 0;
+  let zeiger = 0, lebendig = 0, schmutzig = false, anteil = 1, rest01 = 0;
 
   /** Funken-Stoß. opts: { farbe, anzahl = 12, tempo = 3, dauer = 0.6, groesse = 0.5, schwerkraft = 4 (+ = fällt, − = steigt), streuung = 0.1 (Startradius), richtung {x,y,z} (optional, Hauptrichtung), hoch = 0 (zusätzliches Tempo nach oben) } */
   function funken(p, { farbe: f = 0xffffff, anzahl = 12, tempo = 3, dauer: d = 0.6, groesse = 0.5, schwerkraft = 4, streuung = 0.1, richtung = null, hoch = 0 } = {}) {
     farbe.set(f);
+    if (anteil < 1) { rest01 += anzahl * anteil; anzahl = Math.floor(rest01); rest01 -= anzahl; }   // Qualitätsstufe: weniger Partikel
+    if (anzahl > 0) schmutzig = true;
     for (let n = 0; n < anzahl; n++) {
       const i = zeiger; zeiger = (zeiger + 1) % N;
       // Zufallsrichtung auf der Kugel
@@ -74,6 +76,7 @@ export function createZauberEffekte({ maxPartikel = 700, seed = 1 } = {}) {
     }
   }
   function partikelUpdate(dt) {
+    if (!schmutzig) return;                       // nichts am Leben und schon als leer hochgeladen
     lebendig = 0;
     for (let i = 0; i < N; i++) {
       if (rest[i] <= 0) continue;
@@ -85,6 +88,7 @@ export function createZauberEffekte({ maxPartikel = 700, seed = 1 } = {}) {
       pos[i * 3] += vel[i * 3] * dt; pos[i * 3 + 1] += vel[i * 3 + 1] * dt; pos[i * 3 + 2] += vel[i * 3 + 2] * dt;
       leb[i] = rest[i] / dauer[i];
     }
+    if (!lebendig) schmutzig = false;             // dieses Bild war das letzte (leere) Hochladen
     for (const n of ['position', 'aFarbe', 'aGroesse', 'aLeben']) geo.attributes[n].needsUpdate = true;
   }
 
@@ -198,7 +202,9 @@ export function createZauberEffekte({ maxPartikel = 700, seed = 1 } = {}) {
   }
 
   return {
-    gruppe, funken, kugel, entferneKugel, ring, blitz, stacheln, aura, entferneAura, sturz,
+    gruppe, funken, kugel,
+    get anteil() { return anteil; }, set anteil(a) { anteil = Math.min(1, Math.max(0, +a || 0)); },
+    entferneKugel, ring, blitz, stacheln, aura, entferneAura, sturz,
     /** Anzahl lebender Partikel + laufender Mesh-Effekte (für Tests/Debug). */
     get aktiv() { return lebendig + zeitlich.length + kugeln.size + auren.size; },
     update(dt, { hoehePx } = {}) {

@@ -1,5 +1,12 @@
 # Engine-Changelog
 
+## 2026-11 – Leistung (Handy)
+- render/qualitaet 1.0.0 (neu): automatische Qualitätsstufe nach Bildzeit (Pixelverhältnis, Schattenkarte, Partikel-Anteil, max. Zahlen), Hysterese, reine Logik
+- render/horde-mesh 1.1.0 (additiv, intern): lädt nur die belegten Instanzen zur Grafikkarte (Update-Bereiche)
+- gameplay/horde 1.1.0 (additiv, intern): `schade()` ohne O(n)-Suche (Wesen hat `entfernt`), `ziele` ohne Iterator
+- render/zauber-effekte 1.1.0 (additiv): `fx.anteil` (0…1) skaliert die Partikelzahl; Partikel-Puffer werden im Leerlauf nicht mehr hochgeladen
+- ui/treffer-zahlen 1.1.0, ui/figur-schild 1.1.0 (additiv, intern): DOM-Stil nur bei Änderung, keine Vector3-Neuanlage pro Bild
+
 ## 2026-11 – Großzauber (episch)
 - audio/klang 1.1.0 (additiv): neue Klänge `grollen`, `rauschen`, `heulen`, `bersten` für Großzauber
 - gameplay/grosszauber 1.0.0 (neu): Register für Großzauber-Arten, laufende Wirkungen, Ereignis-Vokabular (treffer, beben, klang, stopp, funken, ring, meldung) und Welt-Adapter (Wände = Hindernis, Podest/Graben = Boden, Flut = Wasser)

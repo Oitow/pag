@@ -9,7 +9,7 @@
  *   const hm = createHordeMesh({ modelle: { ratte: ratte.frames }, max: 140 }); szene.add(hm.gruppe);
  *   hm.update(horde.wesen);   // jedes Bild nach horde.update()
  * @tags     horde, gegner, instancing, instancedmesh, rendern, schwarm, ratte, monster
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    ja
  *
@@ -71,7 +71,13 @@ export function createHordeMesh({ modelle = {}, max = 140, material = null, scha
         farbe.setRGB((t * dunkel) * (1 - b) + 3.5 * b, (t * dunkel) * (1 - b) + 3 * b, (t * dunkel) * (1 - b) + 2.6 * b);
         m.setColorAt(i, farbe);
       }
-      for (const n in meshes) for (const m of meshes[n]) { m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; }
+      for (const n in meshes) for (const m of meshes[n]) {     // nur den belegten Teil zur Grafikkarte schicken (statt aller max Instanzen)
+        const a = m.instanceMatrix, c = m.instanceColor;
+        if (!m.count && !m._warBelegt) continue;
+        m._warBelegt = m.count > 0;
+        a.clearUpdateRanges(); a.addUpdateRange(0, Math.max(1, m.count) * 16); a.needsUpdate = true;
+        if (c) { c.clearUpdateRanges(); c.addUpdateRange(0, Math.max(1, m.count) * 3); c.needsUpdate = true; }
+      }
     },
     dispose() {
       for (const n in meshes) for (const m of meshes[n]) { m.dispose(); m.removeFromParent(); }
