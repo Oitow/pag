@@ -18,11 +18,12 @@
  *   'blitz'  punkte [{x,y,z}…] von der Wolke zum Ziel (dann Einschlag), treffer (Blitzschaden) – Ansichten zeichnen daraus eine Zickzack-Linie.
  *   Das Labor kennt 'blitz' noch nicht; deshalb kommen am Einschlag zusätzlich 'funken' + 'ring'.
  */
+import { rng } from '../core/rng.js';
 const FORMEN = 1, AUFLOESEN = 1.5, TAKT = 0.2, BLITZ = 0.7, SOG = 14, KERN = 5, RAND = 9;
 
 export function createSturm(opts = {}, umgebung = {}) {
   const k = Math.max(0.5, +opts.kraft || 1), def = opts.def || {};
-  const zufall = umgebung.zufall || Math.random, boden = umgebung.boden || (() => 0);
+  const zufall = umgebung.zufall || rng(1), boden = umgebung.boden || (() => 0);
   const yaw = +opts.yaw || 0, richt = { x: Math.sin(yaw), z: Math.cos(yaw) };
   const dauer = 10 * k, hoehe = 28 * k, schaden = def.schaden ?? 12, stoss = def.stoss ?? 8;
   const p0 = opts.punkt || { x: 0, y: 0, z: 0 }, phase0 = zufall() * 6.28;

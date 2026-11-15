@@ -15,11 +15,12 @@
  * Phasen: 'steigt' (Welle von der Mitte nach außen, ~0.7 s) → 'steht' (~12 s × kraft) → 'zerfaellt' (~3.5 s).
  * Meldet: beben, klang (grollen, bersten, wumms, explosion), funken, stopp, meldung, treffer.
  */
+import { rng } from '../core/rng.js';
 const SCHRITT = 1.7, ANSTIEG = 0.3, ZERFALL = 3.5, ZERFALL_SINK = 1.5, MIN_HOCH = 0.5;
 const ease = (t) => { t = Math.max(0, Math.min(1, t)); return 1 - (1 - t) * (1 - t) * (1 - t); };
 
 export function createWand(opts = {}, umgebung = {}) {
-  const zufall = umgebung.zufall || Math.random;
+  const zufall = umgebung.zufall || rng(1);
   const kraft = Math.max(0.5, Math.min(1.8, +opts.kraft || 1));
   const def = opts.def || {};
   const von = opts.von || { x: 0, y: 0, z: 0 }, punkt = opts.punkt || von, yaw = +opts.yaw || 0;

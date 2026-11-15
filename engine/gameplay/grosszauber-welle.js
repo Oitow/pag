@@ -16,12 +16,13 @@
  * daten (für render/grosszauber-welle): { phase, alter, mitte {x,y,z}, richtung {x,z}, yaw, breite, hoehe, fortschritt 0…1, kruemmung 0…1, start {x,z}, strecke (m Flutweg), flut 0…1 (Deckkraft Flutfläche), tiefe, mitgerissen }
  * Ziele in der Front: treffer mit zug (Laufrichtung) jedes Bild, Schaden einmal + kleiner Folgeschaden; am Ende hochgeworfen (stoss, umwerfen).
  */
+import { rng } from '../core/rng.js';
 const kl = (v, a, b) => Math.max(a, Math.min(b, v));
 const glatt = (t) => { t = kl(t, 0, 1); return t * t * (3 - 2 * t); };
 
 export function createWelle(opts = {}, umgebung = {}) {
   const def = opts.def || {}, kraft = kl(+opts.kraft || 1, 0.5, 2), von = opts.von || { x: 0, y: 0, z: 0 };
-  const boden = umgebung.boden || (() => 0), zufall = umgebung.zufall || Math.random;
+  const boden = umgebung.boden || (() => 0), zufall = umgebung.zufall || rng(1);
   const yaw = +opts.yaw || 0, dx = Math.sin(yaw), dz = Math.cos(yaw);   // Blick
   const breite = Math.min(40, (def.breite || 24) * kraft), laenge = (def.laenge || 45) * kraft;
   const hoehe = kl(def.hoehe ?? 4 + (kraft - 1) * 5, 4, 7), tempo = (def.tempo || 14) * Math.sqrt(kraft);

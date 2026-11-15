@@ -13,6 +13,7 @@
  * daten (aus gameplay/grosszauber-sturm): { pos, fuss, oben, hoehe, drehung, alter, wachs, blitze [{ punkte, alter }] }
  * 5 Draw-Calls: 2 Röhren, Wolke, Punkte (Staub + Bodenring), Blitz-Linien. Keine Schatten, alles aus festen Pools.
  */
+import { rng } from '../core/rng.js';
 import * as THREE from 'three';
 
 const VERT = `
@@ -85,7 +86,7 @@ export function createSturmAnsicht(daten0, umgebung = {}) {
   // Punkte: Staub/Trümmer (spiralförmig) + Bodenring
   const N = 420, M = 140, GES = N + M;
   const pos = new Float32Array(GES * 3), ph = new Float32Array(GES * 4);   // phase, höhe, tempo, radiusFaktor
-  const zuf = umgebung.zufall || Math.random;
+  const zuf = umgebung.zufall || rng(1);
   for (let i = 0; i < GES; i++) { ph[i * 4] = zuf() * 6.283; ph[i * 4 + 1] = zuf(); ph[i * 4 + 2] = 0.5 + zuf(); ph[i * 4 + 3] = 0.6 + zuf() * 0.7; }
   const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   const tex = new THREE.DataTexture(new Uint8Array(Array.from({ length: 256 }, (_, i) => { const x = (i % 16) - 7.5, y = (i >> 4) - 7.5; return Math.max(0, 255 - Math.hypot(x, y) * 34); }).flatMap(v => [150, 140, 125, v])), 16, 16, THREE.RGBAFormat);

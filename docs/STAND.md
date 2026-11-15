@@ -3,12 +3,15 @@
 > Wird von `/ende` überschrieben und von `/start` gelesen. Höchstens 40 Zeilen.
 
 ## Zuletzt gemacht
-- Kampfsystem fürs spätere MMO (Bauplan `docs/KAMPF-SYSTEM.md`): Engine `gameplay/kampf-werte`, `zustaende`, `bedrohung`, `kampf`, `nahkampf`(+daten), `faehigkeiten`(+daten), `ui/kampf-leiste`, `ui/ziel-rahmen`; `zauber-daten` 1.1 (element)
-- Figuren-Labor: Reiter ⚔ Kampf – Kombos (F tippen/halten), Block/Parade (B/🛡), Ausweichen mit Unverwundbarkeit (Q), Rivale mit KI, Trainingspuppe mit DPS, MMO-Leiste (Krieger/Magier/Heiler, GCD, Wirkzeit), Ziel-Rahmen; `?kampf=1`
-- Startseite in Spiele / Labore gegliedert
+- Großzauber (Bauplan `docs/KAMPF-SYSTEM.md` unten): Kern `gameplay/grosszauber` (Welt-Adapter: Wände, Gräben, Fluten) + `render/grosszauber-mesh`;
+  🌊 Flutwelle, 🧱 Erdwall, ⛈️ Zyklon, 🌋 Erdriss (je Logik + Ansicht), Zauber-Art `'gross'` (zauber 2.1, zauber-daten 1.2), Klänge grollen/rauschen/heulen/bersten
+- Figuren-Labor: Schlachtfeld 160 m (`?schlachtfeld=1`), Große Plage ~400 Ratten (`?grossplage=1`), Zeitlupe + Kamera-Auszug + Blitz beim Großzauber, Shift+1–4
+- Davor: Kampfsystem (kampf-werte, zustaende, bedrohung, kampf, nahkampf, faehigkeiten, kampf-leiste, ziel-rahmen) im Figuren-Labor
 
 ## Läuft / kaputt
-- Alles grün (618 Tests, Smoke 5 Spiele); Handy-Layout einmal per Screenshot geprüft
+- Alles grün (636 Tests, Smoke 5 Spiele); Flutwelle + Erdriss im Bild geprüft, Erdwall/Zyklon nur von ihren Agenten
+- Großzauber zielen per Auto-Ziel – steht der Gegner direkt am Spieler, entsteht die Wand auf dem Spieler; Zeitlupe verlängert die Wirkzeit
+- 400 Ratten nur im Software-Renderer, nicht auf echtem Handy gemessen
 - Nicht abgestimmt: Vorwärtsschritt/Ansturm-Tempo, Parade-/Ausweich-Gefühl gegen den Rivalen (nur Logik getestet)
 - Meldung „−6 Leben“ überlappt am Handy kurz den Spieler-Rahmen
 - Bekannt (alt): Truhe durch Schuppenwand, Gelände-Raster 2 m, Viniland noch eigene `js/psx.js`

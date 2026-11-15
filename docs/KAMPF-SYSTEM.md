@@ -88,3 +88,12 @@ faehigkeiten ───────┘   (Leiste: GCD, Ressource, Wirkzeit, Ladun
      update(dt, { bewegt, getroffen, sperren }) → ereignisse [{ typ:'wirkStart'|'wirkt'|'kanalTakt'|'unterbrochen'|'fertig', name, def, ziel }],
      gib(ressource, menge), ressource(name) → {wert,max}, wirkt → {name, anteil}|null, gcdAnteil, abkling(name), ladungen(name), unterbrich(), zustand(), laden(), dispose() }`
   - `fertig` (bzw. `kanalTakt`) liefert die `wirkung` an das Spiel; das Spiel ruft `kampf.schade/heile/gibZustand` bzw. Nahkampf/Zauber.
+
+## 🌋 Großzauber (Maßstab: Welt verändern)
+- `gameplay/grosszauber` (Kern): Zauber-Arten als Fabriken, laufende Wirkungen, Ereignisse (`treffer`, `beben`, `klang`, `stopp`, `funken`, `ring`, `blitz`, `meldung`)
+  und ein **Welt-Adapter**: Wände = `hindernisse`, Podest/Graben = `bodenHoehe`, Flut = `wasserHoehe` → Spieler, NPCs, Horden und Körper reagieren ohne eigenen Code.
+- Zauberbuch: Art `'gross'` meldet `gross` (von, punkt, yaw, kraft) → `grosszauber.wirke(def.gross.art, …)`. Überladen = größer/länger.
+- Arten (je Logik `gameplay/grosszauber-<art>` + Ansicht `render/grosszauber-<art>`): 🌊 `welle` (Flutwelle), 🧱 `wand` (Erdwall, Ring bei voller Ladung),
+  ⛈️ `sturm` (Zyklon mit Blitzen), 🌋 `riss` (Erdriss mit Lava und Graben).
+- Neue Art = zwei Dateien + Eintrag in `zauber-daten` (`art: 'gross', gross: { art }`) + Registrierung im Spiel.
+- Für Mehrspieler: Wirkungen sind deterministisch (Seed), `zustand()` liefert reine Daten; die Ansicht liest nur `daten`.

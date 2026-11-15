@@ -11,8 +11,8 @@ const lauf = (buch, ziele, s, dt = 1 / 60) => {
 const gegner = (id, x, z, hoehe = 1.7) => ({ id, x, y: 0, z, radius: 0.35, hoehe });
 const HAND = { x: 0, y: 1.2, z: 0 }, FUSS = { x: 0, y: 0, z: 0 };
 
-test('Tabelle: 12 Zauber, jede Geste ist ein registrierter Clip mit Spann- und Treffer-Moment', () => {
-  assert.equal(ZAUBER_NAMEN.length, 12);
+test('Tabelle: 16 Zauber (12 + 4 Großzauber), jede Geste ist ein registrierter Clip mit Spann- und Treffer-Moment', () => {
+  assert.equal(ZAUBER_NAMEN.length, 16);
   for (const n of ZAUBER_NAMEN) {
     const d = ZAUBER[n];
     assert.ok(CLIPS[d.clip], `${n}: Clip ${d.clip}`);
@@ -82,6 +82,7 @@ test('Alle Arten liefern ihre Ereignisse und Treffer', () => {
     const es = lauf(buch, ziele, 6);
     typen[n] = [...new Set(es.map((e) => e.typ))];
     const getroffen = es.flatMap((e) => e.treffer.map((t) => t.id));
+    if (ZAUBER[n].art === 'gross') { assert.deepEqual(typen[n], ['schlag', 'start', 'gross'], n); continue; }   // Treffer macht gameplay/grosszauber
     if (!['heilung', 'schild', 'blinzeln'].includes(n)) assert.ok(getroffen.includes('a'), `${n} trifft a (${typen[n]})`);
     assert.ok(!getroffen.includes('c'), `${n} trifft c nicht`);
     assert.equal(buch.geschosse.length, 0, `${n}: Geschosse aufgeräumt`);
