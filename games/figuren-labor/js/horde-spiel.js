@@ -22,7 +22,7 @@ export function createHordeSpiel({ szene, welt, spieler, seed = 1, klang = null,
   const ratte = createRatte({ seed });
   const bild = createHordeMesh({ modelle: { ratte: ratte.frames }, max: MAX_GROSS });
   szene.add(bild.gruppe);
-  const st = { an: false, welle: 0, pause: 0, bestes: 0, gross };   // gross = Große Plage (jederzeit umschaltbar)
+  const st = { an: false, welle: 0, pause: 0, bestes: 0, gross, manuell: false, verloren: false };   // manuell = Schlacht (ablauf.js) steuert die Wellen   // gross = Große Plage (jederzeit umschaltbar)
   const zielObj = { x: 0, y: 0, z: 0, radius: 0.35 };
   let quiekUhr = 0, bissSchutz = 0;
 
@@ -54,11 +54,16 @@ export function createHordeSpiel({ szene, welt, spieler, seed = 1, klang = null,
     get an() { return st.an; },
     /** Große Plage an/aus (wirkt ab der nächsten Welle). */
     setGross(an) { st.gross = !!an; },
-    start() { horde.leeren(); st.an = true; st.welle = 0; st.pause = 1.2; onMeldung('🐀 Rattenplage! Halte den Zauber für mehr Wucht.'); },
+    /** Schlacht-Modus: keine automatischen Wellen, Niederlage setzt nur zustand.verloren (ablauf.js übernimmt). */
+    setManuell(an) { st.manuell = !!an; },
+    /** Nächste Welle sofort starten (nur für den Schlacht-Ablauf). */
+    starteWelle() { naechsteWelle(); },
+    start() { horde.leeren(); st.an = true; st.verloren = false; st.welle = 0; st.pause = 1.2; onMeldung('🐀 Rattenplage! Halte den Zauber für mehr Wucht.'); },
     stopp() { st.an = false; horde.leeren(); bild.update(horde.wesen); },
     /** Spieler ist gefallen: Horde zieht sich zurück, Plage beginnt neu. */
     niederlage() {
       st.bestes = Math.max(st.bestes, st.welle);
+      if (st.manuell) { st.verloren = true; return; }
       onMeldung(`Überrannt in Welle ${st.welle} – ${horde.getoetet} Ratten erledigt`);
       horde.leeren(); st.welle = 0; st.pause = 4;
     },
@@ -67,7 +72,7 @@ export function createHordeSpiel({ szene, welt, spieler, seed = 1, klang = null,
       if (bissSchutz > 0) bissSchutz -= dt;
       const p = spieler.zustand.pos;
       zielObj.x = p.x; zielObj.y = p.y; zielObj.z = p.z;
-      for (const e of horde.update(dt, st.an && zielAn ? zielObj : null)) {
+      for (const e of horde.update(dt, st.an && zielAn && !st.verloren ? zielObj : null)) {
         if (e.typ !== 'biss') continue;
         if (bissSchutz > 0) continue;                       // höchstens ein Biss alle 0,15 s zählt – sonst ist man in 2 s tot
         bissSchutz = 0.15;
@@ -78,7 +83,7 @@ export function createHordeSpiel({ szene, welt, spieler, seed = 1, klang = null,
         quiekUhr = 0.6 + 2.5 / Math.max(1, horde.anzahl / 6);
         klang?.spiele('quiek', { staerke: 0.25, tonhoehe: 0.8 + (quiekUhr % 0.4) });
       }
-      if (st.an && horde.anzahl <= (st.gross ? 6 : 2) && (st.pause -= dt) <= 0) { naechsteWelle(); st.pause = 2.5; }
+      if (st.an && !st.manuell && horde.anzahl <= (st.gross ? 6 : 2) && (st.pause -= dt) <= 0) { naechsteWelle(); st.pause = 2.5; }
       bild.update(horde.wesen);
     },
     dispose() { bild.dispose(); ratte.dispose(); horde.dispose(); },

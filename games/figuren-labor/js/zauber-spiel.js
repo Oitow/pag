@@ -16,12 +16,13 @@ const hex = (f) => '#' + f.toString(16).padStart(6, '0');
 
 /**
  * opts: { spieler, npcs: [{ fig }], npcsAn(), horde (gameplay/horde, optional), szene, welt (Adapter), kamera, lockZiel() -> Figur|null,
+ *   grossTor ({ pruefe(name) -> bool, zahle(name) }, optional: sperrt/bezahlt Großzauber),
  *   seed, klang (audio/klang, optional), onMeldung(text), onSchmerz(anteil),
  *   kampf (gameplay/kampf, optional: Schaden/Heilung/Leben laufen über die Kampf-Welt, Kämpfer 'spieler' und n.kid je NPC müssen gemeldet sein),
  *   spielerSchaden(paket) -> ergebnis (optional, mit kampf: zentrale Spieler-Treffer-Behandlung), extraZiele() -> [{ id, kid, fig, x, y, z, radius, hoehe }] }
  */
 export function createZauberSpiel({ spieler, npcs, npcsAn = () => true, horde = null, szene, welt, kamera, lockZiel = () => null, seed = 1,
-  klang = null, onMeldung = () => {}, onSchmerz = () => {}, kampf = null, spielerSchaden = null, extraZiele = null, onGross = null }) {
+  klang = null, onMeldung = () => {}, onSchmerz = () => {}, kampf = null, spielerSchaden = null, extraZiele = null, onGross = null, grossTor = null }) {
   const buch = createZauberbuch({ welt });
   const fx = createZauberEffekte({ seed, maxPartikel: 1400 });
   const zahlen = createTrefferZahlen({ max: 32, seed });
@@ -102,6 +103,7 @@ export function createZauberSpiel({ spieler, npcs, npcsAn = () => true, horde = 
     const k = buch.kann(name);
     if (!k.ok) { if (GRUND[k.grund]) { onMeldung(GRUND[k.grund]); ton('fehl'); } return false; }
     const def = k.def, clip = CLIPS[def.clip];
+    if (def.gross && grossTor && !grossTor.pruefe(name)) return false;   // Schlacht: Großzauber kosten Macht (ablauf.js)
     spieler.spiele(def.clip, { halteBei: true });
     buch.wirke(name, {
       halten, vorlauf: Math.max(def.wirkzeit, clip.spannBei), schlag: clip.trefferBei - clip.spannBei,
@@ -234,7 +236,7 @@ export function createZauberSpiel({ spieler, npcs, npcsAn = () => true, horde = 
       fx.funken({ x: e.pos.x, y: e.pos.y + 0.6, z: e.pos.z }, { farbe: f, anzahl: 90, tempo: 9, dauer: 0.7, groesse: 0.7, hoch: 2 });
       ton('explosion', { staerke: 1.3, tonhoehe: 1.3 }); kamera.schuetteln(0.8, 0.35); stopp(0.08);
     } else if (e.typ === 'gross') {   // Großzauber → grosszauber-spiel
-      onGross?.(e);
+      grossTor?.zahle(e.zauber); onGross?.(e);
       kamera.schuetteln(0.5 * kraft, 0.4); ton('wumms', { staerke: 1, tonhoehe: 0.6 }); stopp(0.06);
     } else if (e.typ === 'teleport') {
       fx.funken({ x: e.von.x, y: e.von.y + 1, z: e.von.z }, { farbe: f, anzahl: 40, tempo: 3, dauer: 0.6, groesse: 0.6, schwerkraft: -2, streuung: 0.5 });

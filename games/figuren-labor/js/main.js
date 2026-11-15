@@ -8,8 +8,10 @@ import { createHordeSpiel } from './horde-spiel.js';
 import { createKampfSpiel } from './kampf-spiel.js';
 import { createGrosszauberSpiel } from './grosszauber-spiel.js';
 import { createMmoLeiste } from './mmo-leiste.js';
+import { createAblauf } from './ablauf.js';
 import { WAFFEN_NAMEN } from '../../../engine/gameplay/nahkampf.js';
 import { createKlang } from '../../../engine/audio/klang.js';
+import { createQualitaet } from '../../../engine/render/qualitaet.js';
 import { ZAUBER, ZAUBER_NAMEN } from '../../../engine/gameplay/zauber.js';
 import { createCharacter } from '../../../engine/gameplay/character.js';
 import { createSteering } from '../../../engine/gameplay/character-steering.js';
@@ -35,7 +37,8 @@ let psxAn = true;
 try { psxAn = localStorage.getItem(PSX_SPEICHER) !== '0'; } catch { /* privat */ }
 const psx = createPsx({ an: psxAn });
 const renderer = new THREE.WebGLRenderer({ antialias: !psxAn });   // Kantenglättung passt nicht zu groben Pixeln (gilt ab Neuladen)
-const groesseSetzen = () => psx.aufloesung(renderer, innerWidth, innerHeight, { pixelRatio: Math.min(devicePixelRatio, 1.5) });
+let pixelMax = 1.5;   // Qualitätsstufe (engine/render/qualitaet) senkt es bei langsamen Bildern
+const groesseSetzen = () => psx.aufloesung(renderer, innerWidth, innerHeight, { pixelRatio: Math.min(devicePixelRatio, pixelMax) });
 groesseSetzen();
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -43,10 +46,10 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 document.body.prepend(renderer.domElement);
 
 const szene = new THREE.Scene();
-szene.background = new THREE.Color('#9ec8e8');
-szene.fog = new THREE.Fog('#9ec8e8', 90, 260)   // 60–80 m gut sichtbar (Großzauber, Schlachtfeld);
-szene.add(new THREE.HemisphereLight('#dceeff', '#6a5a40', 1.1));
-const sonne = new THREE.DirectionalLight('#fff0d8', 2.2);
+szene.background = new THREE.Color('#c9d6e0');   // warmer Abenddunst
+szene.fog = new THREE.Fog('#c9d6e0', 110, 300)   // 60–80 m gut sichtbar (Großzauber, Schlachtfeld);
+szene.add(new THREE.HemisphereLight('#cfe0f5', '#7a6040', 1.1));
+const sonne = new THREE.DirectionalLight('#ffd9a8', 2.4);
 sonne.castShadow = true;
 sonne.shadow.mapSize.set(2048, 2048);   // Schatten-Kamera folgt dem Spieler (sonne.position/target in der Schleife)
 Object.assign(sonne.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 80 });
@@ -185,13 +188,14 @@ const ks = createKampfSpiel({
   spieler, npcs, npcsAn: () => npcAn, horde: plage.horde, szene, welt: welt.adapter, kamera, eingabe, lockZiel: () => ziel, seed: SEED, klang, schilder,
   zauber: () => zauber, onMeldung: (t) => ui.melde(t), onSchmerz: (a) => { schmerz = Math.max(schmerz, a); },
   onTod: (quelle) => { if (quelle !== 'ratte' && plage.an) plage.niederlage(); },   // Bisse meldet die Plage selbst
-  onTreffer: () => mmo.gibWut(6),
+  onTreffer: () => { mmo.gibWut(6); ablauf.treffer(); },
 });
 const zauber = createZauberSpiel({
   spieler, npcs, npcsAn: () => npcAn, horde: plage.horde, szene, welt: welt.adapter, kamera, lockZiel: () => ziel, seed: SEED, klang,
   onMeldung: (t) => ui.melde(t), onSchmerz: (a) => { schmerz = Math.max(schmerz, a); },
-  kampf: ks.kampf, spielerSchaden: ks.schadeSpieler, extraZiele: () => ks.gegner.ziele(),
+  kampf: ks.kampf, spielerSchaden: (p) => ablauf.spielerErgebnis(ks.schadeSpieler(p)), extraZiele: () => ks.gegner.ziele(),
   onGross: (e) => { gross.wirke(e); epik(); },
+  grossTor: { pruefe: (n) => ablauf.grossTor.pruefe(n), zahle: (n) => ablauf.grossTor.zahle(n) },   // Schlacht: Macht-Leiste
 });
 // Großzauber (Flutwelle, Erdwall, Zyklon, Erdriss): erweitern welt.adapter um Wände, Gräben und Fluten
 const gross = createGrosszauberSpiel({ szene, adapter: welt.adapter, kamera, klang, zauber: () => zauber, spieler, seed: SEED, onMeldung: (t) => ui.melde(t) });
@@ -234,6 +238,11 @@ function epikUpdate(echtDt) {   // Kamera: schnell hinaus, sanft zurück
   const e = env * env * (3 - 2 * env);
   if (!kamera.erstePerson || kamera.distanz > 2.5) { kamera.distanz = epikZ.d0 * (1 + 0.8 * e); kamera.pitch = epikZ.p0 + 0.2 * e; }
 }
+// Spielablauf „⚔ Schlacht“ (ablauf.js): Wellen, Macht-Leiste, Niederlage/Sieg
+const ablauf = createAblauf({
+  plage, zauber: () => zauber, kamera, spieler, ui, feld: welt.schlachtfeld, klang, melde: (t) => ui.melde(t),
+  zumFeld: zumSchlachtfeld, heile: () => { zauber.alleHeilen(); ks.alleHeilen(); },
+});
 function plageUmschalten() {
   if (plage.an) plage.stopp(); else { plage.start(); ui.schliesse(); }
   $('bPlage').classList.toggle('an', plage.an);
@@ -337,11 +346,12 @@ function hudPlage(dt) {
 }
 
 // ---- Schleife ----
+const qual = createQualitaet({ ziel: 1 / 50 });
 let letzte = performance.now(), fpsZeit = 0, fpsN = 0, fps = 0;
 function bild(jetzt) {
   const echtDt = Math.min((jetzt - letzte) / 1000, 0.1);
   letzte = jetzt;
-  const dt = echtDt * zauber.zeitFaktor(echtDt) * (epikZ.slow > 0 ? ((epikZ.slow -= echtDt), 0.35) : 1);   // Treffer-Stopp: die Welt hält kurz die Luft an
+  const dt = echtDt * zauber.zeitFaktor(echtDt) * ablauf.zeit * (epikZ.slow > 0 ? ((epikZ.slow -= echtDt), 0.35) : 1);   // Treffer-Stopp: die Welt hält kurz die Luft an
   fpsZeit += dt; fpsN++;
   if (fpsZeit > 0.5) { fps = Math.round(fpsN / fpsZeit); fpsZeit = 0; fpsN = 0; }
 
@@ -399,6 +409,7 @@ function bild(jetzt) {
   mmo.update(dt, Math.hypot(absicht.x, absicht.z) > 0.1);
   ui.update(echtDt, zauber.buch, zauber.zustand);
   hudPlage(echtDt);
+  ablauf.update(echtDt);
   epikUpdate(echtDt);
   kamera.update(echtDt, z.pos, { tempo: z.tempo, sprintet: z.sprintet, yaw: z.yaw, amBoden: z.amBoden, augenHoehe: spieler.model.masse.augenHoehe });
   spieler.setSichtbar(!kamera.figurAusblenden);
@@ -408,12 +419,19 @@ function bild(jetzt) {
   sonne.target.position.set(z.pos.x, z.pos.y, z.pos.z);
 
   if (infoAn) $('info').textContent =
-    `${fps} fps · ${spieler.look.name}\n` +
+    `${fps} fps · Qualität ${qual.nr + 1}/${qual.stufen.length} · ${spieler.look.name}\n` +
     `Tempo ${z.tempo.toFixed(1)} m/s ${z.sprintet ? 'Sprint' : ''}${z.duckt ? ' Ducken' : ''}\n` +
     `${z.imWasser ? 'Schwimmen' : z.amBoden ? (z.rutscht ? 'Rutschen' : 'Boden') : 'Luft'} · y ${z.pos.y.toFixed(2)} · Schritte ${schritte.n}\n` +
     `Aktion ${spieler.animator.aktion || '–'} · Eingabe ${e.aktiv}\n` +
     `Kamera ${kamera.erstePerson ? 'Ich-Sicht' : kamera.preset}${ziel ? ' · Ziel ' + ziel.name : ''}${z.rollt ? ' · Rolle' : ''}${z.gleitet ? ' · Gleiten' : ''}`;
 
+  const qs = qual.update(echtDt);   // automatische Qualitätsstufe nach Bildzeit
+  if (qs) {
+    pixelMax = qs.pixel; groesseSetzen();
+    sonne.castShadow = qs.schatten > 0;
+    if (qs.schatten > 0 && sonne.shadow.mapSize.x !== qs.schatten) { sonne.shadow.map?.dispose(); sonne.shadow.map = null; sonne.shadow.mapSize.set(qs.schatten, qs.schatten); }
+    zauber.fx.anteil = qs.partikel; zauber.zahlen.grenze = qs.zahlen;
+  }
   psx.update(echtDt, szene);
   renderer.render(szene, kamera.kamera);
   requestAnimationFrame(bild);
@@ -423,8 +441,9 @@ document.querySelector('[data-schalter="psx"]')?.classList.toggle('an', psxAn);
 requestAnimationFrame(bild);
 
 // Für Tests/Debug
-window.labor = { gross, psx, renderer, spieler, npcs, kamera, eingabe, welt, schilder, createLook, clipListe, zauber, ui, plage, klang, kampf: ks, mmo };
+window.labor = { qual, gross, psx, renderer, spieler, npcs, kamera, eingabe, welt, schilder, createLook, clipListe, zauber, ui, plage, klang, kampf: ks, mmo };
 if (url.get('schlachtfeld') === '1') zumSchlachtfeld();
 if (url.get('grossplage') === '1') { plage.setGross(true); document.querySelector('[data-knopf="grossplage"]')?.classList.add('an'); }
 if (url.get('plage') === '1') plageUmschalten();
+if (url.get('schlacht') === '1') ablauf.start();
 if (url.get('kampf') === '1') { ks.gegner.stellePuppe(); ks.gegner.rufeRivale(); waffeWaehlen('schwert'); kampfKnoepfe(); }

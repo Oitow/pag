@@ -48,3 +48,14 @@ Ziehen = Kamera · Rad = Zoom · F Schlag/Kombo (halten = schwer) · B/rechte Ma
 Zauberleiste oben: tippen = wählen, nochmal tippen = wirken (ohne Überladen). 🐀 oben rechts = Rattenplage an/aus.
 Handy: Stick links (erscheint unter dem Finger, Größe passt sich dem Bildschirm an), rechts ziehen = Kamera, zwei Finger = Zoom,
 Knöpfe unten rechts (⤒ ✨ ⚔ 🛡 🌀 🪂 🎯, 💬 nur bei NPCs), leichte Vibration. Gamepad geht auch.
+
+## ⚔ Spielablauf „Schlacht“ (`js/ablauf.js`)
+Start: schwebender Knopf „⚔ Schlacht“ (oben mittig, nur ohne laufende Schlacht) oder `?schlacht=1`. Außerhalb der Schlacht bleibt alles frei (Labor).
+- **Einstieg**: Teleport aufs Schlachtfeld, Titelkarte „Welle 1“, Kamerafahrt über das Feld, Countdown 3‑2‑1, dann Kampf.
+- **10 Wellen** der bestehenden Plage (ab Welle 3 „Große Plage“), alle 5 Wellen **Bosswelle** (Rattenkönig) mit Ansage. Zwischen den Wellen 6 s Atempause mit
+  Zusammenfassung (getötet, erlittener Schaden, beste Kombo, größter Mehrfach-Kill, Zeit) und automatischem Heilen.
+- **Macht-Leiste** (3 Stufen, unten mittig über der Zauber-Taste): Kills, Nahkampf-Treffer, Paraden und überstandene Wellen füllen sie. Großzauber kosten 1 Stufe
+  (Zyklon und Flutwelle 2); zu wenig Macht = Zauber gesperrt. „MACHT BEREIT“ bei neuer voller Stufe.
+- **Rhythmus**: Mehrfach-Kill ×10 „Massaker“, ×25 „Vernichtung“ (kurze Zeitlupe), ×50 „Weltuntergang“; Kombo-Zähler oben rechts (Treffer ohne selbst getroffen zu werden).
+- **Niederlage**: Zeitlupe, Ausblenden, Ergebnis-Karte (Welle, Kills, Rekord im Browser) mit „Nochmal“ / „Zurück ins Labor“. **Sieg** nach Welle 10: Siegeskarte.
+- Offenes Menü pausiert die Abläufe; 🐀 oben rechts bricht die Schlacht ab. Technik: `horde-spiel` hat `setManuell`/`starteWelle`, `zauber-spiel` die Option `grossTor`.
