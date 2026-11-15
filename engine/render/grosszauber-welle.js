@@ -1,6 +1,6 @@
 /**
  * @modul    grosszauber-welle-ansicht
- * @zweck    Ansicht der Flutwelle: gebogenes, verformtes Wellen-Gitter mit überrollendem Kamm, Schaumkrone und Fresnel-Rand, Gischt als Punkte, auslaufende Flutfläche – 3 Draw-Calls, ~3500 Dreiecke, keine Schatten
+ * @zweck    Ansicht der Flutwelle: gebogenes, verformtes Wellen-Gitter mit überrollendem Kamm, Schaumkrone und Fresnel-Rand, Gischt als Punkte, auslaufende Flutfläche – 3 Draw-Calls, ~3500 Dreiecke, Tiefenfarben + Schaumstreifen prozedural, keine Schatten
  * @api      createWelleAnsicht(daten, umgebung) -> { objekt, update(dt,daten,zeit), dispose() }
  * @beispiel
  *   import { createWelleAnsicht } from '../../engine/render/grosszauber-welle.js';
@@ -15,32 +15,53 @@
  */
 import * as THREE from 'three';
 
-const NX = 56, NV = 22, NFX = 18, NFZ = 28, MAXG = 360;
-const VERT = `varying vec3 vP; varying vec2 vF; varying float vW; attribute vec2 aF;
-void main(){ vF = aF; vec4 w = modelMatrix * vec4(position,1.0); vW = w.y; vec4 m = viewMatrix * w; vP = m.xyz; gl_Position = projectionMatrix * m; }`;
-const FRAG_WELLE = `uniform float uZeit, uAlpha; varying vec3 vP; varying vec2 vF; varying float vW;
+const NX = 56, NV = 22, NFX = 18, NFZ = 28, MAXG = 560;
+const VERT = `varying vec3 vP; varying vec2 vF; varying float vW; varying vec3 vL; attribute vec2 aF;
+void main(){ vF = aF; vL = position; vec4 w = modelMatrix * vec4(position,1.0); vW = w.y; vec4 m = viewMatrix * w; vP = m.xyz; gl_Position = projectionMatrix * m; }`;
+const RAUSCHEN = `float hs(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
+float ns(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
+  return mix(mix(hs(i), hs(i+vec2(1,0)), f.x), mix(hs(i+vec2(0,1)), hs(i+vec2(1,1)), f.x), f.y); }`;
+const FRAG_WELLE = `uniform float uZeit, uAlpha; varying vec3 vP; varying vec2 vF; varying float vW; varying vec3 vL;
+${RAUSCHEN}
 void main(){
   vec3 n = normalize(cross(dFdx(vP), dFdy(vP))); vec3 v = normalize(-vP);
-  float fr = pow(1.0 - abs(dot(n, v)), 2.5);
-  vec3 tief = vec3(0.03,0.27,0.52), flach = vec3(0.18,0.72,0.86);
-  vec3 c = mix(tief, flach, smoothstep(0.1,0.95,vF.x) * 0.8 + fr * 0.5);
-  float rau = sin(vF.y*60.0 + uZeit*5.0) * sin(vW*1.3 - uZeit*3.0) * 0.5 + 0.5;
-  float schaum = smoothstep(0.78, 0.97, vF.x + (rau-0.5)*0.12) + smoothstep(0.92, 1.0, vF.y) * 0.8 * rau;
-  c = mix(c, vec3(0.95,0.99,1.0), clamp(schaum,0.0,1.0));
-  c += vec3(0.5,0.8,0.9) * fr * 0.35;
-  gl_FragColor = vec4(c, uAlpha * clamp(0.62 + fr * 0.4 + schaum * 0.4, 0.0, 1.0));
+  float fr = pow(1.0 - abs(dot(n, v)), 2.2);
+  float hy = vF.x;
+  // Tiefe: dunkler Wasserkörper unten, türkis oben
+  vec3 c = mix(vec3(0.01,0.12,0.28), vec3(0.03,0.40,0.60), smoothstep(0.0,0.55,hy));
+  c = mix(c, vec3(0.22,0.80,0.80), smoothstep(0.5,0.96,hy) * 0.85 + fr * 0.25);
+  float wo = ns(vec2(vL.x*0.7 + uZeit*0.6, vL.z*0.5 - uZeit*1.8)) * 0.6 + ns(vec2(vL.x*2.3, vL.z*1.7 - uZeit*3.0)) * 0.4;
+  c *= 0.82 + wo * 0.35;
+  // Schaumstreifen auf der Flanke, Schaumkrone am Kamm
+  float streif = smoothstep(0.66, 0.9, ns(vec2(vL.x*1.6, hy*9.0 - uZeit*1.2))) * smoothstep(0.55, 0.85, hy) * 0.7;
+  float kamm = smoothstep(0.80, 0.96, hy + (wo-0.5)*0.22) + smoothstep(0.9, 1.0, vF.y) * 0.8 * wo;
+  float schaum = clamp(kamm + streif, 0.0, 1.0);
+  c = mix(c, vec3(0.97,1.0,1.0), schaum);
+  c += vec3(0.35,0.75,0.85) * fr * 0.3;
+  // Kamm scheint durch: dünn und türkis kurz unter dem Schaum
+  float duenn = smoothstep(0.6, 0.82, hy) * (1.0 - schaum);
+  float a = clamp(0.80 - duenn * 0.34 + fr * 0.25 + schaum * 0.3, 0.0, 1.0);
+  gl_FragColor = vec4(c, uAlpha * a);
+  #include <dithering_fragment>
 }`;
-const FRAG_FLUT = `uniform float uZeit, uAlpha; varying vec3 vP; varying vec2 vF; varying float vW;
+const FRAG_FLUT = `uniform float uZeit, uAlpha; varying vec3 vP; varying vec2 vF; varying float vW; varying vec3 vL;
+${RAUSCHEN}
 void main(){
   float r = sin(vF.x*40.0 + uZeit*2.0) * sin(vF.y*25.0 - uZeit*1.5) * 0.5 + 0.5;
   float kante = smoothstep(0.0, 0.18, vF.y) * smoothstep(0.0, 0.18, 1.0 - vF.y);
-  float vorn = smoothstep(0.93, 1.0, vF.x);
-  vec3 c = mix(vec3(0.12,0.55,0.75), vec3(0.8,0.95,1.0), vorn * 0.8 + (1.0 - kante) * 0.5 + r * 0.12);
-  gl_FragColor = vec4(c, uAlpha * kante * (0.42 + r * 0.18 + vorn * 0.3));
+  float vorn = smoothstep(0.9, 1.0, vF.x);
+  float st = ns(vec2(vF.y*34.0, vF.x*9.0 - uZeit*0.5)) * 0.65 + ns(vec2(vF.y*80.0, vF.x*22.0 - uZeit*0.9)) * 0.35;
+  float schaum = smoothstep(0.6, 0.8, st) * (0.5 + 0.5 * vF.x);
+  vec3 c = mix(vec3(0.08,0.45,0.66), vec3(0.8,0.95,1.0), clamp(vorn * 0.8 + (1.0 - kante) * 0.5 + r * 0.1, 0.0, 1.0));
+  c = mix(c, vec3(0.96,1.0,1.0), schaum);
+  gl_FragColor = vec4(c, uAlpha * kante * (0.45 + r * 0.15 + vorn * 0.3 + schaum * 0.3));
+  #include <dithering_fragment>
 }`;
-const FRAG_G = `varying float vA; void main(){ vec2 d = gl_PointCoord - 0.5; float k = 1.0 - smoothstep(0.25, 0.5, length(d)); if (k < 0.02) discard; gl_FragColor = vec4(0.92,0.98,1.0, k * vA * 0.85); }`;
+const FRAG_G = `varying float vA; void main(){ vec2 d = gl_PointCoord - 0.5; float k = 1.0 - smoothstep(0.1, 0.5, length(d)); if (k < 0.02) discard; gl_FragColor = vec4(0.94,0.99,1.0, k * k * vA * 0.7);
+#include <dithering_fragment>
+}`;
 const VERT_G = `attribute float aA; attribute float aS; varying float vA; uniform float uPx;
-void main(){ vA = aA; vec4 m = modelViewMatrix * vec4(position,1.0); gl_Position = projectionMatrix * m; gl_PointSize = clamp(aS * uPx / max(1.0, -m.z), 2.0, 64.0); }`;
+void main(){ vA = aA; vec4 m = modelViewMatrix * vec4(position,1.0); gl_Position = projectionMatrix * m; gl_PointSize = clamp(aS * uPx / max(1.0, -m.z), 2.0, 110.0); }`;
 
 export function createWelleAnsicht(daten, umgebung = {}) {
   const welt = umgebung.welt, boden = (x, z) => (typeof welt?.bodenHoehe === 'function' ? +welt.bodenHoehe(x, z) || 0 : 0);
@@ -113,13 +134,13 @@ export function createWelleAnsicht(daten, umgebung = {}) {
 
   function gischtUpdate(dt, d) {
     const aktiv = d.phase === 'rollen' || d.phase === 'brechen';
-    rest += dt * (aktiv ? (d.phase === 'brechen' ? 220 : 110) : 0);
+    rest += dt * (aktiv ? (d.phase === 'brechen' ? 420 : 170) : 0);
     const sx = Math.sin(d.yaw), cz = Math.cos(d.yaw);
     while (rest >= 1) {
       rest -= 1; const i = gN++ % MAXG, qn = zz() * 2 - 1, q = qn * d.breite / 2, z = d.strecke - zz() * 2 - qn * qn * d.hoehe * 0.9;
       const x = d.start.x + sx * z + cz * q, zw = d.start.z + cz * z - sx * q;
-      gP[i * 3] = q; gP[i * 3 + 1] = boden(x, zw) + d.hoehe * (0.75 + zz() * 0.35); gP[i * 3 + 2] = z;
-      const t = 6 + zz() * 7; gV[i * 3] = (zz() - 0.5) * 4; gV[i * 3 + 1] = 2 + zz() * 5; gV[i * 3 + 2] = t; gL[i] = 1; gS[i] = 0.6 + zz() * 1.1;
+      gP[i * 3] = q; gP[i * 3 + 1] = boden(x, zw) + d.hoehe * (0.7 + zz() * 0.5); gP[i * 3 + 2] = z;
+      const t = 6 + zz() * 7; gV[i * 3] = (zz() - 0.5) * 4; gV[i * 3 + 1] = 2 + zz() * 5; gV[i * 3 + 2] = t; gL[i] = 1; gS[i] = (d.phase === 'brechen' ? 1.4 : 0.8) + zz() * 1.6;
     }
     for (let i = 0; i < MAXG; i++) {
       if (gL[i] <= 0) { gA[i] = 0; continue; }

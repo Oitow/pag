@@ -10,14 +10,14 @@
  * @status   entwurf
  * @three    ja
  *
- * 4 Draw-Calls (Band, Schollen, Säulen, Funken), ~700 Dreiecke, alles vorab angelegt (Pools), kein Zufall außer festem Hash.
+ * 5 Draw-Calls (Band, Schollen, Säulen, Säulenkern, Funken), ~900 Dreiecke, alles vorab angelegt (Pools), kein Zufall außer festem Hash.
  */
 import { rng } from '../core/rng.js';
 const zr = rng(0x5a17);   // nur Optik (Funken-Streuung)
 import * as THREE from 'three';
 
 const SPALTEN = [[-1.7, 0.0], [-1.2, 0.5], [-0.75, 0.12], [0, 0.0], [0.75, 0.12], [1.2, 0.5], [1.7, 0.0]];   // [Quer (× Breite), Höhe]
-const MAX_SCHOLLEN = 90, MAX_SAEULEN = 14, MAX_FUNKEN = 160;
+const MAX_SCHOLLEN = 90, MAX_SAEULEN = 14, MAX_FUNKEN = 260;
 const hash = (n) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
 
 const VS = `
@@ -44,14 +44,35 @@ void main() {
   float mitte = 1.0 - smoothstep(0.25, 0.62, abs(vC));
   float heiss = uGlut * (0.35 + 0.85 * n) * (0.55 + 0.45 * mitte) * (1.0 + 0.12 * sin(uZeit * 4.0 + vS * 0.8));
   heiss *= 1.0 - smoothstep(0.5, 0.75, abs(vC)) * 0.85;
-  vec3 c = vec3(0.04, 0.03, 0.03);
-  c = mix(c, vec3(0.45, 0.04, 0.0), smoothstep(0.12, 0.4, heiss));
-  c = mix(c, vec3(1.0, 0.38, 0.04), smoothstep(0.4, 0.75, heiss));
-  c = mix(c, vec3(1.0, 0.9, 0.45), smoothstep(0.85, 1.2, heiss));
-  vec3 fels = vec3(0.13, 0.1, 0.085) * (0.6 + 0.8 * n + vH * 0.5);
-  c = mix(c, fels, smoothstep(0.6, 0.78, abs(vC)) * (1.0 - heiss * 0.6));
+  // dunkle Kruste in Platten, dazwischen leuchtende Adern
+  float kruste = smoothstep(0.45, 0.62, nz(vec2(vS * 1.1 + 3.0, vC * 5.0)));
+  float a1 = nz(vec2(vS * 1.6 + uZeit * 0.12 * uGlut, vC * 7.0)), a2 = nz(vec2(vS * 3.4 - uZeit * 0.1, vC * 15.0));
+  float ader = max(1.0 - smoothstep(0.0, 0.09, abs(a1 - 0.5)), (1.0 - smoothstep(0.0, 0.07, abs(a2 - 0.5))) * 0.7);
+  heiss = mix(heiss, heiss * 0.4, kruste * 0.85 * (1.0 - ader));
+  heiss = max(heiss, ader * uGlut * 0.8 * (0.5 + 0.5 * mitte));
+  vec3 c = vec3(0.05, 0.035, 0.03);
+  c = mix(c, vec3(0.5, 0.05, 0.0), smoothstep(0.12, 0.4, heiss));
+  c = mix(c, vec3(1.0, 0.36, 0.04), smoothstep(0.4, 0.8, heiss));
+  c = mix(c, vec3(1.0, 0.68, 0.2), smoothstep(0.9, 1.3, heiss));    // heißester Ton bleibt orangegelb, nicht weiß
+  c = mix(c, c * vec3(0.55, 0.5, 0.5), kruste * (1.0 - ader) * 0.6);
+  vec3 fels = vec3(0.2, 0.15, 0.115) * (0.6 + 0.8 * n + vH * 0.5);
+  c = mix(c, fels, smoothstep(0.6, 0.78, abs(vC)) * (1.0 - heiss * 0.5));
   gl_FragColor = vec4(c, 1.0);
+  #include <dithering_fragment>
 }`;
+
+/** Schollen-Material: Lambert, braun mit Höhenschichten; Unterkante glüht (Glut aus uni.uGlut), unabhängig vom Licht. */
+function schollenMaterial(uni) {
+  const m = new THREE.MeshLambertMaterial({ color: 0xa27c58, flatShading: true });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uGlut = uni.uGlut;
+    sh.vertexShader = 'varying vec3 vLo;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vLo = position;');
+    sh.fragmentShader = 'uniform float uGlut; varying vec3 vLo;\n' + sh.fragmentShader
+      .replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb *= 0.75 + 0.35 * fract(sin(floor(vLo.y * 5.0) * 12.9898) * 43758.5);')
+      .replace('#include <opaque_fragment>', 'outgoingLight += vec3(1.0, 0.36, 0.05) * smoothstep(0.0, -0.32, vLo.y) * (0.3 + 0.9 * uGlut);\n#include <opaque_fragment>');
+  };
+  return m;
+}
 
 export function createRissAnsicht(daten, umgebung = {}) {
   const welt = umgebung.welt, hoehe = (x, z) => (typeof welt?.bodenHoehe === 'function' ? +welt.bodenHoehe(x, z) || 0 : 0);
@@ -87,13 +108,16 @@ export function createRissAnsicht(daten, umgebung = {}) {
   const band = new THREE.Mesh(g, bandMat); band.frustumCulled = false; objekt.add(band);
 
   // ---- Felsschollen (gekippte Brocken am Rand)
-  const fels = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.62, 0).scale(1, 0.6, 1), new THREE.MeshLambertMaterial({ color: 0x8a6a4c, flatShading: true }), MAX_SCHOLLEN);
+  const fels = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.62, 0).scale(1, 0.6, 1), schollenMaterial(uni), MAX_SCHOLLEN);
   fels.count = schollenPos.length; fels.frustumCulled = false; objekt.add(fels);
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3(), sk = new THREE.Vector3();
 
   // ---- Lava-Säulen (additive Kegel, Pool)
   const saeulen = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.55, 1, 1, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }), MAX_SAEULEN);
   saeulen.count = 0; saeulen.frustumCulled = false; saeulen.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_SAEULEN * 3), 3); objekt.add(saeulen);
+  // heller Kern in der Säule (schmaler, gelblicher Kegel, gleiche Matrizen)
+  const kern = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.55, 1, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }), MAX_SAEULEN);
+  kern.count = 0; kern.frustumCulled = false; kern.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_SAEULEN * 3), 3); objekt.add(kern);
   const col = new THREE.Color();
 
   // ---- Glut-Funken (Points, CPU-Simulation)
@@ -129,18 +153,18 @@ export function createRissAnsicht(daten, umgebung = {}) {
       if (n >= MAX_SAEULEN) break;
       const u = a.t / a.dauer, h = a.hoehe * Math.sin(Math.min(1, u * 1.6) * Math.PI / 2) * (u > 0.7 ? 1 - (u - 0.7) / 0.3 * 0.6 : 1);
       const br = a.radius * (0.7 + 0.5 * (1 - u)) * (1 + 0.1 * Math.sin(zeit * 20 + n));
-      v.set(a.x, hoehe(a.x, a.z) + h * 0.5, a.z); sk.set(br, Math.max(0.05, h), br); q.identity(); m4.compose(v, q, sk); saeulen.setMatrixAt(n, m4);
-      col.setRGB(1, 0.32 - 0.15 * u, 0.04).multiplyScalar(0.55 * (1 - u * u)); saeulen.setColorAt(n, col);
+      v.set(a.x, hoehe(a.x, a.z) + h * 0.5, a.z); sk.set(br, Math.max(0.05, h), br); q.identity(); m4.compose(v, q, sk); saeulen.setMatrixAt(n, m4); sk.set(br * 0.7, Math.max(0.05, h * 0.92), br * 0.7); m4.compose(v, q, sk); kern.setMatrixAt(n, m4);
+      col.setRGB(1, 0.3 - 0.14 * u, 0.03).multiplyScalar(0.3 * (1 - u * u)); saeulen.setColorAt(n, col); kern.setColorAt(n, col.setRGB(1, 0.45, 0.08).multiplyScalar(0.3 * (1 - u * u)));
       // Funken aus Ausbrüchen
       if (u < 0.6 && zaehler < 1e9) for (let k = 0; k < 2; k++) {
         const w = zr() * 6.28, r = zr() * 2.5; funke(a.x, hoehe(a.x, a.z) + h * 0.8, a.z, Math.cos(w) * r, 4 + zr() * 6, Math.sin(w) * r, 0.8 + zr() * 0.8);
       }
       n++;
     }
-    saeulen.count = n; saeulen.instanceMatrix.needsUpdate = true; if (saeulen.instanceColor) saeulen.instanceColor.needsUpdate = true;
+    saeulen.count = kern.count = n; saeulen.instanceMatrix.needsUpdate = kern.instanceMatrix.needsUpdate = true; saeulen.instanceColor.needsUpdate = kern.instanceColor.needsUpdate = true;
     // aufsteigende Glut über dem Graben
     spawnT += dt;
-    if (d.glut > 0.2 && spawnT > 0.04) {
+    if (d.glut > 0.2 && spawnT > 0.025) {
       spawnT = 0; const r = d.risse[Math.floor(zr() * d.risse.length)], i = Math.floor(zr() * r.pkt.length), p = r.pkt[i];
       if (p.t < d.alter) funke(p.x + (zr() - 0.5) * r.breite, hoehe(p.x, p.z) + 0.2, p.z + (zr() - 0.5) * r.breite, 0, 1.5 + zr() * 2, 0, 1 + zr());
     }
@@ -149,13 +173,13 @@ export function createRissAnsicht(daten, umgebung = {}) {
       fl[i] -= dt; fv[i * 3 + 1] -= 9 * dt;
       fp[i * 3] += fv[i * 3] * dt; fp[i * 3 + 1] += fv[i * 3 + 1] * dt; fp[i * 3 + 2] += fv[i * 3 + 2] * dt;
       const b = Math.max(0, Math.min(1, fl[i] * 1.5)) * Math.max(0.2, d.glut);
-      fc[i * 3] = b; fc[i * 3 + 1] = b * 0.45; fc[i * 3 + 2] = b * 0.08;
+      fc[i * 3] = b; fc[i * 3 + 1] = b * 0.5; fc[i * 3 + 2] = b * 0.1;
     }
     fg.attributes.position.needsUpdate = true; fg.attributes.color.needsUpdate = true;
   }
   update(0, daten, 0);
   return {
     objekt, update,
-    dispose() { for (const o of [g, fels.geometry, saeulen.geometry, fg]) o.dispose(); for (const m of [bandMat, fels.material, saeulen.material, punkte.material]) m.dispose(); fels.dispose(); saeulen.dispose(); },
+    dispose() { for (const o of [g, fels.geometry, saeulen.geometry, kern.geometry, fg]) o.dispose(); for (const m of [bandMat, fels.material, saeulen.material, kern.material, punkte.material]) m.dispose(); fels.dispose(); saeulen.dispose(); kern.dispose(); },
   };
 }

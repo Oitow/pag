@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { createNoise2D, fbm2 } from '../../../engine/core/noise.js';
 import { rng, range, hashSeed } from '../../../engine/core/rng.js';
 import { smoothstep } from '../../../engine/core/math.js';
+import { baueSchlachtfeldDeko } from './welt-deko.js';
 
 const GROESSE = 120, AUFL = 160;
 const TEICH = { x: -14, z: 10, r: 9 };
@@ -21,7 +22,7 @@ export function createWelt(seed = 1) {
   const im = (x, z) => Math.abs(x - SCHLACHTFELD.x) <= SCHLACHTFELD.halb && Math.abs(z - SCHLACHTFELD.z) <= SCHLACHTFELD.halb;
   function feld(x, z) {
     const rand = SCHLACHTFELD.halb - Math.max(Math.abs(x - SCHLACHTFELD.x), Math.abs(z - SCHLACHTFELD.z));
-    return 0.4 + fbm2(n, x * 0.02 + 40, z * 0.02 + 40, 3) * 0.7 + (1 - smoothstep(0, 8, rand)) * 9;
+    return 0.4 + fbm2(n, x * 0.02 + 40, z * 0.02 + 40, 3) * 0.7 + fbm2(n, x * 0.011 - 20, z * 0.011 + 8, 2) * 1.4 * smoothstep(0, 14, rand) + (1 - smoothstep(0, 8, rand)) * 9;
   }
   function natur(x, z) {
     if (im(x, z)) return feld(x, z);
@@ -86,17 +87,29 @@ export function createWelt(seed = 1) {
   boden.receiveShadow = true;
   gruppe.add(boden);
 
-  // Schlachtfeld-Boden (160 × 160 m, 1,6-m-Raster)
+  // Schlachtfeld-Boden (160 × 160 m, 1,6-m-Raster): Gras-Variationen, Erdflecken, Trampelpfade
   {
     const g = new THREE.PlaneGeometry(SCHLACHTFELD.halb * 2, SCHLACHTFELD.halb * 2, 100, 100);
     g.rotateX(-Math.PI / 2);
     g.translate(SCHLACHTFELD.x, 0, SCHLACHTFELD.z);
-    const p = g.attributes.position, fa = new Float32Array(p.count * 3), erde = new THREE.Color('#8a8a52'), erdeH = new THREE.Color('#a69a60');
+    const p = g.attributes.position, fa = new Float32Array(p.count * 3);
+    const g1 = new THREE.Color('#5f8f3e'), g2 = new THREE.Color('#8fb050'), g3 = new THREE.Color('#b0b060'),
+      erde = new THREE.Color('#8a6a44'), weg = new THREE.Color('#b09a6c'), dunkel = new THREE.Color('#3f6a34');
+    const wegNah = (x, z) => {   // zwei geschwungene Wege (Kreuzung nahe der Mitte)
+      const dx = x - SCHLACHTFELD.x, dz = z - SCHLACHTFELD.z;
+      const a = Math.abs(dz - Math.sin(dx * 0.045) * 14 - 6), b = Math.abs(dx - Math.sin(dz * 0.05 + 2) * 12 + 10);
+      return 1 - smoothstep(1.2, 3.2, Math.min(a, b) + fbm2(n, x * 0.3, z * 0.3, 2) * 0.8);
+    };
     for (let i = 0; i < p.count; i++) {
       const x = p.getX(i), z = p.getZ(i), h = feld(x, z);
       p.setY(i, h);
-      c.copy(erde).lerp(erdeH, (fbm2(n, x * 0.08, z * 0.08, 2) + 1) / 2);
-      if (h > 3) c.lerp(fels, smoothstep(3, 7, h));
+      c.copy(g1).lerp(g2, (fbm2(n, x * 0.05, z * 0.05, 3) + 1) / 2);
+      c.lerp(g3, smoothstep(0.25, 0.8, fbm2(n, x * 0.025 + 9, z * 0.025 - 4, 2)) * 0.7);   // trockene Wiesen
+      c.lerp(dunkel, smoothstep(0.3, 0.7, fbm2(n, x * 0.09 - 7, z * 0.09, 2)) * 0.45);
+      c.lerp(erde, smoothstep(0.35, 0.65, fbm2(n, x * 0.07 + 33, z * 0.07 + 5, 3)) * 0.85);   // Erdflecken
+      c.lerp(weg, wegNah(x, z) * 0.85);
+      c.multiplyScalar(0.92 + 0.16 * fbm2(n, x * 0.6, z * 0.6, 1));   // feine Körnung
+      if (h > 4) c.lerp(fels, smoothstep(4, 9, h) * 0.6);
       fa.set([c.r, c.g, c.b], i * 3);
     }
     g.setAttribute('color', new THREE.BufferAttribute(fa, 3));
@@ -104,6 +117,7 @@ export function createWelt(seed = 1) {
     const m = new THREE.Mesh(g, boden.material);
     m.receiveShadow = true; gruppe.add(m);
   }
+  const deko = baueSchlachtfeldDeko(gruppe, { seed, feld, feldG: SCHLACHTFELD });
 
   // Treppe + Plateau als Blöcke, Rampe als Keil (exakt wie bauten())
   const steinM = new THREE.MeshStandardMaterial({ color: stein, roughness: 0.9, flatShading: true });
@@ -144,6 +158,6 @@ export function createWelt(seed = 1) {
   return {
     gruppe, kreise, teich: TEICH, schlachtfeld: SCHLACHTFELD,
     adapter: { bodenHoehe, wasserHoehe, hindernisse },
-    dispose() { gruppe.traverse(o => { o.geometry?.dispose(); o.material?.dispose?.(); }); gruppe.removeFromParent(); },
+    dispose() { deko.dispose(); gruppe.traverse(o => { o.geometry?.dispose(); o.material?.dispose?.(); }); gruppe.removeFromParent(); },
   };
 }
