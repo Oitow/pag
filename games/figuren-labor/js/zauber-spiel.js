@@ -16,10 +16,12 @@ const hex = (f) => '#' + f.toString(16).padStart(6, '0');
 
 /**
  * opts: { spieler, npcs: [{ fig }], npcsAn(), horde (gameplay/horde, optional), szene, welt (Adapter), kamera, lockZiel() -> Figur|null,
- *   seed, klang (audio/klang, optional), onMeldung(text), onSchmerz(anteil) }
+ *   seed, klang (audio/klang, optional), onMeldung(text), onSchmerz(anteil),
+ *   kampf (gameplay/kampf, optional: Schaden/Heilung/Leben laufen über die Kampf-Welt, Kämpfer 'spieler' und n.kid je NPC müssen gemeldet sein),
+ *   spielerSchaden(paket) -> ergebnis (optional, mit kampf: zentrale Spieler-Treffer-Behandlung), extraZiele() -> [{ id, kid, fig, x, y, z, radius, hoehe }] }
  */
 export function createZauberSpiel({ spieler, npcs, npcsAn = () => true, horde = null, szene, welt, kamera, lockZiel = () => null, seed = 1,
-  klang = null, onMeldung = () => {}, onSchmerz = () => {} }) {
+  klang = null, onMeldung = () => {}, onSchmerz = () => {}, kampf = null, spielerSchaden = null, extraZiele = null }) {
   const buch = createZauberbuch({ welt });
   const fx = createZauberEffekte({ seed, maxPartikel: 1400 });
   const zahlen = createTrefferZahlen({ max: 32, seed });
@@ -49,6 +51,7 @@ export function createZauberSpiel({ spieler, npcs, npcsAn = () => true, horde = 
   function zieleSammeln() {
     ziele.length = 0;
     if (horde) for (const w of horde.ziele) ziele.push(w);
+    if (extraZiele) for (const z of extraZiele()) ziele.push(z);   // Puppe, Rivale (haben kid + fig)
     if (!npcsAn()) return;
     for (const n of npcs) {
       if (n.liegt > 0) continue;
@@ -78,7 +81,7 @@ export function createZauberSpiel({ spieler, npcs, npcsAn = () => true, horde = 
   }
   function zielen(def) {
     const z = spieler.zustand, yaw = blickYaw();
-    const fest = lockZiel(), lock = fest && ziele.find((q) => q.npc?.fig === fest);
+    const fest = lockZiel(), lock = fest && ziele.find((q) => (q.npc?.fig ?? q.fig) === fest);
     if (def.art === 'selbst' || def.art === 'nova' || def.art === 'kegel') return { yaw, ziel: null, punkt: null };
     if (def.art === 'teleport') return { yaw, ziel: null, punkt: null };
     const flaeche = def.radius > 0 && (def.art === 'ort' || def.fall);
@@ -111,13 +114,31 @@ export function createZauberSpiel({ spieler, npcs, npcsAn = () => true, horde = 
 
   // ---- Treffer ----
   let zahlenFrei = 8;
-  function zahl(pos, schaden, farbe, tot) {
+  function zahl(pos, schaden, farbe, tot, krit) {
     if (schaden <= 0 || zahlenFrei-- <= 0) return;
-    zahlen.zeige(pos, String(schaden), { farbe: tot ? '#ffe070' : hex(farbe), groesse: Math.min(2.2, 0.85 + schaden / 40) * (tot ? 1.2 : 1), dauer: tot ? 0.9 : 0.7 });
+    const hell = tot || krit;
+    zahlen.zeige(pos, String(schaden), { farbe: hell ? '#ffe070' : hex(farbe), groesse: Math.min(2.2, 0.85 + schaden / 40) * (hell ? 1.2 : 1), dauer: tot ? 0.9 : 0.7 });
+  }
+  /** Zauber-Treffer über die Kampf-Welt: Element → Schadensart, Verlangsamung/Brennen als Zustand. */
+  function kampfSchaden(t, def, kid) {
+    const l = Math.hypot(t.stoss.x, t.stoss.z) || 1;
+    const zustand = t.verlangsamt ? { name: 'verlangsamt', dauer: t.verlangsamt } : def.element === 'feuer' ? { name: 'brennen' } : undefined;
+    return kampf.schade({ quelle: 'spieler', ziel: kid, menge: t.schaden, art: def.element || 'arkan', wucht: 10 + 30 * (def.gewicht || 0.3),
+      richtung: { x: t.stoss.x / l, z: t.stoss.z / l }, zustand });
+  }
+  /** Treffer auf Puppe/Rivale (Ziele mit kid + fig, keine NPCs). */
+  function schadeKid(t, def) {
+    const z = t.ziel, r = kampfSchaden(t, def, z.kid), s = Math.round(r.schaden);
+    if (r.ausgewichen) zahlen.zeige({ x: z.x, y: z.y + 2, z: z.z }, 'Ausgewichen', { farbe: '#9fe8ff', groesse: 0.9, dauer: 0.7 });
+    else zahl({ x: z.x, y: z.y + 2, z: z.z }, s, def.farbe, r.tot, r.krit);
+    if (s > 0) z.fig.treffer({ x: t.stoss.x, y: 0, z: t.stoss.z }, Math.min(2, 0.5 + s / 20), { welt: true });
+    fx.funken({ x: z.x, y: z.y + 1.1, z: z.z }, { farbe: def.farbe, anzahl: 10, tempo: 3, dauer: 0.5, groesse: 0.4 });
   }
   function schadeNpc(t, def) {
     const n = t.ziel.npc, fig = n.fig;
-    n.leben -= t.schaden;
+    let schaden = t.schaden, krit = false;
+    if (kampf) { const r = kampfSchaden(t, def, n.kid); schaden = Math.round(r.schaden); krit = r.krit; n.leben = r.leben; }
+    else n.leben -= t.schaden;
     fig.setLeben(Math.max(0, n.leben) / 100);
     if (t.verlangsamt) n.langsam = t.verlangsamt;
     if (t.zug) { fig.stoss?.(t.zug.x * 0.1, 0, t.zug.z * 0.1); return; }
@@ -125,14 +146,15 @@ export function createZauberSpiel({ spieler, npcs, npcsAn = () => true, horde = 
     if (n.leben <= 0 || t.umwerfen || kraft > 9) {
       fig.umfallen(richtung, { staerke: Math.min(2, 0.6 + kraft / 8), welt: true });
       n.liegt = n.leben <= 0 ? 6 : 2.6;
-    } else if (t.schaden > 0) fig.treffer(richtung, Math.min(2.5, 0.6 + t.schaden / 18), { welt: true });
+    } else if (schaden > 0) fig.treffer(richtung, Math.min(2.5, 0.6 + schaden / 18), { welt: true });
     fig.stoss?.(t.stoss.x, t.stoss.y, t.stoss.z);
-    zahl({ x: t.ziel.x, y: t.ziel.y + 2, z: t.ziel.z }, t.schaden, def.farbe, n.leben <= 0);
+    zahl({ x: t.ziel.x, y: t.ziel.y + 2, z: t.ziel.z }, schaden, def.farbe, n.leben <= 0, krit);
     fx.funken({ x: t.ziel.x, y: t.ziel.y + 1.1, z: t.ziel.z }, { farbe: def.farbe, anzahl: 10, tempo: 3, dauer: 0.5, groesse: 0.4 });
   }
   let quiekt = 0, starben = 0;
   function schade(t, def) {
     if (t.ziel.npc) return schadeNpc(t, def);
+    if (t.ziel.kid && kampf) return schadeKid(t, def);
     if (!horde) return;
     const w = t.ziel, r = horde.schade(w, t.schaden, t);
     if (!r.schaden && !t.zug) return;
@@ -220,12 +242,15 @@ export function createZauberSpiel({ spieler, npcs, npcsAn = () => true, horde = 
     } else if (e.typ === 'selbst') {
       const p = spieler.zustand.pos;
       if (def.heilt) {
-        st.leben = Math.min(st.lebenMax, st.leben + def.heilt);
+        if (kampf) kampf.heile({ quelle: 'spieler', ziel: 'spieler', menge: def.heilt }); else st.leben = Math.min(st.lebenMax, st.leben + def.heilt);
         fx.funken({ x: p.x, y: p.y + 0.4, z: p.z }, { farbe: f, anzahl: 50, tempo: 0.8, dauer: 1.2, groesse: 0.5, schwerkraft: -2.5, streuung: 0.7 });
         fx.ring(p, { farbe: f, radius: 1.5, dauer: 0.7 });
         spieler.setAusdruck('froh', { dauer: 2 });
       }
-      if (def.schild) { st.schild = def.schild; st.schildRest = def.dauer; fx.aura('schild', () => spieler.zustand.pos, { farbe: f, dauer: def.dauer, radius: 1.15 }); }
+      if (def.schild) {
+        if (kampf) { kampf.kaempfer('spieler').gibSchild(def.schild, def.dauer); st.schildAura = true; } else { st.schild = def.schild; st.schildRest = def.dauer; }
+        fx.aura('schild', () => spieler.zustand.pos, { farbe: f, dauer: def.dauer, radius: 1.15 });
+      }
     }
     zahlenFrei = 8;
     const vorher = starben;
@@ -283,10 +308,18 @@ export function createZauberSpiel({ spieler, npcs, npcsAn = () => true, horde = 
     }
   }
 
+  function fiel() {
+    abbrechen();
+    st.tot = 3;
+    spieler.umfallen({ x: 0, y: 0, z: -1 }, { staerke: 1.2 });
+    kamera.schuetteln(0.6, 0.4);
+  }
   function abbrechen() { if (buch.brichAb()) { spieler.stoppe(); klang?.dauerton('laden', null); return true; } return false; }
 
   return {
-    buch, fx, zustand: st,
+    buch, fx, zustand: st, zahlen,
+    /** Treffer-Stopp von außen (Nahkampf). */
+    stopp,
     wirke,
     /** Gehaltenen Zauber auslösen (Taste losgelassen). */
     loslassen() { buch.lasseLos(); },
@@ -303,6 +336,13 @@ export function createZauberSpiel({ spieler, npcs, npcsAn = () => true, horde = 
     /** Schaden am Spieler (Schild fängt zuerst ab). leise = keine Meldung (Horden-Bisse). → true, wenn der Spieler dabei gefallen ist. */
     spielerTreffen(schaden = 25, { leise = false, von = null, toedlich = false } = {}) {
       if (st.tot > 0) return false;
+      if (kampf && spielerSchaden) {   // zentral: Block, Parade, Ausweichen und Rüstung wirken auch gegen Bisse
+        const k = kampf.kaempfer('spieler'), p = spieler.zustand.pos, y = spieler.zustand.yaw;
+        if (!toedlich) schaden = Math.min(schaden, Math.max(0, k.leben - 1));
+        const l = von ? Math.hypot(p.x - von.x, p.z - von.z) || 1 : 1;
+        const richtung = von ? { x: (p.x - von.x) / l, z: (p.z - von.z) / l } : { x: Math.sin(y), z: Math.cos(y) };   // ohne Quelle: von hinten
+        return !!spielerSchaden({ quelle: von ? 'ratte' : null, menge: schaden, wucht: von ? 6 : 10, richtung, krit: false, leise, von }).tot;
+      }
       const ab = Math.min(st.schild, schaden);
       st.schild -= ab;
       if (st.schild <= 0 && ab > 0) fx.entferneAura('schild');
@@ -315,24 +355,25 @@ export function createZauberSpiel({ spieler, npcs, npcsAn = () => true, horde = 
         zahlen.zeige({ x: p.x, y: p.y + 2, z: p.z }, '−' + rest, { farbe: '#ff5040', groesse: 0.9, dauer: 0.6 });
       } else if (ab > 0) fx.funken({ x: spieler.zustand.pos.x, y: spieler.zustand.pos.y + 1, z: spieler.zustand.pos.z }, { farbe: 0x7ab8ff, anzahl: 6, tempo: 2, dauer: 0.3, groesse: 0.4 });
       if (!leise) onMeldung(ab ? `Schild fängt ${ab} ab` : `−${schaden} Leben`);
-      if (st.leben <= 0) {
-        abbrechen();
-        st.tot = 3;
-        spieler.umfallen({ x: 0, y: 0, z: -1 }, { staerke: 1.2 });
-        kamera.schuetteln(0.6, 0.4);
-        return true;
-      }
+      if (st.leben <= 0) { fiel(); return true; }
       return false;
     },
+    /** Spieler ist gefallen (vom Kampf-System gemeldet): Zauber abbrechen, umfallen, 3 s später wieder aufstehen. */
+    spielerFiel() { if (st.tot <= 0) fiel(); },
     /** blickYaw für die Absicht, solange die Figur sich zum Zauber dreht (sonst undefined). */
     get drehYaw() { return st.drehRest > 0 ? st.drehYaw : undefined; },
     get tot() { return st.tot > 0; },
-    alleHeilen() { for (const n of npcs) { n.leben = 100; n.fig.setLeben(null); if (n.liegt > 0) { n.liegt = 0; n.fig.aufstehen(); } } st.leben = st.lebenMax; },
+    alleHeilen() { for (const n of npcs) { n.leben = 100; n.fig.setLeben(null); if (n.liegt > 0) { n.liegt = 0; n.fig.aufstehen(); } kampf?.kaempfer(n.kid)?.belebe(1); } st.leben = st.lebenMax; kampf?.kaempfer('spieler')?.belebe(1); },
     update(dt, hoehePx) {
       zieleSammeln();
       if (st.drehRest > 0) st.drehRest -= dt;
       if (st.schildRest > 0 && (st.schildRest -= dt) <= 0) st.schild = 0;
-      if (st.tot > 0 && (st.tot -= dt) <= 0) { st.leben = st.lebenMax; spieler.aufstehen(); onMeldung('Wieder auf den Beinen!'); }
+      if (st.tot > 0 && (st.tot -= dt) <= 0) { st.leben = st.lebenMax; kampf?.kaempfer('spieler')?.belebe(1); spieler.aufstehen(); onMeldung('Wieder auf den Beinen!'); }
+      const kk = kampf?.kaempfer('spieler');
+      if (kk) {   // Leben/Schild gehören dem Kämpfer, die Oberfläche liest st
+        st.leben = kk.leben; st.lebenMax = kk.lebenMax; st.schild = kk.schild;
+        if (st.schildAura && kk.schild <= 0) { fx.entferneAura('schild'); st.schildAura = false; }
+      }
       ladenZeigen(dt);
       quiekt = 0; starben = 0;
       for (const e of buch.update(dt, ziele)) ereignis(e);
@@ -342,7 +383,7 @@ export function createZauberSpiel({ spieler, npcs, npcsAn = () => true, horde = 
       for (const n of npcs) {
         if (n.langsam > 0) n.langsam -= dt;
         if (n.liegt > 0 && (n.liegt -= dt) <= 0) {
-          if (n.leben <= 0) { n.leben = 100; n.fig.setLeben(null); }
+          if (n.leben <= 0) { n.leben = 100; n.fig.setLeben(null); kampf?.kaempfer(n.kid)?.belebe(1); }
           n.fig.aufstehen();
         }
       }

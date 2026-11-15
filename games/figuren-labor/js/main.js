@@ -5,6 +5,9 @@ import { createEditor } from './editor.js';
 import { createOberflaeche } from './oberflaeche.js';
 import { createZauberSpiel } from './zauber-spiel.js';
 import { createHordeSpiel } from './horde-spiel.js';
+import { createKampfSpiel } from './kampf-spiel.js';
+import { createMmoLeiste } from './mmo-leiste.js';
+import { WAFFEN_NAMEN } from '../../../engine/gameplay/nahkampf.js';
 import { createKlang } from '../../../engine/audio/klang.js';
 import { ZAUBER, ZAUBER_NAMEN } from '../../../engine/gameplay/zauber.js';
 import { createCharacter } from '../../../engine/gameplay/character.js';
@@ -85,6 +88,7 @@ const eingabe = createMoveInput({
     { name: 'zaubern', tasten: ['KeyR'], knopf: '✨', padKnopf: 7, titel: 'Zaubern' },
     { name: 'schlagen', tasten: ['KeyF'], knopf: '⚔', padKnopf: 2 },
     { name: 'winken', tasten: ['KeyG'], padKnopf: 6 },
+    { name: 'blocken', tasten: ['KeyB'], knopf: '🛡', titel: 'Blocken (halten); kurz vor dem Treffer = Parade' },
     'rollen', 'gleiten', 'interagieren', 'ziel',
   ],
   vibration: true,
@@ -136,14 +140,14 @@ const PRESETS = Object.keys(KAMERA_PRESETS);
 const ui = createOberflaeche({
   zauber: ZAUBER, ausruestung: ausruestungsNamen, kameras: PRESETS,
   onZauber: (name) => zauber.wirke(name),   // Leiste antippen: ohne Überladen
-  onAusruestung: setAusruestung,
+  onAusruestung: (n) => { const l = setAusruestung(n); ks.waffeAus(l); return l; },
   onKamera: (name) => kamera.setPreset(name),
   onSchalter: (id, an) => {
     if (id === 'npcs') { npcAn = an; for (const n of npcs) n.fig.setSichtbar(an); }
     else if (id === 'schilder') { schilderAn = an; for (const f of [spieler, ...npcs.map(n => n.fig)]) f.schild?.zeige(an); }
     else if (id === 'info') { infoAn = an; $('info').style.display = an ? '' : 'none'; }
     else if (id === 'ichsicht') kamera.setErstePerson(an);
-    else if (id === 'freimana') zauber.buch.setFreiesMana(an);
+    else if (id === 'freimana') { freiMana = an; zauber.buch.setFreiesMana(an); }
     else if (id === 'ton') klang.stumm = !an;
     else if (id === 'psx') {
       psx.setze({ an }); groesseSetzen();
@@ -153,7 +157,12 @@ const ui = createOberflaeche({
   onKnopf: (id) => {
     if (id === 'fahrt') { ui.schliesse(); kamera.fahrt({ pos: { x: 8, y: 9, z: -22 }, blick: () => spieler.zustand.pos, dauer: 1.5, halten: 2 }); }
     else if (id === 'treffen') zauber.spielerTreffen(25);
-    else if (id === 'heilen') zauber.alleHeilen();
+    else if (id === 'heilen') { zauber.alleHeilen(); ks.alleHeilen(); }
+    else if (id === 'puppe' || id === 'rivale') {
+      const g = ks.gegner;
+      if (id === 'puppe') { if (g.puppe) g.entfernePuppe(); else { g.stellePuppe(); ui.schliesse(); } } else if (g.rivale) g.entlasseRivale(); else { g.rufeRivale(); ui.schliesse(); }
+      kampfKnoepfe();
+    }
     else if (id === 'plage') plageUmschalten();
   },
   onOffen: () => setTimeout(bildAusschnitt, 260),
@@ -163,11 +172,32 @@ const plage = createHordeSpiel({
   szene, welt: welt.adapter, spieler, seed: SEED, klang, onMeldung: (t) => ui.melde(t),
   onBiss: (schaden, w) => zauber.spielerTreffen(schaden, { leise: true, von: w, toedlich: true }),
 });
-let schmerz = 0;
+let schmerz = 0, freiMana = false;
+// Kampf-Welt (engine/gameplay/kampf): Spieler, NPCs, Puppe, Rivale; Nahkampf des Spielers. Zauber und Bisse laufen ebenfalls darüber.
+const ks = createKampfSpiel({
+  spieler, npcs, npcsAn: () => npcAn, horde: plage.horde, szene, welt: welt.adapter, kamera, eingabe, lockZiel: () => ziel, seed: SEED, klang, schilder,
+  zauber: () => zauber, onMeldung: (t) => ui.melde(t), onSchmerz: (a) => { schmerz = Math.max(schmerz, a); },
+  onTod: (quelle) => { if (quelle !== 'ratte' && plage.an) plage.niederlage(); },   // Bisse meldet die Plage selbst
+  onTreffer: () => mmo.gibWut(6),
+});
 const zauber = createZauberSpiel({
   spieler, npcs, npcsAn: () => npcAn, horde: plage.horde, szene, welt: welt.adapter, kamera, lockZiel: () => ziel, seed: SEED, klang,
   onMeldung: (t) => ui.melde(t), onSchmerz: (a) => { schmerz = Math.max(schmerz, a); },
+  kampf: ks.kampf, spielerSchaden: ks.schadeSpieler, extraZiele: () => ks.gegner.ziele(),
 });
+// Kampfmodus: ✨ Action-Zauber ↔ 🎯 MMO-Leiste (Rolle, GCD, Ressourcen), dazu Spieler- und Ziel-Rahmen
+const mmo = createMmoLeiste({
+  ks, zauber: () => zauber, spieler, kamera, lockZiel: () => ziel, freiMana: () => freiMana, wurzel: ui.seite('kampf'), waffen: WAFFEN_NAMEN,
+  onWaffe: waffeWaehlen,
+  onMeldung: (t) => ui.melde(t), klang,
+});
+function waffeWaehlen(w) {   // Waffe = Ausrüstung in der rechten Hand (Faust = nichts)
+  const namen = w === 'faust' ? setAusruestung(null) : haende.handR?.name === w ? Object.values(haende).filter(Boolean).map(h => h.name) : setAusruestung(w);
+  ui.setAusruestung(namen); ks.setWaffe(w);
+}
+function kampfKnoepfe() {
+  for (const [id, an] of [['puppe', ks.gegner.puppe], ['rivale', ks.gegner.rivale]]) document.querySelector(`[data-knopf="${id}"]`)?.classList.toggle('an', an);
+}
 function plageUmschalten() {
   if (plage.an) plage.stopp(); else { plage.start(); ui.schliesse(); }
   $('bPlage').classList.toggle('an', plage.an);
@@ -189,7 +219,7 @@ let zifferGehalten = null;
 addEventListener('keydown', (e) => {
   if (e.target.matches?.('input, select, textarea') || e.repeat) return;
   const i = ZIFFERN.indexOf(e.code);
-  if (i >= 0 && ZAUBER_NAMEN[i]) { ui.waehle(ZAUBER_NAMEN[i]); if (zauber.wirke(ZAUBER_NAMEN[i], { halten: true })) zifferGehalten = e.code; }
+  if (i >= 0 && ZAUBER_NAMEN[i] && mmo.modus !== 'mmo') { ui.waehle(ZAUBER_NAMEN[i]); if (zauber.wirke(ZAUBER_NAMEN[i], { halten: true })) zifferGehalten = e.code; }
 });
 addEventListener('keyup', (e) => { if (e.code === zifferGehalten) zifferGehalten = null; });
 addEventListener('blur', () => { zifferGehalten = null; });
@@ -230,7 +260,7 @@ ausdruckReihe();
 // Lock-On (T / 🎯): bestes Ziel vorn, erneut drücken = nächstes rechts, nur eins = loslassen
 let ziel = null;
 function zielWaehlen() {
-  const kandidaten = npcAn ? npcs.map(n => n.fig) : [];
+  const kandidaten = [...(npcAn ? npcs.map(n => n.fig) : []), ...ks.figuren()];
   const von = spieler.zustand.pos;
   const neu = ziel ? waehleZiel(kandidaten, { von, blickYaw: kamera.yaw, aktuell: ziel, richtung: 1 }) : waehleZiel(kandidaten, { von, blickYaw: kamera.yaw });
   ziel = neu === ziel ? null : neu;
@@ -254,7 +284,7 @@ addEventListener('resize', () => {
 const ladeEl = $('hud').querySelector('.ladung'), ladeI = ladeEl.querySelector('i'), ladeU = ladeEl.querySelector('u');
 let welleText = '';
 function hudPlage(dt) {
-  const l = zauber.buch.ladung;
+  const l = zauber.buch.ladung || ks.ladung;
   ladeEl.style.visibility = l ? 'visible' : 'hidden';
   if (l) {
     ladeI.style.width = Math.round((l.phase === 'laden' ? l.anteil : 1) * 100) + '%';
@@ -281,7 +311,6 @@ function bild(jetzt) {
   kamera.drehen(e.kameraX, e.kameraY);
   if (e.zoom) kamera.zoomen(e.zoom);
   const laedt = !!zauber.buch.wirkt;
-  if (eingabe.gedrueckt('schlagen') && !laedt) spieler.aktion('schlagen');
   if (eingabe.gedrueckt('winken')) spieler.aktion('winken');
   if (eingabe.gedrueckt('ziel')) zielWaehlen();
   zuAbsicht(e, kamera.blickYaw(), absicht);       // inkl. rollen/gleiten/tauchen-Flags für den Motor
@@ -293,7 +322,8 @@ function bild(jetzt) {
   const schwer = zauber.tempoFaktor;
   if (zauber.tot) { absicht.x = absicht.z = 0; absicht.springen = false; }
   else if (schwer < 1) { absicht.x *= schwer; absicht.z *= schwer; absicht.sprint = false; absicht.springen = false; }
-  absicht.blickYaw = zauber.drehYaw ?? (kamera.erstePerson ? kamera.yaw : zp ? Math.atan2(zp.x - spieler.zustand.pos.x, zp.z - spieler.zustand.pos.z) : undefined);
+  ks.update(dt, absicht);   // F/Block/Q: Nahkampf, Tempo, Sperren (Betäubung, Frost)
+  absicht.blickYaw = zauber.drehYaw ?? ks.drehYaw ?? (kamera.erstePerson ? kamera.yaw : zp ? Math.atan2(zp.x - spieler.zustand.pos.x, zp.z - spieler.zustand.pos.z) : undefined);
   spieler.update(dt, absicht);
   // Dauer-Clips (tragen, sitzenBoden, schlafen …) laufen bis stoppe() → ⏹ in der Leiste, solange eine Aktion läuft
   const laeuft = !!spieler.animator.aktion && !spieler.animator.aktion.startsWith('zauber');   // Zauber-Gesten enden von selbst
@@ -327,6 +357,7 @@ function bild(jetzt) {
 
   plage.update(dt, !zauber.tot);
   zauber.update(dt, renderer.domElement.height);
+  mmo.update(dt, Math.hypot(absicht.x, absicht.z) > 0.1);
   ui.update(echtDt, zauber.buch, zauber.zustand);
   hudPlage(echtDt);
   kamera.update(echtDt, z.pos, { tempo: z.tempo, sprintet: z.sprintet, yaw: z.yaw, amBoden: z.amBoden, augenHoehe: spieler.model.masse.augenHoehe });
@@ -352,5 +383,6 @@ document.querySelector('[data-schalter="psx"]')?.classList.toggle('an', psxAn);
 requestAnimationFrame(bild);
 
 // Für Tests/Debug
-window.labor = { psx, renderer, spieler, npcs, kamera, eingabe, welt, schilder, createLook, clipListe, zauber, ui, plage, klang };
+window.labor = { psx, renderer, spieler, npcs, kamera, eingabe, welt, schilder, createLook, clipListe, zauber, ui, plage, klang, kampf: ks, mmo };
 if (url.get('plage') === '1') plageUmschalten();
+if (url.get('kampf') === '1') { ks.gegner.stellePuppe(); ks.gegner.rufeRivale(); waffeWaehlen('schwert'); kampfKnoepfe(); }

@@ -2,6 +2,9 @@
  * @modul    faehigkeiten-daten
  * @zweck    Beispiel-Fähigkeiten (Krieger, Magier, Heiler) für die MMO-Leiste; reine Daten
  * @api      FAEHIGKEITEN ; FAEHIGKEITEN_NAMEN
+ * @beispiel
+ *   import { FAEHIGKEITEN } from '../../engine/gameplay/faehigkeiten-daten.js';
+ *   const d = FAEHIGKEITEN.feuerball;   // { name, symbol, ressource, kosten, abkling, wirkzeit, reichweite, zielArt, wirkung }
  * @tags     kampf, fähigkeit, daten, mmo
  * @version  1.0.0
  * @status   entwurf

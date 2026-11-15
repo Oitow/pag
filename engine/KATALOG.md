@@ -1009,6 +1009,11 @@ Beispiel-Fähigkeiten (Krieger, Magier, Heiler) für die MMO-Leiste; reine Daten
 - `FAEHIGKEITEN`
 - `FAEHIGKEITEN_NAMEN`
 
+```js
+import { FAEHIGKEITEN } from '../../engine/gameplay/faehigkeiten-daten.js';
+const d = FAEHIGKEITEN.feuerball;   // { name, symbol, ressource, kosten, abkling, wirkzeit, reichweite, zielArt, wirkung }
+```
+
 Genutzt von: – · Tags: kampf, fähigkeit, daten, mmo · THREE: nein
 Felder: { name, symbol, text, rolle, ressource, kosten, abkling, gcd=true, wirkzeit, kanal, takte, beiBewegung,
         reichweite, zielArt ('feind'|'freund'|'selbst'), ladungen, wirkung }
@@ -1028,7 +1033,7 @@ for (const e of leiste.update(dt, { bewegt, getroffen, sperren: zustaende.faktor
 if (e.typ === 'fertig' || e.typ === 'kanalTakt') wende(e.def.wirkung, e.ziel);         // Spiel ruft kampf.schade/heile/…
 ```
 
-Genutzt von: – · Tags: kampf, fähigkeit, gcd, mmo, abklingzeit, ressource, wirkzeit, kanal, ladungen, reichweite, leiste · THREE: nein
+Genutzt von: figuren-labor · Tags: kampf, fähigkeit, gcd, mmo, abklingzeit, ressource, wirkzeit, kanal, ladungen, reichweite, leiste · THREE: nein
 Ereignisse: { typ:'wirkStart'|'fertig'|'kanalTakt'|'unterbrochen', name, def, ziel, grund? } (fertig auch bei Sofort-Fähigkeiten).
 Kosten werden beim Start bezahlt und bei Unterbrechung erstattet. Ziel = { id, feind?: bool } (feind:false = Verbündeter).
 sperren = { kannHandeln, kannZaubern } (false = gesperrt; wie zustaende.faktoren()). Zauber-Fähigkeiten: wirkung.typ 'zauber' oder ressource 'mana'.
@@ -1139,7 +1144,7 @@ const e = k.schade({ quelle: 'held', ziel: 'ork', menge: 20, zustand: { name: 'b
 for (const ev of k.update(1)) console.log(ev.typ); // kampf:treffer, kampf:tot, …
 ```
 
-Genutzt von: – · Tags: kampf, schaden, leben, buff, debuff, aggro, mmo, welt · THREE: nein
+Genutzt von: figuren-labor · Tags: kampf, schaden, leben, buff, debuff, aggro, mmo, welt · THREE: nein
 
 ### koerper · `engine/gameplay/koerper.js` · v1.0.0 · entwurf
 Leichte Physik für lose Dinge (Gegenstände, Beute, Bälle, Kisten-Trümmer) ohne THREE: Kugeln mit Schwerkraft, Abprallen, Reibung, Haften am flachen Hang, Rutschen am steilen, Schwimmen/Sinken, Hindernisse, Einschlafen – fester Zeitschritt, deterministisch
@@ -1189,7 +1194,7 @@ nk.angriff('leicht');
 for (const e of nk.update(dt, { x, y, z, yaw }, [{ id:'wolf', x:1, y:0, z:2, radius:0.5 }])) if (e.typ === 'treffer') kampf.schade(...);
 ```
 
-Genutzt von: – · Tags: kampf, nahkampf, kombo, waffe, parade, ausweichen, block, mmo, deterministisch · THREE: nein
+Genutzt von: figuren-labor · Tags: kampf, nahkampf, kombo, waffe, parade, ausweichen, block, mmo, deterministisch · THREE: nein
 
 ### rezepte · `engine/gameplay/rezepte.js` · v1.0.0 · entwurf
 Herstellen: Rezepte als Daten (Zutaten → Ergebnis, optional Werkzeug und Station), prüfen was mit einem Inventar möglich ist und sicher herstellen (alles oder nichts)
@@ -1292,7 +1297,7 @@ Register-Einträge dürfen die Physik bestimmen: { radius, sprung, reibung, haft
 Aufheben läuft über die Interaktion: das Ziel ruft nimm(ding, wer.inventar) – `wer` braucht also ein Feld `inventar`.
 Ereignisse (falls Bus gesetzt): 'ding:neu' { ding }, 'ding:aufgehoben' { wer, id, anzahl, rest }, 'ding:weg' { ding }.
 
-### zauber-daten · `engine/gameplay/zauber-daten.js` · v1.0.0 · entwurf
+### zauber-daten · `engine/gameplay/zauber-daten.js` · v1.1.0 · entwurf
 Die Zauber-Tabelle als reine Daten: 12 wuchtige Zauber (Geschoss, Strahl, Kegel, Ort, Nova, Selbst, Teleport) mit Wirkzeit, Gewicht, Überladen, Durchschlag und Feldern (Brandboden, Sog) – gemacht für Horden
 
 - `ZAUBER`
@@ -1307,6 +1312,7 @@ const def = ZAUBER.feuerball;   // def.wirkzeit = Mindest-Aufladezeit, def.gewic
 Genutzt von: – · Tags: zauber, magie, daten, tabelle, kampf, flächenschaden, horde, spell · THREE: nein
 Felder je Zauber:
 name, symbol, text, farbe, clip (Geste aus character-clips-zauber), mana, abkling (s)
+element    'feuer' | 'eis' | 'blitz' | 'arkan' | 'natur' | 'heilig' – Schadensart fürs Kampfsystem (kampf-werte ARTEN), ab 1.1.0
 art        'geschoss' | 'strahl' | 'kegel' | 'ort' | 'nova' | 'selbst' | 'teleport'
 wirkzeit   Sekunden Aufladen, bevor er die Hand verlassen kann (schwer = lang)
 gewicht    0 … 1: Wucht für Kamera, Rückstoß, Bremsen beim Aufladen, Treffer-Stopp (wertet das Spiel aus)
@@ -2329,7 +2335,7 @@ kl.update(dt, leiste);   // jedes Bild; leiste wie aus createLeiste (abkling, la
 kl.blitz('feuerball');   // kurzes Aufblitzen (z. B. bei Ereignis 'fertig')
 ```
 
-Genutzt von: – · Tags: ui, overlay, kampf, mmo, hotbar, abklingzeit, gcd, wirkbalken, ressource, leiste, touch · THREE: nein
+Genutzt von: figuren-labor · Tags: ui, overlay, kampf, mmo, hotbar, abklingzeit, gcd, wirkbalken, ressource, leiste, touch · THREE: nein
 
 ### menue · `engine/ui/menue.js` · v1.0.0 · entwurf
 Menü/Fenster als DOM-Overlay mit Seiten (Pause, Optionen, Spielstände, Truhe, Werkbank …): Knöpfe, Schalter, Regler, Auswahl, eigene Elemente; Escape/Rand-Tipp, fingerfreundlich, alle Stile inline
@@ -2381,7 +2387,7 @@ ziel.update(dt);   // jedes Bild (Schaden-Rest rutscht nach, Haltung blinkt)
 ziel.zeige(null);  // verstecken
 ```
 
-Genutzt von: – · Tags: ui, overlay, kampf, mmo, ziel, lebensbalken, buff, debuff, haltung, schild · THREE: nein
+Genutzt von: figuren-labor · Tags: ui, overlay, kampf, mmo, ziel, lebensbalken, buff, debuff, haltung, schild · THREE: nein
 
 ### himmel-stand · `engine/world/himmel-stand.js` · v1.0.0 · entwurf
 Himmel als reine Daten: Sonnen- und Mondbahn aus Stunde/Jahreszeit/Breitengrad, Mondphase, Himmels-, Nebel- und Lichtfarben über den Tag (Nacht, Dämmerung, goldene Stunde, Mittag), Sterne, Einfluss von Wolken/Nebel/Regen/Blitz
