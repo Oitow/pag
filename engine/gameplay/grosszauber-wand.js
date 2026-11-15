@@ -30,7 +30,10 @@ export function createWand(opts = {}, umgebung = {}) {
   const laenge = Math.min(28, 16 * (1 + (kraft - 1) * 1.2));
   const sy = Math.sin(yaw), cy = Math.cos(yaw);
   const bodenAt = (x, z) => (typeof umgebung.boden === 'function' ? +umgebung.boden(x, z) || 0 : 0);
-  const mitte = ring ? { x: von.x, z: von.z } : { x: punkt.x, z: punkt.z };
+  // Mindestens 7 m vor dem Zaubernden (Auto-Ziel kann direkt neben ihm liegen – sonst bricht die Wand unter ihm aus)
+  const MIN = 7, ab = Math.hypot(punkt.x - von.x, punkt.z - von.z);
+  const vorn = ab >= MIN ? punkt : ab > 0.5 ? { x: von.x + (punkt.x - von.x) / ab * MIN, z: von.z + (punkt.z - von.z) / ab * MIN } : { x: von.x + sy * MIN, z: von.z + cy * MIN };
+  const mitte = ring ? { x: von.x, z: von.z } : { x: vorn.x, z: vorn.z };
 
   const segmente = [];
   if (ring) {

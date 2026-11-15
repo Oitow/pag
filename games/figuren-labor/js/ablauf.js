@@ -17,6 +17,10 @@ export function createAblauf({ plage, zauber, kamera, spieler, ui, feld, zumFeld
   const S = { phase: 'aus', t: 0, macht: 0, zeit: 1, slow: 0, fade: 0, kills: 0, gesamtKills: 0, prevTot: 0, combo: 0, comboIdle: 0, bereitZeigen: 0,
     vorherGross: false, welleStat: null, fenster: [], burst: 0, burstMax: 0, countdown: 4 };
   const sicher = 'env(safe-area-inset-bottom,0px)', oben = 'env(safe-area-inset-top,0px)';
+  // Handy: unten liegen Stick und Knöpfe → Macht-Leiste links oben unter der Wellen-Anzeige
+  const handy = globalThis.matchMedia?.('(pointer: coarse)').matches;
+  const leistePos = handy ? `left:12px;top:calc(272px + ${oben})` : `left:50%;transform:translateX(-50%);bottom:calc(108px + ${sicher})`;
+  const bereitPos = handy ? `left:12px;top:calc(300px + ${oben});text-align:left` : `left:0;right:0;bottom:calc(150px + ${sicher})`;
   const fix = 'position:fixed;pointer-events:none;z-index:40;font-family:inherit;text-align:center;';
 
   // ---- DOM ----
@@ -24,8 +28,8 @@ export function createAblauf({ plage, zauber, kamera, spieler, ui, feld, zumFeld
   const ansage = el(`${fix}left:0;right:0;top:26%;font-weight:800;color:#fff;text-shadow:0 3px 12px #000,0 0 24px #000;opacity:0;font-size:48px`);
   const multiEl = el(`${fix}left:0;right:0;top:40%;font-weight:800;opacity:0;font-size:30px;text-shadow:0 2px 10px #000`);
   const comboEl = el(`${fix}right:10px;top:calc(190px + ${oben});font-size:22px;font-weight:800;color:#ffe070;text-shadow:0 2px 6px #000;opacity:0`);
-  const bereitEl = el(`${fix}left:0;right:0;bottom:calc(150px + ${sicher});font-size:15px;font-weight:800;color:#c8a0ff;text-shadow:0 0 10px #a060ff,0 2px 4px #000;opacity:0;letter-spacing:2px`, 'MACHT BEREIT');
-  const leiste = el(`${fix}left:50%;transform:translateX(-50%);bottom:calc(108px + ${sicher});display:none;gap:6px;z-index:5`);
+  const bereitEl = el(`${fix}${bereitPos};font-size:15px;font-weight:800;color:#c8a0ff;text-shadow:0 0 10px #a060ff,0 2px 4px #000;opacity:0;letter-spacing:2px`, 'MACHT BEREIT');
+  const leiste = el(`${fix}${leistePos};display:none;gap:6px;z-index:5`);
   const segmente = [];
   for (let i = 0; i < STUFEN; i++) {
     const s = el('width:62px;height:14px;border-radius:7px;background:#0008;border:2px solid #7a58b8;overflow:hidden;position:relative', '', leiste);

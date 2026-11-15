@@ -3,23 +3,25 @@
 > Wird von `/ende` überschrieben und von `/start` gelesen. Höchstens 40 Zeilen.
 
 ## Zuletzt gemacht
-- Großzauber (Bauplan `docs/KAMPF-SYSTEM.md` unten): Kern `gameplay/grosszauber` (Welt-Adapter: Wände, Gräben, Fluten) + `render/grosszauber-mesh`;
-  🌊 Flutwelle, 🧱 Erdwall, ⛈️ Zyklon, 🌋 Erdriss (je Logik + Ansicht), Zauber-Art `'gross'` (zauber 2.1, zauber-daten 1.2), Klänge grollen/rauschen/heulen/bersten
-- Figuren-Labor: Schlachtfeld 160 m (`?schlachtfeld=1`), Große Plage ~400 Ratten (`?grossplage=1`), Zeitlupe + Kamera-Auszug + Blitz beim Großzauber, Shift+1–4
-- Davor: Kampfsystem (kampf-werte, zustaende, bedrohung, kampf, nahkampf, faehigkeiten, kampf-leiste, ziel-rahmen) im Figuren-Labor
+- Aufmachung/Leistung/Ablauf im Figuren-Labor: Großzauber-Optik überarbeitet, Schlachtfeld mit Geländefarben/Bäumen/Gras/Ruinen + Abendlicht,
+  Glas-Oberfläche (ein Spieler-Rahmen, Großzauber-Gruppe in der Leiste), `render/qualitaet` (automatische Stufe: Auflösung/Schatten/Partikel/Zahlen),
+  Horde/Effekte/Zahlen/Schilder sparsamer, Spielablauf ⚔ Schlacht (`?schlacht=1`: 10 Wellen, Pausen mit Zusammenfassung, Macht-Leiste für Großzauber, Mehrfach-Kills, Boss, Ergebniskarten)
+- Davor: Großzauber (Welle, Wand, Zyklon, Riss) + Kampfsystem
 
 ## Läuft / kaputt
-- Alles grün (636 Tests, Smoke 5 Spiele); Flutwelle + Erdriss im Bild geprüft, Erdwall/Zyklon nur von ihren Agenten
-- Großzauber zielen per Auto-Ziel – steht der Gegner direkt am Spieler, entsteht die Wand auf dem Spieler; Zeitlupe verlängert die Wirkzeit
+- Alles grün (643 Tests, Smoke 5 Spiele); Flutwelle + Erdriss im Bild geprüft, Erdwall/Zyklon nur von ihren Agenten
+- Zeitlupe verlängert die Wirkzeit
 - 400 Ratten nur im Software-Renderer, nicht auf echtem Handy gemessen
 - Nicht abgestimmt: Vorwärtsschritt/Ansturm-Tempo, Parade-/Ausweich-Gefühl gegen den Rivalen (nur Logik getestet)
 - Meldung „−6 Leben“ überlappt am Handy kurz den Spieler-Rahmen
 - Bekannt (alt): Truhe durch Schuppenwand, Gelände-Raster 2 m, Viniland noch eigene `js/psx.js`
 
+- Engpass ist das Zeichnen (Schatten für viele Instanzen), nicht JS; Horde-Instanzen außerhalb des Blicks werden noch gezeichnet
+- Rivalen-Treffer zählen nicht für Kombo/Schlacht-Statistik (laufen an `ablauf` vorbei)
+
 ## Nächster Schritt
-- Kampf im Browser abstimmen (Tempo, Treffer-Stopp, Rivale fairer/härter), dann Testwelt: Gegner im Wald nutzen `kampf`
-- MMO-Fundament: stabile Entitäts-IDs + Befehls-Schicht (`kampf.schade`/`leiste.nutze` als Befehle mit Prüfung), Schnappschüsse von `kampf.zustand()`
-- Mehr Waffen-Fähigkeiten (Bogen/Fernkampf), Gruppen-Heilung, Rollen-Talente
+- Auf echtem Handy spielen (Qualitätsstufen, 400 Ratten, Schlacht-Fluss), danach Horde-Sichtfeld-Auswahl + Klecks-Schatten statt echter Schatten für Ratten
+- MMO-Fundament: stabile Entitäts-IDs + Befehls-Schicht; Testwelt bekommt Kampf/Großzauber
 
 ## Entscheidungen
 - PS1-Look liegt als Schicht über der Szene (Materialien werden gepatcht, nicht ersetzt) – Module müssen nichts davon wissen

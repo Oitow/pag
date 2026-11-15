@@ -104,12 +104,13 @@
 | grosszauber-riss-ansicht | `engine/render/grosszauber-riss.js` | Zeichnet den Erdriss (gameplay/grosszauber-riss): glühendes Lava-Band mit Felsrändern, gekippte Schollen, Lava-Säulen und Glut-Funken; kühlt zu dunkelrot/schwarz ab | entwurf |
 | grosszauber-sturm-ansicht | `engine/render/grosszauber-sturm.js` | Ansicht des Zyklons: zwei ineinanderliegende Trichter-Röhren mit scrollender Streifen-Textur, drehende Wolkenscheibe, spiralförmig aufsteigende Staub-/Trümmer-Punkte samt Bodenring, Blitze als Zickzack-Linien | entwurf |
 | grosszauber-wand-ansicht | `engine/render/grosszauber-wand.js` | Ansicht des Großzaubers 'Erdwall': kantige Felspfeiler (InstancedMesh, Low-Poly, Risse + Moos), Erdwulst und Trümmer am Fuß, Staubwolke beim Aufsteigen und Zerfallen, Zittern beim Steigen | entwurf |
-| grosszauber-welle-ansicht | `engine/render/grosszauber-welle.js` | Ansicht der Flutwelle: gebogenes, verformtes Wellen-Gitter mit überrollendem Kamm, Schaumkrone und Fresnel-Rand, Gischt als Punkte, auslaufende Flutfläche – 3 Draw-Calls, ~3500 Dreiecke, keine Schatten | entwurf |
+| grosszauber-welle-ansicht | `engine/render/grosszauber-welle.js` | Ansicht der Flutwelle: gebogenes, verformtes Wellen-Gitter mit überrollendem Kamm, Schaumkrone und Fresnel-Rand, Gischt als Punkte, auslaufende Flutfläche – 3 Draw-Calls, ~3500 Dreiecke, Tiefenfarben + Schaumstreifen prozedural, keine Schatten | entwurf |
 | horde-mesh | `engine/render/horde-mesh.js` | Zeichnet eine Horde (gameplay/horde) mit wenigen Draw-Calls: je Modell und Lauf-Bild ein InstancedMesh; Hüpfer, Überschlag im Flug, Treffer-Aufblitzen, Leichen auf der Seite, Versinken | entwurf |
 | mesh-builder | `engine/render/mesh-builder.js` | Low-Poly-Modelle aus Primitiven (Box, Kugel, Zylinder …) mit Vertexfarben zu EINER Geometrie verschmelzen; Farbvariation pro Dreieck per Seed | entwurf |
 | natur-material | `engine/render/natur-material.js` | Gemeinsames Material für Natur-Assets: MeshStandardMaterial (Vertexfarben, flatShading) mit Wind-Schwingen im Vertex-Shader über das Attribut 'wind' (0 starr … 1 voll); Phase je Instanz aus der Weltposition; passendes Schatten-Material; optional Ausblenden ab Kamera-Entfernung | entwurf |
 | niederschlag | `engine/render/niederschlag.js` | Regen/Schnee als ein Points-Objekt um die Kamera; Bewegung komplett im Vertex-Shader (kein CPU-Aufwand je Partikel) | entwurf |
 | psx | `engine/render/psx.js` | PS1-Look für eine ganze Szene (aus Viniland übernommen): Eckpunkte rasten auf ein grobes Bildraster (Wackeln), wenige Farbstufen mit Bayer-Dithering, grobe Pixel (kleine interne Auflösung, hart hochskaliert), Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen) – live an/aus ohne Neu-Kompilieren | entwurf |
+| qualitaet | `engine/render/qualitaet.js` | Automatische Qualitätsstufe nach Bildzeit (Handy-Schutz): wird es langsam, sinken Pixelverhältnis, Schattenkarte, Partikel und Schadens-Zahlen; wird es lange schnell, steigen sie wieder – mit Hysterese, reine Logik (das Spiel wendet die Werte an) | entwurf |
 | zauber-effekte | `engine/render/zauber-effekte.js` | Leichte Zauber-Effekte fürs Handy: ein Partikel-Points-Objekt (Funken, Schweife), leuchtende Geschoss-Kugeln, Schockwellen-Ringe, Blitze, Erdstacheln, Schutz-Aura, Meteor-Sturz – alles aus Pools | entwurf |
 | fake-dom | `engine/test/fake-dom.mjs` | Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame | stabil |
 | figur-schild | `engine/ui/figur-schild.js` | Namensschild + Sprechblase + Lebensbalken über Figuren (DOM-Overlay): folgt dem Kopf, skaliert und blendet nach Abstand aus, verschwindet hinter der Kamera | entwurf |
@@ -163,6 +164,7 @@
 | accessoire | character-parts-zubehoer |
 | accessoires | character-look |
 | adapter | kollision, wege-lage, worldgen-adapter |
+| adaptiv | qualitaet |
 | aendern | welt-aenderung |
 | agave | pflanze-wueste |
 | aggro | bedrohung, kampf |
@@ -180,6 +182,7 @@
 | audio | klang |
 | aufheben | interaktion, welt-dinge |
 | aufladen | zauber |
+| auflösung | qualitaet |
 | augen | character-anim-blick, character-parts-gesicht |
 | augenklappe | character-parts-zubehoer |
 | ausdruck | character-parts-gesicht |
@@ -205,6 +208,7 @@
 | betaeubt | character-anim-zustand |
 | beute | rohstoffe, welt-dinge |
 | bewegung | character-motor-tuning, character-motor, character-steering, character |
+| bildzeit | qualitaet |
 | biome | terrain-farben, terrain-mesh, worldgen-biomes, worldgen-query |
 | blick | character-anim-blick, character-parts-gesicht |
 | blinzeln | character-anim-blick, character-parts-gesicht |
@@ -273,7 +277,7 @@
 | flächenschaden | grosszauber-riss, grosszauber-sturm, grosszauber-welle, grosszauber, zauber-daten, zauber |
 | folgen | follow-camera |
 | form | pflanze-formen, worldgen-shape |
-| fps | schleife |
+| fps | schleife, qualitaet |
 | frisur | character-parts-haar, character-parts-kopf |
 | fuesse | character-anim-hang, character-gang |
 | funken | zauber-effekte |
@@ -311,7 +315,7 @@
 | haltbarkeit | hand |
 | haltung | kampf-werte, ziel-rahmen |
 | hand | hand |
-| handy | touch-stick, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, menue |
+| handy | touch-stick, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, qualitaet, menue |
 | hang | character-anim-hang |
 | hash | rng |
 | heap | worldgen-grid |
@@ -380,6 +384,7 @@
 | leben | kampf-werte, kampf, hud |
 | lebensbalken | figur-schild, ziel-rahmen |
 | leiste | faehigkeiten, hud, kampf-leiste |
+| leistung | qualitaet |
 | licht | himmel-stand, himmel |
 | localStorage | speicher |
 | lock-on | follow-camera, ziel-wahl |
@@ -441,6 +446,7 @@
 | partikel | niederschlag, zauber-effekte |
 | patrouille | character-steering-extra, character-steering |
 | pause | menue |
+| performance | qualitaet |
 | persistenz | speicher |
 | pfad | character-steering, worldgen-path, worldgen-wege |
 | pflanze | pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-wueste |
@@ -459,6 +465,7 @@
 | prozedural | noise, baum-skelett, baum, fels-form, fels, natur-assets, natur-basis, totholz, worldgen |
 | ps1 | psx |
 | psx | psx |
+| qualität | qualitaet |
 | raf | schleife |
 | ragdoll | character-reaktion |
 | randlicht | figur-material |
@@ -496,7 +503,7 @@
 | salto | character-anim-zustand |
 | schaden | kampf-werte, kampf, treffer-zahlen |
 | schal | character-parts-zubehoer |
-| schatten | himmel |
+| schatten | qualitaet, himmel |
 | schild | character-ausruestung, ziel-rahmen |
 | schilf | pflanze-boden |
 | schleichen | character-sinne |
@@ -1193,7 +1200,7 @@ Haltbarkeit: Register-Eintrag { haltbarkeit: 25 } = volle Haltbarkeit; der Stand
 Solche Gegenstände brauchen `stapel: 1`. onWechsel(eintrag|null, platzInhalt|null) feuert nur, wenn sich die id in der Hand ändert.
 Ereignisse: 'hand:gewechselt' { hand, id }, 'werkzeug:kaputt' { hand, id }.
 
-### horde · `engine/gameplay/horde.js` · v1.0.0 · entwurf
+### horde · `engine/gameplay/horde.js` · v1.1.0 · entwurf
 Horden-Gegner ohne THREE (Ratten & Co. zu Dutzenden): verfolgen ein Ziel, drängeln sich ohne Überlappen, umzingeln, springen an und beißen, werden weggeschleudert, betäubt, verlangsamt, in einen Sog gezogen und sterben im Flug – deterministisch per Seed
 
 - `createHorde(opts) -> { wesen, ziele, anzahl, getoetet, arten, spawne(art,x,z,{skala}) -> wesen|null, spawneRing(art,anzahl,mitte,{radius,breite,winkel,bogen}) -> anzahl, schade(wesen,schaden,{stoss,umwerfen,verlangsamt,zug}) -> {tot,schaden}, update(dt,ziel) -> ereignisse[], leeren(), dispose() }`
@@ -2142,7 +2149,7 @@ const { geometrie, hoehe } = cache.holen('eiche', 2);   // gleiche Geometrie bei
 cache.dispose();
 ```
 
-Genutzt von: natur-labor, testwelt · Tags: natur, vegetation, baum, fels, busch, registry, cache, varianten, prozedural · THREE: ja
+Genutzt von: figuren-labor, natur-labor, testwelt · Tags: natur, vegetation, baum, fels, busch, registry, cache, varianten, prozedural · THREE: ja
 
 ### natur-basis · `engine/models/natur/natur-basis.js` · v1.0.0 · entwurf
 Gemeinsame Helfer für Natur-Assets: Dreiecke sammeln → nicht-indizierte Geometrie (position/normal/color/wind), Farben, Fake-AO, Schnee, Ast-Röhre, Laub-Blob, Kegel-Lage, Wedel
@@ -2331,7 +2338,7 @@ const bilder = createGrosszauberMesh({ arten: { riss: createRissAnsicht }, welt:
 ```
 
 Genutzt von: figuren-labor · Tags: zauber, großzauber, render, riss, lava, glut, erdbeben, episch, shader, feuer, mobil · THREE: ja
-4 Draw-Calls (Band, Schollen, Säulen, Funken), ~700 Dreiecke, alles vorab angelegt (Pools), kein Zufall außer festem Hash.
+5 Draw-Calls (Band, Schollen, Säulen, Säulenkern, Funken), ~900 Dreiecke, alles vorab angelegt (Pools), kein Zufall außer festem Hash.
 
 ### grosszauber-sturm-ansicht · `engine/render/grosszauber-sturm.js` · v1.0.0 · entwurf
 Ansicht des Zyklons: zwei ineinanderliegende Trichter-Röhren mit scrollender Streifen-Textur, drehende Wolkenscheibe, spiralförmig aufsteigende Staub-/Trümmer-Punkte samt Bodenring, Blitze als Zickzack-Linien
@@ -2363,7 +2370,7 @@ Daten aus gameplay/grosszauber-wand (segmente[{x,z,breite,dicke,hoeheZiel,hoehe,
 Handy: 3 Draw-Calls (Pfeiler, Trümmer+Wulst, Staub), ≤ ~5500 Dreiecke bei 32 Segmenten, Staub aus festem Pool.
 
 ### grosszauber-welle-ansicht · `engine/render/grosszauber-welle.js` · v1.0.0 · entwurf
-Ansicht der Flutwelle: gebogenes, verformtes Wellen-Gitter mit überrollendem Kamm, Schaumkrone und Fresnel-Rand, Gischt als Punkte, auslaufende Flutfläche – 3 Draw-Calls, ~3500 Dreiecke, keine Schatten
+Ansicht der Flutwelle: gebogenes, verformtes Wellen-Gitter mit überrollendem Kamm, Schaumkrone und Fresnel-Rand, Gischt als Punkte, auslaufende Flutfläche – 3 Draw-Calls, ~3500 Dreiecke, Tiefenfarben + Schaumstreifen prozedural, keine Schatten
 
 - `createWelleAnsicht(daten, umgebung) -> { objekt, update(dt,daten,zeit), dispose() }`
 
@@ -2376,7 +2383,7 @@ Genutzt von: figuren-labor · Tags: zauber, großzauber, welle, wasser, flut, ep
 daten stammen aus gameplay/grosszauber-welle (phase, mitte, yaw, breite, hoehe, kruemmung, strecke, flut, tiefe).
 Wurzel steht am Start der Front (y = 0), lokal +z = Laufrichtung; alle Höhen sind absolut (Gelände aus umgebung.welt.bodenHoehe).
 
-### horde-mesh · `engine/render/horde-mesh.js` · v1.0.0 · entwurf
+### horde-mesh · `engine/render/horde-mesh.js` · v1.1.0 · entwurf
 Zeichnet eine Horde (gameplay/horde) mit wenigen Draw-Calls: je Modell und Lauf-Bild ein InstancedMesh; Hüpfer, Überschlag im Flug, Treffer-Aufblitzen, Leichen auf der Seite, Versinken
 
 - `createHordeMesh({ modelle: { name: [geoBild0, geoBild1 …] }, max, material, schatten }) -> { gruppe, update(wesen), sichtbar, dispose() }`
@@ -2407,7 +2414,7 @@ b.box(0.6, 0.4, 1.0, '#d9772b', { y: 0.5 }).sphere(0.25, 0xffffff, { y: 0.8, z: 
 szene.add(b.mesh());   // THREE.Mesh mit standardMaterial()
 ```
 
-Genutzt von: – · Tags: mesh, geometrie, lowpoly, vertexfarben, modell, primitive, merge · THREE: ja
+Genutzt von: figuren-labor · Tags: mesh, geometrie, lowpoly, vertexfarben, modell, primitive, merge · THREE: ja
 
 ### natur-material · `engine/render/natur-material.js` · v1.0.0 · entwurf
 Gemeinsames Material für Natur-Assets: MeshStandardMaterial (Vertexfarben, flatShading) mit Wind-Schwingen im Vertex-Shader über das Attribut 'wind' (0 starr … 1 voll); Phase je Instanz aus der Weltposition; passendes Schatten-Material; optional Ausblenden ab Kamera-Entfernung
@@ -2423,7 +2430,7 @@ baum.customDepthMaterial = mat.tiefenMaterial;   // Schatten schwingt mit
 // je Bild: mat.update(zeit, { staerke: 1, richtung: [1, 0.3] });
 ```
 
-Genutzt von: natur-labor · Tags: natur, material, wind, shader, vegetation, instanzen, render · THREE: ja
+Genutzt von: figuren-labor, natur-labor · Tags: natur, material, wind, shader, vegetation, instanzen, render · THREE: ja
 
 ### niederschlag · `engine/render/niederschlag.js` · v1.0.0 · entwurf
 Regen/Schnee als ein Points-Objekt um die Kamera; Bewegung komplett im Vertex-Shader (kein CPU-Aufwand je Partikel)
@@ -2458,10 +2465,28 @@ psx.setze({ an: false });                             // Vergleich: normaler Loo
 
 Genutzt von: figuren-labor, testwelt · Tags: psx, ps1, retro, look, shader, dithering, pixel, vertex-snap, splitscreen, stimmung, grading · THREE: ja
 
-### zauber-effekte · `engine/render/zauber-effekte.js` · v1.0.0 · entwurf
+### qualitaet · `engine/render/qualitaet.js` · v1.0.0 · entwurf
+Automatische Qualitätsstufe nach Bildzeit (Handy-Schutz): wird es langsam, sinken Pixelverhältnis, Schattenkarte, Partikel und Schadens-Zahlen; wird es lange schnell, steigen sie wieder – mit Hysterese, reine Logik (das Spiel wendet die Werte an)
+
+- `createQualitaet({ ziel = 1/50, stufen, schlechtNach = 1.5, besserNach = 4 }) -> { update(dtEcht) -> stufe|null (nur bei Wechsel), stufe, nr, fps, setze(n), fest(bool), stufen, dispose() }`
+- `QUALITAETS_STUFEN`
+
+```js
+import { createQualitaet } from '../../engine/render/qualitaet.js';
+const q = createQualitaet({ ziel: 1 / 50 });
+const s = q.update(echtDt);                       // jedes Bild; s = neue Stufe oder null
+if (s) { renderer.setPixelRatio(Math.min(devicePixelRatio, s.pixel)); sonne.castShadow = s.schatten > 0; fx.anteil = s.partikel; }
+```
+
+Genutzt von: figuren-labor · Tags: qualität, leistung, fps, bildzeit, adaptiv, auflösung, schatten, handy, performance · THREE: nein
+Stufe 0 = beste. Jede Stufe: { pixel (max. Pixelverhältnis), schatten (Kartengröße, 0 = aus), partikel (Anteil 0…1), zahlen (max. Schadens-Zahlen) }.
+Schlechter: geglättete Bildzeit > ziel × 1.15 für `schlechtNach` s. Besser: < ziel × 0.85 für `besserNach` s (verdoppelt sich, wenn eine
+Verbesserung binnen 20 s wieder zurückgenommen werden musste – verhindert Hin-und-her). Pausen (Bildzeit > 0.5 s) zählen nicht.
+
+### zauber-effekte · `engine/render/zauber-effekte.js` · v1.1.0 · entwurf
 Leichte Zauber-Effekte fürs Handy: ein Partikel-Points-Objekt (Funken, Schweife), leuchtende Geschoss-Kugeln, Schockwellen-Ringe, Blitze, Erdstacheln, Schutz-Aura, Meteor-Sturz – alles aus Pools
 
-- `createZauberEffekte(opts) -> { gruppe, update(dt,{hoehePx}?), funken(pos,opts), kugel(id,pos,opts), entferneKugel(id), ring(pos,opts), blitz(punkte,opts), stacheln(pos,opts), aura(id,posFn,opts), entferneAura(id), sturz(pos,opts), aktiv, dispose() }`
+- `createZauberEffekte(opts) -> { gruppe, anteil (0…1, Partikel-Anteil, Standard 1), update(dt,{hoehePx}?), funken(pos,opts), kugel(id,pos,opts), entferneKugel(id), ring(pos,opts), blitz(punkte,opts), stacheln(pos,opts), aura(id,posFn,opts), entferneAura(id), sturz(pos,opts), aktiv, dispose() }`
 
 ```js
 import { createZauberEffekte } from '../../engine/render/zauber-effekte.js';
@@ -2488,7 +2513,7 @@ dom.tick(16); // führt alle angefragten Animation-Frames aus
 
 Genutzt von: – · Tags: test, dom, node, attrappe · THREE: nein
 
-### figur-schild · `engine/ui/figur-schild.js` · v1.0.0 · entwurf
+### figur-schild · `engine/ui/figur-schild.js` · v1.1.0 · entwurf
 Namensschild + Sprechblase + Lebensbalken über Figuren (DOM-Overlay): folgt dem Kopf, skaliert und blendet nach Abstand aus, verschwindet hinter der Kamera
 
 - `createFigurSchilder(opts) -> { neu(ziel, {name, leben, farbe, versatz, nameAb}) -> schild, update(kamera, dt), anzahl, dispose() } — jedes Schild: { setName(t), sage(text, {dauer}) , schweige(), setLeben(anteil|null), setFarbe(css), zeige(bool), ziel, spricht, sichtbar, entfernen() }`
@@ -2571,10 +2596,10 @@ eintraege: spielstandEintraege(speicher, { holeDaten: () => stand(), onLade: d =
 Genutzt von: testwelt · Tags: ui, menue, pause, optionen, fenster, overlay, dialog, spielstand, dom, handy · THREE: nein
 Einträge einer Seite (art fehlt → knopf): knopf{text,zeichen,hinweis,aktiv,aktion,nach,schliesst} | schalter{text,wert,setze} | regler{text,min,max,schritt,wert,setze,format} | auswahl{text,optionen,wert,setze} | text | trenner | element | reihe{eintraege}
 
-### treffer-zahlen · `engine/ui/treffer-zahlen.js` · v1.0.0 · entwurf
+### treffer-zahlen · `engine/ui/treffer-zahlen.js` · v1.1.0 · entwurf
 Schadens-Zahlen als DOM-Overlay: ploppen über Treffern auf, schweben nach oben und blenden aus (fester Pool, handytauglich)
 
-- `createTrefferZahlen({eltern=document.body, max=28, zIndex=6, seed=1}) -> { zeige(pos,text,{farbe,groesse,dauer,steigen,streuung}), update(kamera,dt), anzahl, dispose() }`
+- `createTrefferZahlen({eltern=document.body, max=28, zIndex=6, seed=1}) -> { zeige(pos,text,{farbe,groesse,dauer,steigen,streuung}), update(kamera,dt), anzahl, grenze (Obergrenze setzen), dispose() }`
 
 ```js
 import { createTrefferZahlen } from '../../engine/ui/treffer-zahlen.js';
