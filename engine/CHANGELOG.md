@@ -1,5 +1,8 @@
 # Engine-Changelog
 
+## 2026-11 – Kampfsystem im Figuren-Labor
+- gameplay/zauber-daten 1.1.0 (additiv): jeder Zauber hat ein Feld `element` ('feuer','eis','blitz','arkan','natur','heilig') für `kampf.schade({ art })`; bestehende Felder unverändert
+
 ## 2026-11 – Schweres Zaubern und Horden
 - gameplay/zauber 2.0.0 (brechend): Aufladen statt Sofort-Zauber – `wirke(name, { halten, schlag, vorlauf = def.wirkzeit })`, `lasseLos()`, `brichAb()` (Mana zurück), `ladung` (Anteil, Überladung, Kraft); Abklingzeit zählt erst ab dem Schlag; neue Ereignisse `schlag`, `durchschlag`, `nova`, `feld`/`feldTakt`/`feldEnde`; Treffer haben `zug` (Sog); Ziel kann ein Bodenpunkt sein (`punkt`). Nutzer angepasst: games/figuren-labor
 - gameplay/zauber-daten 1.0.0 (neu): Zauber-Tabelle als Daten, 12 Zauber (neu: Frostnova, Sog) mit `wirkzeit`, `gewicht`, Bogenflug (`fall`), `durchschlag`, Feldern (Brandboden, Sog mit Schluss-Schlag), `mehr` beim Überladen

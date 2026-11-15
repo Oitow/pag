@@ -20,6 +20,7 @@
 | schnappschuss-puffer | `engine/core/schnappschuss-puffer.js` | Mehrspieler-Grundlage: speichert verspätete Zustände fremder Figuren mit Zeitstempel und liefert weich interpolierte Zustände (leicht in der Vergangenheit) | entwurf |
 | speicher | `engine/core/speicher.js` | Spielstände sicher speichern/laden (localStorage mit Arbeitsspeicher-Fallback), Versionen, Migration, Autospeichern, Export/Import als Text, TypedArrays | entwurf |
 | zeit | `engine/core/zeit.js` | Spieluhr: Tageszeit, Tage, Jahreszeiten und Jahre mit Ereignissen, Pause, Tempo und Speicherstand | entwurf |
+| bedrohung | `engine/gameplay/bedrohung.js` | Klassische Aggro-Tabelle: Bedrohung je Gegner und Quelle, Zielwechsel erst bei 110 %, Spott, Heilungs-Bedrohung | entwurf |
 | behaelter | `engine/gameplay/behaelter.js` | Behälter in der Welt (Truhe, Fass, Schrank): eigenes Inventar, öffnen/schließen je Figur, Schloss mit Schlüssel, Ablegen/Entnehmen, Speichern | entwurf |
 | character-brain | `engine/gameplay/character-brain.js` | NPC-Verhaltensplaner (Zustandsautomat) über Steering + Sinne: idle, wandern, patrouille, arbeiten, folgen, fliehen, angreifen, suchen, plaudern; Tagesablauf nach Stunde; liefert Absicht + Aktions-Clip | entwurf |
 | character-gruppe | `engine/gameplay/character-gruppe.js` | Schwarm-/Herdenverhalten für NPCs (Boids in x/z): Separation, Kohäsion, Ausrichtung – liefert eine Zusatzkraft für die Absicht | entwurf |
@@ -29,11 +30,17 @@
 | character-steering-extra | `engine/gameplay/character-steering-extra.js` | Reine Steering-Rechnungen: Patrouillen-Fortschritt (Schleife/Pingpong/einmal), Umkreisen, Abstand halten, Versteckpunkt hinter Deckung | entwurf |
 | character-steering | `engine/gameplay/character-steering.js` | NPC-Bewegungs-Gehirn: liefert dieselbe Absicht wie die Eingabe – Ziel/Ankommen, Wandern, Folgen, Fliehen, Pfad, Patrouille, Umkreisen, Abstand halten, Verstecken, Schwarm, Ausweichen, Steckenbleiben auflösen | entwurf |
 | character | `engine/gameplay/character.js` | Fertige Spielfigur in einem Objekt: Modell (Look) + Animator + Bewegungs-Motor, für Spieler und NPCs gleich | entwurf |
+| faehigkeiten-daten | `engine/gameplay/faehigkeiten-daten.js` | Beispiel-Fähigkeiten (Krieger, Magier, Heiler) für die MMO-Leiste; reine Daten | entwurf |
+| faehigkeiten | `engine/gameplay/faehigkeiten.js` | Klassische MMO-Fähigkeitsleiste ohne THREE: globale Abklingzeit (GCD), Ressourcen (Mana, Wut, Energie), Wirkzeit mit Abbruch bei Bewegung und Pushback, Kanalisieren mit Takten, Ladungen, Reichweite/Ziel-Prüfung, Sperren | entwurf |
 | hand | `engine/gameplay/hand.js` | „In der Hand“: ein Inventar-Platz ist ausgewählt (Schnellleiste); liefert den gehaltenen Gegenstand samt Register-Eintrag, meldet Wechsel (zum Ausrüsten der Figur) und nutzt Werkzeuge ab, bis sie zerbrechen | entwurf |
 | horde | `engine/gameplay/horde.js` | Horden-Gegner ohne THREE (Ratten & Co. zu Dutzenden): verfolgen ein Ziel, drängeln sich ohne Überlappen, umzingeln, springen an und beißen, werden weggeschleudert, betäubt, verlangsamt, in einen Sog gezogen und sterben im Flug – deterministisch per Seed | entwurf |
 | interaktion | `engine/gameplay/interaktion.js` | „Ansehen → Aktion“: Dinge der Welt (NPC, Gegenstand, Baum, Tür) melden sich als Ziel an; für eine Figur wird das beste Ziel in Reichweite/Blickrichtung bestimmt (Hinweis „E – Aufheben“) und ausgelöst, auch als Gedrückt-halten mit Fortschritt | entwurf |
 | inventar | `engine/gameplay/inventar.js` | Inventar mit festen Plätzen, Stapeln, Gewichtsgrenze, Speichern/Laden und Änderungs-Meldung | entwurf |
+| kampf-werte | `engine/gameplay/kampf-werte.js` | Kämpfer (Leben, Schild, Haltung, Werte, Mods) und reine Schadensformel mit Rüstung, Krit, Parade, Block | entwurf |
+| kampf | `engine/gameplay/kampf.js` | Kampf-Welt (Befehlsschicht): Kämpfer + Zustände + Bedrohung verbinden, schade/heile/gibZustand, DoT-Takte, DPS, Ereignisse | entwurf |
 | koerper | `engine/gameplay/koerper.js` | Leichte Physik für lose Dinge (Gegenstände, Beute, Bälle, Kisten-Trümmer) ohne THREE: Kugeln mit Schwerkraft, Abprallen, Reibung, Haften am flachen Hang, Rutschen am steilen, Schwimmen/Sinken, Hindernisse, Einschlafen – fester Zeitschritt, deterministisch | entwurf |
+| nahkampf-daten | `engine/gameplay/nahkampf-daten.js` | Waffen-Tabelle für den Action-Nahkampf (Kombo-Ketten, schwerer Schlag, Tempo) – reine Daten | entwurf |
+| nahkampf | `engine/gameplay/nahkampf.js` | Deterministischer Action-Nahkampf als reine Logik: Kombo-Kette, schwerer Schlag, Block/Parade, Ausweichen, Taumeln, Kegel-Treffer | entwurf |
 | rezepte | `engine/gameplay/rezepte.js` | Herstellen: Rezepte als Daten (Zutaten → Ergebnis, optional Werkzeug und Station), prüfen was mit einem Inventar möglich ist und sicher herstellen (alles oder nichts) | entwurf |
 | rohstoffe | `engine/gameplay/rohstoffe.js` | Abbaubare Quellen (Baum, Fels, Busch) ohne THREE: Beute per Seed, Werkzeug nötig oder nur schneller, Abnutzung, Nachwachsen nach Spielzeit, Speichern/Laden | entwurf |
 | stationen | `engine/gameplay/stationen.js` | Stationen als Orte in der Welt (Werkbank, Feuerstelle, Amboss): wer steht an welcher Art Station, nächste Station, benutzen – das Ergebnis von beiWem() passt direkt in rezepte.pruefe(…, {stationen}) | entwurf |
@@ -41,6 +48,7 @@
 | welt-dinge | `engine/gameplay/welt-dinge.js` | Gegenstände, die in der Welt liegen (ohne THREE): ablegen, werfen, aufheben ins Inventar, gleiche Stapel in der Nähe zusammenlegen, Lebensdauer, Speichern/Laden – verbindet Physik (koerper), Interaktion und Inventar | entwurf |
 | zauber-daten | `engine/gameplay/zauber-daten.js` | Die Zauber-Tabelle als reine Daten: 12 wuchtige Zauber (Geschoss, Strahl, Kegel, Ort, Nova, Selbst, Teleport) mit Wirkzeit, Gewicht, Überladen, Durchschlag und Feldern (Brandboden, Sog) – gemacht für Horden | entwurf |
 | zauber | `engine/gameplay/zauber.js` | Zauber-System ohne THREE: Zauberbuch mit Mana, Abklingzeiten und wuchtigem Aufladen (Wirkzeit, Halten = Überladen, Schlag), Geschosse (Bogen, Zielsuche, Durchschlag), Strahl, Kegel, Ort, Nova, Felder (Brandboden, Sog) und Treffer-Ereignisse | entwurf |
+| zustaende | `engine/gameplay/zustaende.js` | Buffs und Debuffs: Stapel, Dauer, DoT/HoT-Takte, Faktoren (Tempo, Schaden, Rüstung), Sperren (Betäubung, Frost) | entwurf |
 | move-input | `engine/input/move-input.js` | Bewegungs-Eingabe für Figuren: Tastatur (WASD/Pfeile), Maus-Ziehen/Mausrad, Touch-Stick + Knöpfe, Gamepad → Stick, Kamera-Delta, Aktionen (Flanke/gehalten) | entwurf |
 | touch-stick | `engine/input/touch-stick.js` | Touch-Steuerung fürs Handy: dynamischer virtueller Joystick (linke Hälfte), Kamera-Wischen + Pinch-Zoom (rechte Hälfte), runde Aktionsknöpfe unten rechts | entwurf |
 | character-anim-blick | `engine/models/character/character-anim-blick.js` | Blick einer Figur (rein): Richtung oder Weltpunkt → verteilt auf Torso/Hals/Kopf mit Grenzen, Augen eilen voraus; Blinzeln per Seed; Werte für einen Mimik-Hook | entwurf |
@@ -97,8 +105,10 @@
 | figur-schild | `engine/ui/figur-schild.js` | Namensschild + Sprechblase + Lebensbalken über Figuren (DOM-Overlay): folgt dem Kopf, skaliert und blendet nach Abstand aus, verschwindet hinter der Kamera | entwurf |
 | hud | `engine/ui/hud.js` | Spiel-Anzeige als DOM-Overlay: Hinweis-Zeile mit Fortschritt, Kurzmeldungen (zusammenzählbar), Lebens-/Ausdauer-Balken und Bereiche für Leisten | entwurf |
 | inventar-ansicht | `engine/ui/inventar-ansicht.js` | Zeigt ein Inventar als Reihe/Raster von Plätzen (Schnellleiste, Rucksack, Truhe): Zeichen, Anzahl, Haltbarkeits-Strich, gewählter Platz, Tippen und Gedrückt-halten | entwurf |
+| kampf-leiste | `engine/ui/kampf-leiste.js` | MMO-Aktionsleiste als DOM-Overlay: Plätze mit Symbol/Taste, Abklingzeit, GCD, Ladungen, Ausgrauen, Wirkbalken, Ressourcenbalken | entwurf |
 | menue | `engine/ui/menue.js` | Menü/Fenster als DOM-Overlay mit Seiten (Pause, Optionen, Spielstände, Truhe, Werkbank …): Knöpfe, Schalter, Regler, Auswahl, eigene Elemente; Escape/Rand-Tipp, fingerfreundlich, alle Stile inline | entwurf |
 | treffer-zahlen | `engine/ui/treffer-zahlen.js` | Schadens-Zahlen als DOM-Overlay: ploppen über Treffern auf, schweben nach oben und blenden aus (fester Pool, handytauglich) | entwurf |
+| ziel-rahmen | `engine/ui/ziel-rahmen.js` | MMO-Ziel-/Spieler-Rahmen als DOM-Overlay: Name, Lebensbalken mit Schild und Schaden-Rest, Haltung, Ressource, Zustands-Symbole | entwurf |
 | himmel-stand | `engine/world/himmel-stand.js` | Himmel als reine Daten: Sonnen- und Mondbahn aus Stunde/Jahreszeit/Breitengrad, Mondphase, Himmels-, Nebel- und Lichtfarben über den Tag (Nacht, Dämmerung, goldene Stunde, Mittag), Sterne, Einfluss von Wolken/Nebel/Regen/Blitz | entwurf |
 | himmel | `engine/world/himmel.js` | Zeichnet den Himmel aus einem himmel-stand: Himmelskuppel mit Farbverlauf, Sonnenscheibe mit Schein, Mond mit Phase, ziehende Wolken, Sterne; steuert Sonnen-/Mondlicht mit mitlaufendem Schatten, Umgebungslicht und Nebel der Szene | entwurf |
 | kollision | `engine/world/kollision.js` | Kollisions-Welt über einem Welt-Adapter: bewegliche und entfernbare Körper (Zylinder, gedrehte Kästen) mit Höhe – man kann draufsteigen, drüberspringen, sich aneinander vorbeischieben; dazu ein Strahl-Test gegen Gelände und Körper (Zielen, Sichtlinie, Ablegen) | entwurf |
@@ -136,7 +146,7 @@
 | abbauen | rohstoffe |
 | abfluss | worldgen-hydrology, worldgen-rivers |
 | abfrage | raum-gitter, worldgen-query |
-| abklingzeit | zauber |
+| abklingzeit | faehigkeiten, zauber, kampf-leiste |
 | ablegen | welt-dinge |
 | abprallen | koerper |
 | abstand | worldgen-grid |
@@ -145,6 +155,7 @@
 | adapter | kollision, wege-lage, worldgen-adapter |
 | aendern | welt-aenderung |
 | agave | pflanze-wueste |
+| aggro | bedrohung, kampf |
 | aktion | interaktion, character-animator, character-clips |
 | amboss | stationen |
 | amulett | character-parts-zubehoer |
@@ -166,6 +177,7 @@
 | ausrüstung | character-ausruestung, character-model |
 | aussehen | character-look |
 | auswahl | ziel-wahl |
+| ausweichen | nahkampf |
 | autosave | speicher |
 | avatar | character, character-look, character-model |
 | axt | character-ausruestung |
@@ -175,6 +187,7 @@
 | bauen | welt-aenderung |
 | baum | baum-arten, baum-skelett, baum, natur-assets, natur-basis |
 | baumstumpf | totholz |
+| bedrohung | bedrohung |
 | beeren | pflanze-busch |
 | begehbar | kollision |
 | behaelter | behaelter |
@@ -185,6 +198,7 @@
 | blick | character-anim-blick, character-parts-gesicht |
 | blinzeln | character-anim-blick, character-parts-gesicht |
 | blitz | zauber-effekte |
+| block | nahkampf |
 | blue-noise | worldgen-scatter |
 | blume | pflanze-blume, pflanze-boden, pflanze-formen |
 | boden | wege-lage, worldgen-adapter |
@@ -193,6 +207,7 @@
 | boids | character-gruppe |
 | brille | character-parts-kopf, character-parts-zubehoer |
 | bruecke | wege-lage, wege-mesh, worldgen-wege |
+| buff | kampf, zustaende, ziel-rahmen |
 | bus | ereignisse |
 | busch | natur-assets, pflanze-busch |
 | cache | natur-assets |
@@ -203,11 +218,14 @@
 | controller | character-motor, character |
 | crafting | rezepte, stationen |
 | dash | character-motor, character-anim-zustand |
-| daten | register, zauber-daten, baum-arten, worldgen-vegetation |
+| daten | register, faehigkeiten-daten, nahkampf-daten, zauber-daten, baum-arten, worldgen-vegetation |
+| debuff | kampf, zustaende, ziel-rahmen |
+| deterministisch | nahkampf |
 | dialog | figur-schild, menue |
 | dithering | psx |
 | dom | fake-dom, menue, treffer-zahlen |
 | dorf | worldgen-sites, worldgen-wege |
+| dot | zustaende |
 | dreispitz | character-parts-hut |
 | dämmerung | himmel-stand |
 | editor | character-look, character-model, welt-aenderung |
@@ -242,10 +260,11 @@
 | frisur | character-parts-haar, character-parts-kopf |
 | fuesse | character-anim-hang, character-gang |
 | funken | zauber-effekte |
-| fähigkeit | zauber |
+| fähigkeit | faehigkeiten-daten, faehigkeiten, zauber |
 | gamepad | move-input |
 | gameplay | ereignisse, behaelter, character-brain, character-gruppe, character-motor-tuning, character-motor, character-sinne, character-steering-extra, character-steering, hand, horde, interaktion, inventar, koerper, rezepte, rohstoffe, stationen, tueren, welt-dinge |
 | gang | character-animator, character-gang |
+| gcd | faehigkeiten, kampf-leiste |
 | gebirge | worldgen-height |
 | gedaechtnis | character-sinne |
 | gegenstand | register, inventar, koerper, welt-dinge |
@@ -270,6 +289,7 @@
 | haar | character-parts-haar, character-parts-kopf, character-sekundaer |
 | halm | pflanze-formen |
 | haltbarkeit | hand |
+| haltung | kampf-werte, ziel-rahmen |
 | hand | hand |
 | handy | touch-stick, menue |
 | hang | character-anim-hang |
@@ -287,7 +307,8 @@
 | hoeren | character-sinne |
 | holz | wege-mesh |
 | horde | horde, zauber-daten, zauber, ratte, horde-mesh |
-| hotbar | inventar-ansicht |
+| hot | zustaende |
+| hotbar | inventar-ansicht, kampf-leiste |
 | hp | figur-schild |
 | hud | figur-schild, hud, inventar-ansicht |
 | hut | character-parts-hut, character-parts-kopf |
@@ -308,32 +329,36 @@
 | kalender | zeit |
 | kamera | follow-camera, ziel-wahl, math |
 | kamerafahrt | follow-camera |
-| kampf | klang, ziel-wahl, character-steering-extra, character-steering, horde, zauber-daten, zauber, character-clips-mehr, character-reaktion |
+| kampf | klang, ziel-wahl, bedrohung, character-steering-extra, character-steering, faehigkeiten-daten, faehigkeiten, horde, kampf-werte, kampf, nahkampf-daten, nahkampf, zauber-daten, zauber, zustaende, character-clips-mehr, character-reaktion, kampf-leiste, ziel-rahmen |
+| kanal | faehigkeiten |
 | kante | character-anim-zustand |
 | kapuze | character-parts-hut |
 | karte | worldgen |
 | katalog | register |
 | kette | character-parts-zubehoer |
 | keyframe | character-clips-mehr, character-clips-zauber, character-clips |
-| ki | character-brain, character-gruppe, character-sinne, character-steering-extra, character-steering, horde |
+| ki | bedrohung, character-brain, character-gruppe, character-sinne, character-steering-extra, character-steering, horde |
 | klang | klang |
 | kleidung | character-parts-becken, character-parts-torso, character-parts |
 | klima | wetter, worldgen-biomes, worldgen-climate |
 | knoepfe | touch-stick |
 | koerper | koerper, kollision |
 | kollision | follow-camera, raum-gitter, tueren, kollision, worldgen-adapter |
+| kombo | nahkampf-daten, nahkampf |
 | kopf | character-anim-blick, character-parts-haar, character-parts-hut, character-parts-kopf |
 | korb | character-ausruestung |
 | kreatur | ratte |
+| krit | kampf-werte |
 | krone | character-parts-hut, character-parts-kopf |
 | körper | character-parts |
 | l-system | baum-skelett |
+| ladungen | faehigkeiten |
 | lager | behaelter |
 | laterne | character-ausruestung |
 | laufen | character-animator, character-gang |
-| leben | hud |
-| lebensbalken | figur-schild |
-| leiste | hud |
+| leben | kampf-werte, kampf, hud |
+| lebensbalken | figur-schild, ziel-rahmen |
+| leiste | faehigkeiten, hud, kampf-leiste |
 | licht | himmel-stand, himmel |
 | localStorage | speicher |
 | lock-on | follow-camera, ziel-wahl |
@@ -358,6 +383,7 @@
 | migration | speicher |
 | mimik | character-anim-blick, character-look, character-model, character-parts-gesicht |
 | mischen | character-pose |
+| mmo | bedrohung, faehigkeiten-daten, faehigkeiten, kampf-werte, kampf, nahkampf-daten, nahkampf, zustaende, kampf-leiste, ziel-rahmen |
 | modell | character-model, ratte, mesh-builder |
 | mond | himmel-stand, himmel |
 | monokel | character-parts-zubehoer |
@@ -368,6 +394,7 @@
 | nachschwingen | character-sekundaer |
 | nacht | himmel-stand, himmel |
 | nachwachsen | rohstoffe |
+| nahkampf | nahkampf-daten, nahkampf |
 | namensschild | figur-schild |
 | natur | baum-arten, baum-skelett, baum, fels-basis, fels-form, fels, natur-assets, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-wueste, totholz-form, totholz, natur-material, scatter-mesh |
 | nebel | himmel, wetter |
@@ -385,7 +412,8 @@
 | orbit | follow-camera |
 | ort | stationen |
 | orte | worldgen-sites |
-| overlay | figur-schild, hud, menue, treffer-zahlen |
+| overlay | figur-schild, hud, kampf-leiste, menue, treffer-zahlen, ziel-rahmen |
+| parade | nahkampf |
 | parameter | baum-arten |
 | partikel | niederschlag, zauber-effekte |
 | patrouille | character-steering-extra, character-steering |
@@ -420,9 +448,10 @@
 | regen | niederschlag, wetter, worldgen-climate |
 | register | register |
 | registry | natur-assets |
-| reichweite | interaktion |
+| reichweite | faehigkeiten, interaktion |
 | render | natur-material |
 | rendern | horde-mesh |
+| ressource | faehigkeiten, kampf-leiste |
 | retro | psx |
 | rezept | register, rezepte |
 | rig | character-pose, character-rig |
@@ -432,16 +461,18 @@
 | rolle | character-motor, character-anim-zustand |
 | rollen | koerper |
 | rosette | pflanze-formen |
+| rpg | kampf-werte |
 | rucksack | character-parts-ruecken, character-parts, inventar-ansicht |
 | rueckgaengig | welt-aenderung |
+| ruestung | kampf-werte |
 | ruhe | character-anim-idle |
 | rückstoß | horde |
 | rüstung | character-parts-torso |
 | salto | character-anim-zustand |
-| schaden | treffer-zahlen |
+| schaden | kampf-werte, kampf, treffer-zahlen |
 | schal | character-parts-zubehoer |
 | schatten | himmel |
-| schild | character-ausruestung |
+| schild | character-ausruestung, ziel-rahmen |
 | schilf | pflanze-boden |
 | schleichen | character-sinne |
 | schleife | schleife |
@@ -481,6 +512,7 @@
 | stapel | inventar |
 | start | worldgen-sites |
 | station | stationen |
+| status | zustaende |
 | steering | character-gruppe, character-steering-extra, character-steering |
 | stein | fels-form, fels |
 | sterne | himmel-stand, himmel |
@@ -496,6 +528,7 @@
 | tag | himmel-stand, himmel |
 | tagesablauf | character-brain |
 | tageszeit | zeit |
+| tank | bedrohung |
 | tasche | character-parts-becken |
 | tastatur | move-input |
 | teilupdate | terrain-mesh |
@@ -507,7 +540,7 @@
 | tod | character-reaktion |
 | tor | tueren |
 | totholz | totholz-form, totholz |
-| touch | move-input, touch-stick, inventar-ansicht |
+| touch | move-input, touch-stick, inventar-ansicht, kampf-leiste |
 | treffer | character-reaktion, treffer-zahlen |
 | truhe | behaelter, inventar-ansicht |
 | tuer | interaktion, tueren |
@@ -515,7 +548,7 @@
 | turban | character-parts-hut |
 | ufer | terrain-farben |
 | uhr | zeit |
-| ui | figur-schild, hud, inventar-ansicht, menue, treffer-zahlen |
+| ui | figur-schild, hud, inventar-ansicht, kampf-leiste, menue, treffer-zahlen, ziel-rahmen |
 | umfallen | character-reaktion |
 | umhang | character-parts-ruecken, character-parts, character-sekundaer |
 | umkreis | raum-gitter |
@@ -532,7 +565,7 @@
 | vertexfarben | fels-basis, fels, natur-basis, pflanze-basis, totholz, mesh-builder, terrain-farben |
 | verzweigung | baum-skelett |
 | vfx | zauber-effekte |
-| waffe | character-ausruestung |
+| waffe | nahkampf-daten, nahkampf, character-ausruestung |
 | wahrnehmung | character-sinne |
 | wald | baum |
 | wandern | character-steering |
@@ -541,13 +574,15 @@
 | wedel | pflanze-formen |
 | wege | wege-lage, wege-mesh, worldgen-wege |
 | wegfindung | worldgen-path |
-| welt | noise, rng, welt-dinge, kollision, scatter-mesh, terrain-farben, terrain-mesh, wege-lage, wege-mesh, welt-aenderung, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
+| welt | noise, rng, kampf, welt-dinge, kollision, scatter-mesh, terrain-farben, terrain-mesh, wege-lage, wege-mesh, welt-aenderung, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | werfen | welt-dinge |
 | werkbank | rezepte, stationen |
 | werkzeug | hand, rohstoffe, character-ausruestung |
 | wetter | niederschlag, himmel-stand, wetter |
 | whittaker | worldgen-biomes |
 | wind | baum, natur-basis, pflanze-basis, pflanze-boden, pflanze-busch, natur-material, scatter-mesh, wetter |
+| wirkbalken | kampf-leiste |
+| wirkzeit | faehigkeiten |
 | wolken | himmel |
 | worldgen | worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | wueste | pflanze-wueste |
@@ -556,11 +591,12 @@
 | zauberhut | character-parts-hut |
 | zeit | schnappschuss-puffer, zeit |
 | zeitschritt | schleife |
-| ziel | ziel-wahl |
+| ziel | ziel-wahl, ziel-rahmen |
 | zielen | ziel-wahl |
 | zoom | follow-camera, touch-stick |
 | zopf | character-parts-haar |
 | zufall | rng |
+| zustand | zustaende |
 | zustandsautomat | character-brain |
 | zutaten | rezepte |
 
@@ -784,6 +820,21 @@ uhr.update(dt); // je Bild, dt in echten Sekunden
 
 Genutzt von: testwelt · Tags: zeit, tageszeit, jahreszeit, kalender, uhr, speichern · THREE: nein
 
+### bedrohung · `engine/gameplay/bedrohung.js` · v1.0.0 · entwurf
+Klassische Aggro-Tabelle: Bedrohung je Gegner und Quelle, Zielwechsel erst bei 110 %, Spott, Heilungs-Bedrohung
+
+- `createBedrohung({verfall,wechsel}) -> {add(gegner,quelle,menge),heilung(quelle,menge,gegnerListe),spott(gegner,quelle,dauer),ziel(gegner)->quelleId|null,liste(gegner)->[{id,wert}],entferne(id),leere(gegner),update(dt),zustand(),laden(z),dispose()}`
+
+```js
+import { createBedrohung } from '../../engine/gameplay/bedrohung.js';
+const b = createBedrohung();
+b.add('ork', 'tank', 100); b.add('ork', 'magier', 105);
+b.ziel('ork'); // 'tank' – Magier braucht > 110
+b.spott('ork', 'tank', 3);
+```
+
+Genutzt von: – · Tags: aggro, bedrohung, tank, kampf, ki, mmo · THREE: nein
+
 ### behaelter · `engine/gameplay/behaelter.js` · v1.0.0 · entwurf
 Behälter in der Welt (Truhe, Fass, Schrank): eigenes Inventar, öffnen/schließen je Figur, Schloss mit Schlüssel, Ablegen/Entnehmen, Speichern
 
@@ -952,6 +1003,42 @@ bauer.sage('Moin!', { geste: 'winken' }); bauer.blickZu(held); bauer.ausruesten(
 
 Genutzt von: figuren-labor, testwelt · Tags: figur, charakter, spieler, npc, bewegung, animation, controller, avatar · THREE: nein
 
+### faehigkeiten-daten · `engine/gameplay/faehigkeiten-daten.js` · v1.0.0 · entwurf
+Beispiel-Fähigkeiten (Krieger, Magier, Heiler) für die MMO-Leiste; reine Daten
+
+- `FAEHIGKEITEN`
+- `FAEHIGKEITEN_NAMEN`
+
+```js
+import { FAEHIGKEITEN } from '../../engine/gameplay/faehigkeiten-daten.js';
+const d = FAEHIGKEITEN.feuerball;   // { name, symbol, ressource, kosten, abkling, wirkzeit, reichweite, zielArt, wirkung }
+```
+
+Genutzt von: – · Tags: kampf, fähigkeit, daten, mmo · THREE: nein
+Felder: { name, symbol, text, rolle, ressource, kosten, abkling, gcd=true, wirkzeit, kanal, takte, beiBewegung,
+        reichweite, zielArt ('feind'|'freund'|'selbst'), ladungen, wirkung }
+
+### faehigkeiten · `engine/gameplay/faehigkeiten.js` · v1.0.0 · entwurf
+Klassische MMO-Fähigkeitsleiste ohne THREE: globale Abklingzeit (GCD), Ressourcen (Mana, Wut, Energie), Wirkzeit mit Abbruch bei Bewegung und Pushback, Kanalisieren mit Takten, Ladungen, Reichweite/Ziel-Prüfung, Sperren
+
+- `createLeiste(opts) -> { nutze(name,{ziel,abstand,bewegt,sperren}) -> {ok,grund}, kann(name,kontext) -> {ok,grund,def}, update(dt,{bewegt,getroffen,sperren}) -> ereignisse[], gib(ressource,menge), ressource(name) -> {wert,max}, wirkt -> {name,anteil}|null, gcdAnteil, abkling(name), ladungen(name), unterbrich(), zustand(), laden(z), dispose() }`
+- `FAEHIGKEITEN`
+- `FAEHIGKEITEN_NAMEN`
+
+```js
+import { createLeiste } from '../../engine/gameplay/faehigkeiten.js';
+const leiste = createLeiste();
+const r = leiste.nutze('feuerball', { ziel: { id: 'g1', feind: true }, abstand: 12 });   // r = { ok, grund }
+for (const e of leiste.update(dt, { bewegt, getroffen, sperren: zustaende.faktoren() }))
+if (e.typ === 'fertig' || e.typ === 'kanalTakt') wende(e.def.wirkung, e.ziel);         // Spiel ruft kampf.schade/heile/…
+```
+
+Genutzt von: figuren-labor · Tags: kampf, fähigkeit, gcd, mmo, abklingzeit, ressource, wirkzeit, kanal, ladungen, reichweite, leiste · THREE: nein
+Ereignisse: { typ:'wirkStart'|'fertig'|'kanalTakt'|'unterbrochen', name, def, ziel, grund? } (fertig auch bei Sofort-Fähigkeiten).
+Kosten werden beim Start bezahlt und bei Unterbrechung erstattet. Ziel = { id, feind?: bool } (feind:false = Verbündeter).
+sperren = { kannHandeln, kannZaubern } (false = gesperrt; wie zustaende.faktoren()). Zauber-Fähigkeiten: wirkung.typ 'zauber' oder ressource 'mana'.
+Wirkzeit/Kanal bricht bei Bewegung ab (außer beiBewegung:'erlaubt'). Treffer in der Wirkzeit: +0.2 s, höchstens 2x.
+
 ### hand · `engine/gameplay/hand.js` · v1.0.0 · entwurf
 „In der Hand“: ein Inventar-Platz ist ausgewählt (Schnellleiste); liefert den gehaltenen Gegenstand samt Register-Eintrag, meldet Wechsel (zum Ausrüsten der Figur) und nutzt Werkzeuge ab, bis sie zerbrechen
 
@@ -1027,6 +1114,38 @@ const sicher = JSON.stringify(inv.zustand());
 
 Genutzt von: testwelt · Tags: inventar, gegenstand, stapel, gameplay, speichern · THREE: nein
 
+### kampf-werte · `engine/gameplay/kampf-werte.js` · v1.0.0 · entwurf
+Kämpfer (Leben, Schild, Haltung, Werte, Mods) und reine Schadensformel mit Rüstung, Krit, Parade, Block
+
+- `ARTEN`
+- `STANDARD_WERTE`
+- `berechneSchaden(angreifer,verteidiger,paket,r)->{schaden,krit,roh}`
+- `createKaempfer({id,team,leben,werte,haltung,seed})->{leben,lebenMax,tot,schild,haltung,taumelt,werte,abwehr,nimmSchaden(paket,angreiferWerte)->ergebnis,heile(m)->geheilt,gibSchild(m,dauer),belebe(anteil),setzeMod(id,mod),entferneMod(id),update(dt)->ereignisse,zustand(),laden(z),dispose()}`
+
+```js
+import { createKaempfer } from '../../engine/gameplay/kampf-werte.js';
+const ork = createKaempfer({ id: 'ork', team: 2, leben: 80, werte: { ruestung: 100 } });
+const e = ork.nimmSchaden({ menge: 20, wucht: 10, richtung: { x: 0, z: -1 } });
+ork.abwehr.block = true; ork.abwehr.yaw = 0; // Blick = (sin yaw, cos yaw)
+```
+
+Genutzt von: – · Tags: kampf, schaden, leben, haltung, ruestung, krit, mmo, rpg · THREE: nein
+
+### kampf · `engine/gameplay/kampf.js` · v1.0.0 · entwurf
+Kampf-Welt (Befehlsschicht): Kämpfer + Zustände + Bedrohung verbinden, schade/heile/gibZustand, DoT-Takte, DPS, Ereignisse
+
+- `createKampf({seed,ereignisse}) -> {melde(id,opts)->kaempfer,entferne(id),kaempfer(id),zustaende(id),alle(),feindlich(a,b),schade(paket)->ergebnis,heile({quelle,ziel,menge})->geheilt,gibZustand(ziel,name,opts),update(dt)->ereignisse,imKampf(id),dps(id,fenster),bedrohung,zustand(),laden(z),dispose()}`
+
+```js
+import { createKampf } from '../../engine/gameplay/kampf.js';
+const k = createKampf({ seed: 7 });
+k.melde('held', { team: 1, leben: 100 }); k.melde('ork', { team: 2, leben: 50 });
+const e = k.schade({ quelle: 'held', ziel: 'ork', menge: 20, zustand: { name: 'brennen' } });
+for (const ev of k.update(1)) console.log(ev.typ); // kampf:treffer, kampf:tot, …
+```
+
+Genutzt von: figuren-labor · Tags: kampf, schaden, leben, buff, debuff, aggro, mmo, welt · THREE: nein
+
 ### koerper · `engine/gameplay/koerper.js` · v1.0.0 · entwurf
 Leichte Physik für lose Dinge (Gegenstände, Beute, Bälle, Kisten-Trümmer) ohne THREE: Kugeln mit Schwerkraft, Abprallen, Reibung, Haften am flachen Hang, Rutschen am steilen, Schwimmen/Sinken, Hindernisse, Einschlafen – fester Zeitschritt, deterministisch
 
@@ -1047,6 +1166,35 @@ reibung = 8 (1/s Bremsen am Boden; klein = rollt weit), haftung = 0.8 (Boden-Nor
 Körper (lebendes Objekt): { id, pos, vel, radius, amBoden, imWasser, ruht, daten } – pos/vel dürfen gelesen und gesetzt werden
 (nach dem Setzen wecke(k) rufen). Körper stoßen nicht untereinander zusammen (billig, reicht für Beute und Kleinkram).
 onAufprall(koerper, tempo, 'boden' | 'wand' | 'wasser') ab ~1 m/s – für Klang und Staub.
+
+### nahkampf-daten · `engine/gameplay/nahkampf-daten.js` · v1.0.0 · entwurf
+Waffen-Tabelle für den Action-Nahkampf (Kombo-Ketten, schwerer Schlag, Tempo) – reine Daten
+
+- `WAFFEN { faust, schwert, axt, hammer, dolch, speer, stab }`
+- `WAFFEN_NAMEN -> string[]`
+
+```js
+import { WAFFEN } from '../../engine/gameplay/nahkampf-daten.js';
+const s = WAFFEN.schwert.leicht[0]; // { clip:'schlagen', vorlauf, aktiv, nachlauf, schaden, reichweite, winkel, wucht, stoss, schritt }
+```
+
+Genutzt von: – · Tags: kampf, nahkampf, waffe, kombo, daten, mmo · THREE: nein
+
+### nahkampf · `engine/gameplay/nahkampf.js` · v1.0.0 · entwurf
+Deterministischer Action-Nahkampf als reine Logik: Kombo-Kette, schwerer Schlag, Block/Parade, Ausweichen, Taumeln, Kegel-Treffer
+
+- `createNahkampf({ waffe='schwert', waffen=WAFFEN }) -> { angriff('leicht'|'schwer')->{ok,grund}, lasseLos(), block(an), ausweichen({x,z})->{ok}, taumle(dauer), update(dt,{x,y,z,yaw},ziele)->ereignisse[], phase, kombo, abwehr{block,parade,unverwundbar}, tempoFaktor, setWaffe(n), waffe, zustand(), laden(z), dispose() }`
+- `WAFFEN`
+- `WAFFEN_NAMEN`
+
+```js
+import { createNahkampf } from '../../engine/gameplay/nahkampf.js';
+const nk = createNahkampf({ waffe: 'axt' });
+nk.angriff('leicht');
+for (const e of nk.update(dt, { x, y, z, yaw }, [{ id:'wolf', x:1, y:0, z:2, radius:0.5 }])) if (e.typ === 'treffer') kampf.schade(...);
+```
+
+Genutzt von: figuren-labor · Tags: kampf, nahkampf, kombo, waffe, parade, ausweichen, block, mmo, deterministisch · THREE: nein
 
 ### rezepte · `engine/gameplay/rezepte.js` · v1.0.0 · entwurf
 Herstellen: Rezepte als Daten (Zutaten → Ergebnis, optional Werkzeug und Station), prüfen was mit einem Inventar möglich ist und sicher herstellen (alles oder nichts)
@@ -1149,7 +1297,7 @@ Register-Einträge dürfen die Physik bestimmen: { radius, sprung, reibung, haft
 Aufheben läuft über die Interaktion: das Ziel ruft nimm(ding, wer.inventar) – `wer` braucht also ein Feld `inventar`.
 Ereignisse (falls Bus gesetzt): 'ding:neu' { ding }, 'ding:aufgehoben' { wer, id, anzahl, rest }, 'ding:weg' { ding }.
 
-### zauber-daten · `engine/gameplay/zauber-daten.js` · v1.0.0 · entwurf
+### zauber-daten · `engine/gameplay/zauber-daten.js` · v1.1.0 · entwurf
 Die Zauber-Tabelle als reine Daten: 12 wuchtige Zauber (Geschoss, Strahl, Kegel, Ort, Nova, Selbst, Teleport) mit Wirkzeit, Gewicht, Überladen, Durchschlag und Feldern (Brandboden, Sog) – gemacht für Horden
 
 - `ZAUBER`
@@ -1164,6 +1312,7 @@ const def = ZAUBER.feuerball;   // def.wirkzeit = Mindest-Aufladezeit, def.gewic
 Genutzt von: – · Tags: zauber, magie, daten, tabelle, kampf, flächenschaden, horde, spell · THREE: nein
 Felder je Zauber:
 name, symbol, text, farbe, clip (Geste aus character-clips-zauber), mana, abkling (s)
+element    'feuer' | 'eis' | 'blitz' | 'arkan' | 'natur' | 'heilig' – Schadensart fürs Kampfsystem (kampf-werte ARTEN), ab 1.1.0
 art        'geschoss' | 'strahl' | 'kegel' | 'ort' | 'nova' | 'selbst' | 'teleport'
 wirkzeit   Sekunden Aufladen, bevor er die Hand verlassen kann (schwer = lang)
 gewicht    0 … 1: Wucht für Kamera, Rückstoß, Bremsen beim Aufladen, Treffer-Stopp (wertet das Spiel aus)
@@ -1212,6 +1361,22 @@ Ereignisse von update() (Array wird wiederverwendet – nicht aufheben): alle ha
 'selbst'       Heilung/Schild: def.heilt / def.schild / def.dauer wertet das Spiel aus
 'teleport'     von, nach (das Spiel versetzt die Figur)
 treffer: [{ id, ziel, schaden, stoss {x,y,z}, umwerfen, verlangsamt (s), zug {x,z} | null (Sog: Geschwindigkeit zur Mitte) }]
+
+### zustaende · `engine/gameplay/zustaende.js` · v1.0.0 · entwurf
+Buffs und Debuffs: Stapel, Dauer, DoT/HoT-Takte, Faktoren (Tempo, Schaden, Rüstung), Sperren (Betäubung, Frost)
+
+- `ZUSTAENDE`
+- `createZustaende({defs}) -> {gib(name,{quelle,dauer,staerke})->eintrag,nimm(name),hat(name),stapel(name),update(dt)->ereignisse,beiSchaden()->ereignisse,faktoren(),liste(),reinige('schaedlich'|'nuetzlich'),zustand(),laden(z),dispose()}`
+
+```js
+import { createZustaende } from '../../engine/gameplay/zustaende.js';
+const z = createZustaende();
+z.gib('gift', { quelle: 'spinne' }); z.gib('gift', { quelle: 'spinne' }); // 2 Stapel
+for (const e of z.update(1)) if (e.typ === 'takt') console.log(e.name, e.menge);
+z.faktoren().kannHandeln; // false bei betaeubt/eingefroren
+```
+
+Genutzt von: – · Tags: buff, debuff, zustand, dot, hot, kampf, mmo, status · THREE: nein
 
 ### move-input · `engine/input/move-input.js` · v1.1.0 · entwurf
 Bewegungs-Eingabe für Figuren: Tastatur (WASD/Pfeile), Maus-Ziehen/Mausrad, Touch-Stick + Knöpfe, Gamepad → Stick, Kamera-Delta, Aktionen (Flanke/gehalten)
@@ -2158,6 +2323,20 @@ gewaehlt: () => hand.platz, onTipp: (platz) => hand.waehle(platz) });
 
 Genutzt von: testwelt · Tags: ui, inventar, schnellleiste, hotbar, rucksack, truhe, raster, hud, touch · THREE: nein
 
+### kampf-leiste · `engine/ui/kampf-leiste.js` · v1.0.0 · entwurf
+MMO-Aktionsleiste als DOM-Overlay: Plätze mit Symbol/Taste, Abklingzeit, GCD, Ladungen, Ausgrauen, Wirkbalken, Ressourcenbalken
+
+- `createKampfLeiste({eltern,plaetze,onNutze,unten,zIndex}) -> { element, setPlaetze(liste), update(dt, leiste), blitz(name), dispose() }`
+
+```js
+import { createKampfLeiste } from '../../engine/ui/kampf-leiste.js';
+const kl = createKampfLeiste({ plaetze: [{ name: 'feuerball', symbol: '🔥', taste: '1' }], onNutze: (n) => leiste.nutze(n, { ziel }) });
+kl.update(dt, leiste);   // jedes Bild; leiste wie aus createLeiste (abkling, ladungen, kann, gcdAnteil, wirkt, ressource)
+kl.blitz('feuerball');   // kurzes Aufblitzen (z. B. bei Ereignis 'fertig')
+```
+
+Genutzt von: figuren-labor · Tags: ui, overlay, kampf, mmo, hotbar, abklingzeit, gcd, wirkbalken, ressource, leiste, touch · THREE: nein
+
 ### menue · `engine/ui/menue.js` · v1.0.0 · entwurf
 Menü/Fenster als DOM-Overlay mit Seiten (Pause, Optionen, Spielstände, Truhe, Werkbank …): Knöpfe, Schalter, Regler, Auswahl, eigene Elemente; Escape/Rand-Tipp, fingerfreundlich, alle Stile inline
 
@@ -2194,6 +2373,21 @@ zahlen.update(kamera, dt); // jedes Bild
 ```
 
 Genutzt von: figuren-labor · Tags: ui, treffer, schaden, zahlen, overlay, dom · THREE: ja
+
+### ziel-rahmen · `engine/ui/ziel-rahmen.js` · v1.0.0 · entwurf
+MMO-Ziel-/Spieler-Rahmen als DOM-Overlay: Name, Lebensbalken mit Schild und Schaden-Rest, Haltung, Ressource, Zustands-Symbole
+
+- `createZielRahmen({eltern,ecke,breite,zIndex}) -> { element, zeige(daten|null), update(dt), dispose() }`
+
+```js
+import { createZielRahmen } from '../../engine/ui/ziel-rahmen.js';
+const ziel = createZielRahmen({ ecke: 'oben-mitte' });
+ziel.zeige({ name: 'Wolf', stufe: 3, leben: 40, lebenMax: 60, feindlich: true, zustaende: [{ name: 'Gift', symbol: '☠', rest: 4, dauer: 6, stapel: 2, nuetzlich: false }] });
+ziel.update(dt);   // jedes Bild (Schaden-Rest rutscht nach, Haltung blinkt)
+ziel.zeige(null);  // verstecken
+```
+
+Genutzt von: figuren-labor · Tags: ui, overlay, kampf, mmo, ziel, lebensbalken, buff, debuff, haltung, schild · THREE: nein
 
 ### himmel-stand · `engine/world/himmel-stand.js` · v1.0.0 · entwurf
 Himmel als reine Daten: Sonnen- und Mondbahn aus Stunde/Jahreszeit/Breitengrad, Mondphase, Himmels-, Nebel- und Lichtfarben über den Tag (Nacht, Dämmerung, goldene Stunde, Mittag), Sterne, Einfluss von Wolken/Nebel/Regen/Blitz

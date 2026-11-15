@@ -16,6 +16,13 @@ Testgelände für das Figuren-System der Engine (`docs/FIGUREN-SYSTEM.md`): Auss
   - Auto-Zielen: Lock-On, sonst der dichteste Haufen (Flächenzauber) bzw. das beste Ziel im Blick, notfalls ringsum
 - 🐀 Rattenplage (`engine/gameplay/horde`, `engine/render/horde-mesh`, `engine/models/kreaturen/ratte`): Wellen aus Ratten, Riesenratten und alle 5 Wellen ein Rattenkönig –
   sie umzingeln dich, springen an und beißen; Treffer schleudern sie durch die Luft. Fällt man, beginnt die Plage neu. `?plage=1` startet sofort
+- ⚔ Kampf (Reiter „⚔ Kampf“, `docs/KAMPF-SYSTEM.md`): Kampf-Welt `engine/gameplay/kampf` für Spieler, NPCs, Puppe, Rivale – Zauber, Rattenbisse und Rivalen-Schläge laufen alle über `kampf.schade`
+  - **Nahkampf** (`nahkampf`): F antippen = Kombo (3–4 Schläge, letzter = Finisher), F halten = schwerer Schlag aufladen; Waffe passt zur Ausrüstung (Schwert/Axt/Hammer/Dolch/Speer/Stab, sonst Faust);
+    Treffer-Stopp, Kamera-Wackeln, Zahlen (Krit gelb), „Pariert!“, „Geblockt“, „Ausgewichen“
+  - **Block** (B, rechte Maus, 🛡 halten): frühes Drücken = **Parade**; **Q/🌀** = Ausweichen mit kurzer Unverwundbarkeit; Betäubung/Frost halten dich fest
+  - **Kampfmodus** wählbar: „✨ Action-Zauber“ (Ziffern 1–0) oder „🎯 MMO-Leiste“ (Rolle Krieger/Magier/Heiler, 4 Plätze auf 1–4, globale Abklingzeit, Wirkzeit, Wut/Mana, Reichweite, Ziel per T); Zauber bekommen Zustände (Brennen, Verlangsamt)
+  - **🎯 Trainingspuppe** (viel Leben, heilt nach 5 s, DPS am Namensschild und im Ziel-Rahmen) und **🤺 Rivale** (Ritter: Kombos, angekündigter schwerer Schlag mit ‼, blockt/weicht aus; Parade → taumelt; leere Haltung → Schaden ×1,5; steht nach 4 s wieder auf); `?kampf=1` stellt beide sofort auf
+  - Spieler-Rahmen (Leben, Schild, Haltung, Ressource, Zustände) oben links, Ziel-Rahmen für Lock-On bzw. zuletzt getroffenes Ziel
 - 🔊 Synthetische Klänge (`engine/audio/klang`), im Menü abschaltbar
 - Standard-Figur: Magier mit Zauberstab
 - Figuren mit Randlicht und weicherer Schattenseite (`engine/render/figur-material`)
@@ -28,7 +35,7 @@ Testgelände für das Figuren-System der Engine (`docs/FIGUREN-SYSTEM.md`): Auss
 
 ## Steuerung
 WASD/Pfeile laufen · Shift Sprint · Leertaste springen · Q Rolle/Dash (bricht Aufladen ab) · V gleiten · C ducken/tauchen · T Ziel · E ansprechen ·
-Ziehen = Kamera · Rad = Zoom · F Schlag · G winken · R halten = aufladen, loslassen = zaubern · 1–0, ß, ´ = Zauber wählen und aufladen.
+Ziehen = Kamera · Rad = Zoom · F Schlag/Kombo (halten = schwer) · B/rechte Maus Block · G winken · R halten = aufladen, loslassen = zaubern · 1–0, ß, ´ = Zauber wählen und aufladen.
 Zauberleiste oben: tippen = wählen, nochmal tippen = wirken (ohne Überladen). 🐀 oben rechts = Rattenplage an/aus.
 Handy: Stick links (erscheint unter dem Finger, Größe passt sich dem Bildschirm an), rechts ziehen = Kamera, zwei Finger = Zoom,
-Knöpfe unten rechts (⤒ ✨ ⚔ 🌀 🪂 🎯, 💬 nur bei NPCs), leichte Vibration. Gamepad geht auch.
+Knöpfe unten rechts (⤒ ✨ ⚔ 🛡 🌀 🪂 🎯, 💬 nur bei NPCs), leichte Vibration. Gamepad geht auch.

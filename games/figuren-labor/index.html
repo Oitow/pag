@@ -40,7 +40,7 @@
   #info { position: fixed; left: 10px; bottom: 10px; z-index: 4; font: 12px/1.4 monospace; background: #0008; color: #e8f0e0; padding: 6px 8px; border-radius: 8px; pointer-events: none; white-space: pre; }
   @media (max-width: 600px) { #info { font-size: 10px; bottom: auto; top: 124px; } }
   .hilfe { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 4; background: #0008; color: #fff; padding: 6px 12px; border-radius: 10px; font-size: 13px; pointer-events: none; transition: opacity 1s; text-align: center; width: max-content; max-width: calc(100vw - 30px); }
-  @media (pointer: coarse) { .hilfe { bottom: auto; top: 124px; } }
+  @media (pointer: coarse) { .hilfe { bottom: auto; top: 200px; } }
   /* Menü-Blatt: am Handy von unten, am großen Bildschirm von links */
   #blatt { position: fixed; z-index: 50; left: 0; right: 0; bottom: 0; height: min(58vh, 540px); display: flex; flex-direction: column; background: #fbf6eaf7; border-radius: 18px 18px 0 0; box-shadow: 0 -4px 22px #0005; transform: translateY(105%); transition: transform .25s; padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; }
   #blatt.offen { transform: none; }
@@ -61,6 +61,7 @@
   .aktionen { display: flex; flex-direction: column; gap: 10px; }
   .aktionen .gruppe b { width: 100%; font-size: 13px; color: #6a5a40; font-weight: 600; }
   .aktionen .stopp { align-self: flex-start; position: sticky; top: 0; z-index: 1; }
+  .hinweis { font-size: 13px; line-height: 1.5; color: #5a4c38; margin: 14px 0 0; }
   .zkarte { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; font: inherit; margin-bottom: 7px; padding: 8px 10px; border: 2px solid #d8cba8; border-radius: 13px; background: #fff; color: #2a2218; cursor: pointer; }
   .zkarte.an { border-color: #d89a20; background: #fff4d0; }
   .zkarte .sym { flex: 0 0 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-size: 24px; background: color-mix(in srgb, var(--f) 45%, #1a1420); }
@@ -99,6 +100,7 @@
       <button data-tab="aussehen" class="an">👕 Aussehen</button>
       <button data-tab="zauber">✨ Zauber</button>
       <button data-tab="ausruestung">🗡 Ausrüstung</button>
+      <button data-tab="kampf">⚔ Kampf</button>
       <button data-tab="aktionen">🎬 Aktionen</button>
       <button data-tab="mehr">⚙️ Mehr</button>
     </div>
@@ -113,6 +115,23 @@
     <section data-tab="ausruestung">
       <h3>In die Hand nehmen (Schild und Buch links, der Rest rechts)</h3>
       <div class="chips" id="ausr"></div>
+    </section>
+    <section data-tab="kampf">
+      <h3>Kampfmodus</h3>
+      <div class="chips"><button data-modus="zauber" class="an">✨ Action-Zauber</button><button data-modus="mmo">🎯 MMO-Leiste</button></div>
+      <h3>Rolle (MMO-Leiste)</h3>
+      <div class="chips"><button data-rolle="krieger" class="an">⚔ Krieger</button><button data-rolle="magier">🔥 Magier</button><button data-rolle="heiler">💚 Heiler</button></div>
+      <h3>Waffe (nimmt sie auch in die Hand)</h3>
+      <div class="chips" id="kWaffe"></div>
+      <h3>Gegner</h3>
+      <div class="chips">
+        <button data-knopf="puppe">🎯 Puppe aufstellen</button>
+        <button data-knopf="rivale">🤺 Rivale rufen</button>
+        <button data-knopf="heilen">❤ alle heilen</button>
+      </div>
+      <p class="hinweis"><b>F</b> antippen = Kombo-Schlag, <b>F halten</b> = schwerer Schlag aufladen, loslassen = Schlag · <b>B</b> / rechte Maus / 🛡 halten = Block,
+        kurz vor dem Treffer gedrückt = <b>Parade</b> (der Rivale taumelt) · <b>Q</b> / 🌀 = Ausweichen (kurz unverwundbar) · <b>T</b> = Ziel ·
+        MMO-Leiste: Ziffern <b>1–4</b> oder antippen · Die Puppe zeigt deinen Schaden pro Sekunde, der Rivale kündigt schwere Schläge mit ‼ an.</p>
     </section>
     <section data-tab="aktionen"><div class="aktionen" id="aktionen"></div></section>
     <section data-tab="mehr">
@@ -144,7 +163,7 @@
   </div>
 </div>
 <pre id="info"></pre>
-<div class="hilfe" id="hilfe">Stick/WASD laufen · Zauber oben wählen · ✨ / R halten = aufladen, loslassen = Schlag (1–0 ebenso) · 🐀 = Rattenplage</div>
+<div class="hilfe" id="hilfe">Stick/WASD laufen · Zauber oben wählen · ✨ / R halten = aufladen, loslassen = Schlag (1–0 ebenso) · F Schlag · B/🛡 Block · Q Ausweichen · ☰ ⚔ Kampf</div>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>
