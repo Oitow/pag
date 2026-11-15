@@ -8,7 +8,7 @@ import { createMeshBuilder, standardMaterial } from '../../../engine/render/mesh
 
 /** Baut die Deko und hängt sie an `gruppe`. feld(x,z) = Bodenhöhe, feldG = { x, z, halb }. → { dispose() } */
 export function baueSchlachtfeldDeko(gruppe, { seed = 1, feld, feldG }) {
-  const cache = createAssetCache({ varianten: 2, detail: 0, seed: hashSeed('deko', seed) });
+  const cache = createAssetCache({ varianten: 1, detail: 0, seed: hashSeed('deko', seed) });
   // Engine-Vertexfarben sind dunkel (für helles Natur-Labor) → hier per Material-Faktor aufhellen
   const mats = {};
   const matVon = (f) => (mats[f] ??= Object.assign(createNaturMaterial({ wind: false }), {}), mats[f].color.setRGB(f, f, f), mats[f]);

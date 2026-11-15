@@ -113,10 +113,10 @@ export function createRissAnsicht(daten, umgebung = {}) {
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3(), sk = new THREE.Vector3();
 
   // ---- Lava-Säulen (additive Kegel, Pool)
-  const saeulen = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.55, 1, 1, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }), MAX_SAEULEN);
+  const saeulen = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.55, 1, 1, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }), MAX_SAEULEN);
   saeulen.count = 0; saeulen.frustumCulled = false; saeulen.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_SAEULEN * 3), 3); objekt.add(saeulen);
   // heller Kern in der Säule (schmaler, gelblicher Kegel, gleiche Matrizen)
-  const kern = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.55, 1, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }), MAX_SAEULEN);
+  const kern = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.3, 0.55, 1, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }), MAX_SAEULEN);
   kern.count = 0; kern.frustumCulled = false; kern.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_SAEULEN * 3), 3); objekt.add(kern);
   const col = new THREE.Color();
 
@@ -154,7 +154,7 @@ export function createRissAnsicht(daten, umgebung = {}) {
       const u = a.t / a.dauer, h = a.hoehe * Math.sin(Math.min(1, u * 1.6) * Math.PI / 2) * (u > 0.7 ? 1 - (u - 0.7) / 0.3 * 0.6 : 1);
       const br = a.radius * (0.7 + 0.5 * (1 - u)) * (1 + 0.1 * Math.sin(zeit * 20 + n));
       v.set(a.x, hoehe(a.x, a.z) + h * 0.5, a.z); sk.set(br, Math.max(0.05, h), br); q.identity(); m4.compose(v, q, sk); saeulen.setMatrixAt(n, m4); sk.set(br * 0.7, Math.max(0.05, h * 0.92), br * 0.7); m4.compose(v, q, sk); kern.setMatrixAt(n, m4);
-      col.setRGB(1, 0.3 - 0.14 * u, 0.03).multiplyScalar(0.3 * (1 - u * u)); saeulen.setColorAt(n, col); kern.setColorAt(n, col.setRGB(1, 0.45, 0.08).multiplyScalar(0.3 * (1 - u * u)));
+      col.setRGB(1, 0.36 - 0.2 * u, 0.04).multiplyScalar(1 - 0.6 * u); saeulen.setColorAt(n, col); kern.setColorAt(n, col.setRGB(1, 0.62, 0.15).multiplyScalar(1 - 0.6 * u));
       // Funken aus Ausbrüchen
       if (u < 0.6 && zaehler < 1e9) for (let k = 0; k < 2; k++) {
         const w = zr() * 6.28, r = zr() * 2.5; funke(a.x, hoehe(a.x, a.z) + h * 0.8, a.z, Math.cos(w) * r, 4 + zr() * 6, Math.sin(w) * r, 0.8 + zr() * 0.8);
