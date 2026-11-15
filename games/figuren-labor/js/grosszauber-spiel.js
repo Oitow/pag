@@ -29,7 +29,9 @@ export function createGrosszauberSpiel({ szene, adapter, kamera, klang = null, z
 
   function ereignis(e, z) {
     const fx = z.fx, p = spieler.zustand.pos;
-    if (e.typ === 'treffer') for (const t of e.treffer) z.schade(t, defs.get(e.id) || { farbe: 0xffffff });
+    const def = defs.get(e.id) || { farbe: 0xffffff };
+    for (const t of e.treffer) z.schade(t, def);   // jedes Ereignis kann Treffer tragen ('treffer', 'blitz' …)
+    if (e.typ === 'blitz' && e.punkte?.length > 1) fx.blitz(e.punkte, { farbe: 0xdff0ff, dicke: 0.25, dauer: 0.25 });
     else if (e.typ === 'beben') {
       const d = e.pos ? Math.hypot(e.pos.x - p.x, e.pos.z - p.z) : 0;
       kamera.schuetteln((e.staerke ?? 1) / (1 + d / 18), e.dauer ?? 0.4);
