@@ -1,5 +1,5 @@
 // Tutorial „Erste Schritte“: 16 Schritte vom Lagerfeuer im Tal bis zum Tor der Enklave (Daten für engine/gameplay/aufgaben.js).
-// Orte: Platz-IDs aus dem Plan (lagerfeuer, steinkreis, stamm, puppe, zielscheibe, wegweiser) bzw. Zone 'aussicht',
+// Orte: Platz-IDs aus dem Plan (lagerfeuer, steinkreis, stamm, puppe, zielscheibe, wegweiser-tal) bzw. Zone 'aussicht',
 // sonst {x,z} in Metern (Welt, Tal-Mitte = TAL). Reine Daten, keine Funktionen (serialisierbar).
 // Signale für tutorial.js: ratten-klein, ratten-welle (Ratten + Großzauber frei), kamera-aussicht, tor-auf.
 // Tasten: WASD/Stick laufen · Leertaste/⤒ springen · E/💬 benutzen · F/⚔ Schlag · 1–9/Leiste Zauber · I/🎒 Rucksack · G/Groß-Knopf Großzauber.
@@ -56,14 +56,10 @@ export const TUTORIAL = [{
       text: 'Spüle die Rattenhorde weg',
       hinweis: 'Die Welle reißt alles mit, was in ihrem Weg steht',
       sagt: ['Wunderbar! Das Tal gehört wieder uns.'] },
-    { id: 'wegweiser', art: 'gehe-zu', ort: 'wegweiser', radius: 4,
+    { id: 'wegweiser', art: 'gehe-zu', ort: 'wegweiser-tal', radius: 4,
       text: 'Folge dem Weg nach Osten',
       hinweis: 'Der Wegweiser zeigt dir die Richtung',
       sagt: ['Dort vorne geht es zur Enklave. Ich bleibe dicht hinter dir.'] },
-    { id: 'bruecke', art: 'gehe-zu', ort: { x: 0, z: 3 }, radius: 6,
-      text: 'Überquere die Brücke',
-      hinweis: 'Einfach geradeaus laufen',
-      sagt: ['Keine Angst, die Brücke hält. Meistens.'] },
     { id: 'aussicht', art: 'gehe-zu', ort: 'aussicht', radius: 8,
       text: 'Steig zum Aussichtspunkt hinauf',
       hinweis: 'Folge dem Pfad bergauf' },
@@ -71,6 +67,10 @@ export const TUTORIAL = [{
       text: 'Genieße die Aussicht',
       hinweis: 'Kurz stehen bleiben und schauen',
       sagt: ['Da hinten liegt sie: die Enklave. Ist sie nicht herrlich?'] },
+    { id: 'bruecke', art: 'gehe-zu', ort: { x: 14, z: -98 }, radius: 6,
+      text: 'Überquere die Brücke',
+      hinweis: 'Einfach geradeaus laufen',
+      sagt: ['Keine Angst, die Brücke hält. Meistens.'] },
     { id: 'tor', art: 'gehe-zu', ort: { x: 118.5, z: -109.2 }, radius: 6, signalEnde: 'tor-auf',
       text: 'Erreiche das Tor der Enklave',
       hinweis: 'Noch ein paar Schritte auf dem Pfad',

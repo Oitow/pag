@@ -11,7 +11,7 @@
  *   const bauer = createCharacter({ look, welt, name: 'Jupp', schilder });
  *   bauer.sage('Moin!', { geste: 'winken' }); bauer.blickZu(held); bauer.ausruesten('handR', mistgabel);
  * @tags     figur, charakter, spieler, npc, bewegung, animation, controller, avatar
- * @version  1.3.0
+ * @version  1.4.0
  * @status   entwurf
  * @three    nein
  */
@@ -30,7 +30,7 @@ function punktVon(p) {
 const MOTOR_AKTIONEN = { springen: 'springeJetzt', rollen: 'rolleJetzt' };
 
 /**
- * opts: { look, seed = 1, welt (Adapter: bodenHoehe …), pos {x,y,z}, yaw = 0, tuning (Motor), animation (Animator-Optionen),
+ * opts: { look, mimik = true (false: festes Gesicht, 3 Draw-Calls weniger – für NPC-Gruppen), seed = 1, welt (Adapter: bodenHoehe …), pos {x,y,z}, yaw = 0, tuning (Motor), animation (Animator-Optionen),
  *         koerper = true (meldet sich in einer Kollisions-Welt als weicher Zylinder an, falls welt.fuege existiert), koerperWeich = 0.5,
  *         schatten = true, onSchritt(fuss, staerke, figur), name, schilder (engine/ui/figur-schild), schild: { leben, versatz, farbe },
  *         brain: fertiges Brain (character-brain) oder Optionen dafür (welt/heimat/seed werden ergänzt) }
@@ -39,7 +39,7 @@ const MOTOR_AKTIONEN = { springen: 'springeJetzt', rollen: 'rolleJetzt' };
  * Aktionen mit Maske 'ganz' (z. B. tod, ausweichrolle, sitzen) sperren die Lauf-Absicht, solange sie laufen.
  */
 export function createCharacter(opts = {}) {
-  const model = createCharacterModel({ look: opts.look, seed: opts.seed ?? 1, schatten: opts.schatten ?? true });
+  const model = createCharacterModel({ look: opts.look, seed: opts.seed ?? 1, schatten: opts.schatten ?? true, mimik: opts.mimik ?? true });
   const m = model.masse;
   const motor = createMotor({
     welt: opts.welt, pos: opts.pos || { x: 0, y: 0, z: 0 }, yaw: opts.yaw || 0,

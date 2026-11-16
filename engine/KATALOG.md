@@ -736,7 +736,7 @@ cam.setPreset('schulter'); cam.fahrt({ pos: { x: 5, y: 8, z: 5 }, blick: turm, d
 renderer.render(szene, cam.kamera);
 ```
 
-Genutzt von: figuren-labor, testwelt · Tags: kamera, third-person, first-person, orbit, folgen, zoom, figur, lock-on, schuetteln, kollision, kamerafahrt, preset · THREE: ja
+Genutzt von: enklave, figuren-labor, testwelt · Tags: kamera, third-person, first-person, orbit, folgen, zoom, figur, lock-on, schuetteln, kollision, kamerafahrt, preset · THREE: ja
 
 ### ziel-wahl · `engine/camera/ziel-wahl.js` · v1.0.0 · entwurf
 Lock-On-Ziel auswählen: bestes Ziel vor der Figur (Winkel + Abstand) oder nächstes Ziel links/rechts vom aktuellen (Ziel wechseln)
@@ -751,7 +751,7 @@ ziel = waehleZiel(npcs, { von: held.zustand.pos, blickYaw: cam.yaw, aktuell: zie
 cam.lockOn(ziel ? () => zielPos(ziel) : null);
 ```
 
-Genutzt von: figuren-labor, testwelt · Tags: kamera, lock-on, ziel, zielen, auswahl, kampf · THREE: nein
+Genutzt von: enklave, figuren-labor, testwelt · Tags: kamera, lock-on, ziel, zielen, auswahl, kampf · THREE: nein
 
 ### ereignisse · `engine/core/ereignisse.js` · v1.0.0 · entwurf
 Event-Bus mit Prioritäten, einmaligen Hörern, Platzhalter '*' und Warteschlange für deterministische Reihenfolge
@@ -767,7 +767,7 @@ e.spaeter('tod', { wer: 'ork' }); e.leeren();
 ab();
 ```
 
-Genutzt von: testwelt · Tags: ereignis, event, bus, nachricht, gameplay · THREE: nein
+Genutzt von: enklave, testwelt · Tags: ereignis, event, bus, nachricht, gameplay · THREE: nein
 
 ### math · `engine/core/math.js` · v1.0.0 · stabil
 Kleine Mathe-Helfer: clamp, lerp, smoothstep, framerate-unabhängiges Dämpfen, Winkel
@@ -839,7 +839,7 @@ items.definiere('holz', { name: 'Holz', tags: ['material'] });
 items.brauche('holz').name; items.nummer('holz'); items.mitTag('material');
 ```
 
-Genutzt von: testwelt · Tags: daten, katalog, gegenstand, rezept, register · THREE: nein
+Genutzt von: enklave, testwelt · Tags: daten, katalog, gegenstand, rezept, register · THREE: nein
 
 ### rng · `engine/core/rng.js` · v1.0.0 · stabil
 Deterministischer Zufall (mulberry32), Seeds aus Text, Gitter-Hash und Würfel-Helfer
@@ -861,7 +861,7 @@ const r = rng(hashSeed('insel', 42));
 const baum = pick(r, ['eiche', 'tanne']);
 ```
 
-Genutzt von: figuren-labor, testwelt · Tags: zufall, seed, hash, welt · THREE: nein
+Genutzt von: enklave, figuren-labor, testwelt · Tags: zufall, seed, hash, welt · THREE: nein
 
 ### schleife · `engine/core/schleife.js` · v1.0.0 · entwurf
 Spielschleife mit variablem oder festem Zeitschritt, dt-Begrenzung, FPS-Anzeige und Tab-Pause
@@ -874,7 +874,7 @@ const loop = createSchleife({ update: (dt) => welt.step(dt), render: () => rende
 loop.start();
 ```
 
-Genutzt von: testwelt · Tags: schleife, loop, zeitschritt, raf, fps · THREE: nein
+Genutzt von: enklave, testwelt · Tags: schleife, loop, zeitschritt, raf, fps · THREE: nein
 
 ### schnappschuss-puffer · `engine/core/schnappschuss-puffer.js` · v1.0.0 · entwurf
 Mehrspieler-Grundlage: speichert verspätete Zustände fremder Figuren mit Zeitstempel und liefert weich interpolierte Zustände (leicht in der Vergangenheit)
@@ -905,7 +905,7 @@ const stand = sp.lade('slot1');          // null, wenn nichts da
 sp.auto('auto', () => ({ punkte }), 30); // dann pro Frame: sp.update(dt)
 ```
 
-Genutzt von: testwelt · Tags: speichern, spielstand, localStorage, autosave, export, migration, persistenz · THREE: nein
+Genutzt von: enklave, testwelt · Tags: speichern, spielstand, localStorage, autosave, export, migration, persistenz · THREE: nein
 
 ### zeit · `engine/core/zeit.js` · v1.0.0 · entwurf
 Spieluhr: Tageszeit, Tage, Jahreszeiten und Jahre mit Ereignissen, Pause, Tempo und Speicherstand
@@ -920,7 +920,7 @@ uhr.on('tag', (tag) => console.log('Neuer Tag', tag));
 uhr.update(dt); // je Bild, dt in echten Sekunden
 ```
 
-Genutzt von: testwelt · Tags: zeit, tageszeit, jahreszeit, kalender, uhr, speichern · THREE: nein
+Genutzt von: enklave, testwelt · Tags: zeit, tageszeit, jahreszeit, kalender, uhr, speichern · THREE: nein
 
 ### aufgaben · `engine/gameplay/aufgaben.js` · v1.0.0 · entwurf
 Aufgaben-/Tutorial-Logik: Schritte (gehe-zu, sprich-mit, sammle, besiege, benutze, warte), Fortschritt, Signale, Speicherstand; reine Daten, serialisierbar
@@ -1105,7 +1105,7 @@ Genutzt von: figuren-labor · Tags: npc, ki, steering, bewegung, wandern, pfad, 
 Absicht: { x, z, sprint, springen (Puls beim Steckenbleiben), ducken, blickYaw (beim Umkreisen/Abstand/Wartepunkt) }.
 Steckenbleiben eskaliert: seitlich ausweichen → andere Seite + Hüpfer → Wanderziel/Wegpunkt überspringen bzw. `steckt = true`.
 
-### character · `engine/gameplay/character.js` · v1.3.0 · entwurf
+### character · `engine/gameplay/character.js` · v1.4.0 · entwurf
 Fertige Spielfigur in einem Objekt: Modell (Look) + Animator + Bewegungs-Motor, für Spieler und NPCs gleich
 
 - `createCharacter(opts) -> { root, model, animator, motor, zustand, look, name, schild, brain, update(dt,absicht?,brainKontext?), setBrain(brain|opts|null), spiele(name,opts), loese(opts), stoppe(name?), aktion(name,opts), sage(text,{dauer,geste,ausdruck}), setName(t), setLeben(anteil|null), ausruesten(sockel,obj), ablegen(sockel|obj), ausruestung, setAusdruck(name|null,opts), treffer(richtung,staerke,opts), umfallen(richtung,opts), aufstehen(dauer), blickZu(punkt|figur|fn|null), setSichtbar(bool), abstandZu(punkt|figur), setLook(teil), teleport(pos,yaw?), stoss(x,y,z,opts?), dispose() }`
@@ -1120,7 +1120,7 @@ const bauer = createCharacter({ look, welt, name: 'Jupp', schilder });
 bauer.sage('Moin!', { geste: 'winken' }); bauer.blickZu(held); bauer.ausruesten('handR', mistgabel);
 ```
 
-Genutzt von: figuren-labor, testwelt · Tags: figur, charakter, spieler, npc, bewegung, animation, controller, avatar · THREE: nein
+Genutzt von: enklave, figuren-labor, testwelt · Tags: figur, charakter, spieler, npc, bewegung, animation, controller, avatar · THREE: nein
 
 ### faehigkeiten-daten · `engine/gameplay/faehigkeiten-daten.js` · v1.0.0 · entwurf
 Beispiel-Fähigkeiten (Krieger, Magier, Heiler) für die MMO-Leiste; reine Daten
@@ -1222,7 +1222,7 @@ const gross = createGrosszauber({ arten: { welle: createWelle }, welt: adapter }
 gross.wirke('welle', { von: fuss, punkt, yaw, kraft: 1.4, def: ZAUBER.flutwelle.gross });
 ```
 
-Genutzt von: figuren-labor · Tags: großzauber, welle, wasser, flut, episch, zauber, magie, kampf, flächenschaden, mitreißen, beben, mmo · THREE: nein
+Genutzt von: enklave, figuren-labor · Tags: großzauber, welle, wasser, flut, episch, zauber, magie, kampf, flächenschaden, mitreißen, beben, mmo · THREE: nein
 Phasen: 'aufbau' (Front wächst hinter dem Zaubernden) → 'rollen' → 'brechen' (Kamm stürzt, Ziele werden hochgeworfen) → 'flut' (flaches Wasser blendet aus).
 def (alle optional): { breite 24, laenge 45, tempo 14, hoehe 4 … 7, aufbau 1, brechen 1.2, flut 4, tiefe 1.4, schaden, stoss, umwerfen }
 daten (für render/grosszauber-welle): { phase, alter, mitte {x,y,z}, richtung {x,z}, yaw, breite, hoehe, fortschritt 0…1, kruemmung 0…1, start {x,z}, strecke (m Flutweg), flut 0…1 (Deckkraft Flutfläche), tiefe, mitgerissen }
@@ -1242,7 +1242,7 @@ gross.wirke('welle', { von: fuss, punkt, yaw, kraft: 1.4, def: ZAUBER.flutwelle.
 for (const e of gross.update(dt, ziele)) if (e.typ === 'treffer') for (const t of e.treffer) schade(t);
 ```
 
-Genutzt von: figuren-labor · Tags: zauber, magie, großzauber, episch, welle, wand, sturm, beben, kollision, welt, kampf, flächenschaden, mmo · THREE: nein
+Genutzt von: enklave, figuren-labor · Tags: zauber, magie, großzauber, episch, welle, wand, sturm, beben, kollision, welt, kampf, flächenschaden, mmo · THREE: nein
 Eine Zauber-Art ist eine Fabrik  fabrik(opts, umgebung) -> instanz.
 opts      { von {x,y,z} (Füße des Zaubernden), punkt {x,y,z} (Zielpunkt am Boden, auf Reichweite begrenzt), yaw (Blick = sin/cos), kraft (1 … ~1.6), def (Daten, z. B. ZAUBER.x.gross), quelle }
 umgebung  { boden(x,z) (Gelände ohne Großzauber), wasser(x,z), zufall () -> [0,1) (geseedet) }
@@ -1295,7 +1295,7 @@ if (e.typ === 'biss') spielerSchaden(e.schaden);
 for (const t of einschlag.treffer) horde.schade(t.ziel, t.schaden, t);   // horde.ziele passt direkt in zauberbuch.update(dt, ziele)
 ```
 
-Genutzt von: figuren-labor · Tags: gegner, horde, schwarm, monster, ratte, ki, kampf, verfolgen, rückstoß, gameplay · THREE: nein
+Genutzt von: enklave, figuren-labor · Tags: gegner, horde, schwarm, monster, ratte, ki, kampf, verfolgen, rückstoß, gameplay · THREE: nein
 Wesen (lebendes Objekt, vom Renderer gelesen – engine/render/horde-mesh.js): { id, art, def, x, y, z, vx, vy, vz, yaw, skala,
 radius, hoehe, leben, lebenMax, tot, zustand ('lauf' | 'sprung' | 'flug' | 'benommen' | 'tot'), t (s im Zustand), phase (Lauf-Takt),
 hub (m Hüpfer beim Anspringen), dreh (rad Überschlag im Flug), blitz (1 → 0 Treffer-Aufleuchten), langsam (s Rest), verfall (0 → 1
@@ -1315,7 +1315,7 @@ ia.melde('pilz-1', { pos: { x: 4, z: 7 }, text: 'Aufheben', aktion: (wer, ziel) 
 // bei Tastendruck: ia.halte(spieler, dt, tasteE)   (oder ia.ausloesen(spieler))
 ```
 
-Genutzt von: testwelt · Tags: interaktion, ansprechen, aufheben, tuer, npc, hinweis, aktion, reichweite, gameplay · THREE: nein
+Genutzt von: enklave, testwelt · Tags: interaktion, ansprechen, aufheben, tuer, npc, hinweis, aktion, reichweite, gameplay · THREE: nein
 wer = { x, y?, z, yaw? } (yaw: 0 = +z, wie Math.atan2(dx, dz)). Kandidat: aktiv, Rand-Abstand (Mittelpunkt − radius, min 0) ≤ Reichweite,
 Höhe passt (nur wenn beide y endlich), im Blickkegel (nur wenn yaw endlich und Rand-Abstand > nahImmer).
 Wertung (kleiner = besser): randAbstand + winkelRad * 0.6 − prio; bei Gleichstand das zuerst gemeldete Ziel.
@@ -1335,7 +1335,7 @@ inv.nimm('holz', 5); inv.zaehle('holz');
 const sicher = JSON.stringify(inv.zustand());
 ```
 
-Genutzt von: testwelt · Tags: inventar, gegenstand, stapel, gameplay, speichern · THREE: nein
+Genutzt von: enklave, testwelt · Tags: inventar, gegenstand, stapel, gameplay, speichern · THREE: nein
 
 ### kampf-werte · `engine/gameplay/kampf-werte.js` · v1.0.0 · entwurf
 Kämpfer (Leben, Schild, Haltung, Werte, Mods) und reine Schadensformel mit Rüstung, Krit, Parade, Block
@@ -1382,7 +1382,7 @@ const apfel = physik.neu({ pos: { x: 0, y: 2, z: 0 }, vel: { x: 2, y: 3, z: 0 },
 physik.schiebe(held.x, held.z, 0.3, held.vx, held.vz, held.y, 1.75);   // Figur kickt lose Dinge weg
 ```
 
-Genutzt von: testwelt · Tags: physik, koerper, gegenstand, schwerkraft, abprallen, schwimmen, rollen, gameplay · THREE: nein
+Genutzt von: enklave, testwelt · Tags: physik, koerper, gegenstand, schwerkraft, abprallen, schwimmen, rollen, gameplay · THREE: nein
 neu(opts): { pos {x,y,z} (Mittelpunkt), vel, radius = 0.15, sprung = 0.35 (0 = bleibt liegen … 1 = Flummi),
 reibung = 8 (1/s Bremsen am Boden; klein = rollt weit), haftung = 0.8 (Boden-Normale.y ab der das Ding am Hang liegen bleibt;
 1 = rollt jeden Hang hinab), auftrieb = 1.4 (>1 schwimmt, <1 sinkt), id, daten }
@@ -1417,7 +1417,7 @@ nk.angriff('leicht');
 for (const e of nk.update(dt, { x, y, z, yaw }, [{ id:'wolf', x:1, y:0, z:2, radius:0.5 }])) if (e.typ === 'treffer') kampf.schade(...);
 ```
 
-Genutzt von: figuren-labor · Tags: kampf, nahkampf, kombo, waffe, parade, ausweichen, block, mmo, deterministisch · THREE: nein
+Genutzt von: enklave, figuren-labor · Tags: kampf, nahkampf, kombo, waffe, parade, ausweichen, block, mmo, deterministisch · THREE: nein
 
 ### rezepte · `engine/gameplay/rezepte.js` · v1.0.0 · entwurf
 Herstellen: Rezepte als Daten (Zutaten → Ergebnis, optional Werkzeug und Station), prüfen was mit einem Inventar möglich ist und sicher herstellen (alles oder nichts)
@@ -1473,7 +1473,7 @@ stationen.neu('tisch-1', { art: 'werkbank', pos: { x: 4, z: 7 } });
 const p = rezepte.pruefe('tisch', inventar, { stationen: stationen.beiWem(spieler) });
 ```
 
-Genutzt von: testwelt · Tags: station, werkbank, feuerstelle, amboss, herstellen, crafting, ort, gameplay · THREE: nein
+Genutzt von: enklave, testwelt · Tags: station, werkbank, feuerstelle, amboss, herstellen, crafting, ort, gameplay · THREE: nein
 station = { id, art, name, pos {x,y?,z}, radius, reichweite, aktiv, daten }. wer = { x, y?, z }.
 In Reichweite: aktiv, Rand-Abstand (Mittelpunkt − radius, min 0) ≤ reichweite, Höhe |dy| ≤ 2.5 (nur wenn beide y endlich).
 beiWem() liefert die verschiedenen Arten als Array (darf per `aus` wiederverwendet werden, dann kein Müll pro Bild).
@@ -1492,7 +1492,7 @@ const t = tueren.neu('haus', { x: 4, z: 2, winkel: 0, breite: 1.2, angel: 'links
 // je Bild: tueren.update(dt);  Mesh: pivot.position.set(t.angelPos.x, t.y, t.angelPos.z); pivot.rotation.y = t.winkel + t.drehung;
 ```
 
-Genutzt von: testwelt · Tags: tuer, tor, oeffnen, schluessel, kollision, interaktion, gameplay · THREE: nein
+Genutzt von: enklave, testwelt · Tags: tuer, tor, oeffnen, schluessel, kollision, interaktion, gameplay · THREE: nein
 Winkel wie beim Kasten in world/kollision: Blatt liegt lokal entlang x (Breite), Dicke entlang z; rotation.y = winkel.
 Blatt-Achse in der Welt = (cos w, -sin w) in (x, z), Normale = (sin w, cos w). angel 'links' = Angel bei Mitte - halbe Breite
 entlang der Achse, 'rechts' = bei Mitte + halbe Breite. Mesh: Pivot an angelPos, rotation.y = winkel + drehung, das Blatt
@@ -1514,7 +1514,7 @@ dinge.wirf('holz', 3, held.zustand.pos, held.zustand.yaw);       // fällt, roll
 // je Bild: physik.update(dt); dinge.update(dt);   Position zum Zeichnen: ding.koerper.pos
 ```
 
-Genutzt von: testwelt · Tags: gegenstand, beute, aufheben, ablegen, werfen, inventar, welt, gameplay · THREE: nein
+Genutzt von: enklave, testwelt · Tags: gegenstand, beute, aufheben, ablegen, werfen, inventar, welt, gameplay · THREE: nein
 Ding: { nr, id, anzahl, daten, alter, koerper (aus engine/gameplay/koerper.js) }.
 Register-Einträge dürfen die Physik bestimmen: { radius, sprung, reibung, haftung, auftrieb, name, stapel }.
 Aufheben läuft über die Interaktion: das Ziel ruft nimm(ding, wer.inventar) – `wer` braucht also ein Feld `inventar`.
@@ -1568,7 +1568,7 @@ for (const e of buch.update(dt, gegnerListe))                   // gegnerListe: 
 for (const t of e.treffer) schade(t.ziel, t.schaden, t);      // t: { stoss, umwerfen, verlangsamt, zug }
 ```
 
-Genutzt von: figuren-labor · Tags: zauber, magie, kampf, mana, abklingzeit, geschoss, flächenschaden, aufladen, horde, fähigkeit, spell · THREE: nein
+Genutzt von: enklave, figuren-labor · Tags: zauber, magie, kampf, mana, abklingzeit, geschoss, flächenschaden, aufladen, horde, fähigkeit, spell · THREE: nein
 Ablauf eines Zaubers: wirke() → Phase 'laden' (mindestens vorlauf s; mit halten bis lasseLos(), dabei wächst die Kraft
 von 1 auf def.ueberladen bzw. LADEN.kraft) → Ereignis 'schlag' (Abklingzeit beginnt) → nach `schlag` s verlässt er die Hand.
 Kraft vergrößert Schaden, Radius und Stoß (und def.mehr: zusätzliche Geschosse/Kettenglieder).
@@ -1627,7 +1627,7 @@ const ein2 = createMoveInput({ aktionen: ['rollen', 'interagieren'], belegung: {
 figur.update(dt, zuAbsicht(ein2.lesen(), kamera.blickYaw()));   // alle Aktions-Flags (rollen …) gehen mit zum Motor
 ```
 
-Genutzt von: figuren-labor, testwelt · Tags: eingabe, tastatur, maus, touch, gamepad, joystick, figur, steuerung · THREE: nein
+Genutzt von: enklave, figuren-labor, testwelt · Tags: eingabe, tastatur, maus, touch, gamepad, joystick, figur, steuerung · THREE: nein
 
 ### touch-stick · `engine/input/touch-stick.js` · v1.1.1 · entwurf
 Touch-Steuerung fürs Handy: dynamischer virtueller Joystick (linke Hälfte), Kamera-Wischen + Pinch-Zoom (rechte Hälfte), runde Aktionsknöpfe unten rechts
@@ -1658,7 +1658,7 @@ import { FARBEN, kasten, asset } from '../../engine/models/bau/bau-basis.js';
 const kiste = asset({ name: 'kiste', geometrie, kollision: [kasten(0, 0, 0.4, 0.4, 0.8)], masse: { breite: 0.8, tiefe: 0.8, hoehe: 0.8 } });
 ```
 
-Genutzt von: – · Tags: bau, gebaeude, asset, farben, kollision · THREE: nein
+Genutzt von: enklave · Tags: bau, gebaeude, asset, farben, kollision · THREE: nein
 
 ### bau-pruefung · `engine/models/bau/bau-pruefung.mjs` · v1.0.0 · entwurf
 Testhelfer: gemeinsame Prüfung für Kleinkram-Assets (Attribute, Budget, Maße, Kollision, Determinismus) – nur in Tests
@@ -1999,7 +1999,7 @@ registriereClip('verbeugen', { dauer: 1.2, maske: 'ganz', fuesseFest: true,
 keys: [{ t: 0, pose: {} }, { t: 0.5, pose: { torso: [1.0, 0, 0] } }, { t: 1.2, pose: {} }] });
 ```
 
-Genutzt von: figuren-labor · Tags: figur, charakter, animation, clip, keyframe, aktion, angriff, emote · THREE: nein
+Genutzt von: enklave, figuren-labor · Tags: figur, charakter, animation, clip, keyframe, aktion, angriff, emote · THREE: nein
 
 ### character-gang · `engine/models/character/character-gang.js` · v1.1.0 · entwurf
 Fortbewegungs-Posen einer Figur (rein): Fußziele aus Gangphase (gehen/laufen/sprinten ohne Fußrutschen), Bein-IK, Rumpf/Arme, Luft- und Schwimm-Pose
@@ -2041,7 +2041,7 @@ const held = createLook({ ...VORLAGEN.wanderer, haar: { farbe: '#c8a040' }, bril
 const npc = randomLook(hashSeed('dorf', 7));   // gleicher Seed → gleicher Look
 ```
 
-Genutzt von: figuren-labor, testwelt · Tags: figur, charakter, aussehen, look, spieler, npc, avatar, editor, speichern, accessoires, mimik · THREE: nein
+Genutzt von: enklave, figuren-labor, testwelt · Tags: figur, charakter, aussehen, look, spieler, npc, avatar, editor, speichern, accessoires, mimik · THREE: nein
 1.1: neue Stile (Haar, Bart, Oberteil, Hose, Schuhe, Kopfbedeckung, Umhang), neue Teile brille/schal/schmuck,
    Körper schultern/muskeln, Feld ausdruck (Grund-Mimik), neue Vorlagen. Alte Spielstände bleiben gültig
    (fehlende Felder → Standard; erste Einträge in STILE und Körper-Standards unverändert).
@@ -2328,7 +2328,7 @@ const bilder = ratte.frames.map((g) => new THREE.InstancedMesh(g, standardMateri
 // Nase zeigt nach +Z, Füße auf y = 0, Ursprung unter der Rumpfmitte, Schwanz nach −Z
 ```
 
-Genutzt von: figuren-labor · Tags: ratte, kreatur, gegner, horde, lowpoly, instancing, modell · THREE: ja
+Genutzt von: enklave, figuren-labor · Tags: ratte, kreatur, gegner, horde, lowpoly, instancing, modell · THREE: ja
 
 ### baum-arten · `engine/models/natur/baum-arten.js` · v1.0.0 · entwurf
 Reine Parameter-Daten der Baumarten (Wuchs, Verzweigung, Laubform, Farben, Jahreszeiten) für baum-skelett/baum
@@ -2441,7 +2441,7 @@ const { geometrie, hoehe } = cache.holen('eiche', 2);   // gleiche Geometrie bei
 cache.dispose();
 ```
 
-Genutzt von: figuren-labor, natur-labor, testwelt · Tags: natur, vegetation, baum, fels, busch, registry, cache, varianten, prozedural · THREE: ja
+Genutzt von: enklave, figuren-labor, natur-labor, testwelt · Tags: natur, vegetation, baum, fels, busch, registry, cache, varianten, prozedural · THREE: ja
 
 ### natur-basis · `engine/models/natur/natur-basis.js` · v1.0.0 · entwurf
 Gemeinsame Helfer für Natur-Assets: Dreiecke sammeln → nicht-indizierte Geometrie (position/normal/color/wind), Farben, Fake-AO, Schnee, Ast-Röhre, Laub-Blob, Kegel-Lage, Wedel
@@ -2615,7 +2615,7 @@ szene.add(bilder.gruppe);
 bilder.update(dt, gross.aktive);     // jedes Bild
 ```
 
-Genutzt von: figuren-labor · Tags: zauber, großzauber, episch, effekt, render, welle, wand, sturm, beben · THREE: ja
+Genutzt von: enklave, figuren-labor · Tags: zauber, großzauber, episch, effekt, render, welle, wand, sturm, beben · THREE: ja
 Ansichts-Fabrik:  fabrik(daten, umgebung) -> { objekt (THREE.Object3D), update(dt, daten, zeit), dispose() }
 daten = instanz.daten aus der Logik (wird jedes Bild neu gereicht), umgebung = { welt (bodenHoehe/wasserHoehe des Grund-Geländes) }
 
@@ -2671,7 +2671,7 @@ import { createWelleAnsicht } from '../../engine/render/grosszauber-welle.js';
 const bilder = createGrosszauberMesh({ arten: { welle: createWelleAnsicht }, welt: adapter });
 ```
 
-Genutzt von: figuren-labor · Tags: zauber, großzauber, welle, wasser, flut, episch, shader, gischt, render, mobil · THREE: ja
+Genutzt von: enklave, figuren-labor · Tags: zauber, großzauber, welle, wasser, flut, episch, shader, gischt, render, mobil · THREE: ja
 daten stammen aus gameplay/grosszauber-welle (phase, mitte, yaw, breite, hoehe, kruemmung, strecke, flut, tiefe).
 Wurzel steht am Start der Front (y = 0), lokal +z = Laufrichtung; alle Höhen sind absolut (Gelände aus umgebung.welt.bodenHoehe).
 
@@ -2688,7 +2688,7 @@ const hm = createHordeMesh({ modelle: { ratte: ratte.frames }, max: 140 }); szen
 hm.update(horde.wesen);   // jedes Bild nach horde.update()
 ```
 
-Genutzt von: figuren-labor · Tags: horde, gegner, instancing, instancedmesh, rendern, schwarm, ratte, monster · THREE: ja
+Genutzt von: enklave, figuren-labor · Tags: horde, gegner, instancing, instancedmesh, rendern, schwarm, ratte, monster · THREE: ja
 Erwartet je Wesen (wie gameplay/horde): { def: { modell }, x, y, z, yaw, skala, phase, hub, dreh, zustand, blitz, verfall, ton, hoehe }.
 Modelle: Nase nach +Z, Füße auf y = 0. Die Geometrien gehören dem Aufrufer (dispose() gibt sie nicht frei).
 
@@ -2755,7 +2755,7 @@ psx.aufloesung(renderer, innerWidth, innerHeight);    // statt renderer.setSize 
 psx.setze({ an: false });                             // Vergleich: normaler Look (danach wieder psx.aufloesung(…))
 ```
 
-Genutzt von: figuren-labor, testwelt · Tags: psx, ps1, retro, look, shader, dithering, pixel, vertex-snap, splitscreen, stimmung, grading · THREE: ja
+Genutzt von: enklave, figuren-labor, testwelt · Tags: psx, ps1, retro, look, shader, dithering, pixel, vertex-snap, splitscreen, stimmung, grading · THREE: ja
 
 ### qualitaet · `engine/render/qualitaet.js` · v1.0.0 · entwurf
 Automatische Qualitätsstufe nach Bildzeit (Handy-Schutz): wird es langsam, sinken Pixelverhältnis, Schattenkarte, Partikel und Schadens-Zahlen; wird es lange schnell, steigen sie wieder – mit Hysterese, reine Logik (das Spiel wendet die Werte an)
@@ -2770,7 +2770,7 @@ const s = q.update(echtDt);                       // jedes Bild; s = neue Stufe 
 if (s) { renderer.setPixelRatio(Math.min(devicePixelRatio, s.pixel)); sonne.castShadow = s.schatten > 0; fx.anteil = s.partikel; }
 ```
 
-Genutzt von: figuren-labor · Tags: qualität, leistung, fps, bildzeit, adaptiv, auflösung, schatten, handy, performance · THREE: nein
+Genutzt von: enklave, figuren-labor · Tags: qualität, leistung, fps, bildzeit, adaptiv, auflösung, schatten, handy, performance · THREE: nein
 Stufe 0 = beste. Jede Stufe: { pixel (max. Pixelverhältnis), schatten (Kartengröße, 0 = aus), partikel (Anteil 0…1), zahlen (max. Schadens-Zahlen) }.
 Schlechter: geglättete Bildzeit > ziel × 1.15 für `schlechtNach` s. Besser: < ziel × 0.85 für `besserNach` s (verdoppelt sich, wenn eine
 Verbesserung binnen 20 s wieder zurückgenommen werden musste – verhindert Hin-und-her). Pausen (Bildzeit > 0.5 s) zählen nicht.
@@ -2789,7 +2789,7 @@ fx.blitz([hand, ziel1, ziel2]); fx.aura('schild', () => figur.zustand.pos, { dau
 fx.update(dt, { hoehePx: renderer.domElement.height });
 ```
 
-Genutzt von: figuren-labor · Tags: zauber, magie, effekt, partikel, funken, blitz, schockwelle, shader, vfx · THREE: ja
+Genutzt von: enklave, figuren-labor · Tags: zauber, magie, effekt, partikel, funken, blitz, schockwelle, shader, vfx · THREE: ja
 
 ### fake-dom · `engine/test/fake-dom.mjs` · v1.1.0 · stabil
 Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame
@@ -2820,7 +2820,7 @@ anzeige.update(kamera, dt, { x: spieler.x, z: spieler.z });   // jedes Bild
 anzeige.blitz('Willkommen in der Enklave', { gross: true, dauer: 5 });
 ```
 
-Genutzt von: – · Tags: ui, aufgabe, ziel, marker, pfeil, banner, tutorial, overlay · THREE: ja
+Genutzt von: enklave · Tags: ui, aufgabe, ziel, marker, pfeil, banner, tutorial, overlay · THREE: ja
 
 ### figur-schild · `engine/ui/figur-schild.js` · v1.1.0 · entwurf
 Namensschild + Sprechblase + Lebensbalken über Figuren (DOM-Overlay): folgt dem Kopf, skaliert und blendet nach Abstand aus, verschwindet hinter der Kamera
@@ -2835,7 +2835,7 @@ s.sage('Schönes Wetter heute!');
 schilder.update(kamera, dt);   // jedes Bild nach der Kamera, vor/nach dem Rendern
 ```
 
-Genutzt von: figuren-labor, testwelt · Tags: ui, namensschild, sprechblase, dialog, lebensbalken, hp, figur, npc, overlay, hud · THREE: ja
+Genutzt von: enklave, figuren-labor, testwelt · Tags: ui, namensschild, sprechblase, dialog, lebensbalken, hp, figur, npc, overlay, hud · THREE: ja
 
 ### hud · `engine/ui/hud.js` · v1.0.0 · entwurf
 Spiel-Anzeige als DOM-Overlay: Hinweis-Zeile mit Fortschritt, Kurzmeldungen (zusammenzählbar), Lebens-/Ausdauer-Balken und Bereiche für Leisten
@@ -2852,7 +2852,7 @@ hud.bereich('leiste').append(meineLeiste);         // Bereiche: leiste, ueberLei
 hud.update(dt);                                    // jedes Bild (lässt Meldungen altern)
 ```
 
-Genutzt von: testwelt · Tags: ui, hud, hinweis, meldung, toast, balken, leben, leiste, overlay · THREE: nein
+Genutzt von: enklave, testwelt · Tags: ui, hud, hinweis, meldung, toast, balken, leben, leiste, overlay · THREE: nein
 
 ### inventar-ansicht · `engine/ui/inventar-ansicht.js` · v1.0.1 · entwurf
 Zeigt ein Inventar als Reihe/Raster von Plätzen (Schnellleiste, Rucksack, Truhe): Zeichen, Anzahl, Haltbarkeits-Strich, gewählter Platz, Tippen und Gedrückt-halten
@@ -2866,7 +2866,7 @@ gewaehlt: () => hand.platz, onTipp: (platz) => hand.waehle(platz) });
 // jedes Bild: leiste.update(dt);   // dt in Sekunden; nötig für onLang und für den Wechsel des gewählten Platzes
 ```
 
-Genutzt von: testwelt · Tags: ui, inventar, schnellleiste, hotbar, rucksack, truhe, raster, hud, touch · THREE: nein
+Genutzt von: enklave, testwelt · Tags: ui, inventar, schnellleiste, hotbar, rucksack, truhe, raster, hud, touch · THREE: nein
 
 ### kampf-leiste · `engine/ui/kampf-leiste.js` · v1.0.0 · entwurf
 MMO-Aktionsleiste als DOM-Overlay: Plätze mit Symbol/Taste, Abklingzeit, GCD, Ladungen, Ausgrauen, Wirkbalken, Ressourcenbalken
@@ -2902,7 +2902,7 @@ eintraege: spielstandEintraege(speicher, { holeDaten: () => stand(), onLade: d =
 // Escape öffnet/zurück/schließt; m.schalte() per Knopf
 ```
 
-Genutzt von: testwelt · Tags: ui, menue, pause, optionen, fenster, overlay, dialog, spielstand, dom, handy · THREE: nein
+Genutzt von: enklave, testwelt · Tags: ui, menue, pause, optionen, fenster, overlay, dialog, spielstand, dom, handy · THREE: nein
 Einträge einer Seite (art fehlt → knopf): knopf{text,zeichen,hinweis,aktiv,aktion,nach,schliesst} | schalter{text,wert,setze} | regler{text,min,max,schritt,wert,setze,format} | auswahl{text,optionen,wert,setze} | text | trenner | element | reihe{eintraege}
 
 ### treffer-zahlen · `engine/ui/treffer-zahlen.js` · v1.1.0 · entwurf
@@ -2917,7 +2917,7 @@ zahlen.zeige({ x, y, z }, '−30', { farbe: '#ffd870', groesse: 1.4 });
 zahlen.update(kamera, dt); // jedes Bild
 ```
 
-Genutzt von: figuren-labor · Tags: ui, treffer, schaden, zahlen, overlay, dom · THREE: ja
+Genutzt von: enklave, figuren-labor · Tags: ui, treffer, schaden, zahlen, overlay, dom · THREE: ja
 
 ### ziel-rahmen · `engine/ui/ziel-rahmen.js` · v1.0.0 · entwurf
 MMO-Ziel-/Spieler-Rahmen als DOM-Overlay: Name, Lebensbalken mit Schild und Schaden-Rest, Haltung, Ressource, Zustands-Symbole
@@ -2947,7 +2947,7 @@ const stand = himmelStand({ stunde: uhr.stunde, jahresAnteil: uhr.jahresAnteil, 
 himmel.update(stand, { kamera, mitte: figur.position });
 ```
 
-Genutzt von: testwelt · Tags: himmel, tag, nacht, sonne, mond, sterne, licht, farben, dämmerung, wetter · THREE: nein
+Genutzt von: enklave, testwelt · Tags: himmel, tag, nacht, sonne, mond, sterne, licht, farben, dämmerung, wetter · THREE: nein
 
 ### himmel · `engine/world/himmel.js` · v1.1.0 · entwurf
 Zeichnet den Himmel aus einem himmel-stand: Himmelskuppel mit Farbverlauf, Sonnenscheibe mit Schein, Mond mit Phase, ziehende Wolken, Sterne; steuert Sonnen-/Mondlicht mit mitlaufendem Schatten, Umgebungslicht und Nebel der Szene
@@ -2962,7 +2962,7 @@ const himmel = createHimmel({ szene });
 himmel.update(himmelStand({ stunde, wetter }, stand), { kamera, mitte: figur.position, zeit });
 ```
 
-Genutzt von: testwelt · Tags: himmel, sonne, mond, sterne, wolken, licht, schatten, nebel, tag, nacht, shader · THREE: ja
+Genutzt von: enklave, testwelt · Tags: himmel, sonne, mond, sterne, wolken, licht, schatten, nebel, tag, nacht, shader · THREE: ja
 
 ### kollision · `engine/world/kollision.js` · v1.0.0 · entwurf
 Kollisions-Welt über einem Welt-Adapter: bewegliche und entfernbare Körper (Zylinder, gedrehte Kästen) mit Höhe – man kann draufsteigen, drüberspringen, sich aneinander vorbeischieben; dazu ein Strahl-Test gegen Gelände und Körper (Zielen, Sichtlinie, Ablegen)
@@ -2977,7 +2977,7 @@ const motor = createMotor({ welt });                             // läuft gegen
 const t = welt.strahl({ x: 0, y: 1.5, z: 0 }, { x: 0, y: 0, z: 1 }, 30);   // → { distanz, x, y, z, id, art }
 ```
 
-Genutzt von: testwelt · Tags: kollision, physik, welt, hindernis, koerper, strahl, raycast, begehbar, adapter · THREE: nein
+Genutzt von: enklave, testwelt · Tags: kollision, physik, welt, hindernis, koerper, strahl, raycast, begehbar, adapter · THREE: nein
 Körper: { form: 'kreis' (Standard) | 'kasten', x, z, radius | bx, bz (halbe Breite/Tiefe) + winkel (Drehung um Y),
 y0 (Unterkante; Standard = Boden an der Stelle), hoehe (Standard unendlich), begehbar (Oberseite trägt Figuren),
 weich (0…1 Anteil des Ausschiebens; 0.5 = Figuren drängeln sich aneinander vorbei), fest (false = kein Ausschieben, nur Strahl),
@@ -3003,7 +3003,7 @@ szene.add(pflanzen.gruppe);
 // je Bild: pflanzen.update(zeit);
 ```
 
-Genutzt von: testwelt · Tags: welt, objekte, baeume, felsen, instanzen, vegetation, mesh, wind, natur · THREE: ja
+Genutzt von: enklave, testwelt · Tags: welt, objekte, baeume, felsen, instanzen, vegetation, mesh, wind, natur · THREE: ja
 
 ### terrain-farben · `engine/world/terrain-farben.js` · v1.1.0 · entwurf
 Geländefarben je Gitterzelle aus einer erzeugten Welt: weiche Biom-Übergänge mit ausgefransten Grenzen, Wiesenflecken und trockene Grastöne, Mikrovariation, Hangfels mit Gesteinsbändern, nasser Sand, Flusskies und Seeschlamm, festgetretene Wege (FLAG.WEG), Meeresgrund nach Tiefe, Schnee mit Rauschgrenze (an Nordhängen tiefer), Mulden dunkler
@@ -3034,7 +3034,7 @@ szene.add(gelaende.gruppe);
 aend.onAenderung(({ bereich }) => bereich && gelaende.aktualisiere(bereich, { erde: (i) => Math.abs(aend.delta(i)) / 0.4 }));
 ```
 
-Genutzt von: testwelt · Tags: welt, terrain, gelaende, wasser, meer, mesh, biome, teilupdate · THREE: ja
+Genutzt von: enklave, testwelt · Tags: welt, terrain, gelaende, wasser, meer, mesh, biome, teilupdate · THREE: ja
 
 ### wege-lage · `engine/world/wege-lage.js` · v1.0.0 · entwurf
 Lage der Brücken einer Welt in Metern (Mitte, Richtung, Länge, Höhe an beiden Enden) und ein Adapter, auf dem Figuren über die Brücken laufen statt durch den Fluss
@@ -3049,7 +3049,7 @@ const lagen = brueckenLagen(adapter, { breite: 2.4 });
 const begehbar = mitBruecken(adapter, lagen);   // bodenHoehe liefert auf der Brücke die Deckhöhe
 ```
 
-Genutzt von: testwelt · Tags: welt, wege, bruecke, adapter, boden, figur · THREE: nein
+Genutzt von: enklave, testwelt · Tags: welt, wege, bruecke, adapter, boden, figur · THREE: nein
 
 ### wege-mesh · `engine/world/wege-mesh.js` · v1.0.0 · entwurf
 Holzbrücken für die Wege einer Welt als Three-Meshes: Bohlendeck, Längsbalken, Geländer und Pfeiler bis zum Flussgrund, passend geneigt zwischen beiden Ufern (Lage aus wege-lage)
@@ -3064,7 +3064,7 @@ szene.add(wege.gruppe);
 const begehbar = mitBruecken(adapter, wege.lagen);   // diesen Adapter der Figur geben
 ```
 
-Genutzt von: testwelt · Tags: welt, wege, bruecke, holz, mesh · THREE: ja
+Genutzt von: enklave, testwelt · Tags: welt, wege, bruecke, holz, mesh · THREE: ja
 
 ### welt-aenderung · `engine/world/welt-aenderung.js` · v1.1.0 · entwurf
 Änderungs-Schicht über einer erzeugten Welt (ohne THREE): Gelände mit Pinseln heben, senken, glätten, einebnen und Objekte entfernen; gemerkt werden nur die Unterschiede zum Seed (kleiner Spielstand), mit Rückgängig/Wiederholen, Sperrzonen (Wasser, Wege) und Meldung des geänderten Bereichs fürs Neuzeichnen
@@ -3148,7 +3148,7 @@ const adapter = createWeltAdapter(createWorld({ preset: 'insel', seed: 42 }), { 
 const s = adapter.startPunkt(); const y = adapter.bodenHoehe(s.x, s.z);
 ```
 
-Genutzt von: testwelt · Tags: welt, worldgen, adapter, boden, wasser, kollision, figur · THREE: nein
+Genutzt von: enklave, testwelt · Tags: welt, worldgen, adapter, boden, wasser, kollision, figur · THREE: nein
 
 ### worldgen-biomes · `engine/world/worldgen/worldgen-biomes.js` · v1.0.0 · entwurf
 Biome nach Whittaker (Temperatur × Feuchte, als schnelle Nachschlagetabelle) plus Prioritätsregeln (Wasser, Schnee, Fels, Strand, Sumpf); Biomliste per Spiel erweiterbar
@@ -3434,4 +3434,4 @@ const welt = createWorld({ preset: 'insel', seed: 42, breite: 256, tiefe: 256, q
 const h = welt.heightAt(100.5, 80.2), wasser = welt.isWater(100, 80), start = welt.orte.start;
 ```
 
-Genutzt von: testwelt, weltlabor · Tags: welt, worldgen, insel, terrain, generator, prozedural, karte · THREE: nein
+Genutzt von: enklave, testwelt, weltlabor · Tags: welt, worldgen, insel, terrain, generator, prozedural, karte · THREE: nein

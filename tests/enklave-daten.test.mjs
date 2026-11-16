@@ -20,7 +20,7 @@ test('Tutorial-Daten sind gültig', () => {
 });
 
 test('Tutorial lässt sich komplett durchspielen', () => {
-  const orte = { lagerfeuer: [0, 0], steinkreis: [0, 0], stamm: [0, 0], puppe: [0, 0], zielscheibe: [0, 0], wegweiser: [0, 0], aussicht: [0, 0] };
+  const orte = { lagerfeuer: [0, 0], steinkreis: [0, 0], stamm: [0, 0], puppe: [0, 0], zielscheibe: [0, 0], 'wegweiser-tal': [0, 0], aussicht: [0, 0] };
   const signale = [];
   const ereignisse = { sende: (n, d) => { if (n === 'aufgabe:signal') signale.push(d.name); } };
   const a = createAufgaben({ daten: TUTORIAL, ereignisse, zaehle: () => 0, ortVon: (n) => (orte[n] ? { x: orte[n][0], z: orte[n][1] } : null) });
