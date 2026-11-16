@@ -28,7 +28,7 @@ export function createSpielerFigur({ szene, kamera, adapter, element, start, see
   const OHNE_MICH = { ausser: 'spieler' };
   const figur = createCharacter({ look: createLook({ ...VORLAGEN.wanderer, name: 'Du' }), seed, yaw: start.yaw ?? 0, welt, pos: { ...start }, schilder, name: 'Du' });
   szene.add(figur.root);
-  figur.schild?.zeige(false);                    // eigenes Schild nur für Sprechblasen
+  figur.schild?.setName('');                     // eigenes Schild ohne Namen: nur Sprechblasen (setSichtbar schaltet es jedes Bild an)
   const eingabe = createMoveInput({ element, aktionen: ['rollen', 'interagieren', 'ziel', { name: 'schlagen', tasten: ['KeyF'], knopf: '⚔', padKnopf: 2, titel: 'Schlagen (halten = schwer)' },
     { name: 'zaubern', tasten: ['Digit1', 'KeyR'], knopf: '✨', padKnopf: 7, titel: 'Funkenschlag' }, { name: 'gross', tasten: ['KeyG'], knopf: '🌊', padKnopf: 6, titel: 'Großzauber' },
     { name: 'rucksack', tasten: ['KeyI'], knopf: '🎒', titel: 'Rucksack' }], vibration: true });
