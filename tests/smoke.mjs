@@ -23,7 +23,9 @@ const spiele = fs.readdirSync(path.join(ROOT, 'games'))
 const port = 8100 + Math.floor(Math.random() * 800);
 const srv = spawn('python3', ['-m', 'http.server', String(port), '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
 await new Promise(r => setTimeout(r, 700));
-const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--allow-file-access-from-files'] });
+// Chrome: PAG_CHROME=/pfad, sonst Playwright-Chromium, sonst System-Chrome (Cloud-Sitzung ohne Playwright-Browser, siehe docs/TESTEN.md)
+const chromePfad = process.env.PAG_CHROME || (fs.existsSync(chromium.executablePath()) ? undefined : (fs.existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' : undefined));
+const browser = await chromium.launch({ executablePath: chromePfad, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--allow-file-access-from-files'] });
 
 // Three.js vom CDN auf die lokale Kopie umleiten (CI/Cloud ohne CDN-Zugang). Nur bei passender Version.
 async function routeThree(page) {
