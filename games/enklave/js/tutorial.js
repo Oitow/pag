@@ -26,7 +26,7 @@ export function createTutorial({ w, npcs, dinge, kampf, stadt, spieler, speicher
     npcs.mentorFolgt(i >= 1 && !fertig);
     kampf.setGrossFrei(i >= nr('flutwelle'));
     if (fertig) stadt.oeffneTor(null);
-    if (a?.schritt.signal?.startsWith('ratten')) kampf.spawneRatten(Math.max(0, a.ziel - a.wert));
+    if (a?.schritt.signal?.startsWith('ratten') || a?.schritt.id === 'welle-ratten') kampf.spawneRatten(Math.max(0, a.ziel - a.wert));
     if (i > nr('welle-ratten')) kampf.leereHorde();
     anzeige.setze(a);
   }

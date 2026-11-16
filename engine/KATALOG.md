@@ -82,6 +82,7 @@
 | character-clips-zauber | `engine/models/character/character-clips-zauber.js` | Wuchtige Zauber-Gesten als reine Keyframe-Daten (Wurf, Stoß, Fingerzeig, Himmelsruf, Bodenschlag, Griff, Selbstzauber) mit Spann-Moment zum Aufladen; wird von character-clips registriert | entwurf |
 | character-clips | `engine/models/character/character-clips.js` | Aktions-Clips einer Figur als Keyframe-Daten (winken, schlagen, hacken, werfen, aufheben, tod, rolle, sitzen, tanzen … + character-clips-mehr + character-clips-zauber) und ihr Abtaster | entwurf |
 | character-gang | `engine/models/character/character-gang.js` | Fortbewegungs-Posen einer Figur (rein): Fußziele aus Gangphase (gehen/laufen/sprinten ohne Fußrutschen), Bein-IK, Rumpf/Arme, Luft- und Schwimm-Pose | entwurf |
+| character-lod | `engine/models/character/character-lod.js` | Fern-Darstellung für viele Figuren: alle in EINEM Draw-Call (InstancedMesh, ~250 Dreiecke), Look-Farben als Instanz-Attribute, Lauf-Pendeln im Vertex-Shader | entwurf |
 | character-look | `engine/models/character/character-look.js` | Aussehen einer Figur als reine Daten: Körperbau, Haut, Haar, Bart, Kleidung, Kopfbedeckung, Accessoires (Brille, Schal, Schmuck), Grund-Mimik; Vorlagen, Zufalls-Looks per Seed, abgeleitete Körpermaße | entwurf |
 | character-model | `engine/models/character/character-model.js` | Look → fertige Figur: Rig (Gelenk-Gruppen) + Low-Poly-Meshes je Knochen; Look live wechseln, Gegenstände an Sockeln befestigen | entwurf |
 | character-parts-basis | `engine/models/character/character-parts-basis.js` | Gemeinsame Helfer der Figuren-Bau-Funktionen: Farben mischen/abdunkeln, Kugel- und Zylinder-Ausschnitte in einen mesh-builder | entwurf |
@@ -252,7 +253,7 @@
 | busch | natur-assets, pflanze-busch |
 | cache | natur-assets |
 | cape | character-parts-ruecken |
-| charakter | character, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-material |
+| charakter | character, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-lod, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-material |
 | chunks | worldgen-chunkfluss, worldgen-chunks |
 | clip | character-animator, character-clips-mehr, character-clips-zauber, character-clips |
 | controller | character-motor, character |
@@ -267,6 +268,7 @@
 | dom | fake-dom, menue, treffer-zahlen |
 | dorf | worldgen-sites, worldgen-wege |
 | dot | zustaende |
+| draw-calls | character-lod |
 | dreispitz | character-parts-hut |
 | dämmerung | himmel-stand |
 | editor | character-look, character-model, welt-aenderung |
@@ -294,11 +296,12 @@
 | fels | grosszauber-wand, fels-basis, fels-form, fels, natur-assets, grosszauber-wand-ansicht |
 | felsen | scatter-mesh, worldgen-vegetation |
 | fenster | bau-teile, menue |
+| fern | character-lod |
 | festung | grosszauber-wand |
 | feuchte | worldgen-climate |
 | feuer | grosszauber-riss, grosszauber-riss-ansicht |
 | feuerstelle | stationen |
-| figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-material, figur-schild, wege-lage, worldgen-adapter |
+| figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-lod, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-material, figur-schild, wege-lage, worldgen-adapter |
 | first-person | follow-camera |
 | fluss | worldgen-chunkfluss, worldgen-rivers |
 | flut | grosszauber-welle, grosszauber-welle-ansicht |
@@ -373,6 +376,7 @@
 | idle | character-anim-idle, character-clips-mehr |
 | ik | character-anim-hang, character-gang |
 | insel | worldgen-presets, worldgen-shape, worldgen |
+| instanced | character-lod |
 | instancedmesh | horde-mesh |
 | instancing | ratte, grosszauber-wand-ansicht, horde-mesh |
 | instanzen | natur-material, scatter-mesh |
@@ -425,6 +429,7 @@
 | localStorage | speicher |
 | lock-on | follow-camera, ziel-wahl |
 | locken | character-parts-haar |
+| lod | character-lod |
 | logik | pflanze-formen |
 | look | character-look, figur-material, psx |
 | loop | schleife |
@@ -442,6 +447,7 @@
 | meer | terrain-mesh |
 | mehrspieler | raum-gitter, schnappschuss-puffer |
 | meldung | hud |
+| menge | character-lod |
 | menue | menue |
 | merge | natur-basis, mesh-builder |
 | mesh | character-model, character-parts-basis, character-parts, mesh-builder, scatter-mesh, terrain-mesh, wege-mesh |
@@ -450,7 +456,7 @@
 | mischen | character-pose |
 | mitreißen | grosszauber-welle |
 | mittelalter | bau-markt, bau-vorrat, bau-wegbau |
-| mmo | bedrohung, faehigkeiten-daten, faehigkeiten, grosszauber-wand, grosszauber-welle, grosszauber, kampf-werte, kampf, nahkampf-daten, nahkampf, zustaende, kampf-leiste, ziel-rahmen |
+| mmo | bedrohung, faehigkeiten-daten, faehigkeiten, grosszauber-wand, grosszauber-welle, grosszauber, kampf-werte, kampf, nahkampf-daten, nahkampf, zustaende, character-lod, kampf-leiste, ziel-rahmen |
 | mobil | grosszauber-riss-ansicht, grosszauber-welle-ansicht |
 | modell | character-model, ratte, mesh-builder |
 | mond | himmel-stand, himmel |
@@ -471,7 +477,7 @@
 | node | fake-dom |
 | noise | noise |
 | normale | worldgen-query |
-| npc | character-brain, character-gruppe, character-sinne, character-steering-extra, character-steering, character, interaktion, character-anim-idle, character-animator, character-look, character-model, figur-schild |
+| npc | character-brain, character-gruppe, character-sinne, character-steering-extra, character-steering, character, interaktion, character-anim-idle, character-animator, character-lod, character-look, character-model, figur-schild |
 | oberteil | character-parts-torso |
 | objekte | scatter-mesh, welt-aenderung, worldgen-scatter, worldgen-vegetation |
 | oeffnen | tueren |
@@ -486,7 +492,7 @@
 | partikel | niederschlag, zauber-effekte |
 | patrouille | character-steering-extra, character-steering |
 | pause | menue |
-| performance | qualitaet |
+| performance | character-lod, qualitaet |
 | persistenz | speicher |
 | pfad | character-steering, welt-plan, worldgen-path, worldgen-wege |
 | pfeil | aufgaben-anzeige |
@@ -704,11 +710,12 @@
 
 ## Module
 
-### klang · `engine/audio/klang.js` · v1.1.0 · entwurf
+### klang · `engine/audio/klang.js` · v1.2.0 · entwurf
 Synthetische WebAudio-Geräusche (Zauber, Horden-Kampf) ohne Audiodateien; ohne AudioContext still
 
-- `createKlang({lautstaerke=0.6, seed=1, kontext=null, maxStimmen=4, abstand=0.035}) -> {spiele(name,{staerke,tonhoehe,verzug})->bool, dauerton('laden',{staerke,tonhoehe}|null), setLautstaerke(v), stumm, entsperren(), bereit, namen, dispose()}`
+- `createKlang({lautstaerke=0.6, seed=1, kontext=null, maxStimmen=4, abstand=0.035}) -> {spiele(name,{staerke,tonhoehe,verzug})->bool, dauerton('laden',{staerke,tonhoehe}|null), bett('wind'|'wasser'|'feuer'|'stadt', staerke 0..1), setLautstaerke(v), stumm, entsperren(), bereit, namen, dispose()}`
 - `KLAENGE`
+- `BETTEN`
 
 ```js
 import { createKlang } from '../../engine/audio/klang.js';
@@ -717,7 +724,7 @@ klang.spiele('wumms', { staerke: 1.5, tonhoehe: 0.8 });
 klang.dauerton('laden', { staerke: 0.4, tonhoehe: 1.3 }); // jedes Bild; null = aus
 ```
 
-Genutzt von: figuren-labor · Tags: audio, klang, sound, zauber, kampf, synth, webaudio · THREE: nein
+Genutzt von: enklave, figuren-labor · Tags: audio, klang, sound, zauber, kampf, synth, webaudio · THREE: nein
 
 ### follow-camera · `engine/camera/follow-camera.js` · v1.1.0 · entwurf
 Third-Person-Orbitkamera: weiches Folgen (vertikal träger), Kollision entlang des Sichtstrahls (Boden + Hindernisse, sanftes Zurückfahren), Auto-Ausrichtung, Sprint-FOV, Zoom, Schütteln, weiches Lock-On mit Zielwechsel, Erste-Person beim Reinzoomen, Presets (nah/weit/Schulter), Kamerafahrten
@@ -2021,6 +2028,27 @@ gangPose(masse, g, fussZiele(masse, g, ziele), pose);   // meist über character
 ```
 
 Genutzt von: – · Tags: figur, charakter, animation, gang, laufen, ik, fuesse, schwimmen · THREE: nein
+
+### character-lod · `engine/models/character/character-lod.js` · v1.0.0 · entwurf
+Fern-Darstellung für viele Figuren: alle in EINEM Draw-Call (InstancedMesh, ~250 Dreiecke), Look-Farben als Instanz-Attribute, Lauf-Pendeln im Vertex-Shader
+
+- `createFigurLod({ max, material }) -> { objekt, anzahl, setze(id,{look,pos,yaw,tempo,sichtbar}), entferne(id), update(dt,zeit), dispose() }`
+- `lookZuLod(look) -> { hoehe, breite, farben[7], flags[6] }`
+- `baueLodGeometrie() -> { pos, slot, teil }`
+- `LOD_DREIECKE`
+
+```js
+import { createFigurLod } from '../../engine/models/character/character-lod.js';
+const lod = createFigurLod({ max: 64 });
+szene.add(lod.objekt);
+lod.setze('bauer1', { look, pos: { x, y, z }, yaw: 1.2, tempo: 1.3 });   // pro Bild/Schritt; sichtbar:false blendet aus
+lod.update(dt, zeit);                                                     // pro Bild (Zeit für das Pendeln)
+```
+
+Genutzt von: enklave · Tags: figur, charakter, lod, fern, instanced, performance, menge, npc, mmo, draw-calls · THREE: ja
+Eine gemeinsame Form (Rumpf, Kopf, Beine, Arme + schaltbar: Haar, langes Haar, Kappe, Krempenhut, Robe, Rock). Der Look bestimmt nur Farben,
+Schalter und Maße (Höhe/Breite) je Instanz – kein Backen pro Look nötig, ein einziges Shader-Programm. Standard-Material (PS1-Look über psx.wendeAn/update).
+Draw-Calls: 1, unabhängig von der Zahl der Figuren.
 
 ### character-look · `engine/models/character/character-look.js` · v1.1.0 · entwurf
 Aussehen einer Figur als reine Daten: Körperbau, Haut, Haar, Bart, Kleidung, Kopfbedeckung, Accessoires (Brille, Schal, Schmuck), Grund-Mimik; Vorlagen, Zufalls-Looks per Seed, abgeleitete Körpermaße

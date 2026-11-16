@@ -3,27 +3,26 @@
 > Wird von `/ende` überschrieben und von `/start` gelesen. Höchstens 40 Zeilen.
 
 ## Zuletzt gemacht
-- Aufmachung/Leistung/Ablauf im Figuren-Labor: Großzauber-Optik überarbeitet, Schlachtfeld mit Geländefarben/Bäumen/Gras/Ruinen + Abendlicht,
-  Glas-Oberfläche (ein Spieler-Rahmen, Großzauber-Gruppe in der Leiste), `render/qualitaet` (automatische Stufe: Auflösung/Schatten/Partikel/Zahlen),
-  Horde/Effekte/Zahlen/Schilder sparsamer, Spielablauf ⚔ Schlacht (`?schlacht=1`: 10 Wellen, Pausen mit Zusammenfassung, Macht-Leiste für Großzauber, Mehrfach-Kills, Boss, Ergebniskarten)
-- Davor: Großzauber (Welle, Wand, Zyklon, Riss) + Kampfsystem
+- Neues Spiel **games/enklave** (Bauplan `docs/WELT-ENKLAVE.md`): Tutorial-Tal (16 Schritte, automatisiert komplett durchgespielt), Pfad ~540 m mit Wegweisern/Brücke/Aussicht,
+  ummauerte Stadt mit 29 NPCs, Tag/Nacht, Rauch/Glühwürmchen, Ambiente-Klang, Asset-Galerie `games/enklave/galerie.html`
+- Engine neu: `world/welt-plan`(+formen), `models/bau/*` (35 Assets), `gameplay/aufgaben`, `ui/aufgaben-anzeige`, `models/character/character-lod`; klang 1.2, character 1.4
+- Davor: Figuren-Labor (Kampf, Großzauber, Schlacht-Modus, Qualitätsstufe)
 
 ## Läuft / kaputt
-- Alles grün (643 Tests, Smoke 5 Spiele); Flutwelle + Erdriss im Bild geprüft, Erdwall/Zyklon nur von ihren Agenten
-- Zeitlupe verlängert die Wirkzeit
-- 400 Ratten nur im Software-Renderer, nicht auf echtem Handy gemessen
-- Nicht abgestimmt: Vorwärtsschritt/Ansturm-Tempo, Parade-/Ausweich-Gefühl gegen den Rivalen (nur Logik getestet)
-- Meldung „−6 Leben“ überlappt am Handy kurz den Spieler-Rahmen
-- Bekannt (alt): Truhe durch Schuppenwand, Gelände-Raster 2 m, Viniland noch eigene `js/psx.js`
-
-- Engpass ist das Zeichnen (Schatten für viele Instanzen), nicht JS; Horde-Instanzen außerhalb des Blicks werden noch gezeichnet
-- Rivalen-Treffer zählen nicht für Kombo/Schlacht-Statistik (laufen an `ablauf` vorbei)
+- Alles grün (717 Tests, Smoke 6 Spiele inkl. enklave, Build dist/enklave.html)
+- Draw-Calls Enklave: Tal ~138, Stadt ~129 (Ziel ≤ 120) – Hauptposten Bäume + volle Figuren; Handy nicht auf echtem Gerät gemessen
+- Ambiente-Klang nur per Test geprüft, nicht angehört; Wegweiser-Texte nicht im Bild geprüft; Tor-Zustand nach Tutorial-Ende nicht direkt abgefragt
+- enklave/js/figur.js + menue.js sind Kopien aus der Testwelt (≥ 2 Spiele → in die Engine befördern)
+- Bekannt (alt): Truhe durch Schuppenwand, Viniland eigene psx.js, Rivalen-Treffer zählen nicht in der Schlacht-Statistik
 
 ## Nächster Schritt
-- Auf echtem Handy spielen (Qualitätsstufen, 400 Ratten, Schlacht-Fluss), danach Horde-Sichtfeld-Auswahl + Klecks-Schatten statt echter Schatten für Ratten
-- MMO-Fundament: stabile Entitäts-IDs + Befehls-Schicht; Testwelt bekommt Kampf/Großzauber
+- Enklave am Handy spielen; Draw-Calls unter 120 (Bäume zusammenfassen/LOD, Schatten nur nah)
+- Spieler-Figur + Pause-Menü in die Engine befördern (testwelt + enklave), Innenräume/Dialoge, erste Quests in der Stadt
+- MMO-Fundament: Entitäts-IDs + Befehls-Schicht, dann Netzwerk-Prototyp (zwei Spieler in der Enklave)
 
 ## Entscheidungen
+- Geplante Gebiete per `welt-plan` als worldgen-Stufen (deterministisch, Seed fest) statt zufällig gefundener Orte; Plan-Daten gelten nur für ihren Seed
+- Ferne Figuren als ein InstancedMesh (`character-lod`), nah höchstens 3 volle Figuren
 - PS1-Look liegt als Schicht über der Szene (Materialien werden gepatcht, nicht ersetzt) – Module müssen nichts davon wissen
 - Im Repo zählen nur Spiele und Tests
 - Mehrspieler: noch kein Netzwerk; Regeln dafür stehen in `docs/ENGINE-FAHRPLAN.md` („Fundament für Mehrspieler“)
