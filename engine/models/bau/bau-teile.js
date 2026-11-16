@@ -1,7 +1,7 @@
 /**
  * @modul    bau-teile
  * @zweck    Bauteile für Gebäude-Assets: Satteldach/Pultdach mit Schindelreihen, Giebel, Fachwerk, Fenster mit Läden, Tür, Zinnen, Laterne, Flagge
- * @api      mitT(b, {x,y,z,ry}) -> b' ; satteldach(b,o) ; pultdach(b,o) ; giebel(b,w,h,d,farbe,t) ; strebe(b,x1,y1,x2,y2,tiefe,farbe) ; fachwerk(b,w,h,{pfosten,schienen,streben}) ; fenster(b,l,x,y,o) ; tuer(b,breite,hoehe) ; zinnenLinie(b,x1,z1,x2,z2,y,o) ; laterne(b,l,x,y,z,ry) ; flagge(b,x,y,z,farbe)
+ * @api      mitT(b, {x,y,z,ry}) -> b' ; satteldach(b,o) ; pultdach(b,o) ; giebel(b,w,h,d,farbe,t) ; strebe(b,x1,y1,x2,y2,tiefe,farbe) ; fachwerk(b,w,h,{pfosten,schienen,streben}) ; fenster(b,l,x,y,o) ; tuer(b,breite,hoehe) ; zinnenLinie(b,x1,z1,x2,z2,y,o) ; laterne(b,l,x,y,z,arm) ; flagge(b,x,y,z,farbe)
  * @beispiel
  *   import { createMeshBuilder } from '../../render/mesh-builder.js';
  *   import { satteldach, fenster } from './bau-teile.js';
@@ -83,13 +83,13 @@ export function fachwerk(b, w, h, { pfosten = [], schienen = [], streben = [], f
   for (const s of streben) strebe(b, s[0], s[1], s[2], s[3], tiefe, farbe);
 }
 
-/** Fenster mit Rahmen, Sims, Läden (b = Hülle Hauptgeometrie, l = Hülle Leuchtgeometrie am selben Wandpunkt). o: { w = 0.8, h = 1.0, laeden = true, laedenFarbe, rahmen } */
-export function fenster(b, l, x, y, { w = 0.8, h = 1.0, laeden = true, laedenFarbe = F.stoffGruen, rahmen = F.holzDunkel } = {}) {
+/** Fenster mit Rahmen, Sims, Läden (b = Hülle Hauptgeometrie, l = Hülle Leuchtgeometrie am selben Wandpunkt). o: { w = 0.8, h = 1.0, laeden = true, laedenFarbe, rahmen, kreuz = true } */
+export function fenster(b, l, x, y, { w = 0.8, h = 1.0, laeden = true, laedenFarbe = F.stoffGruen, rahmen = F.holzDunkel, kreuz = true } = {}) {
   b.box(w + 0.16, h + 0.16, 0.08, rahmen, { x, y, z: 0.04, jitter: 0.03 });
   b.box(w, h, 0.06, F.fenster, { x, y, z: 0.09, jitter: 0.02 });
   b.box(w + 0.3, 0.07, 0.2, F.steinHell, { x, y: y - h / 2 - 0.1, z: 0.1 });
   l?.box(w * 0.86, h * 0.86, 0.02, F.licht, { x, y, z: 0.125, jitter: 0 });
-  b.box(0.05, h, 0.05, rahmen, { x, y, z: 0.15 }).box(w, 0.05, 0.05, rahmen, { x, y, z: 0.15 });
+  if (kreuz) b.box(0.05, h, 0.05, rahmen, { x, y, z: 0.15 }).box(w, 0.05, 0.05, rahmen, { x, y, z: 0.15 });
   if (laeden) for (const s of [-1, 1]) b.box(w / 2, h, 0.05, laedenFarbe, { x: x + s * (w / 2 + w / 4 + 0.1), y, z: 0.07, ry: s * 0.12, jitter: 0.08 });
 }
 
@@ -110,9 +110,9 @@ export function zinnenLinie(b, x1, z1, x2, z2, y, { n, bw = 0.7, bh = 0.6, bt = 
 }
 
 /** Laterne an Wandarm (b = Hülle an der Wand, l = Leuchthülle): Arm, Käfig, leuchtender Kern. */
-export function laterne(b, l, x, y, z = 0) {
-  b.box(0.06, 0.06, 0.5, F.eisen, { x, y: y + 0.3, z: z + 0.25 });
-  const zz = z + 0.5;
+export function laterne(b, l, x, y, z = 0, arm = 0.5) {
+  b.box(0.06, 0.06, arm, F.eisen, { x, y: y + 0.3, z: z + arm / 2 });
+  const zz = z + arm;
   b.box(0.3, 0.05, 0.3, F.eisen, { x, y: y + 0.28, z: zz }).box(0.3, 0.05, 0.3, F.eisen, { x, y: y - 0.1, z: zz });
   l.box(0.2, 0.34, 0.2, F.licht, { x, y: y + 0.09, z: zz, jitter: 0 });
 }

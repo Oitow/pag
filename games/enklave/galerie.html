@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Enklave – Asset-Galerie</title>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #bcd8ee; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: #f2f5fa; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  canvas { display: block; position: fixed; inset: 0; touch-action: none; }
+  .glas { position: fixed; left: 50%; transform: translateX(-50%); z-index: 5; background: rgba(16,20,30,.74); border: 1px solid rgba(255,255,255,.16); border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.35); }
+  #info { top: calc(8px + env(safe-area-inset-top, 0px)); padding: 10px 14px; font-size: 14px; max-width: calc(100vw - 32px); box-sizing: border-box; text-align: center; pointer-events: none; }
+  #leiste { bottom: calc(10px + env(safe-area-inset-bottom, 0px)); padding: 6px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 20px); box-sizing: border-box; }
+  button { font: inherit; font-size: 14px; font-weight: 600; min-height: 44px; min-width: 44px; padding: 0 12px; border: 1px solid rgba(255,255,255,.16); border-radius: 12px; background: rgba(255,255,255,.08); color: #f2f5fa; cursor: pointer; touch-action: manipulation; }
+  button.an { background: #ffd870; color: #2a2218; border-color: transparent; }
+  #back { position: fixed; left: 10px; top: calc(8px + env(safe-area-inset-top, 0px)); z-index: 6; }
+</style>
+</head>
+<body>
+<div id="info" class="glas">Lade …</div>
+<div id="leiste" class="glas">
+  <button id="b-kol">Kollision</button><button id="b-ank">Anker</button>
+  <button id="b-zur">◀</button><button id="b-alle">Alle</button><button id="b-vor">▶</button>
+  <button id="b-var">Variante</button><button id="b-seed">Seed</button>
+</div>
+<script type="module" src="js/galerie.js"></script>
+</body>
+</html>

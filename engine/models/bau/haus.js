@@ -33,11 +33,11 @@ export function createHaus({ seed = 1, variante = 0 } = {}) {
     faces.forEach((f, i) => {
       const P = mitT(b, { ...f, y: 0.5 }), Pl = mitT(l, { ...f, y: 0.5 }), hw = wh - 0.5, sd = i > 0;
       fachwerk(P, f.br, hw, { schienen: [0.09, 2.2, hw - 0.09], pfosten: i ? [-f.br / 2 + 0.09, f.br / 2 - 0.09, -1.15, 1.15] : [-f.br / 2 + 0.09, f.br / 2 - 0.09, -0.75, 0.75],
-        streben: sd ? [[-f.br / 2 + 0.09, 0.1, -1.25, 2.2], [f.br / 2 - 0.09, 0.1, 1.25, 2.2]] : [] });
+        streben: sd ? [[-f.br / 2 + 0.09, 0.1, -1.15, 2.2], [f.br / 2 - 0.09, 0.1, 1.15, 2.2]] : [] });
       if (!i) { for (const s of [-1, 1]) fen(P, Pl, s * 1.65, 1.4, { h: 0.9 }); } else fen(P, Pl, 0, 1.4, { h: 0.9 });
     });
     tuer(mitT(b, { z: d / 2 }));
-    laterne(mitT(b, { z: d / 2 }), mitT(l, { z: d / 2 }), 0.95, 2.4, 0.05, 0);
+    laterne(mitT(b, { z: d / 2 }), mitT(l, { z: d / 2 }), 0.95, 2.4, 0.05);
     anker.fackeln = [{ x: 0.95, y: 2.5, z: d / 2 + 0.55 }];
     satteldach(b, { w, d, y: wh, h: 2.55, farbe: dach, farbe2: dach, giebelFarbe: F.putz });
     for (const k of [-1, 1]) strebe(mitT(b, { z: d / 2 }), 0, wh + 0.1, k * 1.3, wh + 1.2, 0.1);   // Giebel-Fachwerk
@@ -58,7 +58,7 @@ export function createHaus({ seed = 1, variante = 0 } = {}) {
     tuer(Pf, 1.1, 2.1);
     pultdach(b, { x0: -1.2, x1: 1.2, z0: d / 2, z1: d / 2 + 0.65, yHoch: 3.0, yTief: 2.7, farbe: dach, fall: 'z' });
     for (const s of [-1, 1]) b.box(0.14, 2.65, 0.14, F.holz, { x: s * 1.1, y: 1.3, z: d / 2 + 0.58 });
-    laterne(Pf, mitT(l, { z: d / 2 }), -1.7, 2.7, 0.05, 0);
+    laterne(Pf, mitT(l, { z: d / 2 }), -1.7, 2.7, 0.05);
     anker.fackeln = [{ x: -1.7, y: 2.8, z: d / 2 + 0.65 }];
     satteldach(b, { w, d, y: wh, h: 2.6, farbe: dach, farbe2: '#3f4856', giebelFarbe: F.steinHell });
     fen(Pf, mitT(l, { z: d / 2 }), 0, wh + 0.9, { w: 0.6, h: 0.7, laeden: false });
