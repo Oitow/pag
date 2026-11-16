@@ -1,6 +1,10 @@
 # Engine-Changelog
 
+## 2026-11 – Atmosphäre Enklave
+- audio/klang 1.2.0 (additiv): Klänge `knistern`, `vogel`, `grille`, `hammer`; Dauerbetten `bett('wind'|'wasser'|'feuer'|'stadt', staerke)` (Rausch-Schleife mit Filter und langsamem Pulsieren), `BETTEN`
+
 ## 2026-11 – Startgebiet und Enklave
+- models/character/character-lod 1.0.0 (neu): Fern-Darstellung für Figuren – alle in 1 Draw-Call (InstancedMesh, ~250 Dreiecke, Look-Farben/Schalter als Instanz-Attribute, Lauf-Pendeln im Vertex-Shader), `lookZuLod(look)` rein testbar. Nutzer: games/enklave (npcs.js)
 - gameplay/character 1.4.0 (additiv): Option `mimik` (false = festes Gesicht, 3 Draw-Calls weniger je Figur) wird ans Modell durchgereicht
 - world/welt-plan 1.0.0 + welt-plan-formen 1.0.0 (neu): geplante Gebiete im Weltgenerator (eingeebnete Zonen, Plateau, geschwungener Pfad mit Gefälle-Grenze, Bach/Fluss, Brücken im wege-Format, Plätze für Gebäude, `pruefe(adapter)`)
 - models/bau/* 1.0.0 (neu): bau-basis, bau-teile, Haus, Taverne, Schmiede, Wachturm, Tempel, Mauer/Turm/Torhaus/Torflügel, Markt, Vorrat, Licht, Wegbau, Übung – Low-Poly mit Kollision und Ankern

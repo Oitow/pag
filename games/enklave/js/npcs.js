@@ -1,11 +1,13 @@
 // Enklave – NPCs: Mentorin Alwine (folgt dir), Späher Bo, Torwachen, Händler, Schmied, Wirt, Priesterin, Bürger. Tagesablauf über gameplay/character-brain,
-// Namensschilder + Sprechblasen über ui/figur-schild. Budget fürs Handy: nur die 6 nächsten NPCs (< 45 m) werden gerechnet und gezeichnet, der Rest ist aus.
+// Namensschilder + Sprechblasen über ui/figur-schild. Budget fürs Handy: nur die 3 nächsten NPCs (< 18 m) sind volle Figuren (~24 Draw-Calls je Figur),
+// alle weiteren (bis SICHT_LOD) werden als Fern-Figuren (models/character/character-lod, 1 Draw-Call für alle) gezeichnet und nur selten gerechnet.
 import { createCharacter } from '../../../engine/gameplay/character.js';
 import { createLook, randomLook, VORLAGEN } from '../../../engine/models/character/character-look.js';
+import { createFigurLod } from '../../../engine/models/character/character-lod.js';
 import { rng, hashSeed, pick } from '../../../engine/core/rng.js';
 import { TAL } from './tutorial-daten.js';
 
-const MAX_SICHTBAR = 4, SICHT = 45, BLICK = 6;
+const MAX_VOLL = 3, VOLL_EIN = 18, VOLL_AUS = 21, SICHT_LOD = 140, BLICK = 6, LOD_TAKT = 0.15, BUERGER = 18;
 const SAETZE = {
   mentor: ['Na, wie läuft es?', 'Bleib dicht bei mir, dann passiert nichts.'],
   bo: ['Ratten, überall Ratten …', 'Schön, dass du hier bist!'],
@@ -21,6 +23,7 @@ const SAETZE = {
 export function createNpcs({ szene, w, kollision, schilder, interaktion, spieler, onAnsprechen = () => null, seed = 1 }) {
   const { plan } = w, r = rng(hashSeed('npcs', seed));
   const npcs = [], welt = kollision;
+  const lod = createFigurLod({ max: 64 }); szene.add(lod.objekt);
   const boden = (x, z) => welt.bodenHoehe(x, z);
   const lok = (id, lx, lz) => plan.lokalZuWelt(plan.platz(id), lx, lz);
   const tal = (dx, dz) => ({ x: TAL.x + dx, z: TAL.z + dz });
@@ -29,7 +32,7 @@ export function createNpcs({ szene, w, kollision, schilder, interaktion, spieler
     const figur = createCharacter({ look, mimik: false, seed: hashSeed('npc', seed, id), welt, name, schilder, pos: { x: pos.x, y: boden(pos.x, pos.z), z: pos.z }, yaw,
       brain: { heimat: { x: pos.x, z: pos.z }, grund: { zustand: 'idle' }, verhalten: { plauderChance: 0.02, idleClips: ['umschauen', 'kratzen', 'strecken'] }, ...brain } });
     szene.add(figur.root); figur.root.visible = false; figur.schild?.zeige(false);
-    const n = { id, name, art, figur, aktiv: false, schaut: false, folgt: false, rede: [], redeZeit: 0, d: 1e9 };
+    const n = { id, name, art, figur, look: figur.look, lodZeit: r() * LOD_TAKT, aktiv: false, imLod: false, schaut: false, folgt: false, rede: [], redeZeit: 0, d: 1e9 };
     interaktion.melde('npc:' + id, { pos: () => figur.zustand.pos, radius: 0.3, art: 'npc', text: name + ' ansprechen', prio: 0.4,
       aktion: (wer) => { figur.blickZu(wer.figur); wer.figur.blickZu(figur); n.ansprechen(); } });
     n.ansprechen = () => sprich(n, onAnsprechen(n) || [pick(r, SAETZE[art])]);
@@ -65,12 +68,20 @@ export function createNpcs({ szene, w, kollision, schilder, interaktion, spieler
   neu('buerger0', 'Hannes', 'buerger', randomLook(hashSeed('b', seed, 0)), { x: markt.x + 3, z: markt.z }, 0, { grund: { zustand: 'wandern', radius: 8 } });
   neu('kind0', 'Mia', 'buerger', randomLook(hashSeed('b', seed, 1), { kind: true }), { x: markt.x - 3, z: markt.z + 1 }, 0, { grund: { zustand: 'wandern', radius: 8 } });
 
+  // Mehr Bürger: wandern in der Stadt (Markt, Straße, Taverne, Tempel), jeder mit eigenem Look und Radius
+  const orte = [lok('markt', 0, 7), lok('strasse', 0, 4), lok('strasse', 0, -6), lok('strasse', 0, 12), lok('taverne', 0, 8), lok('tempel', 0, 9), lok('markt', 4, 2)];
+  for (let i = 0; i < BUERGER; i++) {
+    const o = orte[i % orte.length], kind = i % 6 === 5, a = r() * 6.28;
+    neu('buerger' + (i + 2), 'Bürger', 'buerger', randomLook(hashSeed('b', seed, i + 2), { kind }), { x: o.x + Math.sin(a) * 3, z: o.z + Math.cos(a) * 3 }, a,
+      { grund: { zustand: 'wandern', radius: 6 + r() * 8 } });
+  }
+
   const nachbarn = [], kontext = { nachbarn, npcs: [], stunde: 9, ziele: [] };
   const byId = (id) => npcs.find((n) => n.id === id);
   const mentor = byId('mentor');
-  const nah = [];
+  const nah = []; let zeitLod = 0;
   return {
-    npcs, byId, mentor,
+    npcs, byId, mentor, lod, get lodAnzahl() { return lod.anzahl; },
     /** Alwine folgt dem Spieler (oder bleibt wieder bei ihrem Platz). */
     mentorFolgt(an) {
       mentor.folgt = !!an;
@@ -87,21 +98,31 @@ export function createNpcs({ szene, w, kollision, schilder, interaktion, spieler
         const a = spieler().zustand.yaw + Math.PI;
         mentor.figur.teleport({ x: sp.x + Math.sin(a) * 4, y: boden(sp.x, sp.z) + 0.3, z: sp.z + Math.cos(a) * 4 }, 0);
       }
+      // Auswahl: volle Figuren (nah, höchstens MAX_VOLL, mit Hysterese), Rest im Sichtbereich als Fern-Figur
       nah.length = 0;
-      for (const n of npcs) if (n.d < SICHT) nah.push(n);
+      for (const n of npcs) if (n.d < (n.aktiv ? VOLL_AUS : VOLL_EIN)) nah.push(n);
       nah.sort((a, b) => (a.folgt ? -1 : b.folgt ? 1 : a.d - b.d));
-      nah.length = Math.min(nah.length, MAX_SICHTBAR);
+      nah.length = Math.min(nah.length, MAX_VOLL);
       for (const n of npcs) {
-        const an = nah.includes(n);
+        const an = nah.includes(n), z = n.figur.zustand;
         if (an !== n.aktiv) { n.aktiv = an; n.figur.root.visible = an; n.figur.schild?.zeige(an); if (!an) n.figur.blickZu(null); }
-        if (!an) continue;
-        const nahe = n.d < BLICK;
-        if (nahe !== n.schaut) { n.schaut = nahe; n.figur.blickZu(nahe ? spieler() : null); }
-        nachbarn.length = 0; nachbarn.push({ x: sp.x, z: sp.z, radius: 0.3 });
-        n.figur.update(dt, null, kontext);
-        if (n.rede.length && (n.redeZeit -= dt) <= 0) { n.figur.sage(n.rede.shift(), { dauer: 3.2, geste: n.art === 'mentor' || n.art === 'bo' ? 'nicken' : undefined }); n.redeZeit = 3.4; }
+        const fern = !an && n.d < SICHT_LOD;
+        if (fern !== n.imLod) { n.imLod = fern; if (!fern) lod.setze(n.id, { sichtbar: false }); }
+        if (!an && !fern) continue;
+        if (an) {
+          const nahe = n.d < BLICK;
+          if (nahe !== n.schaut) { n.schaut = nahe; n.figur.blickZu(nahe ? spieler() : null); }
+          nachbarn.length = 0; nachbarn.push({ x: sp.x, z: sp.z, radius: 0.3 });
+          n.figur.update(dt, null, kontext);
+          if (n.rede.length && (n.redeZeit -= dt) <= 0) { n.figur.sage(n.rede.shift(), { dauer: 3.2, geste: n.art === 'mentor' || n.art === 'bo' ? 'nicken' : undefined }); n.redeZeit = 3.4; }
+        } else {   // Fern: nur im Takt rechnen (Brain + Bewegung)
+          n.lodZeit += dt;
+          if (n.lodZeit >= LOD_TAKT) { nachbarn.length = 0; n.figur.update(n.lodZeit, null, kontext); n.lodZeit = 0; }
+        }
+        if (fern) lod.setze(n.id, { look: n.look, pos: z.pos, yaw: z.yaw, tempo: z.tempo, sichtbar: true });
       }
+      lod.update(dt, zeitLod += dt);
     },
-    dispose() { for (const n of npcs) { interaktion.entferne('npc:' + n.id); n.figur.dispose(); } npcs.length = 0; },
+    dispose() { lod.dispose(); for (const n of npcs) { interaktion.entferne('npc:' + n.id); n.figur.dispose(); } npcs.length = 0; },
   };
 }
