@@ -90,7 +90,7 @@ export function createWeltPlan(plan, { meterProZelle = 2, hoehenSkala = 60 } = {
   function grabe(welt, g, r, setzeFlags) {
     const H = welt.hoehe, FL = welt.flags, n = r.B.length, best = naechstePunkte(r.C, r.aussen / g.cm, g.b, g.t);
     for (const i of best.liste) {
-      if ((FL[i] & FLAG.OZEAN) || H[i] <= 0.0015) continue;
+      if (setzeFlags ? FL[i] & FLAG.OZEAN : H[i] <= 0.0015) continue;   // Stufe 1: Meer ist noch nicht markiert → nach Höhe
       const d = best.d[i] * g.cm, k = Math.min(Math.floor(best.s[i]), n - 2), B = lerp(r.B[k], r.B[k + 1], best.s[i] - k);
       if (d <= r.halfW) {
         const q = d / r.halfW;
@@ -121,7 +121,7 @@ export function createWeltPlan(plan, { meterProZelle = 2, hoehenSkala = 60 } = {
       for (let r = 0; r < 3; r++) { let v = U[0]; for (let i = 1; i < m - 1; i++) { const u = U[i]; U[i] = (v + 2 * u + U[i + 1]) / 4; v = u; } }
       const T = gw.tiefe ?? 1;
       for (let i = 0; i < m; i++) bett[i] = Math.max(i ? Math.min(U[i] - T, bett[i - 1] - 0.003) : U[0] - T, 0.25);   // Bett nie unter Meeresspiegel (sonst Meeresarm)
-      const B = profil(bett, K.laenge / (m - 1), 0.1, []), halfW = Math.max(gw.breite / 2, 0.75 * g.cm);
+      const B = profil(bett, K.laenge / (m - 1), 0.1, []), halfW = Math.max(gw.breite / 2, g.cm);
       const r = { gw, C, B: B.map(v => v / hs), halfW, T: T / hs, aussen: Math.max(gw.rinne / 2, halfW + 2 * g.cm), punkte: K.punkte };
       S.rinnen.push(r);
       grabe(welt, g, r, false);
@@ -140,6 +140,7 @@ export function createWeltPlan(plan, { meterProZelle = 2, hoehenSkala = 60 } = {
       welt.hoehe[i] = S.zH[i];
     }
     welt.seen = (welt.seen || []).filter(s => { const i = Math.round(s.y / g.zl) * g.b + Math.round(s.x / g.zl); return !(S.zK[i] >= 0.5); });
+    for (const p of R.plaetze) if (p.ebnen) ebneFlaeche(welt, g, p);   // Hydrologie/Rinnen haben Ränder verändert
     for (const r of S.rinnen) {
       const m = r.punkte.length / 2, P = new Float32Array(m * 2), B = new Float32Array(m);
       for (let i = 0; i < m; i++) { P[2 * i] = r.C[2 * i] * g.zl; P[2 * i + 1] = r.C[2 * i + 1] * g.zl; B[i] = (r.gw.breite / g.cm) * g.zl; }
@@ -181,6 +182,8 @@ export function createWeltPlan(plan, { meterProZelle = 2, hoehenSkala = 60 } = {
         hm[i] = bilinear(H, b, t, C[2 * i], C[2 * i + 1]) * hs;
       }
       const fest = [0, n - 1], bruecken = [], bruckenM = [];
+      const plateaus = zonenListe.filter(z => z.art === 'plateau');   // Plateau bleibt eben: Pfad-Samples dort sind fest, die Rampe entsteht davor (Damm)
+      for (let i = 1; i < n - 1; i++) if (plateaus.some(z => zoneDist(z, K.punkte[2 * i], K.punkte[2 * i + 1]) <= z.radius * 0.98)) fest.push(i);
       for (let i = 0; i < n;) {                         // Wasserläufe → Brücken; Ufer mindestens Wasser + 0.6 m
         if (!nass[i]) { i++; continue; }
         let e = i; while (e + 1 < n && nass[e + 1]) e++;
@@ -195,7 +198,7 @@ export function createWeltPlan(plan, { meterProZelle = 2, hoehenSkala = 60 } = {
         i = e + 1;
       }
       const h2 = profil(hm, ds, pf.maxGefaelle * 0.85, fest);
-      const halbe = Math.max(pf.breite / 2, 1.1 * cm), aussen = halbe + pf.rand, rWeg = Math.max(pf.breite / 2, 0.75 * cm);
+      const halbe = Math.max(pf.breite / 2, 1.1 * cm), aussen = halbe + pf.rand, rWeg = Math.max(pf.breite / 2, 0.9 * cm);
       const rFrei = Math.max(pf.frei, pf.breite / 2 + 0.75 * cm + 0.3);
       const best = naechstePunkte(C, aussen / cm + 0.01, b, t);
       for (const i of best.liste) {
@@ -234,10 +237,12 @@ export function createWeltPlan(plan, { meterProZelle = 2, hoehenSkala = 60 } = {
     const pfade = R.pfade.map(p => ({ pf: p, ...S.pfade.get(p.id) }));
     if (!pfade.length || pfade.some(p => !p.punkte)) { fehler.push('Pfad fehlt: Welt wurde nicht mit plan.stufen erzeugt'); return { ok: false, fehler, werte }; }
     werte.pfadLaenge = pfade[0].laenge;
-    for (const { pf, punkte: P } of pfade) {
+    for (const { pf, punkte: P, bruecken } of pfade) {
       let max = 0;
+      const aufBruecke = (x, z) => bruecken.some(br => Math.hypot(x - br.x, z - br.z) <= br.laenge / 2 + 1.2 + adapter.meterProZelle);   // dort trägt die Brücke (wege-lage: 1.2 m Überstand) – eine Zelle Toleranz fürs Abtasten
       for (let i = 2; i < P.length; i += 2) {
         const x0 = P[i - 2], z0 = P[i - 1], x1 = P[i], z1 = P[i + 1];
+        if (aufBruecke(x0, z0) || aufBruecke(x1, z1)) continue;
         if (adapter.wasserHoehe(x0, z0) != null || adapter.wasserHoehe(x1, z1) != null || adapter.wasserHoehe((x0 + x1) / 2, (z0 + z1) / 2) != null) continue;
         max = Math.max(max, Math.abs(bh(x1, z1) - bh(x0, z0)) / Math.hypot(x1 - x0, z1 - z0));
       }

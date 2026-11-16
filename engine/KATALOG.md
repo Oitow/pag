@@ -20,6 +20,7 @@
 | schnappschuss-puffer | `engine/core/schnappschuss-puffer.js` | Mehrspieler-Grundlage: speichert verspätete Zustände fremder Figuren mit Zeitstempel und liefert weich interpolierte Zustände (leicht in der Vergangenheit) | entwurf |
 | speicher | `engine/core/speicher.js` | Spielstände sicher speichern/laden (localStorage mit Arbeitsspeicher-Fallback), Versionen, Migration, Autospeichern, Export/Import als Text, TypedArrays | entwurf |
 | zeit | `engine/core/zeit.js` | Spieluhr: Tageszeit, Tage, Jahreszeiten und Jahre mit Ereignissen, Pause, Tempo und Speicherstand | entwurf |
+| aufgaben | `engine/gameplay/aufgaben.js` | Aufgaben-/Tutorial-Logik: Schritte (gehe-zu, sprich-mit, sammle, besiege, benutze, warte), Fortschritt, Signale, Speicherstand; reine Daten, serialisierbar | entwurf |
 | bedrohung | `engine/gameplay/bedrohung.js` | Klassische Aggro-Tabelle: Bedrohung je Gegner und Quelle, Zielwechsel erst bei 110 %, Spott, Heilungs-Bedrohung | entwurf |
 | behaelter | `engine/gameplay/behaelter.js` | Behälter in der Welt (Truhe, Fass, Schrank): eigenes Inventar, öffnen/schließen je Figur, Schloss mit Schlüssel, Ablegen/Entnehmen, Speichern | entwurf |
 | character-brain | `engine/gameplay/character-brain.js` | NPC-Verhaltensplaner (Zustandsautomat) über Steering + Sinne: idle, wandern, patrouille, arbeiten, folgen, fliehen, angreifen, suchen, plaudern; Tagesablauf nach Stunde; liefert Absicht + Aktions-Clip | entwurf |
@@ -56,6 +57,19 @@
 | zustaende | `engine/gameplay/zustaende.js` | Buffs und Debuffs: Stapel, Dauer, DoT/HoT-Takte, Faktoren (Tempo, Schaden, Rüstung), Sperren (Betäubung, Frost) | entwurf |
 | move-input | `engine/input/move-input.js` | Bewegungs-Eingabe für Figuren: Tastatur (WASD/Pfeile), Maus-Ziehen/Mausrad, Touch-Stick + Knöpfe, Gamepad → Stick, Kamera-Delta, Aktionen (Flanke/gehalten) | entwurf |
 | touch-stick | `engine/input/touch-stick.js` | Touch-Steuerung fürs Handy: dynamischer virtueller Joystick (linke Hälfte), Kamera-Wischen + Pinch-Zoom (rechte Hälfte), runde Aktionsknöpfe unten rechts | entwurf |
+| bau-basis | `engine/models/bau/bau-basis.js` | Gemeinsame Farben und Helfer für Bau-Assets: lokale Kollisions-Körper, Asset-Ergebnis mit dispose | entwurf |
+| bau-teile | `engine/models/bau/bau-teile.js` | Bauteile für Gebäude-Assets: Satteldach/Pultdach mit Schindelreihen, Giebel, Fachwerk, Fenster mit Läden, Tür, Zinnen, Laterne, Flagge | entwurf |
+| haus | `engine/models/bau/haus.js` | Wohnhaus als Low-Poly-Asset: v0 Fachwerkhaus (Satteldach rot, Fensterläden), v1 Steinhaus (Schieferdach, Kamin, Vordach) | entwurf |
+| bau-licht | `engine/models/bau/licht.js` | Lichtquellen als Low-Poly-Asset mit Leucht-Geometrie (unbeleuchtet zeichnen): Laterne auf Pfahl, Wandfackel, Lagerfeuer mit Steinring | entwurf |
+| bau-markt | `engine/models/bau/markt.js` | Marktplatz-Kleinkram als Low-Poly-Asset: Marktstand mit Stoffdach (4 Farben), Brunnen mit Holzdach, Sitzbank | entwurf |
+| mauer | `engine/models/bau/mauer.js` | Stadtmauer als Low-Poly-Assets: Segment (in x streckbar), achteckiger Mauerturm, Torhaus mit freiem Durchgang, Torflügel (zentriert, für gameplay/tueren) | entwurf |
+| schmiede | `engine/models/bau/schmiede.js` | Schmiede als Low-Poly-Asset: Steinhaus mit Satteldach, offener Pultdach-Anbau mit Esse (leuchtende Glut), Wasserbottich und Amboss-Station | entwurf |
+| taverne | `engine/models/bau/taverne.js` | Taverne als Low-Poly-Asset: 2 Geschosse mit Fachwerk, Erker, Vordach mit Bänken, Ausleger-Schild (Krug) | entwurf |
+| tempel | `engine/models/bau/tempel.js` | Tempel/Zauberturm als Low-Poly-Asset: Säulenhalle mit Schieferdach + runder Turm mit blauem Kegeldach und schwebendem Kristall (leuchtet) | entwurf |
+| bau-uebung | `engine/models/bau/uebung.js` | Übungs- und Lager-Kleinkram als Low-Poly-Asset: Trainingspuppe, Zielscheibe, Zelt, Amboss | entwurf |
+| bau-vorrat | `engine/models/bau/vorrat.js` | Vorrats-Kleinkram als Low-Poly-Asset: Fass, Kiste (normal/flach), Banner mit Stange (4 Farben) | entwurf |
+| wachturm | `engine/models/bau/wachturm.js` | Wachturm als Low-Poly-Asset: Steinschaft, auskragendes Holz-Obergeschoss mit Zinnen und Flagge | entwurf |
+| bau-wegbau | `engine/models/bau/wegbau.js` | Wegrand-Kleinkram als Low-Poly-Asset: Wegweiser mit Pfeilbrettern, Zaunsegment (2 m, reihbar), Steinkreis | entwurf |
 | character-anim-blick | `engine/models/character/character-anim-blick.js` | Blick einer Figur (rein): Richtung oder Weltpunkt → verteilt auf Torso/Hals/Kopf mit Grenzen, Augen eilen voraus; Blinzeln per Seed; Werte für einen Mimik-Hook | entwurf |
 | character-anim-hang | `engine/models/character/character-anim-hang.js` | Hang-Anpassung (rein): Steigung im Figur-Raum aus Motor-Zustand/Normale/bodenHoehe messen und Fußziele, Hüfthöhe, Fußneigung und Rumpf-Vorlage daran anpassen | entwurf |
 | character-anim-idle | `engine/models/character/character-anim-idle.js` | Idle-Variationen (rein): nach längerer Ruhe deterministisch (Seed) eine Idle-Variante (strecken, gähnen, umschauen, kratzen …) als eigene Schicht einblenden, bei Bewegung sofort weich abbrechen | entwurf |
@@ -113,6 +127,7 @@
 | qualitaet | `engine/render/qualitaet.js` | Automatische Qualitätsstufe nach Bildzeit (Handy-Schutz): wird es langsam, sinken Pixelverhältnis, Schattenkarte, Partikel und Schadens-Zahlen; wird es lange schnell, steigen sie wieder – mit Hysterese, reine Logik (das Spiel wendet die Werte an) | entwurf |
 | zauber-effekte | `engine/render/zauber-effekte.js` | Leichte Zauber-Effekte fürs Handy: ein Partikel-Points-Objekt (Funken, Schweife), leuchtende Geschoss-Kugeln, Schockwellen-Ringe, Blitze, Erdstacheln, Schutz-Aura, Meteor-Sturz – alles aus Pools | entwurf |
 | fake-dom | `engine/test/fake-dom.mjs` | Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame | stabil |
+| aufgaben-anzeige | `engine/ui/aufgaben-anzeige.js` | Ziel-Zeile oben links (Titel, Schritt-Text, Fortschritt), Ziel-Marker (Raute + Meter) bzw. Randpfeil, Blitz-Meldung/Banner; DOM, THREE nur für project() | entwurf |
 | figur-schild | `engine/ui/figur-schild.js` | Namensschild + Sprechblase + Lebensbalken über Figuren (DOM-Overlay): folgt dem Kopf, skaliert und blendet nach Abstand aus, verschwindet hinter der Kamera | entwurf |
 | hud | `engine/ui/hud.js` | Spiel-Anzeige als DOM-Overlay: Hinweis-Zeile mit Fortschritt, Kurzmeldungen (zusammenzählbar), Lebens-/Ausdauer-Balken und Bereiche für Leisten | entwurf |
 | inventar-ansicht | `engine/ui/inventar-ansicht.js` | Zeigt ein Inventar als Reihe/Raster von Plätzen (Schnellleiste, Rucksack, Truhe): Zeichen, Anzahl, Haltbarkeits-Strich, gewählter Platz, Tippen und Gedrückt-halten | entwurf |
@@ -129,6 +144,8 @@
 | wege-lage | `engine/world/wege-lage.js` | Lage der Brücken einer Welt in Metern (Mitte, Richtung, Länge, Höhe an beiden Enden) und ein Adapter, auf dem Figuren über die Brücken laufen statt durch den Fluss | entwurf |
 | wege-mesh | `engine/world/wege-mesh.js` | Holzbrücken für die Wege einer Welt als Three-Meshes: Bohlendeck, Längsbalken, Geländer und Pfeiler bis zum Flussgrund, passend geneigt zwischen beiden Ufern (Lage aus wege-lage) | entwurf |
 | welt-aenderung | `engine/world/welt-aenderung.js` | Änderungs-Schicht über einer erzeugten Welt (ohne THREE): Gelände mit Pinseln heben, senken, glätten, einebnen und Objekte entfernen; gemerkt werden nur die Unterschiede zum Seed (kleiner Spielstand), mit Rückgängig/Wiederholen, Sperrzonen (Wasser, Wege) und Meldung des geänderten Bereichs fürs Neuzeichnen | entwurf |
+| welt-plan-formen | `engine/world/welt-plan-formen.js` | Form-Rechnungen für den Welt-Plan (ohne THREE): Ring-Mauer aus Segmenten/Türmen/Torhaus, Höhenprofil mit Gefälle-Grenze, geschwungene Pfad-Kurve, Gitter-Zuordnung, Boxen-Tests | entwurf |
+| welt-plan | `engine/world/welt-plan.js` | Deterministischer Welt-Plan als worldgen-Stufen: Zonen (Plateau, Mulde, Kuppe), Gewässer-Rinnen, ebene Plätze, Orte, geschwungene Pfade mit begrenztem Gefälle und Brücken, Mauer-Ring; dazu Prüfung (Plateau eben, Gefälle, Objekte im Weg, Tor erreichbar) | entwurf |
 | wetter | `engine/world/wetter.js` | Wetter-Zustand: Wetterarten wechseln per Seed nach Klima (Feuchte/Temperatur), Werte laufen weich, Wind, Blitz, Nässe | entwurf |
 | worldgen-adapter | `engine/world/worldgen/worldgen-adapter.js` | Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md | entwurf |
 | worldgen-biomes | `engine/world/worldgen/worldgen-biomes.js` | Biome nach Whittaker (Temperatur × Feuchte, als schnelle Nachschlagetabelle) plus Prioritätsregeln (Wasser, Schnee, Fels, Strand, Sumpf); Biomliste per Spiel erweiterbar | entwurf |
@@ -169,17 +186,19 @@
 | agave | pflanze-wueste |
 | aggro | bedrohung, kampf |
 | aktion | interaktion, character-animator, character-clips |
-| amboss | stationen |
+| amboss | stationen, bau-uebung |
 | amulett | character-parts-zubehoer |
 | angriff | character-clips |
 | animation | character, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-pose, character-reaktion, character-rig, character-sekundaer |
 | ansprechen | interaktion |
 | arbeit | character-clips-mehr |
 | art | baum-arten |
+| asset | bau-basis, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau |
 | ast | totholz-form, totholz |
 | astar | worldgen-path |
 | attrappe | fake-dom |
 | audio | klang |
+| aufgabe | aufgaben, aufgaben-anzeige |
 | aufheben | interaktion, welt-dinge |
 | aufladen | zauber |
 | auflösung | qualitaet |
@@ -196,7 +215,10 @@
 | axt | character-ausruestung |
 | baeume | scatter-mesh, worldgen-scatter, worldgen-vegetation |
 | balken | hud |
+| bank | bau-markt |
+| banner | bau-vorrat, aufgaben-anzeige |
 | bart | character-parts-haar, character-parts-kopf |
+| bau | bau-basis, bau-teile, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau |
 | bauen | welt-aenderung |
 | baum | baum-arten, baum-skelett, baum, natur-assets, natur-basis |
 | baumstumpf | totholz |
@@ -221,7 +243,8 @@
 | bogen | character-ausruestung |
 | boids | character-gruppe |
 | brille | character-parts-kopf, character-parts-zubehoer |
-| bruecke | wege-lage, wege-mesh, worldgen-wege |
+| bruecke | wege-lage, wege-mesh, welt-plan, worldgen-wege |
+| brunnen | bau-markt |
 | buff | kampf, zustaende, ziel-rahmen |
 | bus | ereignisse |
 | busch | natur-assets, pflanze-busch |
@@ -232,6 +255,7 @@
 | clip | character-animator, character-clips-mehr, character-clips-zauber, character-clips |
 | controller | character-motor, character |
 | crafting | rezepte, stationen |
+| dach | bau-teile |
 | dash | character-motor, character-anim-zustand |
 | daten | register, faehigkeiten-daten, nahkampf-daten, zauber-daten, baum-arten, worldgen-vegetation |
 | debuff | kampf, zustaende, ziel-rahmen |
@@ -253,19 +277,21 @@
 | erdwall | grosszauber-wand-ansicht |
 | ereignis | ereignisse |
 | erosion | worldgen-erosion |
+| esse | schmiede |
 | event | ereignisse |
 | export | speicher |
-| fackel | character-ausruestung |
+| fachwerk | bau-teile, haus, taverne |
+| fackel | bau-licht, character-ausruestung |
 | faellen | rohstoffe |
 | farbe | character-parts-basis |
-| farben | himmel-stand, terrain-farben |
+| farben | bau-basis, himmel-stand, terrain-farben |
 | farn | pflanze-boden |
-| fass | behaelter |
+| fass | behaelter, bau-vorrat |
 | fbm | worldgen-height |
 | feder | character-sekundaer |
 | fels | grosszauber-wand, fels-basis, fels-form, fels, natur-assets, grosszauber-wand-ansicht |
 | felsen | scatter-mesh, worldgen-vegetation |
-| fenster | menue |
+| fenster | bau-teile, menue |
 | festung | grosszauber-wand |
 | feuchte | worldgen-climate |
 | feuer | grosszauber-riss, grosszauber-riss-ansicht |
@@ -277,23 +303,26 @@
 | flächenschaden | grosszauber-riss, grosszauber-sturm, grosszauber-welle, grosszauber, zauber-daten, zauber |
 | folgen | follow-camera |
 | form | pflanze-formen, worldgen-shape |
+| fortschritt | aufgaben |
 | fps | schleife, qualitaet |
 | frisur | character-parts-haar, character-parts-kopf |
 | fuesse | character-anim-hang, character-gang |
 | funken | zauber-effekte |
 | fähigkeit | faehigkeiten-daten, faehigkeiten, zauber |
 | gamepad | move-input |
-| gameplay | ereignisse, behaelter, character-brain, character-gruppe, character-motor-tuning, character-motor, character-sinne, character-steering-extra, character-steering, hand, horde, interaktion, inventar, koerper, rezepte, rohstoffe, stationen, tueren, welt-dinge |
+| gameplay | ereignisse, aufgaben, behaelter, character-brain, character-gruppe, character-motor-tuning, character-motor, character-sinne, character-steering-extra, character-steering, hand, horde, interaktion, inventar, koerper, rezepte, rohstoffe, stationen, tueren, welt-dinge |
 | gang | character-animator, character-gang |
 | gcd | faehigkeiten, kampf-leiste |
+| gebaeude | bau-basis, bau-teile, haus, mauer, schmiede, taverne, tempel, wachturm |
 | gebirge | worldgen-height |
 | gedaechtnis | character-sinne |
+| gefaelle | welt-plan-formen |
 | gegenstand | register, inventar, koerper, welt-dinge |
 | gegner | horde, ratte, horde-mesh |
 | gelaende | character-anim-hang, terrain-farben, terrain-mesh, welt-aenderung |
 | gelenke | character-rig |
 | generator | worldgen |
-| geometrie | fels-basis, fels-form, natur-basis, pflanze-basis, totholz-form, mesh-builder |
+| geometrie | fels-basis, fels-form, natur-basis, pflanze-basis, totholz-form, mesh-builder, welt-plan-formen |
 | geroell | fels |
 | geschoss | zauber |
 | gesicht | character-model, character-parts-gesicht, character-parts-kopf |
@@ -318,6 +347,7 @@
 | handy | touch-stick, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, qualitaet, menue |
 | hang | character-anim-hang |
 | hash | rng |
+| haus | haus |
 | heap | worldgen-grid |
 | heide | pflanze-busch |
 | helm | character-parts-hut, character-parts-kopf |
@@ -362,43 +392,50 @@
 | kette | character-parts-zubehoer |
 | keyframe | character-clips-mehr, character-clips-zauber, character-clips |
 | ki | bedrohung, character-brain, character-gruppe, character-sinne, character-steering-extra, character-steering, horde |
+| kiste | bau-vorrat |
 | klang | klang |
 | kleidung | character-parts-becken, character-parts-torso, character-parts |
 | klima | wetter, worldgen-biomes, worldgen-climate |
 | knoepfe | touch-stick |
 | koerper | koerper, kollision |
-| kollision | follow-camera, raum-gitter, grosszauber, tueren, kollision, worldgen-adapter |
+| kollision | follow-camera, raum-gitter, grosszauber, tueren, bau-basis, kollision, worldgen-adapter |
 | kombo | nahkampf-daten, nahkampf |
 | kopf | character-anim-blick, character-parts-haar, character-parts-hut, character-parts-kopf |
 | korb | character-ausruestung |
 | kreatur | ratte |
+| kristall | tempel |
 | krit | kampf-werte |
 | krone | character-parts-hut, character-parts-kopf |
 | körper | character-parts |
 | l-system | baum-skelett |
 | ladungen | faehigkeiten |
 | lager | behaelter |
-| laterne | character-ausruestung |
+| lagerfeuer | bau-licht |
+| laterne | bau-licht, character-ausruestung |
 | laufen | character-animator, character-gang |
 | lava | grosszauber-riss, grosszauber-riss-ansicht |
 | leben | kampf-werte, kampf, hud |
 | lebensbalken | figur-schild, ziel-rahmen |
 | leiste | faehigkeiten, hud, kampf-leiste |
 | leistung | qualitaet |
-| licht | himmel-stand, himmel |
+| leucht | bau-licht |
+| licht | bau-licht, himmel-stand, himmel |
 | localStorage | speicher |
 | lock-on | follow-camera, ziel-wahl |
 | locken | character-parts-haar |
 | logik | pflanze-formen |
 | look | character-look, figur-material, psx |
 | loop | schleife |
-| lowpoly | character-parts, ratte, baum, fels-form, fels, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-wueste, totholz-form, totholz, mesh-builder |
+| lowpoly | bau-teile, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau, character-parts, ratte, baum, fels-form, fels, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-wueste, totholz-form, totholz, mesh-builder |
 | magie | grosszauber-riss, grosszauber-sturm, grosszauber-welle, grosszauber, zauber-daten, zauber, character-clips-zauber, zauber-effekte |
 | mana | zauber |
 | mantel | character-parts-becken, character-parts-torso |
+| marker | aufgaben-anzeige |
+| markt | bau-markt |
 | maske | character-pose, worldgen-shape |
 | material | figur-material, natur-material |
 | mathe | math |
+| mauer | mauer, welt-plan-formen |
 | maus | move-input |
 | meer | terrain-mesh |
 | mehrspieler | raum-gitter, schnappschuss-puffer |
@@ -410,6 +447,7 @@
 | mimik | character-anim-blick, character-look, character-model, character-parts-gesicht |
 | mischen | character-pose |
 | mitreißen | grosszauber-welle |
+| mittelalter | bau-markt, bau-vorrat, bau-wegbau |
 | mmo | bedrohung, faehigkeiten-daten, faehigkeiten, grosszauber-wand, grosszauber-welle, grosszauber, kampf-werte, kampf, nahkampf-daten, nahkampf, zustaende, kampf-leiste, ziel-rahmen |
 | mobil | grosszauber-riss-ansicht, grosszauber-welle-ansicht |
 | modell | character-model, ratte, mesh-builder |
@@ -440,7 +478,7 @@
 | orbit | follow-camera |
 | ort | stationen |
 | orte | worldgen-sites |
-| overlay | figur-schild, hud, kampf-leiste, menue, treffer-zahlen, ziel-rahmen |
+| overlay | aufgaben-anzeige, figur-schild, hud, kampf-leiste, menue, treffer-zahlen, ziel-rahmen |
 | parade | nahkampf |
 | parameter | baum-arten |
 | partikel | niederschlag, zauber-effekte |
@@ -448,13 +486,16 @@
 | pause | menue |
 | performance | qualitaet |
 | persistenz | speicher |
-| pfad | character-steering, worldgen-path, worldgen-wege |
+| pfad | character-steering, welt-plan, worldgen-path, worldgen-wege |
+| pfeil | aufgaben-anzeige |
 | pflanze | pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-wueste |
 | physik | character-motor, koerper, kollision |
 | pilz | pflanze-blume, pflanze-boden |
 | pinch | touch-stick |
 | pinsel | welt-aenderung |
 | pixel | psx |
+| plan | welt-plan-formen, welt-plan |
+| plateau | welt-plan |
 | poi | worldgen-sites |
 | poisson | worldgen-scatter |
 | pose | character-pose |
@@ -462,10 +503,13 @@
 | presets | worldgen-presets |
 | primitive | mesh-builder |
 | priority-flood | worldgen-hydrology |
+| profil | welt-plan-formen |
 | prozedural | noise, baum-skelett, baum, fels-form, fels, natur-assets, natur-basis, totholz, worldgen |
 | ps1 | psx |
 | psx | psx |
+| puppe | bau-uebung |
 | qualität | qualitaet |
+| quest | aufgaben |
 | raf | schleife |
 | ragdoll | character-reaktion |
 | randlicht | figur-material |
@@ -509,11 +553,13 @@
 | schleichen | character-sinne |
 | schleife | schleife |
 | schluessel | behaelter, tueren |
+| schmiede | schmiede |
 | schmuck | character-parts-zubehoer |
 | schnee | niederschlag, terrain-farben, wetter |
 | schnellleiste | hand, inventar-ansicht |
 | schockwelle | zauber-effekte |
 | schrank | behaelter |
+| schritt | aufgaben |
 | schuetteln | follow-camera |
 | schuhe | character-parts |
 | schwarm | character-gruppe, character-steering, horde, horde-mesh |
@@ -537,6 +583,7 @@
 | spell | zauber-daten, zauber |
 | spieler | character, character-animator, character-look, character-model |
 | spielstand | speicher, menue |
+| spline | welt-plan-formen |
 | splitscreen | psx |
 | sprechblase | figur-schild |
 | springen | character-animator |
@@ -549,6 +596,7 @@
 | staub | grosszauber-wand-ansicht |
 | steering | character-gruppe, character-steering-extra, character-steering |
 | stein | fels-form, fels |
+| steinkreis | bau-wegbau |
 | sterne | himmel-stand, himmel |
 | steuerung | move-input |
 | stimmung | psx |
@@ -566,25 +614,30 @@
 | tank | bedrohung |
 | tasche | character-parts-becken |
 | tastatur | move-input |
+| taverne | taverne |
 | teilupdate | terrain-mesh |
+| tempel | tempel |
 | temperatur | worldgen-climate |
 | terrain | noise, terrain-farben, terrain-mesh, welt-aenderung, worldgen-chunks, worldgen-erosion, worldgen-height, worldgen-shape, worldgen |
 | test | fake-dom |
 | third-person | follow-camera |
 | toast | hud |
 | tod | character-reaktion |
-| tor | tueren |
+| tor | tueren, mauer |
 | tornado | grosszauber-sturm, grosszauber-sturm-ansicht |
 | totholz | totholz-form, totholz |
 | touch | move-input, touch-stick, inventar-ansicht, kampf-leiste |
+| training | bau-uebung |
 | treffer | character-reaktion, treffer-zahlen |
 | truhe | behaelter, inventar-ansicht |
 | tuer | interaktion, tueren |
 | tuning | character-motor-tuning |
 | turban | character-parts-hut |
+| turm | tempel |
+| tutorial | aufgaben, aufgaben-anzeige, welt-plan |
 | ufer | terrain-farben |
 | uhr | zeit |
-| ui | figur-schild, hud, inventar-ansicht, kampf-leiste, menue, treffer-zahlen, ziel-rahmen |
+| ui | aufgaben-anzeige, figur-schild, hud, inventar-ansicht, kampf-leiste, menue, treffer-zahlen, ziel-rahmen |
 | umfallen | character-reaktion |
 | umhang | character-parts-ruecken, character-parts, character-sekundaer |
 | umkreis | raum-gitter |
@@ -601,6 +654,7 @@
 | vertexfarben | fels-basis, fels, natur-basis, pflanze-basis, totholz, mesh-builder, terrain-farben |
 | verzweigung | baum-skelett |
 | vfx | zauber-effekte |
+| wachturm | wachturm |
 | waffe | nahkampf-daten, nahkampf, character-ausruestung |
 | wahrnehmung | character-sinne |
 | wald | baum |
@@ -611,8 +665,9 @@
 | wedel | pflanze-formen |
 | wege | wege-lage, wege-mesh, worldgen-wege |
 | wegfindung | worldgen-path |
+| wegweiser | bau-wegbau |
 | welle | grosszauber-welle, grosszauber, grosszauber-mesh, grosszauber-welle-ansicht |
-| welt | noise, rng, grosszauber, kampf, welt-dinge, kollision, scatter-mesh, terrain-farben, terrain-mesh, wege-lage, wege-mesh, welt-aenderung, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
+| welt | noise, rng, grosszauber, kampf, welt-dinge, kollision, scatter-mesh, terrain-farben, terrain-mesh, wege-lage, wege-mesh, welt-aenderung, welt-plan-formen, welt-plan, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | werfen | welt-dinge |
 | werkbank | rezepte, stationen |
 | werkzeug | hand, rohstoffe, character-ausruestung |
@@ -623,15 +678,20 @@
 | wirkbalken | kampf-leiste |
 | wirkzeit | faehigkeiten |
 | wolken | grosszauber-sturm-ansicht, himmel |
-| worldgen | worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
+| worldgen | welt-plan, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | wueste | pflanze-wueste |
 | zahlen | treffer-zahlen |
 | zauber | klang, grosszauber-riss, grosszauber-sturm, grosszauber-wand, grosszauber-welle, grosszauber, zauber-daten, zauber, character-clips-zauber, grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht, zauber-effekte |
 | zauberhut | character-parts-hut |
+| zaun | bau-wegbau |
 | zeit | schnappschuss-puffer, zeit |
 | zeitschritt | schleife |
-| ziel | ziel-wahl, ziel-rahmen |
+| zelt | bau-uebung |
+| ziel | ziel-wahl, aufgaben-anzeige, ziel-rahmen |
 | zielen | ziel-wahl |
+| zielscheibe | bau-uebung |
+| zinnen | bau-teile, mauer, wachturm |
+| zonen | welt-plan |
 | zoom | follow-camera, touch-stick |
 | zopf | character-parts-haar |
 | zufall | rng |
@@ -858,6 +918,23 @@ uhr.update(dt); // je Bild, dt in echten Sekunden
 ```
 
 Genutzt von: testwelt · Tags: zeit, tageszeit, jahreszeit, kalender, uhr, speichern · THREE: nein
+
+### aufgaben · `engine/gameplay/aufgaben.js` · v1.0.0 · entwurf
+Aufgaben-/Tutorial-Logik: Schritte (gehe-zu, sprich-mit, sammle, besiege, benutze, warte), Fortschritt, Signale, Speicherstand; reine Daten, serialisierbar
+
+- `createAufgaben({daten, ereignisse, zaehle, ortVon}) -> { starte(id)->bool, status(id), aktiv(), fertig(id), melde(art, info)->n, update(dt, wer)->ereignisse[], aktuell(id?), springe(id, schritt), brichAb(id), zustand(), laden(z), onAenderung(fn)->abmelden, dispose() }`
+- `pruefeDaten(daten) -> [fehlerText]`
+
+```js
+import { createAufgaben } from '../../engine/gameplay/aufgaben.js';
+const a = createAufgaben({ daten: TUTORIAL, ereignisse, zaehle: (id) => inventar.anzahl(id), ortVon: (n) => plan.platz(n) });
+a.starte('tutorial');
+a.melde('gesprochen', { mit: 'mentor' });   // 'gesammelt' {id,anzahl} · 'besiegt' {art,anzahl} · 'benutzt' {was,anzahl}
+a.update(dt, { x: spieler.x, z: spieler.z }); // gehe-zu, warte, sammle (über zaehle)
+anzeige.setze(a.aktuell());
+```
+
+Genutzt von: enklave · Tags: aufgabe, tutorial, quest, schritt, fortschritt, gameplay · THREE: nein
 
 ### bedrohung · `engine/gameplay/bedrohung.js` · v1.0.0 · entwurf
 Klassische Aggro-Tabelle: Bedrohung je Gegner und Quelle, Zielwechsel erst bei 110 %, Spott, Heilungs-Bedrohung
@@ -1564,6 +1641,193 @@ const { dx, dy, zoom } = t.nimmKamera();   // Pixel bzw. ln(Abstandsverhältnis)
 ```
 
 Genutzt von: – · Tags: eingabe, touch, joystick, handy, knoepfe, pinch, zoom · THREE: nein
+
+### bau-basis · `engine/models/bau/bau-basis.js` · v1.0.0 · entwurf
+Gemeinsame Farben und Helfer für Bau-Assets: lokale Kollisions-Körper, Asset-Ergebnis mit dispose
+
+- `FARBEN`
+- `kasten(x,z,bx,bz,hoehe,{winkel,y0,begehbar}) -> koerper`
+- `kreis(x,z,radius,hoehe,{y0,begehbar}) -> koerper`
+- `asset(teile) -> asset`
+
+```js
+import { FARBEN, kasten, asset } from '../../engine/models/bau/bau-basis.js';
+const kiste = asset({ name: 'kiste', geometrie, kollision: [kasten(0, 0, 0.4, 0.4, 0.8)], masse: { breite: 0.8, tiefe: 0.8, hoehe: 0.8 } });
+```
+
+Genutzt von: – · Tags: bau, gebaeude, asset, farben, kollision · THREE: nein
+
+### bau-teile · `engine/models/bau/bau-teile.js` · v1.0.0 · entwurf
+Bauteile für Gebäude-Assets: Satteldach/Pultdach mit Schindelreihen, Giebel, Fachwerk, Fenster mit Läden, Tür, Zinnen, Laterne, Flagge
+
+- `mitT(b, {x,y,z,ry}) -> b'`
+- `satteldach(b,o)`
+- `pultdach(b,o)`
+- `giebel(b,w,h,d,farbe,t)`
+- `strebe(b,x1,y1,x2,y2,tiefe,farbe)`
+- `fachwerk(b,w,h,{pfosten,schienen,streben})`
+- `fenster(b,l,x,y,o)`
+- `tuer(b,breite,hoehe)`
+- `zinnenLinie(b,x1,z1,x2,z2,y,o)`
+- `laterne(b,l,x,y,z,arm)`
+- `flagge(b,x,y,z,farbe)`
+
+```js
+import { createMeshBuilder } from '../../render/mesh-builder.js';
+import { satteldach, fenster } from './bau-teile.js';
+const b = createMeshBuilder({ seed: 1 }), l = createMeshBuilder({ seed: 2 });
+satteldach(b, { w: 5, d: 4, y: 3, h: 2, farbe: '#9a4a32' });
+fenster(mitT(b, { z: 2 }), mitT(l, { z: 2 }), 0, 1.5);
+```
+
+Genutzt von: – · Tags: bau, gebaeude, dach, fachwerk, fenster, zinnen, lowpoly · THREE: ja
+
+### haus · `engine/models/bau/haus.js` · v1.0.0 · entwurf
+Wohnhaus als Low-Poly-Asset: v0 Fachwerkhaus (Satteldach rot, Fensterläden), v1 Steinhaus (Schieferdach, Kamin, Vordach)
+
+- `createHaus({ seed = 1, variante = 0 }) -> asset { geometrie, leucht, kollision, anker { tuer, fackeln, licht, kamin? }, masse, dreiecke, dispose }`
+
+```js
+import { createHaus } from '../../engine/models/bau/haus.js';
+const haus = createHaus({ seed: 3, variante: 1 });
+szene.add(new THREE.Mesh(haus.geometrie, standardMaterial()));
+```
+
+Genutzt von: enklave · Tags: bau, gebaeude, haus, fachwerk, asset, lowpoly · THREE: ja
+
+### bau-licht · `engine/models/bau/licht.js` · v1.0.0 · entwurf
+Lichtquellen als Low-Poly-Asset mit Leucht-Geometrie (unbeleuchtet zeichnen): Laterne auf Pfahl, Wandfackel, Lagerfeuer mit Steinring
+
+- `createLaterne({seed})`
+- `createFackel({seed})`
+- `createLagerfeuer({seed}) -> asset { name, geometrie, leucht, kollision, anker (licht/fackeln), masse, dreiecke, dispose }`
+
+```js
+import { createLagerfeuer } from '../../engine/models/bau/licht.js';
+const feuer = createLagerfeuer({ seed: 5 });   // feuer.leucht = Flammen, feuer.anker.licht = PointLight-Vorlage
+```
+
+Genutzt von: enklave · Tags: bau, licht, laterne, fackel, lagerfeuer, leucht, asset, lowpoly · THREE: ja
+
+### bau-markt · `engine/models/bau/markt.js` · v1.0.0 · entwurf
+Marktplatz-Kleinkram als Low-Poly-Asset: Marktstand mit Stoffdach (4 Farben), Brunnen mit Holzdach, Sitzbank
+
+- `createMarktstand({seed,variante 0-3})`
+- `createBrunnen({seed})`
+- `createBank({seed}) -> asset { name, variante, geometrie, leucht, kollision, anker, masse, dreiecke, dispose }`
+
+```js
+import { createMarktstand } from '../../engine/models/bau/markt.js';
+const stand = createMarktstand({ seed: 3, variante: 1 });   // stand.geometrie in Mesh/InstancedMesh
+```
+
+Genutzt von: enklave · Tags: bau, markt, brunnen, bank, asset, lowpoly, mittelalter · THREE: ja
+
+### mauer · `engine/models/bau/mauer.js` · v1.0.0 · entwurf
+Stadtmauer als Low-Poly-Assets: Segment (in x streckbar), achteckiger Mauerturm, Torhaus mit freiem Durchgang, Torflügel (zentriert, für gameplay/tueren)
+
+- `createMauer({ seed, variante, sx = 1 })`
+- `createMauerTurm({ seed, variante })`
+- `createTorhaus({ seed, variante })`
+- `createTorfluegel({ seed, variante }) -> asset { geometrie, leucht, kollision, anker, masse, dreiecke, dispose }`
+
+```js
+import { createMauer, createTorhaus } from '../../engine/models/bau/mauer.js';
+const stueck = createMauer({ sx: 1.5 });   // 9 m langes Segment, Front (außen) = +z
+```
+
+Genutzt von: enklave · Tags: bau, gebaeude, mauer, tor, zinnen, asset, lowpoly · THREE: ja
+
+### schmiede · `engine/models/bau/schmiede.js` · v1.0.0 · entwurf
+Schmiede als Low-Poly-Asset: Steinhaus mit Satteldach, offener Pultdach-Anbau mit Esse (leuchtende Glut), Wasserbottich und Amboss-Station
+
+- `createSchmiede({ seed = 1, variante = 0 }) -> asset { geometrie, leucht, kollision, anker { tuer, station { art:'amboss', x, z }, licht, fackeln }, masse, dreiecke, dispose }`
+
+```js
+import { createSchmiede } from '../../engine/models/bau/schmiede.js';
+const s = createSchmiede();   // s.anker.station = { art: 'amboss', x, z }
+```
+
+Genutzt von: enklave · Tags: bau, gebaeude, schmiede, esse, asset, lowpoly · THREE: ja
+
+### taverne · `engine/models/bau/taverne.js` · v1.0.0 · entwurf
+Taverne als Low-Poly-Asset: 2 Geschosse mit Fachwerk, Erker, Vordach mit Bänken, Ausleger-Schild (Krug)
+
+- `createTaverne({ seed = 1, variante = 0 }) -> asset { geometrie, leucht, kollision, anker { tuer, sitz, licht, fackeln }, masse, dreiecke, dispose }`
+
+```js
+import { createTaverne } from '../../engine/models/bau/taverne.js';
+const t = createTaverne({ seed: 2 });   // t.anker.sitz = Sitzplätze unter dem Vordach
+```
+
+Genutzt von: enklave · Tags: bau, gebaeude, taverne, fachwerk, asset, lowpoly · THREE: ja
+
+### tempel · `engine/models/bau/tempel.js` · v1.0.0 · entwurf
+Tempel/Zauberturm als Low-Poly-Asset: Säulenhalle mit Schieferdach + runder Turm mit blauem Kegeldach und schwebendem Kristall (leuchtet)
+
+- `createTempel({ seed = 1, variante = 0 }) -> asset { geometrie, leucht, kollision, anker { tuer, fackeln, licht }, masse, dreiecke, dispose }`
+
+```js
+import { createTempel } from '../../engine/models/bau/tempel.js';
+const t = createTempel();   // t.leucht = Kristall, Fenster, Flammen (unbeleuchtet zeichnen)
+```
+
+Genutzt von: enklave · Tags: bau, gebaeude, tempel, turm, kristall, asset, lowpoly · THREE: ja
+
+### bau-uebung · `engine/models/bau/uebung.js` · v1.0.0 · entwurf
+Übungs- und Lager-Kleinkram als Low-Poly-Asset: Trainingspuppe, Zielscheibe, Zelt, Amboss
+
+- `createTrainingspuppe({seed})`
+- `createZielscheibe({seed})`
+- `createZelt({seed,variante 0-2})`
+- `createAmboss({seed}) -> asset { name, variante, geometrie, leucht, kollision, anker, masse, dreiecke, dispose }`
+
+```js
+import { createTrainingspuppe } from '../../engine/models/bau/uebung.js';
+const puppe = createTrainingspuppe();   // puppe.anker.ziel = Trefferpunkt, Kollision = Zylinder
+```
+
+Genutzt von: enklave · Tags: bau, training, puppe, zielscheibe, zelt, amboss, asset, lowpoly · THREE: ja
+
+### bau-vorrat · `engine/models/bau/vorrat.js` · v1.0.0 · entwurf
+Vorrats-Kleinkram als Low-Poly-Asset: Fass, Kiste (normal/flach), Banner mit Stange (4 Farben)
+
+- `createFass({seed})`
+- `createKiste({seed,variante 0-1})`
+- `createBanner({seed,variante 0-3}) -> asset { name, variante, geometrie, leucht, kollision, anker, masse, dreiecke, dispose }`
+
+```js
+import { createFass, createBanner } from '../../engine/models/bau/vorrat.js';
+const fass = createFass({ seed: 2 });
+```
+
+Genutzt von: enklave · Tags: bau, fass, kiste, banner, asset, lowpoly, mittelalter · THREE: ja
+
+### wachturm · `engine/models/bau/wachturm.js` · v1.0.0 · entwurf
+Wachturm als Low-Poly-Asset: Steinschaft, auskragendes Holz-Obergeschoss mit Zinnen und Flagge
+
+- `createWachturm({ seed = 1, variante = 0 }) -> asset { geometrie, leucht, kollision, anker { tuer, fackeln, wachen, licht }, masse, dreiecke, dispose }`
+
+```js
+import { createWachturm } from '../../engine/models/bau/wachturm.js';
+const t = createWachturm({ seed: 5 });
+```
+
+Genutzt von: enklave · Tags: bau, gebaeude, wachturm, zinnen, asset, lowpoly · THREE: ja
+
+### bau-wegbau · `engine/models/bau/wegbau.js` · v1.0.0 · entwurf
+Wegrand-Kleinkram als Low-Poly-Asset: Wegweiser mit Pfeilbrettern, Zaunsegment (2 m, reihbar), Steinkreis
+
+- `createWegweiser({seed,schilder:[{winkel,text}]})`
+- `createZaun({seed,variante 0-1})`
+- `createSteinkreis({seed}) -> asset { name, variante, geometrie, leucht, kollision, anker, masse, dreiecke, dispose }`
+
+```js
+import { createWegweiser } from '../../engine/models/bau/wegbau.js';
+const w = createWegweiser({ schilder: [{ winkel: 1.2, text: 'Enklave' }] });   // w.anker.schild = [{ winkel, text, x, y, z }]
+```
+
+Genutzt von: enklave · Tags: bau, wegweiser, zaun, steinkreis, asset, lowpoly, mittelalter · THREE: ja
 
 ### character-anim-blick · `engine/models/character/character-anim-blick.js` · v1.0.0 · entwurf
 Blick einer Figur (rein): Richtung oder Weltpunkt → verteilt auf Torso/Hals/Kopf mit Grenzen, Augen eilen voraus; Blinzeln per Seed; Werte für einen Mimik-Hook
@@ -2414,7 +2678,7 @@ b.box(0.6, 0.4, 1.0, '#d9772b', { y: 0.5 }).sphere(0.25, 0xffffff, { y: 0.8, z: 
 szene.add(b.mesh());   // THREE.Mesh mit standardMaterial()
 ```
 
-Genutzt von: figuren-labor · Tags: mesh, geometrie, lowpoly, vertexfarben, modell, primitive, merge · THREE: ja
+Genutzt von: enklave, figuren-labor · Tags: mesh, geometrie, lowpoly, vertexfarben, modell, primitive, merge · THREE: ja
 
 ### natur-material · `engine/render/natur-material.js` · v1.0.0 · entwurf
 Gemeinsames Material für Natur-Assets: MeshStandardMaterial (Vertexfarben, flatShading) mit Wind-Schwingen im Vertex-Shader über das Attribut 'wind' (0 starr … 1 voll); Phase je Instanz aus der Weltposition; passendes Schatten-Material; optional Ausblenden ab Kamera-Entfernung
@@ -2512,6 +2776,23 @@ dom.tick(16); // führt alle angefragten Animation-Frames aus
 ```
 
 Genutzt von: – · Tags: test, dom, node, attrappe · THREE: nein
+
+### aufgaben-anzeige · `engine/ui/aufgaben-anzeige.js` · v1.0.0 · entwurf
+Ziel-Zeile oben links (Titel, Schritt-Text, Fortschritt), Ziel-Marker (Raute + Meter) bzw. Randpfeil, Blitz-Meldung/Banner; DOM, THREE nur für project()
+
+- `createAufgabenAnzeige({eltern,oben,links,zIndex,rand}) -> { element, setze(info|null), ziel({x,y,z}|null), update(kamera, dt, spielerPos?), blitz(text,{dauer,gross}), zeige(an), sichtbar, dispose() }`
+- `randLage({x,y,z}, breite, hoehe, rand) -> { x, y, winkel, imBild }`
+
+```js
+import { createAufgabenAnzeige } from '../../engine/ui/aufgaben-anzeige.js';
+const anzeige = createAufgabenAnzeige({ oben: 12 });
+anzeige.setze(aufgaben.aktuell());               // null blendet aus
+anzeige.ziel({ x: 12, y: 1.5, z: -8 });          // Weltpunkt des Ziels
+anzeige.update(kamera, dt, { x: spieler.x, z: spieler.z });   // jedes Bild
+anzeige.blitz('Willkommen in der Enklave', { gross: true, dauer: 5 });
+```
+
+Genutzt von: – · Tags: ui, aufgabe, ziel, marker, pfeil, banner, tutorial, overlay · THREE: ja
 
 ### figur-schild · `engine/ui/figur-schild.js` · v1.1.0 · entwurf
 Namensschild + Sprechblase + Lebensbalken über Figuren (DOM-Overlay): folgt dem Kopf, skaliert und blendet nach Abstand aus, verschwindet hinter der Kamera
@@ -2773,6 +3054,43 @@ speicher.speichere('welt', { seed, aenderung: aend.zustand() });        // Spiel
 ```
 
 Genutzt von: testwelt · Tags: welt, gelaende, terrain, aendern, graben, pinsel, editor, bauen, rueckgaengig, undo, speichern, objekte · THREE: nein
+
+### welt-plan-formen · `engine/world/welt-plan-formen.js` · v1.0.0 · entwurf
+Form-Rechnungen für den Welt-Plan (ohne THREE): Ring-Mauer aus Segmenten/Türmen/Torhaus, Höhenprofil mit Gefälle-Grenze, geschwungene Pfad-Kurve, Gitter-Zuordnung, Boxen-Tests
+
+- `ringPlaetze(ring, zone) -> [platz]`
+- `profil(hoehen, abstaende, maxGefaelle, fest?) -> Float32Array`
+- `kurve(punkte, schritt) -> {punkte: Float64Array [x,z,…], laenge}`
+- `lokalZuWeltRoh(px, pz, w, lx, lz) -> {x,z}`
+- `weltZuLokalRoh(px, pz, w, x, z) -> {x,z}`
+- `naechstePunkte(C, radius, b, t) -> {d, s, liste}`
+- `inBox(x, z, platz, rand?) -> bool`
+- `boxenSchneiden(a, b, eps?) -> bool`
+- `abstandStrecke(px, pz, ax, az, bx, bz) -> {d, u}`
+
+```js
+import { ringPlaetze, profil } from '../../engine/world/welt-plan-formen.js';
+const mauer = ringPlaetze({ id: 'mauer', radius: 36 }, { x: 150, z: -137, drehung: -0.85 });   // Segmente, 8 Türme, Torhaus
+const h = profil([0, 9, 0, 9, 0], 10, 0.14);                                                    // Höhen mit |dh/ds| ≤ 0.14
+```
+
+Genutzt von: – · Tags: welt, plan, mauer, profil, spline, geometrie, gefaelle · THREE: nein
+
+### welt-plan · `engine/world/welt-plan.js` · v1.0.0 · entwurf
+Deterministischer Welt-Plan als worldgen-Stufen: Zonen (Plateau, Mulde, Kuppe), Gewässer-Rinnen, ebene Plätze, Orte, geschwungene Pfade mit begrenztem Gefälle und Brücken, Mauer-Ring; dazu Prüfung (Plateau eben, Gefälle, Objekte im Weg, Tor erreichbar)
+
+- `createWeltPlan(plan, {meterProZelle = 2, hoehenSkala = 60}) -> {plan, stufen, zone(id), zoneBei(x,z), platz(id), plaetze(art?), pfad(id), lokalZuWelt(platz,lx,lz), koerperZuWelt(koerper,platz,y), pruefe(adapter) -> {ok,fehler,werte}, dispose()}`
+- `ringPlaetze`
+- `profil`
+
+```js
+import { createWeltPlan } from '../../engine/world/welt-plan.js';
+import { createWorld } from '../../engine/world/worldgen/worldgen.js';
+const plan = createWeltPlan({ zonen: [{ id: 'tal', art: 'mulde', x: -175, z: 150, radius: 55 }], spawn: { x: -175, z: 150, yaw: 0 } }, { meterProZelle: 2.5 });
+const welt = createWorld({ preset: 'insel', seed: 1, stufen: plan.stufen });   // danach: Adapter, plan.pruefe(adapter), plan.pfad('hauptweg')
+```
+
+Genutzt von: enklave · Tags: welt, plan, worldgen, zonen, pfad, bruecke, plateau, tutorial · THREE: nein
 
 ### wetter · `engine/world/wetter.js` · v1.0.0 · entwurf
 Wetter-Zustand: Wetterarten wechseln per Seed nach Klima (Feuchte/Temperatur), Werte laufen weich, Wind, Blitz, Nässe
