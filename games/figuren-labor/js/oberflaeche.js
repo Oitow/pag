@@ -1,5 +1,5 @@
 // Figuren-Labor – Handy-Oberfläche: Menü-Blatt mit Reitern (unten am Handy, links am großen Bildschirm),
-// Zauberleiste mit Abklingzeiten, Leben-/Mana-Balken, Meldungen. Reine DOM-Arbeit, Spiel-Logik kommt über Rückrufe.
+// Zauberleiste (Großzauber als eigene Gruppe) mit Abklingzeiten, Balken, Meldungen. Reine DOM-Arbeit, Spiel-Logik kommt über Rückrufe.
 const hex = (f) => '#' + f.toString(16).padStart(6, '0');
 
 /**
@@ -32,8 +32,11 @@ export function createOberflaeche({ zauber, ausruestung = [], kameras = [], onZa
   for (const t of tabs) t.onclick = () => zeigeTab(t.dataset.tab);
 
   // ---- Zauberleiste (immer sichtbar): tippen = wählen, nochmal tippen = wirken ----
-  leiste.innerHTML = namen.map((n, i) => `<button class="zk" data-z="${n}" style="--f:${hex(zauber[n].farbe)}" title="${zauber[n].name} (Taste ${(i + 1) % 10})" aria-label="${zauber[n].name}"><span>${zauber[n].symbol}</span><i class="cd"></i><small>${zauber[n].mana}</small></button>`).join('');
-  const knoepfe = Object.fromEntries([...leiste.children].map((b) => [b.dataset.z, b]));
+  const knopf = (n, taste) => `<button class="zk" data-z="${n}" style="--f:${hex(zauber[n].farbe)}" title="${zauber[n].name} (${taste})" aria-label="${zauber[n].name}"><span>${zauber[n].symbol}</span><i class="cd"></i><small>${zauber[n].mana}</small></button>`;
+  const gross = namen.filter((n) => zauber[n].art === 'gross'), normal = namen.filter((n) => zauber[n].art !== 'gross');
+  leiste.innerHTML = `<div class="zgruppe">${normal.map((n) => knopf(n, 'Taste ' + ((namen.indexOf(n) + 1) % 10))).join('')}</div>`
+    + (gross.length ? `<div class="zgruppe zgross" title="Großzauber (Shift+1–${gross.length})"><span class="zmarke">🌋</span>${gross.map((n, i) => knopf(n, 'Shift+' + (i + 1))).join('')}</div>` : '');
+  const knoepfe = Object.fromEntries([...leiste.querySelectorAll('.zk')].map((b) => [b.dataset.z, b]));
   const karten = {};
   $('zliste').innerHTML = namen.map((n) => { const z = zauber[n]; return `<button class="zkarte" data-z="${n}" style="--f:${hex(z.farbe)}"><span class="sym">${z.symbol}</span><span class="txt"><b>${z.name}</b><em>${z.text}</em><small>💧 ${z.mana} · ⏱ ${z.abkling} s${z.schaden ? ' · 💥 ' + z.schaden : ''}${z.heilt ? ' · ❤ +' + z.heilt : ''}${z.schild ? ' · 🛡 ' + z.schild : ''}</small></span></button>`; }).join('');
   for (const b of $('zliste').children) karten[b.dataset.z] = b;

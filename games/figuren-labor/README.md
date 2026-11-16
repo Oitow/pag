@@ -33,9 +33,29 @@ Testgelände für das Figuren-System der Engine (`docs/FIGUREN-SYSTEM.md`): Auss
 - 🎯 Lock-On auf NPCs (T, nochmal = nächstes Ziel) – Zauber zielen darauf, sonst auf das Ziel in Blickrichtung
 - 🏷 Namensschilder + Sprechblasen (`engine/ui/figur-schild`); in der Nähe eines NPCs E / 💬 = ansprechen
 
+## 🌋 Großzauber
+Vier Zauber, die die Welt verändern (`engine/gameplay/grosszauber-*`): **🌊 Flutwelle** (haushohe Welle, reißt alles mit, Figuren schwimmen),
+**🧱 Erdwall** (Fels bricht aus dem Boden, wirft Gegner hoch, sperrt den Weg), **⛈️ Zyklon** (Wirbelsturm saugt Gegner hoch, schleudert Blitze),
+**🌋 Erdriss** (Graben mit Lava, wirft alles in die Luft). Wählen: in der Zauberleiste oben tippen oder **Shift+1…4** (halten = überladen).
+Bei jedem Großzauber: kurze Zeitlupe, Kamera zieht heraus und hebt sich (~2 s), heller Blitz.
+- ⚔ **Schlachtfeld** (☰ → ⚔ Kampf → „Zum Schlachtfeld“ oder `?schlachtfeld=1`): 160 × 160 m offene, leicht wellige Ebene ohne Hindernisse; Nebel ab 90 m.
+- 🐀 **Große Plage** (☰ → ⚔ Kampf oder `?grossplage=1`, dann 🐀 oben rechts): bis ~400 Wesen, breite Fronten von vorn und von der Seite.
+- Neue Klänge: Grollen, Rauschen, Heulen, Bersten (`engine/audio/klang` 1.1).
+
 ## Steuerung
 WASD/Pfeile laufen · Shift Sprint · Leertaste springen · Q Rolle/Dash (bricht Aufladen ab) · V gleiten · C ducken/tauchen · T Ziel · E ansprechen ·
 Ziehen = Kamera · Rad = Zoom · F Schlag/Kombo (halten = schwer) · B/rechte Maus Block · G winken · R halten = aufladen, loslassen = zaubern · 1–0, ß, ´ = Zauber wählen und aufladen.
 Zauberleiste oben: tippen = wählen, nochmal tippen = wirken (ohne Überladen). 🐀 oben rechts = Rattenplage an/aus.
 Handy: Stick links (erscheint unter dem Finger, Größe passt sich dem Bildschirm an), rechts ziehen = Kamera, zwei Finger = Zoom,
 Knöpfe unten rechts (⤒ ✨ ⚔ 🛡 🌀 🪂 🎯, 💬 nur bei NPCs), leichte Vibration. Gamepad geht auch.
+
+## ⚔ Spielablauf „Schlacht“ (`js/ablauf.js`)
+Start: schwebender Knopf „⚔ Schlacht“ (oben mittig, nur ohne laufende Schlacht) oder `?schlacht=1`. Außerhalb der Schlacht bleibt alles frei (Labor).
+- **Einstieg**: Teleport aufs Schlachtfeld, Titelkarte „Welle 1“, Kamerafahrt über das Feld, Countdown 3‑2‑1, dann Kampf.
+- **10 Wellen** der bestehenden Plage (ab Welle 3 „Große Plage“), alle 5 Wellen **Bosswelle** (Rattenkönig) mit Ansage. Zwischen den Wellen 6 s Atempause mit
+  Zusammenfassung (getötet, erlittener Schaden, beste Kombo, größter Mehrfach-Kill, Zeit) und automatischem Heilen.
+- **Macht-Leiste** (3 Stufen, unten mittig über der Zauber-Taste): Kills, Nahkampf-Treffer, Paraden und überstandene Wellen füllen sie. Großzauber kosten 1 Stufe
+  (Zyklon und Flutwelle 2); zu wenig Macht = Zauber gesperrt. „MACHT BEREIT“ bei neuer voller Stufe.
+- **Rhythmus**: Mehrfach-Kill ×10 „Massaker“, ×25 „Vernichtung“ (kurze Zeitlupe), ×50 „Weltuntergang“; Kombo-Zähler oben rechts (Treffer ohne selbst getroffen zu werden).
+- **Niederlage**: Zeitlupe, Ausblenden, Ergebnis-Karte (Welle, Kills, Rekord im Browser) mit „Nochmal“ / „Zurück ins Labor“. **Sieg** nach Welle 10: Siegeskarte.
+- Offenes Menü pausiert die Abläufe; 🐀 oben rechts bricht die Schlacht ab. Technik: `horde-spiel` hat `setManuell`/`starteWelle`, `zauber-spiel` die Option `grossTor`.

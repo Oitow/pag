@@ -23,12 +23,12 @@ export function createMmoLeiste({ ks, zauber, spieler, kamera, lockZiel = () => 
   const grob = matchMedia('(pointer: coarse)').matches;
   let modus = 'zauber', rolle = 'krieger', leiste = null, plaetze = [], waffeAlt = null;
 
-  // ---- Ziel-Rahmen: schmal (Handy) links/rechts nebeneinander unter der Zauberleiste, breit: Spieler links, Ziel mitte ----
-  const schmal = innerWidth < 600, breite = schmal ? 160 : 230, oben = 'env(safe-area-inset-top, 0px)';
+  // ---- Ziel-Rahmen: Spieler oben links unter der Kopfzeile (Top = --rahmen-oben aus index.html), Ziel mittig (breit) bzw. rechts (Handy) ----
+  const schmal = innerWidth < 600, breite = schmal ? 164 : 230;
   const rahmenSpieler = createZielRahmen({ ecke: 'oben-links', breite }), rahmenZiel = createZielRahmen({ ecke: 'oben-mitte', breite });
-  rahmenSpieler.element.style.top = `calc(${oben} + ${schmal ? 124 : 56}px)`;
+  Object.assign(rahmenSpieler.element.style, { top: 'var(--rahmen-oben)', left: 'calc(10px + env(safe-area-inset-left, 0px))' });
   Object.assign(rahmenZiel.element.style, schmal
-    ? { top: `calc(${oben} + 124px)`, left: 'auto', right: '8px', transform: 'none' } : { top: `calc(${oben} + 142px)` });
+    ? { top: 'var(--rahmen-oben)', left: 'auto', right: 'calc(10px + env(safe-area-inset-right, 0px))', transform: 'none' } : { top: 'var(--rahmen-oben)' });
 
   const kl = createKampfLeiste({ plaetze: [], onNutze: (n) => nutzen(n), unten: grob ? 285 : 52 });
   // Handy: Leiste links über dem Stick, damit der Knopfbogen rechts (🎯 🛡 ⚔) frei bleibt

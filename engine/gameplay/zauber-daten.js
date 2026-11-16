@@ -6,7 +6,7 @@
  *   import { ZAUBER, ZAUBER_NAMEN } from '../../engine/gameplay/zauber-daten.js';   // oder aus zauber.js (reicht beides durch)
  *   const def = ZAUBER.feuerball;   // def.wirkzeit = Mindest-Aufladezeit, def.gewicht = wie schwer er sich anfühlt (0 … 1)
  * @tags     zauber, magie, daten, tabelle, kampf, flächenschaden, horde, spell
- * @version  1.1.0
+ * @version  1.2.0
  * @status   entwurf
  * @three    nein
  *
@@ -24,6 +24,7 @@
  *   feld       { dauer, takt, schaden, sog (m/s zur Mitte), verlangsamt, anteil (Radius-Anteil) } – bleibt nach dem Einschlag liegen
  *   feldEnde   { schaden, radius, stoss, umwerfen } – Schluss-Schlag des Feldes (Implosion)
  *   mehr       { anzahl, kette } – Zuwachs bei voller Überladung
+ *   Großzauber (art 'gross', seit 1.2.0): gross { art: 'welle'|'wand'|'sturm'|'riss', … } – Daten für gameplay/grosszauber-<art>
  */
 
 /** Überladen: wer nach der Wirkzeit weiter hält, lädt in `zeit` s bis zum Faktor `kraft` auf (je Zauber überschreibbar: ladezeit, ueberladen). */
@@ -58,6 +59,14 @@ export const ZAUBER = Object.freeze({
     heilt: 35, text: 'Stellt Leben wieder her.' },
   schild: { name: 'Schutzschild', symbol: '🛡️', element: 'heilig', farbe: 0x7ab8ff, art: 'selbst', clip: 'zauberSelbst', mana: 20, abkling: 10, wirkzeit: 0.35, gewicht: 0.25,
     schild: 40, dauer: 8, text: 'Fängt eine Weile Schaden ab.' },
+  flutwelle: { name: 'Flutwelle', symbol: '🌊', element: 'wasser', farbe: 0x3aa8ff, art: 'gross', clip: 'zauberStoss', mana: 60, abkling: 14, wirkzeit: 1.2, gewicht: 1,
+    schaden: 30, reichweite: 10, stoss: 12, umwerfen: true, gross: { art: 'welle' }, text: 'Eine haushohe Welle rollt übers Land und reißt alles mit.' },
+  erdwall: { name: 'Erdwall', symbol: '🧱', element: 'natur', farbe: 0xa07a50, art: 'gross', clip: 'zauberBoden', mana: 40, abkling: 12, wirkzeit: 0.9, gewicht: 0.9,
+    schaden: 25, reichweite: 14, stoss: 10, umwerfen: true, gross: { art: 'wand' }, text: 'Eine Felswand bricht aus dem Boden, schleudert Gegner hoch und sperrt den Weg.' },
+  zyklon: { name: 'Zyklon', symbol: '⛈️', element: 'blitz', farbe: 0xbfe0ff, art: 'gross', clip: 'zauberHimmel', mana: 70, abkling: 18, wirkzeit: 1.4, gewicht: 1,
+    schaden: 12, reichweite: 16, stoss: 8, gross: { art: 'sturm' }, text: 'Ein gewaltiger Wirbelsturm zieht über das Feld, saugt Gegner hoch und schleudert Blitze.' },
+  erdriss: { name: 'Erdriss', symbol: '🌋', element: 'feuer', farbe: 0xff5a1a, art: 'gross', clip: 'zauberBoden', mana: 55, abkling: 14, wirkzeit: 1.1, gewicht: 1,
+    schaden: 40, reichweite: 30, stoss: 14, umwerfen: true, gross: { art: 'riss' }, text: 'Die Erde reißt vor dir auf, Lava bricht hervor und wirft alles in die Luft.' },
   blinzeln: { name: 'Blinzeln', symbol: '✨', element: 'arkan', farbe: 0xffe0ff, art: 'teleport', clip: 'zauberSelbst', mana: 15, abkling: 3, wirkzeit: 0.2, gewicht: 0.2,
     reichweite: 9, text: 'Versetzt dich ein Stück in Blickrichtung – raus aus der Horde.' },
 });

@@ -4,19 +4,28 @@ import * as THREE from 'three';
 import { createNoise2D, fbm2 } from '../../../engine/core/noise.js';
 import { rng, range, hashSeed } from '../../../engine/core/rng.js';
 import { smoothstep } from '../../../engine/core/math.js';
+import { baueSchlachtfeldDeko } from './welt-deko.js';
 
 const GROESSE = 120, AUFL = 160;
 const TEICH = { x: -14, z: 10, r: 9 };
 const WASSER_Y = 0;
 // Treppe (5 Stufen à 0,25 m) und Plateau, nördlich vom Start
 const TREPPE = { x0: -3, x1: 3, z0: -10, stufe: 0.25, tiefe: 0.8, n: 5 };
+// Schlachtfeld: große, offene, leicht wellige Ebene ohne Hindernisse, weit hinter dem Randwall (nach +Z); der Rand steigt zum Wall an
+export const SCHLACHTFELD = { x: 0, z: 240, halb: 80 };
 // Steile Rampe (zum Rutschen) östlich
 const RAMPE = { x0: 12, x1: 20, z0: -4, z1: 4, hoehe: 10 };   // ~51° → zu steil, man rutscht
 
 export function createWelt(seed = 1) {
   const n = createNoise2D(hashSeed('labor', seed));
 
+  const im = (x, z) => Math.abs(x - SCHLACHTFELD.x) <= SCHLACHTFELD.halb && Math.abs(z - SCHLACHTFELD.z) <= SCHLACHTFELD.halb;
+  function feld(x, z) {
+    const rand = SCHLACHTFELD.halb - Math.max(Math.abs(x - SCHLACHTFELD.x), Math.abs(z - SCHLACHTFELD.z));
+    return 0.4 + fbm2(n, x * 0.02 + 40, z * 0.02 + 40, 3) * 0.7 + fbm2(n, x * 0.011 - 20, z * 0.011 + 8, 2) * 1.4 * smoothstep(0, 14, rand) + (1 - smoothstep(0, 8, rand)) * 9;
+  }
   function natur(x, z) {
+    if (im(x, z)) return feld(x, z);
     const d = Math.hypot(x, z);
     let h = fbm2(n, x * 0.025, z * 0.025, 4) * 2.2 * smoothstep(8, 30, d);   // flache Mitte, Hügel außen
     h += smoothstep(40, 58, d) * 9;                                           // Randwall
@@ -34,7 +43,7 @@ export function createWelt(seed = 1) {
     if (x > RAMPE.x0 && x < RAMPE.x1 && z > RAMPE.z0 && z < RAMPE.z1) h = Math.max(h, 0.4 + (x - RAMPE.x0) / (RAMPE.x1 - RAMPE.x0) * RAMPE.hoehe);
     return h;
   }
-  const bodenHoehe = (x, z) => Math.max(natur(x, z), bauten(x, z));
+  const bodenHoehe = (x, z) => (im(x, z) ? feld(x, z) : Math.max(natur(x, z), bauten(x, z)));
   const wasserHoehe = (x, z) => (Math.hypot(x - TEICH.x, z - TEICH.z) < TEICH.r + 2 ? WASSER_Y : null);
 
   // Hindernisse: Kreise (Baumstämme, Felsen)
@@ -78,6 +87,38 @@ export function createWelt(seed = 1) {
   boden.receiveShadow = true;
   gruppe.add(boden);
 
+  // Schlachtfeld-Boden (160 × 160 m, 1,6-m-Raster): Gras-Variationen, Erdflecken, Trampelpfade
+  {
+    const g = new THREE.PlaneGeometry(SCHLACHTFELD.halb * 2, SCHLACHTFELD.halb * 2, 100, 100);
+    g.rotateX(-Math.PI / 2);
+    g.translate(SCHLACHTFELD.x, 0, SCHLACHTFELD.z);
+    const p = g.attributes.position, fa = new Float32Array(p.count * 3);
+    const g1 = new THREE.Color('#5f8f3e'), g2 = new THREE.Color('#8fb050'), g3 = new THREE.Color('#b0b060'),
+      erde = new THREE.Color('#8a6a44'), weg = new THREE.Color('#b09a6c'), dunkel = new THREE.Color('#3f6a34');
+    const wegNah = (x, z) => {   // zwei geschwungene Wege (Kreuzung nahe der Mitte)
+      const dx = x - SCHLACHTFELD.x, dz = z - SCHLACHTFELD.z;
+      const a = Math.abs(dz - Math.sin(dx * 0.045) * 14 - 6), b = Math.abs(dx - Math.sin(dz * 0.05 + 2) * 12 + 10);
+      return 1 - smoothstep(1.2, 3.2, Math.min(a, b) + fbm2(n, x * 0.3, z * 0.3, 2) * 0.8);
+    };
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), z = p.getZ(i), h = feld(x, z);
+      p.setY(i, h);
+      c.copy(g1).lerp(g2, (fbm2(n, x * 0.05, z * 0.05, 3) + 1) / 2);
+      c.lerp(g3, smoothstep(0.25, 0.8, fbm2(n, x * 0.025 + 9, z * 0.025 - 4, 2)) * 0.7);   // trockene Wiesen
+      c.lerp(dunkel, smoothstep(0.3, 0.7, fbm2(n, x * 0.09 - 7, z * 0.09, 2)) * 0.45);
+      c.lerp(erde, smoothstep(0.35, 0.65, fbm2(n, x * 0.07 + 33, z * 0.07 + 5, 3)) * 0.85);   // Erdflecken
+      c.lerp(weg, wegNah(x, z) * 0.85);
+      c.multiplyScalar(0.92 + 0.16 * fbm2(n, x * 0.6, z * 0.6, 1));   // feine Körnung
+      if (h > 4) c.lerp(fels, smoothstep(4, 9, h) * 0.6);
+      fa.set([c.r, c.g, c.b], i * 3);
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(fa, 3));
+    g.computeVertexNormals();
+    const m = new THREE.Mesh(g, boden.material);
+    m.receiveShadow = true; gruppe.add(m);
+  }
+  const deko = baueSchlachtfeldDeko(gruppe, { seed, feld, feldG: SCHLACHTFELD });
+
   // Treppe + Plateau als Blöcke, Rampe als Keil (exakt wie bauten())
   const steinM = new THREE.MeshStandardMaterial({ color: stein, roughness: 0.9, flatShading: true });
   const block = (x0, x1, z0, z1, hoch, keil) => {
@@ -115,8 +156,8 @@ export function createWelt(seed = 1) {
   }
 
   return {
-    gruppe, kreise, teich: TEICH,
+    gruppe, kreise, teich: TEICH, schlachtfeld: SCHLACHTFELD,
     adapter: { bodenHoehe, wasserHoehe, hindernisse },
-    dispose() { gruppe.traverse(o => { o.geometry?.dispose(); o.material?.dispose?.(); }); gruppe.removeFromParent(); },
+    dispose() { deko.dispose(); gruppe.traverse(o => { o.geometry?.dispose(); o.material?.dispose?.(); }); gruppe.removeFromParent(); },
   };
 }

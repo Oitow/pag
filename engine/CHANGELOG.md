@@ -1,5 +1,30 @@
 # Engine-Changelog
 
+## 2026-11 – Atmosphäre Enklave
+- audio/klang 1.2.0 (additiv): Klänge `knistern`, `vogel`, `grille`, `hammer`; Dauerbetten `bett('wind'|'wasser'|'feuer'|'stadt', staerke)` (Rausch-Schleife mit Filter und langsamem Pulsieren), `BETTEN`
+
+## 2026-11 – Startgebiet und Enklave
+- models/character/character-lod 1.0.0 (neu): Fern-Darstellung für Figuren – alle in 1 Draw-Call (InstancedMesh, ~250 Dreiecke, Look-Farben/Schalter als Instanz-Attribute, Lauf-Pendeln im Vertex-Shader), `lookZuLod(look)` rein testbar. Nutzer: games/enklave (npcs.js)
+- gameplay/character 1.4.0 (additiv): Option `mimik` (false = festes Gesicht, 3 Draw-Calls weniger je Figur) wird ans Modell durchgereicht
+- world/welt-plan 1.0.0 + welt-plan-formen 1.0.0 (neu): geplante Gebiete im Weltgenerator (eingeebnete Zonen, Plateau, geschwungener Pfad mit Gefälle-Grenze, Bach/Fluss, Brücken im wege-Format, Plätze für Gebäude, `pruefe(adapter)`)
+- models/bau/* 1.0.0 (neu): bau-basis, bau-teile, Haus, Taverne, Schmiede, Wachturm, Tempel, Mauer/Turm/Torhaus/Torflügel, Markt, Vorrat, Licht, Wegbau, Übung – Low-Poly mit Kollision und Ankern
+- gameplay/aufgaben 1.0.0 (neu): Aufgaben-/Tutorial-Schritte als Daten (gehe-zu, sprich-mit, sammle, besiege, benutze, warte) mit Fortschritt und Ereignissen
+- ui/aufgaben-anzeige 1.0.0 (neu): Ziel-Zeile, Wegpunkt-Pfeil am Bildschirmrand, Banner
+
+## 2026-11 – Leistung (Handy)
+- render/qualitaet 1.0.0 (neu): automatische Qualitätsstufe nach Bildzeit (Pixelverhältnis, Schattenkarte, Partikel-Anteil, max. Zahlen), Hysterese, reine Logik
+- render/horde-mesh 1.1.0 (additiv, intern): lädt nur die belegten Instanzen zur Grafikkarte (Update-Bereiche)
+- gameplay/horde 1.1.0 (additiv, intern): `schade()` ohne O(n)-Suche (Wesen hat `entfernt`), `ziele` ohne Iterator
+- render/zauber-effekte 1.1.0 (additiv): `fx.anteil` (0…1) skaliert die Partikelzahl; Partikel-Puffer werden im Leerlauf nicht mehr hochgeladen
+- ui/treffer-zahlen 1.1.0, ui/figur-schild 1.1.0 (additiv, intern): DOM-Stil nur bei Änderung, keine Vector3-Neuanlage pro Bild
+
+## 2026-11 – Großzauber (episch)
+- audio/klang 1.1.0 (additiv): neue Klänge `grollen`, `rauschen`, `heulen`, `bersten` für Großzauber
+- gameplay/grosszauber 1.0.0 (neu): Register für Großzauber-Arten, laufende Wirkungen, Ereignis-Vokabular (treffer, beben, klang, stopp, funken, ring, meldung) und Welt-Adapter (Wände = Hindernis, Podest/Graben = Boden, Flut = Wasser)
+- render/grosszauber-mesh 1.0.0 (neu): je Wirkung eine Ansicht aus einer Ansichts-Fabrik je Art
+- gameplay/zauber 2.1.0 (additiv): Art 'gross' → Ereignis 'gross' (von, punkt, yaw)
+- gameplay/zauber-daten 1.2.0 (additiv): Flutwelle, Erdwall, Zyklon, Erdriss (Feld `gross`)
+
 ## 2026-11 – Kampfsystem im Figuren-Labor
 - gameplay/zauber-daten 1.1.0 (additiv): jeder Zauber hat ein Feld `element` ('feuer','eis','blitz','arkan','natur','heilig') für `kampf.schade({ art })`; bestehende Felder unverändert
 

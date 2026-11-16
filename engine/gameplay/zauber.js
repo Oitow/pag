@@ -11,7 +11,7 @@
  *   for (const e of buch.update(dt, gegnerListe))                   // gegnerListe: [{ id, x, y, z, radius, hoehe }]
  *     for (const t of e.treffer) schade(t.ziel, t.schaden, t);      // t: { stoss, umwerfen, verlangsamt, zug }
  * @tags     zauber, magie, kampf, mana, abklingzeit, geschoss, flächenschaden, aufladen, horde, fähigkeit, spell
- * @version  2.0.0
+ * @version  2.1.0
  * @status   entwurf
  * @three    nein
  *
@@ -31,6 +31,7 @@
  *   'feld' / 'feldTakt' / 'feldEnde'   liegendes Feld beginnt (pos, radius, dauer, sog) / trifft / endet (mit Schluss-Schlag, falls def.feldEnde)
  *   'selbst'       Heilung/Schild: def.heilt / def.schild / def.dauer wertet das Spiel aus
  *   'teleport'     von, nach (das Spiel versetzt die Figur)
+ *   'gross'        Großzauber (art 'gross', seit 2.1.0): von (Füße), punkt (Ziel am Boden, auf Reichweite begrenzt), yaw → gameplay/grosszauber.wirke(def.gross.art, …)
  * treffer: [{ id, ziel, schaden, stoss {x,y,z}, umwerfen, verlangsamt (s), zug {x,z} | null (Sog: Geschwindigkeit zur Mitte) }]
  */
 import { clamp } from '../core/math.js';
@@ -189,6 +190,8 @@ export function createZauberbuch({ zauber = ZAUBER, mana = 100, manaRegen = 6, w
     } else if (def.art === 'teleport') {
       const nx = fuss.x + d.x * def.reichweite, nz = fuss.z + d.z * def.reichweite;
       melde('teleport', w, { von: { x: fuss.x, y: fuss.y, z: fuss.z }, nach: { x: nx, y: boden(nx, nz), z: nz }, yaw });
+    } else if (def.art === 'gross') {   // Großzauber: das Spiel reicht es an gameplay/grosszauber weiter (def.gross)
+      melde('gross', w, { von: { x: fuss.x, y: boden(fuss.x, fuss.z), z: fuss.z }, punkt: ort(1), yaw });
     } else melde('selbst', w, { von });
   }
 

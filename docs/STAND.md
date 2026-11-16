@@ -3,22 +3,26 @@
 > Wird von `/ende` überschrieben und von `/start` gelesen. Höchstens 40 Zeilen.
 
 ## Zuletzt gemacht
-- Kampfsystem fürs spätere MMO (Bauplan `docs/KAMPF-SYSTEM.md`): Engine `gameplay/kampf-werte`, `zustaende`, `bedrohung`, `kampf`, `nahkampf`(+daten), `faehigkeiten`(+daten), `ui/kampf-leiste`, `ui/ziel-rahmen`; `zauber-daten` 1.1 (element)
-- Figuren-Labor: Reiter ⚔ Kampf – Kombos (F tippen/halten), Block/Parade (B/🛡), Ausweichen mit Unverwundbarkeit (Q), Rivale mit KI, Trainingspuppe mit DPS, MMO-Leiste (Krieger/Magier/Heiler, GCD, Wirkzeit), Ziel-Rahmen; `?kampf=1`
-- Startseite in Spiele / Labore gegliedert
+- Neues Spiel **games/enklave** (Bauplan `docs/WELT-ENKLAVE.md`): Tutorial-Tal (16 Schritte, automatisiert komplett durchgespielt), Pfad ~540 m mit Wegweisern/Brücke/Aussicht,
+  ummauerte Stadt mit 29 NPCs, Tag/Nacht, Rauch/Glühwürmchen, Ambiente-Klang, Asset-Galerie `games/enklave/galerie.html`
+- Engine neu: `world/welt-plan`(+formen), `models/bau/*` (35 Assets), `gameplay/aufgaben`, `ui/aufgaben-anzeige`, `models/character/character-lod`; klang 1.2, character 1.4
+- Davor: Figuren-Labor (Kampf, Großzauber, Schlacht-Modus, Qualitätsstufe)
 
 ## Läuft / kaputt
-- Alles grün (618 Tests, Smoke 5 Spiele); Handy-Layout einmal per Screenshot geprüft
-- Nicht abgestimmt: Vorwärtsschritt/Ansturm-Tempo, Parade-/Ausweich-Gefühl gegen den Rivalen (nur Logik getestet)
-- Meldung „−6 Leben“ überlappt am Handy kurz den Spieler-Rahmen
-- Bekannt (alt): Truhe durch Schuppenwand, Gelände-Raster 2 m, Viniland noch eigene `js/psx.js`
+- Alles grün (717 Tests, Smoke 6 Spiele inkl. enklave, Build dist/enklave.html)
+- Draw-Calls Enklave: Tal ~138, Stadt ~129 (Ziel ≤ 120) – Hauptposten Bäume + volle Figuren; Handy nicht auf echtem Gerät gemessen
+- Ambiente-Klang nur per Test geprüft, nicht angehört; Wegweiser-Texte nicht im Bild geprüft; Tor-Zustand nach Tutorial-Ende nicht direkt abgefragt
+- enklave/js/figur.js + menue.js sind Kopien aus der Testwelt (≥ 2 Spiele → in die Engine befördern)
+- Bekannt (alt): Truhe durch Schuppenwand, Viniland eigene psx.js, Rivalen-Treffer zählen nicht in der Schlacht-Statistik
 
 ## Nächster Schritt
-- Kampf im Browser abstimmen (Tempo, Treffer-Stopp, Rivale fairer/härter), dann Testwelt: Gegner im Wald nutzen `kampf`
-- MMO-Fundament: stabile Entitäts-IDs + Befehls-Schicht (`kampf.schade`/`leiste.nutze` als Befehle mit Prüfung), Schnappschüsse von `kampf.zustand()`
-- Mehr Waffen-Fähigkeiten (Bogen/Fernkampf), Gruppen-Heilung, Rollen-Talente
+- Enklave am Handy spielen; Draw-Calls unter 120 (Bäume zusammenfassen/LOD, Schatten nur nah)
+- Spieler-Figur + Pause-Menü in die Engine befördern (testwelt + enklave), Innenräume/Dialoge, erste Quests in der Stadt
+- MMO-Fundament: Entitäts-IDs + Befehls-Schicht, dann Netzwerk-Prototyp (zwei Spieler in der Enklave)
 
 ## Entscheidungen
+- Geplante Gebiete per `welt-plan` als worldgen-Stufen (deterministisch, Seed fest) statt zufällig gefundener Orte; Plan-Daten gelten nur für ihren Seed
+- Ferne Figuren als ein InstancedMesh (`character-lod`), nah höchstens 3 volle Figuren
 - PS1-Look liegt als Schicht über der Szene (Materialien werden gepatcht, nicht ersetzt) – Module müssen nichts davon wissen
 - Im Repo zählen nur Spiele und Tests
 - Mehrspieler: noch kein Netzwerk; Regeln dafür stehen in `docs/ENGINE-FAHRPLAN.md` („Fundament für Mehrspieler“)
