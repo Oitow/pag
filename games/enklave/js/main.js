@@ -18,6 +18,7 @@ import { createNpcs } from './npcs.js';
 import { createKampf } from './kampf.js';
 import { createTutorial } from './tutorial.js';
 import { createPause } from './menue.js';
+import { createAtmosphaere } from './atmosphaere.js';
 import { TAL } from './tutorial-daten.js';
 
 const $ = (id) => document.getElementById(id);
@@ -56,7 +57,7 @@ const stand = himmelStand({ stunde: 9 });
 const schilder = createFigurSchilder();
 const testModus = url.has('test'), frisch = url.has('frisch') || testModus;
 
-let w, figur, dinge, stadt, npcs, kampf, tutorial, menue, pausiert = false, echtZeit = 0, infoZeit = 0;
+let atmo, w, figur, dinge, stadt, npcs, kampf, tutorial, menue, pausiert = false, echtZeit = 0, infoZeit = 0;
 
 async function baue() {
   await pause();
@@ -74,6 +75,7 @@ async function baue() {
   stadt = baueStadt({ szene, w, interaktion: dinge.interaktion, ereignisse: dinge.ereignisse });
   dinge.ereignisse.an('station:benutzt', () => dinge.hud.melde('Der Schmied winkt ab: „Schmieden lernst du später.“'));
   let tut = null;
+  atmo = createAtmosphaere({ szene, w, stadt, klangAn: optionen.klang !== false });
   npcs = createNpcs({ szene, w, kollision: w.kollision, schilder, interaktion: dinge.interaktion, spieler: () => figur.figur, onAnsprechen: (n) => tut?.onAnsprechen(n) ?? null, seed: 1 });
   const platz = (id) => w.plan.platz(id);
   const uebung = (id, r, h) => ({ id, fest: true, x: platz(id).x, z: platz(id).z, radius: r, hoehe: h, y: 0 });
@@ -83,7 +85,7 @@ async function baue() {
     onTreffer: (id) => { if (id === 'puppe') tut?.melde('benutzt', { was: 'treffer:puppe' }); } });
   tut = tutorial = createTutorial({ w, npcs, dinge, kampf, stadt, spieler: figur, speicher, neu: frisch });
   menue = createPause({ speicher, uhr, renderer, szene, psx, anpassen: groesse, onPause: (an) => { pausiert = an; },
-    neuStart: () => { speicher.loesche('tutorial'); speicher.loesche('auto'); location.search = ''; } });
+    onKlang: (an) => atmo?.setKlang(an), neuStart: () => { speicher.loesche('tutorial'); speicher.loesche('auto'); location.search = ''; } });
   $('menueKnopf').onclick = () => menue.schalte('start');
   $('menueKnopf').addEventListener('click', (e) => e.currentTarget.blur());
   speicher.auto('auto', () => ({ uhr: uhr.zustand(), pos: [figur.position.x, figur.position.z], dinge: dinge.zustand() }), 10);
@@ -113,15 +115,16 @@ function update(dt) {
   echtZeit += dt;
   uhr.update(dt); speicher.update(dt);
   const p = figur.position;
+  const amBoden = figur.figur.zustand.amBoden;   // vor dem Update: danach hat der Sprung den Boden schon verlassen
   figur.update(dt, (absicht, e) => kampf.eingaben(dt, absicht, e));
   const ein = figur.eingabe;
-  if (ein.gedrueckt('springen') && figur.figur.zustand.amBoden) tutorial.melde('benutzt', { was: 'sprung' });
+  if (ein.gedrueckt('springen') && amBoden) tutorial.melde('benutzt', { was: 'sprung' });
   if (ein.gedrueckt('rucksack')) dinge.schalteRucksack();
   figur.zeigeInteraktion(dinge.update(dt, figur.figur, figur.interagiert));
   himmelStand({ stunde: uhr.stunde, jahresAnteil: uhr.jahresAnteil, tag: uhr.tag }, stand);
   const nacht = Math.max(0, Math.min(1, (0.15 - stand.sonneHoehe) / 0.35));
   npcs.update(dt, uhr.stunde);
-  stadt.update(dt, p, nacht);
+  stadt.update(dt, p, nacht); atmo.update(dt, { spieler: p, nacht, zeit: echtZeit });
   kampf.update(dt, renderer.domElement.height);
   tutorial.update(dt);
   schilder.update(kamera, dt);
@@ -142,7 +145,8 @@ function update(dt) {
   }
 }
 
-const schleife = createSchleife({ update, render: () => { if (figur) renderer.render(szene, kamera); }, fehler: zeigeFehler });
+const zeitraffer = Math.max(1, Math.min(8, +url.get('zeitraffer') || 1));   // ?zeitraffer=N: N Updates je Bild (Testen auf langsamen Rechnern)
+const schleife = createSchleife({ update: (dt, z) => { for (let k = 0; k < zeitraffer; k++) update(dt, z); }, render: () => { if (figur) renderer.render(szene, kamera); }, fehler: zeigeFehler });
 window.enklave = { renderer, szene, kamera, psx, qual, uhr, schilder, get w() { return w; }, get figur() { return figur; }, get npcs() { return npcs; }, get kampf() { return kampf; },
   get tutorial() { return tutorial; }, get stadt() { return stadt; }, get dinge() { return dinge; } };
 baue().then(() => { psx.wendeAn(szene); $('lade').hidden = true; schleife.start(); }).catch(zeigeFehler);

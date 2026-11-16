@@ -35,7 +35,7 @@ export function baueStadt({ szene, w, interaktion, ereignisse }) {
   const gruppe = new THREE.Group(); gruppe.name = 'stadt';
   szene.add(gruppe);
   const MAT = standardMaterial(), MAT_LEUCHT = new THREE.MeshBasicMaterial({ vertexColors: true });
-  const gruppen = new Map(), lichter = [], leucht = [], dummy = new THREE.Object3D(), assets = [];
+  const gruppen = new Map(), lichter = [], kamine = [], schilder = [], leucht = [], dummy = new THREE.Object3D(), assets = [];
   for (const p of stadtPlatzierungen(plan)) {
     if (!gruppen.has(p.key)) gruppen.set(p.key, { fabrik: p.fabrik, schatten: p.schatten, art: p.art, items: [] });
     gruppen.get(p.key).items.push(p);
@@ -53,6 +53,8 @@ export function baueStadt({ szene, w, interaktion, ereignisse }) {
       if (a.leucht) leucht.push({ geo: a.leucht, matrix: dummy.matrix.clone() });
       for (const k of a.kollision) kollision.fuege(plan.koerperZuWelt(k, p, y));
       for (const l of a.anker.licht || []) { const q = dreh(p.winkel, l.x, l.z); lichter.push({ x: p.x + q.x, y: y + l.y, z: p.z + q.z, farbe: l.farbe, staerke: l.staerke, art: p.art }); }
+      if (a.anker.kamin) { const q = dreh(p.winkel, a.anker.kamin.x, a.anker.kamin.z); kamine.push({ x: p.x + q.x, y: y + a.anker.kamin.y, z: p.z + q.z }); }
+      for (const sc of a.anker.schild || []) { if (!sc.text) continue; const q = dreh(p.winkel, sc.x, sc.z); schilder.push({ x: p.x + q.x, y: y + sc.y, z: p.z + q.z, winkel: sc.winkel + p.winkel, text: sc.text }); }
       if (a.anker.station) anker[key] = { ...a.anker.station, ...(() => { const q = dreh(p.winkel, a.anker.station.x, a.anker.station.z); return { wx: p.x + q.x, wz: p.z + q.z }; })() };
     });
     m.instanceMatrix.needsUpdate = true; m.computeBoundingSphere();
@@ -89,11 +91,12 @@ export function baueStadt({ szene, w, interaktion, ereignisse }) {
     pl.forEach((q, i) => { const e = nah[i]?.l; q.userData.ziel = e || null; if (e) { q.position.set(e.x, e.y, e.z); q.color.set(e.farbe); } });
   }
   return {
-    tueren, stationen, assets, lichter, instanzen: gruppe,
+    tueren, stationen, assets, lichter, kamine, schilder, instanzen: gruppe,
     oeffneTor(wer) { for (const { t } of fluegel) tueren.oeffne(t.id, wer); },
     torOffen: () => fluegel.every(({ t }) => t.offen),
     update(dt, spieler, nacht = 0) {
       tueren.update(dt); stelleFluegel();
+      MAT_LEUCHT.color.setScalar(0.3 + 0.7 * nacht);   // Laternen-/Fensterglas leuchtet erst abends richtig
       if ((lichtUhr -= dt) <= 0) { lichtUhr = 0.4; lichtWaehlen(spieler); }
       for (const q of pl) { const e = q.userData.ziel; q.intensity += (((e ? Math.min(36, e.staerke * 14) : 0) * (e?.art === 'lagerfeuer' ? 1 : 0.4 + 0.6 * nacht)) - q.intensity) * Math.min(1, dt * 3); }
     },

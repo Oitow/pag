@@ -46,7 +46,7 @@ export function stadtPlatzierungen(plan) {
     else if (a === 'mauer') neu(`mauer${p.sx.toFixed(3)}`, () => createMauer({ seed: 1, sx: p.sx }), p.x, p.z, p.winkel, a);
     else if (a === 'wegweiser') {       // zeigt den Weg entlang; zweites Brett zurück ins Tal
       const w = plan.pfad('hauptweg'), r = richtung(w.punkte, 0, 8);
-      neu('wegweiser-tal', () => createWegweiser({ seed: 1, schilder: [{ winkel: r, text: 'Enklave' }, { winkel: r + Math.PI, text: 'Tal' }] }), p.x + 1.2, p.z, 0, a);
+      neu('wegweiser-tal', () => createWegweiser({ seed: 1, schilder: [{ winkel: r, text: 'Enklave →' }, { winkel: r + Math.PI, text: 'Lagerfeuer' }] }), p.x + 1.2, p.z, 0, a);
     } else if (FABRIK[a]) neu(a, FABRIK[a], p.x, p.z, p.winkel, a);
   }
   // Wegrand: Laterne alle ~25 m, ab dem Tal-Ausgang, abwechselnd links/rechts
@@ -58,6 +58,22 @@ export function stadtPlatzierungen(plan) {
     const r = richtung(pf, i, 2);
     neu('laterne', () => createLaterne({ seed: 1 }), pf[2 * i] + Math.cos(r) * 2.6 * seite, pf[2 * i + 1] - Math.sin(r) * 2.6 * seite, r, 'laterne');
   }
+  // Letztes Wegstück vor dem Tor: dichter gestellte Laternen-Pfähle (alle ~9 m, abwechselnd)
+  const gesamt = wegAbstand(pf, n - 1);
+  for (let i = 1, s2 = 1, naechst = gesamt - 34; i < n; i++) {
+    if (wegAbstand(pf, i) < naechst) continue;
+    naechst += 9; s2 = -s2;
+    const r = richtung(pf, Math.max(0, i - 1), 2);
+    neu('laterne', () => createLaterne({ seed: 1 }), pf[2 * i] + Math.cos(r) * 2.4 * s2, pf[2 * i + 1] - Math.sin(r) * 2.4 * s2, r, 'laterne');
+  }
+  // Wegweiser an den Kurven des Pfads (Kontrollpunkte aus dem Plan, nächster Wegpunkt); vorwärts = Richtung Enklave
+  const steuer = plan.plan.pfade.find((q) => q.id === 'hauptweg').punkte;
+  const naechster = (x, z) => { let b = 0, bd = Infinity; for (let i = 0; i < n; i++) { const d = (pf[2 * i] - x) ** 2 + (pf[2 * i + 1] - z) ** 2; if (d < bd) { bd = d; b = i; } } return b; };
+  const SCHILDER = [[2, 'Enklave →', 'Lagerfeuer'], [6, 'Aussicht', 'Lagerfeuer'], [11, 'Enklave →', 'Aussicht']];
+  SCHILDER.forEach(([k, vor, zurueck], nr) => {
+    const i = naechster(steuer[k][0], steuer[k][1]), r = richtung(pf, i, 6), seite = nr % 2 ? -1 : 1;
+    neu(`wegweiser-${nr}`, () => createWegweiser({ seed: 1, schilder: [{ winkel: r, text: vor }, { winkel: r + Math.PI, text: zurueck }] }), pf[2 * i] + Math.cos(r) * 2.4 * seite, pf[2 * i + 1] - Math.sin(r) * 2.4 * seite, 0, 'wegweiser');
+  });
   // Aussicht: zwei Bänke, Wegweiser mit Blick zur Enklave
   const au = plan.zone('aussicht');
   for (const s of [-1, 1]) neu('bank', () => createBank({ seed: 1 }), au.x + s * 2.6, au.z + 1.2, Math.PI / 2 + s * 0.3, 'bank');
