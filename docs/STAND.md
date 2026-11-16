@@ -3,6 +3,7 @@
 > Wird von `/ende` überschrieben und von `/start` gelesen. Höchstens 40 Zeilen.
 
 ## Zuletzt gemacht
+- Meer blitzte beim Laufen über dem Boden auf (PS1-Einrasten der km-großen Meer-Fläche kippte sie) → psx 1.2 `PSX_KEIN_RASTER` für Meer/Grund. Neu: `render/splat-look` + Grafik-Stil PS1/Klar/Splat im Enklave-Menü. Shader nur einzeln geprüft (kein three/Netz), im Spiel ungetestet
 - Wasser-Glitch (Wasser scheint beim Laufen durch Ufer/Boden) behoben: psx 1.1 `PSX_ANKER` – Wasser rastet mit dem Gelände darunter ein; neu `world/wasser-glanz` (Wellen, Glitzern, Ufer-Schaum) in der Enklave. Shader nur einzeln in Chromium kompiliert, Spiel nicht im Browser geprüft (kein three/Netz in der Sitzung)
 - Neues Spiel **games/enklave** (Bauplan `docs/WELT-ENKLAVE.md`): Tutorial-Tal (16 Schritte, automatisiert komplett durchgespielt), Pfad ~540 m mit Wegweisern/Brücke/Aussicht,
   ummauerte Stadt mit 29 NPCs, Tag/Nacht, Rauch/Glühwürmchen, Ambiente-Klang, Asset-Galerie `games/enklave/galerie.html`

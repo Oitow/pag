@@ -128,6 +128,7 @@
 | niederschlag | `engine/render/niederschlag.js` | Regen/Schnee als ein Points-Objekt um die Kamera; Bewegung komplett im Vertex-Shader (kein CPU-Aufwand je Partikel) | entwurf |
 | psx | `engine/render/psx.js` | PS1-Look für eine ganze Szene (aus Viniland übernommen): Eckpunkte rasten auf ein grobes Bildraster (Wackeln), wenige Farbstufen mit Bayer-Dithering, grobe Pixel (kleine interne Auflösung, hart hochskaliert), Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen) – live an/aus ohne Neu-Kompilieren | entwurf |
 | qualitaet | `engine/render/qualitaet.js` | Automatische Qualitätsstufe nach Bildzeit (Handy-Schutz): wird es langsam, sinken Pixelverhältnis, Schattenkarte, Partikel und Schadens-Zahlen; wird es lange schnell, steigen sie wieder – mit Hysterese, reine Logik (das Spiel wendet die Werte an) | entwurf |
+| splat-look | `engine/render/splat-look.js` | Gaussian-Splat-Look für eine fertige Szene: das Bild wird klein gerendert und als zehntausende weiche, längliche Gauß-Flecken neu gemalt (entlang der Kanten ausgerichtet, nah größer als fern) – Stil-Experiment, keine echten 3D-Splats | entwurf |
 | zauber-effekte | `engine/render/zauber-effekte.js` | Leichte Zauber-Effekte fürs Handy: ein Partikel-Points-Objekt (Funken, Schweife), leuchtende Geschoss-Kugeln, Schockwellen-Ringe, Blitze, Erdstacheln, Schutz-Aura, Meteor-Sturz – alles aus Pools | entwurf |
 | fake-dom | `engine/test/fake-dom.mjs` | Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame | stabil |
 | aufgaben-anzeige | `engine/ui/aufgaben-anzeige.js` | Ziel-Zeile oben links (Titel, Schritt-Text, Fortschritt), Ziel-Marker (Raute + Meter) bzw. Randpfeil, Blitz-Meldung/Banner; DOM, THREE nur für project() | entwurf |
@@ -318,6 +319,8 @@
 | gamepad | move-input |
 | gameplay | ereignisse, aufgaben, behaelter, character-brain, character-gruppe, character-motor-tuning, character-motor, character-sinne, character-steering-extra, character-steering, hand, horde, interaktion, inventar, koerper, rezepte, rohstoffe, stationen, tueren, welt-dinge |
 | gang | character-animator, character-gang |
+| gauss | splat-look |
+| gaussian | splat-look |
 | gcd | faehigkeiten, kampf-leiste |
 | gebaeude | bau-basis, bau-teile, haus, mauer, schmiede, taverne, tempel, wachturm |
 | gebirge | worldgen-height |
@@ -433,10 +436,11 @@
 | locken | character-parts-haar |
 | lod | character-lod |
 | logik | pflanze-formen |
-| look | character-look, figur-material, psx |
+| look | character-look, figur-material, psx, splat-look |
 | loop | schleife |
 | lowpoly | bau-teile, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau, character-parts, ratte, baum, fels-form, fels, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-wueste, totholz-form, totholz, mesh-builder |
 | magie | grosszauber-riss, grosszauber-sturm, grosszauber-welle, grosszauber, zauber-daten, zauber, character-clips-zauber, zauber-effekte |
+| maler | splat-look |
 | mana | zauber |
 | mantel | character-parts-becken, character-parts-torso |
 | marker | aufgaben-anzeige |
@@ -466,6 +470,7 @@
 | monster | horde, horde-mesh |
 | motor | character-anim-zustand |
 | nachbarn | raum-gitter |
+| nachbearbeitung | splat-look |
 | nachricht | ereignisse |
 | nachschwingen | character-sekundaer |
 | nacht | himmel-stand, himmel |
@@ -509,6 +514,7 @@
 | poi | worldgen-sites |
 | poisson | worldgen-scatter |
 | pose | character-pose |
+| postprocessing | splat-look |
 | preset | follow-camera |
 | presets | worldgen-presets |
 | primitive | mesh-builder |
@@ -584,7 +590,7 @@
 | seen | worldgen-hydrology |
 | seerose | pflanze-boden |
 | sekundaer | character-sekundaer |
-| shader | figur-material, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-welle-ansicht, natur-material, niederschlag, psx, zauber-effekte, himmel, wasser-glanz |
+| shader | figur-material, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-welle-ansicht, natur-material, niederschlag, psx, splat-look, zauber-effekte, himmel, wasser-glanz |
 | sicht | character-sinne |
 | skelett | character-rig, baum-skelett |
 | sockel | character-ausruestung, character-rig |
@@ -595,6 +601,7 @@
 | spell | zauber-daten, zauber |
 | spieler | character, character-animator, character-look, character-model |
 | spielstand | speicher, menue |
+| splat | splat-look |
 | spline | welt-plan-formen |
 | splitscreen | psx |
 | sprechblase | figur-schild |
@@ -611,6 +618,7 @@
 | steinkreis | bau-wegbau |
 | sterne | himmel-stand, himmel |
 | steuerung | move-input |
+| stil | splat-look |
 | stimmung | psx |
 | strahl | kollision |
 | strassen | worldgen-wege |
@@ -2769,7 +2777,7 @@ ns.update(dt, { kamera, regen: wetter.regen, schnee: wetter.schnee, wind: wetter
 
 Genutzt von: testwelt · Tags: wetter, regen, schnee, partikel, shader · THREE: ja
 
-### psx · `engine/render/psx.js` · v1.1.0 · entwurf
+### psx · `engine/render/psx.js` · v1.2.0 · entwurf
 PS1-Look für eine ganze Szene (aus Viniland übernommen): Eckpunkte rasten auf ein grobes Bildraster (Wackeln), wenige Farbstufen mit Bayer-Dithering, grobe Pixel (kleine interne Auflösung, hart hochskaliert), Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen) – live an/aus ohne Neu-Kompilieren
 
 - `createPsx({ an, raster, farbtiefe, dither, zeilen, kontrast, saettigung, belichtung, vignette, toenung, nachfassen }) -> { an, werte, uniforms, setze(teil), wendeAn(wurzel), patche(material), material(opts), aufloesung(renderer, breite, hoehe, { pixelRatio }), update(dt, wurzel?), dispose() }`
@@ -2805,6 +2813,22 @@ Genutzt von: enklave, figuren-labor · Tags: qualität, leistung, fps, bildzeit,
 Stufe 0 = beste. Jede Stufe: { pixel (max. Pixelverhältnis), schatten (Kartengröße, 0 = aus), partikel (Anteil 0…1), zahlen (max. Schadens-Zahlen) }.
 Schlechter: geglättete Bildzeit > ziel × 1.15 für `schlechtNach` s. Besser: < ziel × 0.85 für `besserNach` s (verdoppelt sich, wenn eine
 Verbesserung binnen 20 s wieder zurückgenommen werden musste – verhindert Hin-und-her). Pausen (Bildzeit > 0.5 s) zählen nicht.
+
+### splat-look · `engine/render/splat-look.js` · v1.0.0 · entwurf
+Gaussian-Splat-Look für eine fertige Szene: das Bild wird klein gerendert und als zehntausende weiche, längliche Gauß-Flecken neu gemalt (entlang der Kanten ausgerichtet, nah größer als fern) – Stil-Experiment, keine echten 3D-Splats
+
+- `createSplatLook({ dichte, groesse, laenge, streuung, seed }) -> { an, werte, setze(teil), aufloesung(breite, hoehe), render(renderer, szene, kamera), dispose() }`
+- `splatRaster(breite, hoehe, dichte) -> { spalten, zeilen, anzahl }`
+- `SPLAT_STANDARD`
+
+```js
+import { createSplatLook } from '../../engine/render/splat-look.js';
+const splat = createSplatLook({ dichte: 150 });
+splat.aufloesung(innerWidth, innerHeight);                       // auch bei 'resize'
+// je Bild: if (splat.an) splat.render(renderer, szene, kamera); else renderer.render(szene, kamera);
+```
+
+Genutzt von: enklave · Tags: splat, gaussian, gauss, look, stil, nachbearbeitung, postprocessing, maler, shader · THREE: ja
 
 ### zauber-effekte · `engine/render/zauber-effekte.js` · v1.1.0 · entwurf
 Leichte Zauber-Effekte fürs Handy: ein Partikel-Points-Objekt (Funken, Schweife), leuchtende Geschoss-Kugeln, Schockwellen-Ringe, Blitze, Erdstacheln, Schutz-Aura, Meteor-Sturz – alles aus Pools
@@ -3051,7 +3075,7 @@ const nurBiome = gelaendeFarben(welt, { hoehenSkala: 60, meterProZelle: 2, detai
 
 Genutzt von: – · Tags: welt, terrain, gelaende, farben, biome, schnee, ufer, vertexfarben · THREE: nein
 
-### terrain-mesh · `engine/world/terrain-mesh.js` · v1.3.0 · entwurf
+### terrain-mesh · `engine/world/terrain-mesh.js` · v1.3.1 · entwurf
 Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit weich gemischten Biomfarben, Wiesenflecken, Hangfels, Ufern (Sand/Kies/Schlamm) und Schnee (terrain-farben), Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont
 
 - `createTerrainMesh(adapter, opts) -> {gruppe,boden,wasser,meer,aktualisiere(bereich,{erde,erdFarbe}?)->vertices,dispose}`

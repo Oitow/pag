@@ -9,7 +9,7 @@
  *   // nach einer Gelände-Änderung (engine/world/welt-aenderung.js) nur das Stück neu aufbauen:
  *   aend.onAenderung(({ bereich }) => bereich && gelaende.aktualisiere(bereich, { erde: (i) => Math.abs(aend.delta(i)) / 0.4 }));
  * @tags     welt, terrain, gelaende, wasser, meer, mesh, biome, teilupdate
- * @version  1.3.0
+ * @version  1.3.1
  * @status   entwurf
  * @three    ja
  */
@@ -132,13 +132,14 @@ export function createTerrainMesh(adapter, opts = {}) {
   const meerMat = new THREE.MeshStandardMaterial({
     color: opts.meerFarbe ?? 0x2b6a96, roughness: 0.2, metalness: 0.1, transparent: true, opacity: 0.85, depthWrite: false,
   });
+  meerMat.defines = { PSX_KEIN_RASTER: '' };         // render/psx ≥ 1.2: Ecken liegen km weit weg – Einrasten würde die Fläche kippen
   const meer = new THREE.Mesh(meerGeo, meerMat);
   meer.name = 'meer';
   meer.position.y = 0.02;
   meer.renderOrder = 1;
   gruppe.add(meer);
   // Meeresboden unter dem Meer außerhalb der Karte (kein Blick ins Leere)
-  const grund = new THREE.Mesh(meerGeo.clone(), new THREE.MeshStandardMaterial({ color: 0x1d3b4f, roughness: 1 }));
+  const grund = new THREE.Mesh(meerGeo.clone(), new THREE.MeshStandardMaterial({ color: 0x1d3b4f, roughness: 1, defines: { PSX_KEIN_RASTER: '' } }));
   grund.position.y = -0.8 * hs;
   grund.name = 'meeresgrund';
   gruppe.add(grund);

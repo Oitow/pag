@@ -8,6 +8,7 @@ import { createSpielzeit } from '../../../engine/core/zeit.js';
 import { createSchleife } from '../../../engine/core/schleife.js';
 import { createSpeicher } from '../../../engine/core/speicher.js';
 import { createPsx } from '../../../engine/render/psx.js';
+import { createSplatLook } from '../../../engine/render/splat-look.js';
 import { createQualitaet } from '../../../engine/render/qualitaet.js';
 import { createFigurSchilder } from '../../../engine/ui/figur-schild.js';
 import { baueWelt } from './welt.js';
@@ -31,7 +32,10 @@ const pause = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r,
 // ---- Renderer, PS1-Look, Qualität ----
 const speicher = createSpeicher({ schluessel: 'pag-enklave', version: 1 });
 const optionen = speicher.lade('optionen') || {};
-const psx = createPsx({ an: optionen.psx !== false });
+// Grafik-Stil: 'ps1' | 'klar' | 'splat' (?stil=… überschreibt den Spielstand zum Testen)
+const stil = url.get('stil') || optionen.stil || (optionen.psx === false ? 'klar' : 'ps1');
+const psx = createPsx({ an: stil === 'ps1' });
+const splat = createSplatLook({ an: stil === 'splat', dichte: optionen.splatDichte ?? 150, groesse: optionen.splatGroesse ?? 1.9 });
 const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: !psx.an });
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -44,6 +48,7 @@ let pixelMax = 1.5;
 function groesse(pixel) {
   if (typeof pixel === 'number') pixelWunsch = pixel;
   psx.aufloesung(renderer, innerWidth, innerHeight, { pixelRatio: Math.min(pixelWunsch, pixelMax) });
+  splat.aufloesung(innerWidth, innerHeight);
   kamera.aspect = innerWidth / innerHeight; kamera.updateProjectionMatrix();
 }
 addEventListener('resize', () => groesse());
@@ -84,7 +89,7 @@ async function baue() {
     onBesiegt: (art) => tut?.melde('besiegt', { art }), onBenutzt: (was) => tut?.melde('benutzt', { was }),
     onTreffer: (id) => { if (id === 'puppe') tut?.melde('benutzt', { was: 'treffer:puppe' }); } });
   tut = tutorial = createTutorial({ w, npcs, dinge, kampf, stadt, spieler: figur, speicher, neu: frisch });
-  menue = createPause({ speicher, uhr, renderer, szene, psx, anpassen: groesse, onPause: (an) => { pausiert = an; },
+  menue = createPause({ speicher, uhr, renderer, szene, psx, splat, stil: url.get('stil'), anpassen: groesse, onPause: (an) => { pausiert = an; },
     onKlang: (an) => atmo?.setKlang(an), neuStart: () => { speicher.loesche('tutorial'); speicher.loesche('auto'); location.search = ''; } });
   $('menueKnopf').onclick = () => menue.schalte('start');
   $('menueKnopf').addEventListener('click', (e) => e.currentTarget.blur());
@@ -146,7 +151,7 @@ function update(dt) {
 }
 
 const zeitraffer = Math.max(1, Math.min(8, +url.get('zeitraffer') || 1));   // ?zeitraffer=N: N Updates je Bild (Testen auf langsamen Rechnern)
-const schleife = createSchleife({ update: (dt, z) => { for (let k = 0; k < zeitraffer; k++) update(dt, z); }, render: () => { if (figur) renderer.render(szene, kamera); }, fehler: zeigeFehler });
-window.enklave = { renderer, szene, kamera, psx, qual, uhr, schilder, get w() { return w; }, get figur() { return figur; }, get npcs() { return npcs; }, get kampf() { return kampf; },
+const schleife = createSchleife({ update: (dt, z) => { for (let k = 0; k < zeitraffer; k++) update(dt, z); }, render: () => { if (!figur) return; if (splat.an) splat.render(renderer, szene, kamera); else renderer.render(szene, kamera); }, fehler: zeigeFehler });
+window.enklave = { renderer, szene, kamera, psx, splat, qual, uhr, schilder, get w() { return w; }, get figur() { return figur; }, get npcs() { return npcs; }, get kampf() { return kampf; },
   get tutorial() { return tutorial; }, get stadt() { return stadt; }, get dinge() { return dinge; } };
 baue().then(() => { psx.wendeAn(szene); $('lade').hidden = true; schleife.start(); }).catch(zeigeFehler);
