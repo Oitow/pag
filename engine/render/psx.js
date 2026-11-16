@@ -10,7 +10,7 @@
  *   // je Bild: psx.update(dt, szene);                    // fasst später hinzugekommene Dinge nach
  *   psx.setze({ an: false });                             // Vergleich: normaler Look (danach wieder psx.aufloesung(…))
  * @tags     psx, ps1, retro, look, shader, dithering, pixel, vertex-snap, splitscreen, stimmung, grading
- * @version  1.1.0
+ * @version  1.2.0
  * @status   entwurf
  * @three    ja
  */
@@ -21,6 +21,8 @@ import * as THREE from 'three';
  * dither = Stärke des Musters 0…1, zeilen = interne Auflösung der kurzen Bildseite (0 = volle Auflösung),
  * Ab 1.1: Material mit defines.PSX_ANKER und Geometrie-Attribut `psxAnker` (vec3, lokal) rastet mit dem Versatz des Anker-Punkts ein
  * statt mit dem eigenen – so wackeln aufliegende Flächen (Wasser über Gelände) genau wie das Gitter darunter.
+ * Ab 1.2: defines.PSX_KEIN_RASTER = Material rastet gar nicht ein (riesige Flächen wie das Meer: deren ferne Ecken würden beim
+ * Einrasten um Meter springen und die ganze Fläche kippen – sie blitzte dann durch den Boden).
  * kontrast/saettigung/belichtung 1 = unverändert, vignette 0…1, toenung = Farbe im Ausgabe-Raum, nachfassen = Sekunden zwischen zwei Durchläufen in update().
  */
 export const PSX_STANDARD = Object.freeze({
@@ -31,6 +33,7 @@ export const PSX_STANDARD = Object.freeze({
 const VERT_KOPF = 'uniform float uPsxRaster;\nuniform vec4 uPsxAnsicht;\n#ifdef PSX_ANKER\nattribute vec3 psxAnker;\n#endif\n';
 const VERT = /* glsl */`
   #include <project_vertex>
+#ifndef PSX_KEIN_RASTER
   if (uPsxRaster > 0.0 && gl_Position.w > 0.0) {
     vec2 psxR = vec2(uPsxRaster * uPsxAnsicht.z / max(uPsxAnsicht.w, 1.0), uPsxRaster) * 0.5;
   #ifdef PSX_ANKER
@@ -46,6 +49,7 @@ const VERT = /* glsl */`
     gl_Position.xyz = psxP * gl_Position.w;
   #endif
   }
+#endif
 `;
 const FRAG_KOPF = 'uniform vec4 uPsxStimmung;\nuniform vec3 uPsxToenung;\nuniform vec4 uPsxAnsicht;\nuniform vec2 uPsxFarbe;\n' +
   'const float psxB[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.);\n';

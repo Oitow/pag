@@ -1,5 +1,10 @@
 # Engine-Changelog
 
+## 2026-11 – Meer-Flackern, Splat-Look
+- render/psx 1.2.0 (additiv): `defines.PSX_KEIN_RASTER` – Material rastet nicht ein. Behebt das Meer, das beim Laufen kurz über dem ganzen Boden aufblitzte (seine Ecken liegen km weit weg; das Einrasten kippte die ganze Fläche um Meter)
+- world/terrain-mesh 1.3.1 (intern): Meer und Meeresgrund mit `PSX_KEIN_RASTER`
+- render/splat-look 1.0.0 (neu): Gaussian-Splat-Stil als Nachbearbeitung (Bild klein rendern, als weiche, an Kanten gestreckte Gauß-Flecken neu malen; nah größer). Nutzer: games/enklave
+
 ## 2026-11 – Wasser ohne PS1-Flackern
 - render/psx 1.1.0 (additiv): Materialien mit `defines.PSX_ANKER` + Attribut `psxAnker` rasten mit dem Versatz des Anker-Punkts ein. Behebt Wasser, das beim Laufen durchs Ufer/den Boden scheint (Wasser und Gelände rasteten getrennt ein und verschoben sich gegeneinander)
 - world/terrain-mesh 1.3.0 (additiv): Wasser-Geometrie trägt `psxAnker` (Gelände-Punkt darunter) und `ufer` (1 = trockener Uferpunkt), `wasserMat.userData.ufer = true`
