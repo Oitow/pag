@@ -10,7 +10,7 @@
  *   // je Bild: psx.update(dt, szene);                    // fasst später hinzugekommene Dinge nach
  *   psx.setze({ an: false });                             // Vergleich: normaler Look (danach wieder psx.aufloesung(…))
  * @tags     psx, ps1, retro, look, shader, dithering, pixel, vertex-snap, splitscreen, stimmung, grading
- * @version  1.0.1
+ * @version  1.1.0
  * @status   entwurf
  * @three    ja
  */
@@ -19,6 +19,8 @@ import * as THREE from 'three';
 /**
  * raster = Zeilen des Rasters, auf das Eckpunkte einrasten (0 = aus, kleiner = wackeliger), farbtiefe = Bit je Farbkanal (0 = aus),
  * dither = Stärke des Musters 0…1, zeilen = interne Auflösung der kurzen Bildseite (0 = volle Auflösung),
+ * Ab 1.1: Material mit defines.PSX_ANKER und Geometrie-Attribut `psxAnker` (vec3, lokal) rastet mit dem Versatz des Anker-Punkts ein
+ * statt mit dem eigenen – so wackeln aufliegende Flächen (Wasser über Gelände) genau wie das Gitter darunter.
  * kontrast/saettigung/belichtung 1 = unverändert, vignette 0…1, toenung = Farbe im Ausgabe-Raum, nachfassen = Sekunden zwischen zwei Durchläufen in update().
  */
 export const PSX_STANDARD = Object.freeze({
@@ -26,14 +28,23 @@ export const PSX_STANDARD = Object.freeze({
   kontrast: 1, saettigung: 1, belichtung: 1, vignette: 0, toenung: 0xffffff, nachfassen: 0.5,
 });
 
-const VERT_KOPF = 'uniform float uPsxRaster;\nuniform vec4 uPsxAnsicht;\n';
+const VERT_KOPF = 'uniform float uPsxRaster;\nuniform vec4 uPsxAnsicht;\n#ifdef PSX_ANKER\nattribute vec3 psxAnker;\n#endif\n';
 const VERT = /* glsl */`
   #include <project_vertex>
   if (uPsxRaster > 0.0 && gl_Position.w > 0.0) {
     vec2 psxR = vec2(uPsxRaster * uPsxAnsicht.z / max(uPsxAnsicht.w, 1.0), uPsxRaster) * 0.5;
+  #ifdef PSX_ANKER
+    // Versatz vom Anker-Punkt übernehmen: Wasser rastet genau wie das Gelände darunter ein (kein Durchscheinen am Ufer)
+    vec4 psxA = projectionMatrix * modelViewMatrix * vec4(psxAnker, 1.0);
+    if (psxA.w > 0.0) {
+      vec2 psxN = psxA.xy / psxA.w;
+      gl_Position.xy += (floor(psxN * psxR + 0.5) / psxR - psxN) * gl_Position.w;
+    }
+  #else
     vec3 psxP = gl_Position.xyz / gl_Position.w;
     psxP.xy = floor(psxP.xy * psxR + 0.5) / psxR;
     gl_Position.xyz = psxP * gl_Position.w;
+  #endif
   }
 `;
 const FRAG_KOPF = 'uniform vec4 uPsxStimmung;\nuniform vec3 uPsxToenung;\nuniform vec4 uPsxAnsicht;\nuniform vec2 uPsxFarbe;\n' +

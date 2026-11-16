@@ -1,5 +1,10 @@
 # Engine-Changelog
 
+## 2026-11 – Wasser ohne PS1-Flackern
+- render/psx 1.1.0 (additiv): Materialien mit `defines.PSX_ANKER` + Attribut `psxAnker` rasten mit dem Versatz des Anker-Punkts ein. Behebt Wasser, das beim Laufen durchs Ufer/den Boden scheint (Wasser und Gelände rasteten getrennt ein und verschoben sich gegeneinander)
+- world/terrain-mesh 1.3.0 (additiv): Wasser-Geometrie trägt `psxAnker` (Gelände-Punkt darunter) und `ufer` (1 = trockener Uferpunkt), `wasserMat.userData.ufer = true`
+- world/wasser-glanz 1.0.0 (neu): wandernde Wellen, Glitzern und Ufer-Schaum als Shader-Hook auf vorhandenen Wasser-Materialien (kein Draw-Call mehr). Nutzer: games/enklave
+
 ## 2026-11 – Atmosphäre Enklave
 - audio/klang 1.2.0 (additiv): Klänge `knistern`, `vogel`, `grille`, `hammer`; Dauerbetten `bett('wind'|'wasser'|'feuer'|'stadt', staerke)` (Rausch-Schleife mit Filter und langsamem Pulsieren), `BETTEN`
 
