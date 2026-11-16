@@ -9,7 +9,7 @@
  *   // nach einer Gelände-Änderung (engine/world/welt-aenderung.js) nur das Stück neu aufbauen:
  *   aend.onAenderung(({ bereich }) => bereich && gelaende.aktualisiere(bereich, { erde: (i) => Math.abs(aend.delta(i)) / 0.4 }));
  * @tags     welt, terrain, gelaende, wasser, meer, mesh, biome, teilupdate
- * @version  1.2.0
+ * @version  1.3.0
  * @status   entwurf
  * @three    ja
  */
@@ -35,6 +35,8 @@ export function biomFarben(welt) {
  * weichesUfer (false = Wasserfläche endet an Zellkanten wie in 1.0).
  * Ab 1.2: aktualisiere(bereich {x0,y0,x1,y1} in Gitterzellen, { erde: (zellIndex) => 0…1, erdFarbe }) baut nur dieses Stück neu
  * (Höhen + Normalen); `erde` mischt die Zellfarbe zur Erdfarbe (aufgegrabener Boden). Wasserflächen bleiben, wie sie sind.
+ * Ab 1.3: Wasser-Geometrie trägt `psxAnker` (Gelände-Punkt darunter; mit render/psx ≥ 1.1 kein Durchscheinen durchs Ufer)
+ * und `ufer` (1 = trockener Uferpunkt, für world/wasser-glanz).
  */
 export function createTerrainMesh(adapter, opts = {}) {
   const welt = adapter.welt;
@@ -73,7 +75,7 @@ export function createTerrainMesh(adapter, opts = {}) {
   gruppe.add(boden);
 
   // ---- Seen und Flüsse: eigene Fläche auf dem Wasserspiegel ----
-  const wpos = [], widx = [], vNr = new Int32Array(nx * nz).fill(-1);
+  const wpos = [], wank = [], wufer = [], widx = [], vNr = new Int32Array(nx * nz).fill(-1);
   const istWasser = (gx, gy) => gx >= 0 && gy >= 0 && gx < B && gy < T && (welt.flags[gy * B + gx] & SEE_FLUSS);
   function spiegel(gx, gy) {
     // Eigener Spiegel oder Mittel der Wasser-Nachbarn (Ufer-Vertices)
@@ -94,6 +96,8 @@ export function createTerrainMesh(adapter, opts = {}) {
     if (opts.weichesUfer !== false && !istWasser(gx, gy)) y = Math.min(y, boden - 0.06);
     vNr[k] = wpos.length / 3;
     wpos.push(p.x, y, p.z);
+    wank.push(p.x, boden, p.z);                      // Gelände-Punkt darunter (PS1-Einrasten wie der Boden, ab 1.3)
+    wufer.push(istWasser(gx, gy) ? 0 : 1);           // 1 = trockener Ufer-Punkt (für Schaum/Glanz, ab 1.3)
     return vNr[k];
   }
   for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {
@@ -106,10 +110,14 @@ export function createTerrainMesh(adapter, opts = {}) {
     color: opts.wasserFarbe ?? 0x3d7fb0, roughness: 0.15, metalness: 0.1, transparent: true,
     opacity: opts.wasserDeckkraft ?? 0.78, depthWrite: false,
   });
+  wasserMat.userData.ufer = true;                    // Geometrie trägt 'ufer' (world/wasser-glanz)
+  wasserMat.defines = { PSX_ANKER: '' };             // render/psx ≥ 1.1: Wasser wackelt mit dem Gelände, scheint nicht durch
   let wasser = null;
   if (widx.length) {
     const wg = new THREE.BufferGeometry();
     wg.setAttribute('position', new THREE.Float32BufferAttribute(wpos, 3));
+    wg.setAttribute('psxAnker', new THREE.Float32BufferAttribute(wank, 3));
+    wg.setAttribute('ufer', new THREE.Float32BufferAttribute(wufer, 1));
     wg.setIndex(widx);
     wg.computeVertexNormals();
     wasser = new THREE.Mesh(wg, wasserMat);

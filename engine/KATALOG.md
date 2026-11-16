@@ -144,6 +144,7 @@
 | scatter-mesh | `engine/world/scatter-mesh.js` | Zeichnet die Objekte einer erzeugten Welt (welt.objekte) als InstancedMesh je (Typ, Variante): mit Asset-Cache prozedurale Natur-Assets in Metern (Bäume, Felsen, Büsche, Bodendecker …) mit Wind, sonst einfache Low-Poly-FORMEN; unbekannte Typen → Ersatz nach Art oder weglassen; Seerosen auf dem Wasser | entwurf |
 | terrain-farben | `engine/world/terrain-farben.js` | Geländefarben je Gitterzelle aus einer erzeugten Welt: weiche Biom-Übergänge mit ausgefransten Grenzen, Wiesenflecken und trockene Grastöne, Mikrovariation, Hangfels mit Gesteinsbändern, nasser Sand, Flusskies und Seeschlamm, festgetretene Wege (FLAG.WEG), Meeresgrund nach Tiefe, Schnee mit Rauschgrenze (an Nordhängen tiefer), Mulden dunkler | entwurf |
 | terrain-mesh | `engine/world/terrain-mesh.js` | Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit weich gemischten Biomfarben, Wiesenflecken, Hangfels, Ufern (Sand/Kies/Schlamm) und Schnee (terrain-farben), Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont | entwurf |
+| wasser-glanz | `engine/world/wasser-glanz.js` | Lebendiges Wasser für vorhandene Wasser-Materialien (Seen/Flüsse/Meer aus terrain-mesh): wandernde Helligkeits-Wellen, kleine Glitzerpunkte und ein Schaumsaum am Ufer – reiner Shader-Hook, keine neue Geometrie, kein Draw-Call mehr | entwurf |
 | wege-lage | `engine/world/wege-lage.js` | Lage der Brücken einer Welt in Metern (Mitte, Richtung, Länge, Höhe an beiden Enden) und ein Adapter, auf dem Figuren über die Brücken laufen statt durch den Fluss | entwurf |
 | wege-mesh | `engine/world/wege-mesh.js` | Holzbrücken für die Wege einer Welt als Three-Meshes: Bohlendeck, Längsbalken, Geländer und Pfeiler bis zum Flussgrund, passend geneigt zwischen beiden Ufern (Lage aus wege-lage) | entwurf |
 | welt-aenderung | `engine/world/welt-aenderung.js` | Änderungs-Schicht über einer erzeugten Welt (ohne THREE): Gelände mit Pinseln heben, senken, glätten, einebnen und Objekte entfernen; gemerkt werden nur die Unterschiede zum Seed (kleiner Spielstand), mit Rückgängig/Wiederholen, Sperrzonen (Wasser, Wege) und Meldung des geänderten Bereichs fürs Neuzeichnen | entwurf |
@@ -192,7 +193,7 @@
 | amboss | stationen, bau-uebung |
 | amulett | character-parts-zubehoer |
 | angriff | character-clips |
-| animation | character, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-pose, character-reaktion, character-rig, character-sekundaer |
+| animation | character, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-pose, character-reaktion, character-rig, character-sekundaer, wasser-glanz |
 | ansprechen | interaktion |
 | arbeit | character-clips-mehr |
 | art | baum-arten |
@@ -303,7 +304,7 @@
 | feuerstelle | stationen |
 | figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-lod, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-material, figur-schild, wege-lage, worldgen-adapter |
 | first-person | follow-camera |
-| fluss | worldgen-chunkfluss, worldgen-rivers |
+| fluss | wasser-glanz, worldgen-chunkfluss, worldgen-rivers |
 | flut | grosszauber-welle, grosszauber-welle-ansicht |
 | flächenschaden | grosszauber-riss, grosszauber-sturm, grosszauber-welle, grosszauber, zauber-daten, zauber |
 | folgen | follow-camera |
@@ -337,6 +338,7 @@
 | ginster | pflanze-busch |
 | gischt | grosszauber-welle-ansicht |
 | gitter | raum-gitter, worldgen-grid |
+| glanz | wasser-glanz |
 | gleiten | character-motor, character-anim-zustand |
 | glut | grosszauber-riss-ansicht |
 | graben | grosszauber-riss, welt-aenderung |
@@ -444,7 +446,7 @@
 | mathe | math |
 | mauer | mauer, welt-plan-formen |
 | maus | move-input |
-| meer | terrain-mesh |
+| meer | terrain-mesh, wasser-glanz |
 | mehrspieler | raum-gitter, schnappschuss-puffer |
 | meldung | hud |
 | menge | character-lod |
@@ -557,6 +559,7 @@
 | schaden | kampf-werte, kampf, treffer-zahlen |
 | schal | character-parts-zubehoer |
 | schatten | qualitaet, himmel |
+| schaum | wasser-glanz |
 | schild | character-ausruestung, ziel-rahmen |
 | schilf | pflanze-boden |
 | schleichen | character-sinne |
@@ -576,12 +579,12 @@
 | schwert | character-ausruestung |
 | schwimmen | character-motor, koerper, character-animator, character-gang |
 | schürze | character-parts-becken, character-parts-torso |
-| see | worldgen-chunkfluss |
+| see | wasser-glanz, worldgen-chunkfluss |
 | seed | rng, wetter |
 | seen | worldgen-hydrology |
 | seerose | pflanze-boden |
 | sekundaer | character-sekundaer |
-| shader | figur-material, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-welle-ansicht, natur-material, niederschlag, psx, zauber-effekte, himmel |
+| shader | figur-material, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-welle-ansicht, natur-material, niederschlag, psx, zauber-effekte, himmel, wasser-glanz |
 | sicht | character-sinne |
 | skelett | character-rig, baum-skelett |
 | sockel | character-ausruestung, character-rig |
@@ -644,7 +647,7 @@
 | turban | character-parts-hut |
 | turm | tempel |
 | tutorial | aufgaben, aufgaben-anzeige, welt-plan |
-| ufer | terrain-farben |
+| ufer | terrain-farben, wasser-glanz |
 | uhr | zeit |
 | ui | aufgaben-anzeige, figur-schild, hud, inventar-ansicht, kampf-leiste, menue, treffer-zahlen, ziel-rahmen |
 | umfallen | character-reaktion |
@@ -669,14 +672,14 @@
 | wald | baum |
 | wand | grosszauber-wand, grosszauber, grosszauber-mesh, grosszauber-wand-ansicht |
 | wandern | character-steering |
-| wasser | grosszauber-welle, grosszauber-welle-ansicht, terrain-mesh, worldgen-adapter, worldgen-hydrology, worldgen-rivers |
+| wasser | grosszauber-welle, grosszauber-welle-ansicht, terrain-mesh, wasser-glanz, worldgen-adapter, worldgen-hydrology, worldgen-rivers |
 | webaudio | klang |
 | wedel | pflanze-formen |
 | wege | wege-lage, wege-mesh, worldgen-wege |
 | wegfindung | worldgen-path |
 | wegweiser | bau-wegbau |
 | welle | grosszauber-welle, grosszauber, grosszauber-mesh, grosszauber-welle-ansicht |
-| welt | noise, rng, grosszauber, kampf, welt-dinge, kollision, scatter-mesh, terrain-farben, terrain-mesh, wege-lage, wege-mesh, welt-aenderung, welt-plan-formen, welt-plan, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
+| welt | noise, rng, grosszauber, kampf, welt-dinge, kollision, scatter-mesh, terrain-farben, terrain-mesh, wasser-glanz, wege-lage, wege-mesh, welt-aenderung, welt-plan-formen, welt-plan, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | werfen | welt-dinge |
 | werkbank | rezepte, stationen |
 | werkzeug | hand, rohstoffe, character-ausruestung |
@@ -2766,7 +2769,7 @@ ns.update(dt, { kamera, regen: wetter.regen, schnee: wetter.schnee, wind: wetter
 
 Genutzt von: testwelt · Tags: wetter, regen, schnee, partikel, shader · THREE: ja
 
-### psx · `engine/render/psx.js` · v1.0.1 · entwurf
+### psx · `engine/render/psx.js` · v1.1.0 · entwurf
 PS1-Look für eine ganze Szene (aus Viniland übernommen): Eckpunkte rasten auf ein grobes Bildraster (Wackeln), wenige Farbstufen mit Bayer-Dithering, grobe Pixel (kleine interne Auflösung, hart hochskaliert), Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen) – live an/aus ohne Neu-Kompilieren
 
 - `createPsx({ an, raster, farbtiefe, dither, zeilen, kontrast, saettigung, belichtung, vignette, toenung, nachfassen }) -> { an, werte, uniforms, setze(teil), wendeAn(wurzel), patche(material), material(opts), aufloesung(renderer, breite, hoehe, { pixelRatio }), update(dt, wurzel?), dispose() }`
@@ -3048,7 +3051,7 @@ const nurBiome = gelaendeFarben(welt, { hoehenSkala: 60, meterProZelle: 2, detai
 
 Genutzt von: – · Tags: welt, terrain, gelaende, farben, biome, schnee, ufer, vertexfarben · THREE: nein
 
-### terrain-mesh · `engine/world/terrain-mesh.js` · v1.2.0 · entwurf
+### terrain-mesh · `engine/world/terrain-mesh.js` · v1.3.0 · entwurf
 Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit weich gemischten Biomfarben, Wiesenflecken, Hangfels, Ufern (Sand/Kies/Schlamm) und Schnee (terrain-farben), Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont
 
 - `createTerrainMesh(adapter, opts) -> {gruppe,boden,wasser,meer,aktualisiere(bereich,{erde,erdFarbe}?)->vertices,dispose}`
@@ -3063,6 +3066,20 @@ aend.onAenderung(({ bereich }) => bereich && gelaende.aktualisiere(bereich, { er
 ```
 
 Genutzt von: enklave, testwelt · Tags: welt, terrain, gelaende, wasser, meer, mesh, biome, teilupdate · THREE: ja
+
+### wasser-glanz · `engine/world/wasser-glanz.js` · v1.0.0 · entwurf
+Lebendiges Wasser für vorhandene Wasser-Materialien (Seen/Flüsse/Meer aus terrain-mesh): wandernde Helligkeits-Wellen, kleine Glitzerpunkte und ein Schaumsaum am Ufer – reiner Shader-Hook, keine neue Geometrie, kein Draw-Call mehr
+
+- `createWasserGlanz(materialien, { staerke, glitzer, schaum, schaumFarbe, groesse, tempo }) -> { uniforms, update(zeit), setze(teil), dispose() }`
+- `patcheGlanzShader(shader, uniforms, { ufer }) -> shader`
+
+```js
+import { createWasserGlanz } from '../../engine/world/wasser-glanz.js';
+const glanz = createWasserGlanz([gelaende.wasser?.material, gelaende.meer.material]);   // VOR psx.wendeAn(szene)
+// je Bild: glanz.update(zeitInSekunden);
+```
+
+Genutzt von: enklave · Tags: wasser, fluss, see, meer, shader, glanz, schaum, ufer, animation, welt · THREE: ja
 
 ### wege-lage · `engine/world/wege-lage.js` · v1.0.0 · entwurf
 Lage der Brücken einer Welt in Metern (Mitte, Richtung, Länge, Höhe an beiden Enden) und ein Adapter, auf dem Figuren über die Brücken laufen statt durch den Fluss

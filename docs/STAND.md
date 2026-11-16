@@ -3,6 +3,7 @@
 > Wird von `/ende` überschrieben und von `/start` gelesen. Höchstens 40 Zeilen.
 
 ## Zuletzt gemacht
+- Wasser-Glitch (Wasser scheint beim Laufen durch Ufer/Boden) behoben: psx 1.1 `PSX_ANKER` – Wasser rastet mit dem Gelände darunter ein; neu `world/wasser-glanz` (Wellen, Glitzern, Ufer-Schaum) in der Enklave. Shader nur einzeln in Chromium kompiliert, Spiel nicht im Browser geprüft (kein three/Netz in der Sitzung)
 - Neues Spiel **games/enklave** (Bauplan `docs/WELT-ENKLAVE.md`): Tutorial-Tal (16 Schritte, automatisiert komplett durchgespielt), Pfad ~540 m mit Wegweisern/Brücke/Aussicht,
   ummauerte Stadt mit 29 NPCs, Tag/Nacht, Rauch/Glühwürmchen, Ambiente-Klang, Asset-Galerie `games/enklave/galerie.html`
 - Engine neu: `world/welt-plan`(+formen), `models/bau/*` (35 Assets), `gameplay/aufgaben`, `ui/aufgaben-anzeige`, `models/character/character-lod`; klang 1.2, character 1.4

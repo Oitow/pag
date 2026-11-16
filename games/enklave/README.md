@@ -19,7 +19,8 @@ I Rucksack · T Ziel · Ziehen = Kamera. Handy: Stick links, Knöpfe rechts, �
 - Aufgaben: `engine/gameplay/aufgaben` + `engine/ui/aufgaben-anzeige` (Ziel-Zeile, Wegpunkt-Pfeil), Daten in `js/tutorial-daten.js`
 - Figuren: nah voll animiert (höchstens 3), fern als `engine/models/character/character-lod` (alle in 1 Draw-Call)
 - Atmosphäre: Tag/Nacht (`world/himmel`), Rauch/Glut/Glühwürmchen/Pollen, Ambiente-Klang (abschaltbar), Nachtbeleuchtung
-- PS1-Look (`render/psx`) und automatische Qualität (`render/qualitaet`)
+- PS1-Look (`render/psx`) und automatische Qualität (`render/qualitaet`); Wasser rastet mit dem Gelände ein (kein Durchscheinen am Ufer)
+- Lebendiges Wasser: Wellen, Glitzern, Ufer-Schaum (`world/wasser-glanz`)
 
 ## Test-Abkürzungen
 `?ort=tal|aussicht|tor|stadt` · `?schritt=<Nr|id>` · `?frisch` (Spielstand ignorieren) · `?debug` (fps, Draw-Calls) · `?zeitraffer=N` · `?test=1` (Smoke)

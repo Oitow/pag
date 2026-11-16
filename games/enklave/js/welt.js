@@ -8,6 +8,7 @@ import { createScatterMesh } from '../../../engine/world/scatter-mesh.js';
 import { createWegeMesh } from '../../../engine/world/wege-mesh.js';
 import { mitBruecken } from '../../../engine/world/wege-lage.js';
 import { createKollisionsWelt } from '../../../engine/world/kollision.js';
+import { createWasserGlanz } from '../../../engine/world/wasser-glanz.js';
 import { createAssetCache } from '../../../engine/models/natur/natur-assets.js';
 import { hashSeed } from '../../../engine/core/rng.js';
 import { ENKLAVE_PLAN } from './plan-daten.js';
@@ -25,16 +26,17 @@ export function baueWelt({ szene, pruefen = false }) {
   const msWelt = performance.now() - t0;
   const pruefung = pruefen ? plan.pruefe(adapter) : null;
   const gelaende = createTerrainMesh(adapter, { schatten: true });
+  const glanz = createWasserGlanz([gelaende.wasser?.material, gelaende.meer.material]);   // Wellen, Glitzern, Ufer-Schaum (vor psx)
   const objekte = createScatterMesh(adapter, { schatten: false, unterWasser: false, assets: createAssetCache, bodendeckerWeite: 60, kachel: 0, varianten: 2, variantenBoden: 1, detail: 0, fernWeite: 0,
     typSkala: { fels: 1.4, felsbrocken: 1.8 } });
   const wege = createWegeMesh(adapter, { schatten: true });
   const kollision = createKollisionsWelt({ welt: mitBruecken(adapter, wege.lagen) });
   szene.add(gelaende.gruppe, objekte.gruppe, wege.gruppe);
   return {
-    welt, adapter, plan, gelaende, objekte, wege, kollision, msWelt, pruefung,
-    update(zeit, opts) { objekte.update(zeit, opts); },
+    welt, adapter, plan, gelaende, glanz, objekte, wege, kollision, msWelt, pruefung,
+    update(zeit, opts) { objekte.update(zeit, opts); glanz.update(zeit); },
     dispose() {
-      gelaende.dispose(); objekte.dispose(); wege.dispose(); kollision.dispose(); adapter.dispose(); plan.dispose();
+      glanz.dispose(); gelaende.dispose(); objekte.dispose(); wege.dispose(); kollision.dispose(); adapter.dispose(); plan.dispose();
       szene.remove(gelaende.gruppe, objekte.gruppe, wege.gruppe);
     },
   };
