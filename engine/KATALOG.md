@@ -58,7 +58,9 @@
 | move-input | `engine/input/move-input.js` | Bewegungs-Eingabe für Figuren: Tastatur (WASD/Pfeile), Maus-Ziehen/Mausrad, Touch-Stick + Knöpfe, Gamepad → Stick, Kamera-Delta, Aktionen (Flanke/gehalten) | entwurf |
 | touch-stick | `engine/input/touch-stick.js` | Touch-Steuerung fürs Handy: dynamischer virtueller Joystick (linke Hälfte), Kamera-Wischen + Pinch-Zoom (rechte Hälfte), runde Aktionsknöpfe unten rechts | entwurf |
 | bau-basis | `engine/models/bau/bau-basis.js` | Gemeinsame Farben und Helfer für Bau-Assets: lokale Kollisions-Körper, Asset-Ergebnis mit dispose | entwurf |
+| bau-pruefung | `engine/models/bau/bau-pruefung.mjs` | Testhelfer: gemeinsame Prüfung für Kleinkram-Assets (Attribute, Budget, Maße, Kollision, Determinismus) – nur in Tests | entwurf |
 | bau-teile | `engine/models/bau/bau-teile.js` | Bauteile für Gebäude-Assets: Satteldach/Pultdach mit Schindelreihen, Giebel, Fachwerk, Fenster mit Läden, Tür, Zinnen, Laterne, Flagge | entwurf |
+| gebaeude-pruefen | `engine/models/bau/gebaeude-pruefen.mjs` | Testhelfer: gemeinsame Abnahme für Gebäude-Assets (Budget, Maße, Kollision, Anker, Seed-Determinismus) – nur in Tests | entwurf |
 | haus | `engine/models/bau/haus.js` | Wohnhaus als Low-Poly-Asset: v0 Fachwerkhaus (Satteldach rot, Fensterläden), v1 Steinhaus (Schieferdach, Kamin, Vordach) | entwurf |
 | bau-licht | `engine/models/bau/licht.js` | Lichtquellen als Low-Poly-Asset mit Leucht-Geometrie (unbeleuchtet zeichnen): Laterne auf Pfahl, Wandfackel, Lagerfeuer mit Steinring | entwurf |
 | bau-markt | `engine/models/bau/markt.js` | Marktplatz-Kleinkram als Low-Poly-Asset: Marktstand mit Stoffdach (4 Farben), Brunnen mit Holzdach, Sitzbank | entwurf |
@@ -193,7 +195,7 @@
 | ansprechen | interaktion |
 | arbeit | character-clips-mehr |
 | art | baum-arten |
-| asset | bau-basis, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau |
+| asset | bau-basis, bau-pruefung, gebaeude-pruefen, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau |
 | ast | totholz-form, totholz |
 | astar | worldgen-path |
 | attrappe | fake-dom |
@@ -218,7 +220,7 @@
 | bank | bau-markt |
 | banner | bau-vorrat, aufgaben-anzeige |
 | bart | character-parts-haar, character-parts-kopf |
-| bau | bau-basis, bau-teile, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau |
+| bau | bau-basis, bau-pruefung, bau-teile, gebaeude-pruefen, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau |
 | bauen | welt-aenderung |
 | baum | baum-arten, baum-skelett, baum, natur-assets, natur-basis |
 | baumstumpf | totholz |
@@ -505,6 +507,7 @@
 | priority-flood | worldgen-hydrology |
 | profil | welt-plan-formen |
 | prozedural | noise, baum-skelett, baum, fels-form, fels, natur-assets, natur-basis, totholz, worldgen |
+| pruefung | bau-pruefung, gebaeude-pruefen |
 | ps1 | psx |
 | psx | psx |
 | puppe | bau-uebung |
@@ -619,7 +622,7 @@
 | tempel | tempel |
 | temperatur | worldgen-climate |
 | terrain | noise, terrain-farben, terrain-mesh, welt-aenderung, worldgen-chunks, worldgen-erosion, worldgen-height, worldgen-shape, worldgen |
-| test | fake-dom |
+| test | bau-pruefung, gebaeude-pruefen, fake-dom |
 | third-person | follow-camera |
 | toast | hud |
 | tod | character-reaktion |
@@ -1657,6 +1660,19 @@ const kiste = asset({ name: 'kiste', geometrie, kollision: [kasten(0, 0, 0.4, 0.
 
 Genutzt von: – · Tags: bau, gebaeude, asset, farben, kollision · THREE: nein
 
+### bau-pruefung · `engine/models/bau/bau-pruefung.mjs` · v1.0.0 · entwurf
+Testhelfer: gemeinsame Prüfung für Kleinkram-Assets (Attribute, Budget, Maße, Kollision, Determinismus) – nur in Tests
+
+- `pruefeAsset(asset,{budget,tol,leucht,anker})`
+- `pruefeDeterminismus(fabrik,opts)`
+- `andereVariante(fabrik,v0,v1)`
+
+```js
+import { pruefeAsset } from './bau-pruefung.mjs'; pruefeAsset(createFass({ seed: 1 }), { budget: 120 });
+```
+
+Genutzt von: – · Tags: test, bau, asset, pruefung · THREE: ja
+
 ### bau-teile · `engine/models/bau/bau-teile.js` · v1.0.0 · entwurf
 Bauteile für Gebäude-Assets: Satteldach/Pultdach mit Schindelreihen, Giebel, Fachwerk, Fenster mit Läden, Tür, Zinnen, Laterne, Flagge
 
@@ -1681,6 +1697,18 @@ fenster(mitT(b, { z: 2 }), mitT(l, { z: 2 }), 0, 1.5);
 ```
 
 Genutzt von: – · Tags: bau, gebaeude, dach, fachwerk, fenster, zinnen, lowpoly · THREE: ja
+
+### gebaeude-pruefen · `engine/models/bau/gebaeude-pruefen.mjs` · v1.0.0 · entwurf
+Testhelfer: gemeinsame Abnahme für Gebäude-Assets (Budget, Maße, Kollision, Anker, Seed-Determinismus) – nur in Tests
+
+- `vereinigung(asset) -> Box`
+- `pruefeAsset(name, fabrik, {varianten,budget,opts,anker,tol}) – legt node:test-Tests an`
+
+```js
+import { pruefeAsset } from './gebaeude-pruefen.mjs'; pruefeAsset('haus', createHaus, { budget: 1200 });
+```
+
+Genutzt von: – · Tags: test, bau, asset, pruefung · THREE: ja
 
 ### haus · `engine/models/bau/haus.js` · v1.0.0 · entwurf
 Wohnhaus als Low-Poly-Asset: v0 Fachwerkhaus (Satteldach rot, Fensterläden), v1 Steinhaus (Schieferdach, Kamin, Vordach)

@@ -1,4 +1,14 @@
-// Gemeinsame Prüfung für Kleinkram-Assets (nur in Tests benutzt, keine Engine-API).
+/**
+ * @modul    bau-pruefung
+ * @zweck    Testhelfer: gemeinsame Prüfung für Kleinkram-Assets (Attribute, Budget, Maße, Kollision, Determinismus) – nur in Tests
+ * @api      pruefeAsset(asset,{budget,tol,leucht,anker}) ; pruefeDeterminismus(fabrik,opts) ; andereVariante(fabrik,v0,v1)
+ * @beispiel
+ *   import { pruefeAsset } from './bau-pruefung.mjs'; pruefeAsset(createFass({ seed: 1 }), { budget: 120 });
+ * @tags     test, bau, asset, pruefung
+ * @version  1.0.0
+ * @status   entwurf
+ * @three    ja
+ */
 import assert from 'node:assert/strict';
 
 const box = (a) => {

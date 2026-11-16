@@ -1,4 +1,14 @@
-// Gemeinsame Abnahme-Prüfung für Gebäude-Assets (Testhelfer, kein Modul)
+/**
+ * @modul    gebaeude-pruefen
+ * @zweck    Testhelfer: gemeinsame Abnahme für Gebäude-Assets (Budget, Maße, Kollision, Anker, Seed-Determinismus) – nur in Tests
+ * @api      vereinigung(asset) -> Box ; pruefeAsset(name, fabrik, {varianten,budget,opts,anker,tol}) – legt node:test-Tests an
+ * @beispiel
+ *   import { pruefeAsset } from './gebaeude-pruefen.mjs'; pruefeAsset('haus', createHaus, { budget: 1200 });
+ * @tags     test, bau, asset, pruefung
+ * @version  1.0.0
+ * @status   entwurf
+ * @three    ja
+ */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
