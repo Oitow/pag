@@ -18,6 +18,8 @@
 | rng | `engine/core/rng.js` | Deterministischer Zufall (mulberry32), Seeds aus Text, Gitter-Hash und Würfel-Helfer | stabil |
 | schleife | `engine/core/schleife.js` | Spielschleife mit variablem oder festem Zeitschritt, dt-Begrenzung, FPS-Anzeige und Tab-Pause | entwurf |
 | schnappschuss-puffer | `engine/core/schnappschuss-puffer.js` | Mehrspieler-Grundlage: speichert verspätete Zustände fremder Figuren mit Zeitstempel und liefert weich interpolierte Zustände (leicht in der Vergangenheit) | entwurf |
+| sdf-netz | `engine/core/sdf-netz.js` | Macht aus einem Abstandsfeld (sdf.js) ein Dreiecksnetz (Surface Nets, glatte Normalen) und eine begehbare Höhenkarte | entwurf |
+| sdf | `engine/core/sdf.js` | Abstandsfelder (SDF) aus Kapseln, Kugeln, Ellipsoiden und Ketten, weich vereinigt (smooth-min) – formt organische Körper wie Wurzeln und Stämme | entwurf |
 | speicher | `engine/core/speicher.js` | Spielstände sicher speichern/laden (localStorage mit Arbeitsspeicher-Fallback), Versionen, Migration, Autospeichern, Export/Import als Text, TypedArrays | entwurf |
 | zeit | `engine/core/zeit.js` | Spieluhr: Tageszeit, Tage, Jahreszeiten und Jahre mit Ereignissen, Pause, Tempo und Speicherstand | entwurf |
 | aufgaben | `engine/gameplay/aufgaben.js` | Aufgaben-/Tutorial-Logik: Schritte (gehe-zu, sprich-mit, sammle, besiege, benutze, warte), Fortschritt, Signale, Speicherstand; reine Daten, serialisierbar | entwurf |
@@ -114,9 +116,16 @@
 | pflanze-busch | `engine/models/natur/pflanze-busch.js` | Prozedurale Low-Poly-Büsche: busch (Laubballen + Zweige), beerenbusch (rote/blaue Beeren), ginster (Ruten mit gelben Blüten), zwergstrauch (flach, heidekrautig) | entwurf |
 | pflanze-formen | `engine/models/natur/pflanze-formen.js` | Reine Form-Logik für Pflanzen (ohne THREE): Bögen für Halme/Wedel/Blätter, Rosetten-Layouts, Blüten- und Pilzsorten, Kaktusarme, Farbhelfer mit Jahreszeit | entwurf |
 | pflanze-wueste | `engine/models/natur/pflanze-wueste.js` | Prozedurale Low-Poly-Wüstenpflanzen: kaktus (Kandelaber mit Armen), saeulenkaktus (gerippte Säule, evtl. Blüte), agave (Rosette spitzer, gekielter Blätter) | entwurf |
+| riesenbaum-form | `engine/models/natur/riesenbaum-form.js` | Reine Form eines Urwald-Riesen in echter Größe (ohne THREE): Stamm-Achse, Brettwurzeln, optionaler Wurzelbogen als SDF, dazu Maße und Kronen-Skelett | entwurf |
+| riesenbaum-krone | `engine/models/natur/riesenbaum-krone.js` | Krone des Riesenbaums (rein, ohne THREE): wenige sehr dicke Hauptäste als Skelett, Laub als große weiche Gauß-Blobs, hängende Bartflechten | entwurf |
+| riesenbaum-netz | `engine/models/natur/riesenbaum-netz.js` | Baut aus der Riesenbaum-Form die rohen Daten (rein, ohne THREE): SDF-Netz für Wurzeln und Stammfuß, verjüngter Stamm, Ast-Röhren, Rindenfarben, Splats, Höhenkarte | entwurf |
+| riesenbaum | `engine/models/natur/riesenbaum.js` | Urwald-Riese in echter Größe (~110 m): Wurzeln und Stammfuß weich aus dem SDF, darüber Stamm und dicke Äste als EINE Geometrie; Laub, Moos und Flechten als Gauß-Splat-Daten | entwurf |
 | totholz-form | `engine/models/natur/totholz-form.js` | Reine Röhren-Geometrie (ohne THREE) für Totholz/Äste: Ringe entlang eines Pfads, Enden zu/Spitze/Jahresring-Scheibe, Markierung je Dreieck | neu |
 | totholz | `engine/models/natur/totholz.js` | Prozedurales Low-Poly-Totholz (Vertrag NATUR-ASSETS): baumstumpf (Jahresringe, Wurzelansätze), liegenderStamm (Aststummel), ast | neu |
 | figur-material | `engine/render/figur-material.js` | Weiches Figuren-Material: Standard-Material mit Randlicht (Fresnel), aufgehellter Schattenseite und kräftigeren Farben – Figuren heben sich vom Gelände ab | entwurf |
+| gauss-saat | `engine/render/gauss-saat.js` | Prozedurale Gauß-Splats erzeugen: wachsender Daten-Sammler, Quaternion aus einer Normalen und flächengleiche Aussaat flacher Scheiben auf einem Dreiecksnetz (Moos, Flechten, Laub) | entwurf |
+| gauss-sortierung | `engine/render/gauss-sortierung.js` | Tiefen-Sortierung für Gauß-Splats: 16-Bit-Zähl-Sortierung entlang der Blickrichtung (hinten→vorn), ohne Allokation je Aufruf – 120 k Splats in ~1–3 ms | entwurf |
+| gauss-wolke | `engine/render/gauss-wolke.js` | Echte 3D-Gauß-Splats, prozedural befüllt: jeder Splat ist ein Ellipsoid (Mitte, 3 Standardabweichungen, Drehung, Farbe, Deckkraft), gezeichnet als instanziertes Viereck mit 3D→2D-Kovarianz, vormultipliziertem Alpha und Tiefen-Sortierung – Meshes verdecken Splats korrekt | entwurf |
 | grosszauber-mesh | `engine/render/grosszauber-mesh.js` | Zeichnet laufende Großzauber (gameplay/grosszauber): je Wirkung eine Ansicht aus einer Ansichts-Fabrik je Art, legt sie an und räumt sie ab, sobald die Wirkung endet | entwurf |
 | grosszauber-riss-ansicht | `engine/render/grosszauber-riss.js` | Zeichnet den Erdriss (gameplay/grosszauber-riss): glühendes Lava-Band mit Felsrändern, gekippte Schollen, Lava-Säulen und Glut-Funken; kühlt zu dunkelrot/schwarz ab | entwurf |
 | grosszauber-sturm-ansicht | `engine/render/grosszauber-sturm.js` | Ansicht des Zyklons: zwei ineinanderliegende Trichter-Röhren mit scrollender Streifen-Textur, drehende Wolkenscheibe, spiralförmig aufsteigende Staub-/Trümmer-Punkte samt Bodenring, Blitze als Zickzack-Linien | entwurf |
@@ -176,6 +185,7 @@
 
 | Tag | Module |
 |---|---|
+| 3dgs | gauss-wolke |
 | abbauen | rohstoffe |
 | abfluss | worldgen-hydrology, worldgen-rivers |
 | abfrage | raum-gitter, worldgen-query |
@@ -183,6 +193,7 @@
 | ablegen | welt-dinge |
 | abprallen | koerper |
 | abstand | worldgen-grid |
+| abstandsfeld | sdf |
 | accessoire | character-parts-zubehoer |
 | accessoires | character-look |
 | adapter | kollision, wege-lage, worldgen-adapter |
@@ -225,7 +236,7 @@
 | bart | character-parts-haar, character-parts-kopf |
 | bau | bau-basis, bau-pruefung, bau-teile, gebaeude-pruefen, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau |
 | bauen | welt-aenderung |
-| baum | baum-arten, baum-skelett, baum, natur-assets, natur-basis |
+| baum | baum-arten, baum-skelett, baum, natur-assets, natur-basis, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum |
 | baumstumpf | totholz |
 | beben | grosszauber-riss, grosszauber-wand, grosszauber-welle, grosszauber, grosszauber-mesh |
 | bedrohung | bedrohung |
@@ -261,6 +272,7 @@
 | controller | character-motor, character |
 | crafting | rezepte, stationen |
 | dach | bau-teile |
+| daemmerwald | riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum |
 | dash | character-motor, character-anim-zustand |
 | daten | register, faehigkeiten-daten, nahkampf-daten, zauber-daten, baum-arten, worldgen-vegetation |
 | debuff | kampf, zustaende, ziel-rahmen |
@@ -272,6 +284,7 @@
 | dot | zustaende |
 | draw-calls | character-lod |
 | dreispitz | character-parts-hut |
+| dunst | gauss-wolke |
 | dämmerung | himmel-stand |
 | editor | character-look, character-model, welt-aenderung |
 | effekt | grosszauber-mesh, zauber-effekte |
@@ -305,11 +318,12 @@
 | feuerstelle | stationen |
 | figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-lod, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-material, figur-schild, wege-lage, worldgen-adapter |
 | first-person | follow-camera |
+| flechte | riesenbaum-krone |
 | fluss | wasser-glanz, worldgen-chunkfluss, worldgen-rivers |
 | flut | grosszauber-welle, grosszauber-welle-ansicht |
 | flächenschaden | grosszauber-riss, grosszauber-sturm, grosszauber-welle, grosszauber, zauber-daten, zauber |
 | folgen | follow-camera |
-| form | pflanze-formen, worldgen-shape |
+| form | sdf, pflanze-formen, riesenbaum-form, worldgen-shape |
 | fortschritt | aufgaben |
 | fps | schleife, qualitaet |
 | frisur | character-parts-haar, character-parts-kopf |
@@ -319,8 +333,8 @@
 | gamepad | move-input |
 | gameplay | ereignisse, aufgaben, behaelter, character-brain, character-gruppe, character-motor-tuning, character-motor, character-sinne, character-steering-extra, character-steering, hand, horde, interaktion, inventar, koerper, rezepte, rohstoffe, stationen, tueren, welt-dinge |
 | gang | character-animator, character-gang |
-| gauss | splat-look |
-| gaussian | splat-look |
+| gauss | riesenbaum-krone, riesenbaum, gauss-saat, gauss-sortierung, gauss-wolke, splat-look |
+| gaussian | gauss-saat, gauss-sortierung, gauss-wolke, splat-look |
 | gcd | faehigkeiten, kampf-leiste |
 | gebaeude | bau-basis, bau-teile, haus, mauer, schmiede, taverne, tempel, wachturm |
 | gebirge | worldgen-height |
@@ -347,6 +361,7 @@
 | graben | grosszauber-riss, welt-aenderung |
 | grading | psx |
 | gras | pflanze-boden |
+| groesse | riesenbaum |
 | großzauber | grosszauber-riss, grosszauber-sturm, grosszauber-wand, grosszauber-welle, grosszauber, grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht |
 | gürtel | character-parts-becken |
 | haar | character-parts-haar, character-parts-kopf, character-sekundaer |
@@ -368,6 +383,7 @@
 | hindernis | grosszauber-wand, kollision |
 | hinweis | interaktion, hud |
 | hoehe | worldgen-height, worldgen-query |
+| hoehenkarte | sdf-netz, riesenbaum-netz |
 | hoeren | character-sinne |
 | holz | wege-mesh |
 | horde | horde, zauber-daten, zauber, ratte, horde-mesh |
@@ -385,6 +401,7 @@
 | instancedmesh | horde-mesh |
 | instancing | ratte, grosszauber-wand-ansicht, horde-mesh |
 | instanzen | natur-material, scatter-mesh |
+| instanziert | gauss-wolke |
 | interaktion | interaktion, tueren |
 | interpolation | math, schnappschuss-puffer |
 | inventar | behaelter, hand, inventar, rezepte, welt-dinge, inventar-ansicht |
@@ -409,20 +426,21 @@
 | klima | wetter, worldgen-biomes, worldgen-climate |
 | knoepfe | touch-stick |
 | koerper | koerper, kollision |
-| kollision | follow-camera, raum-gitter, grosszauber, tueren, bau-basis, kollision, worldgen-adapter |
+| kollision | follow-camera, raum-gitter, sdf-netz, grosszauber, tueren, bau-basis, kollision, worldgen-adapter |
 | kombo | nahkampf-daten, nahkampf |
 | kopf | character-anim-blick, character-parts-haar, character-parts-hut, character-parts-kopf |
 | korb | character-ausruestung |
 | kreatur | ratte |
 | kristall | tempel |
 | krit | kampf-werte |
-| krone | character-parts-hut, character-parts-kopf |
+| krone | character-parts-hut, character-parts-kopf, riesenbaum-krone |
 | körper | character-parts |
 | l-system | baum-skelett |
 | ladungen | faehigkeiten |
 | lager | behaelter |
 | lagerfeuer | bau-licht |
 | laterne | bau-licht, character-ausruestung |
+| laub | riesenbaum-krone, gauss-saat, gauss-wolke |
 | laufen | character-animator, character-gang |
 | lava | grosszauber-riss, grosszauber-riss-ansicht |
 | leben | kampf-werte, kampf, hud |
@@ -456,7 +474,7 @@
 | menge | character-lod |
 | menue | menue |
 | merge | natur-basis, mesh-builder |
-| mesh | character-model, character-parts-basis, character-parts, mesh-builder, scatter-mesh, terrain-mesh, wege-mesh |
+| mesh | sdf-netz, character-model, character-parts-basis, character-parts, mesh-builder, scatter-mesh, terrain-mesh, wege-mesh |
 | migration | speicher |
 | mimik | character-anim-blick, character-look, character-model, character-parts-gesicht |
 | mischen | character-pose |
@@ -464,10 +482,11 @@
 | mittelalter | bau-markt, bau-vorrat, bau-wegbau |
 | mmo | bedrohung, faehigkeiten-daten, faehigkeiten, grosszauber-wand, grosszauber-welle, grosszauber, kampf-werte, kampf, nahkampf-daten, nahkampf, zustaende, character-lod, kampf-leiste, ziel-rahmen |
 | mobil | grosszauber-riss-ansicht, grosszauber-welle-ansicht |
-| modell | character-model, ratte, mesh-builder |
+| modell | sdf-netz, sdf, character-model, ratte, mesh-builder |
 | mond | himmel-stand, himmel |
 | monokel | character-parts-zubehoer |
 | monster | horde, horde-mesh |
+| moos | riesenbaum-netz, gauss-saat, gauss-wolke |
 | motor | character-anim-zustand |
 | nachbarn | raum-gitter |
 | nachbearbeitung | splat-look |
@@ -477,9 +496,9 @@
 | nachwachsen | rohstoffe |
 | nahkampf | nahkampf-daten, nahkampf |
 | namensschild | figur-schild |
-| natur | baum-arten, baum-skelett, baum, fels-basis, fels-form, fels, natur-assets, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-wueste, totholz-form, totholz, natur-material, scatter-mesh |
+| natur | baum-arten, baum-skelett, baum, fels-basis, fels-form, fels, natur-assets, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-wueste, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum, totholz-form, totholz, natur-material, scatter-mesh |
 | nebel | himmel, wetter |
-| netz | worldgen-wege |
+| netz | sdf-netz, riesenbaum-netz, gauss-saat, worldgen-wege |
 | netzwerk | schnappschuss-puffer |
 | node | fake-dom |
 | noise | noise |
@@ -491,6 +510,7 @@
 | ohrringe | character-parts-zubehoer |
 | optionen | menue, worldgen-presets |
 | orbit | follow-camera |
+| organisch | sdf |
 | ort | stationen |
 | orte | worldgen-sites |
 | overlay | aufgaben-anzeige, figur-schild, hud, kampf-leiste, menue, treffer-zahlen, ziel-rahmen |
@@ -520,13 +540,15 @@
 | primitive | mesh-builder |
 | priority-flood | worldgen-hydrology |
 | profil | welt-plan-formen |
-| prozedural | noise, baum-skelett, baum, fels-form, fels, natur-assets, natur-basis, totholz, worldgen |
+| prozedural | noise, baum-skelett, baum, fels-form, fels, natur-assets, natur-basis, riesenbaum-form, totholz, gauss-saat, worldgen |
 | pruefung | bau-pruefung, gebaeude-pruefen |
 | ps1 | psx |
 | psx | psx |
 | puppe | bau-uebung |
 | qualität | qualitaet |
+| quaternion | gauss-saat |
 | quest | aufgaben |
+| radix | gauss-sortierung |
 | raf | schleife |
 | ragdoll | character-reaktion |
 | randlicht | figur-material |
@@ -545,8 +567,10 @@
 | ressource | faehigkeiten, kampf-leiste |
 | retro | psx |
 | rezept | register, rezepte |
+| riesenbaum | riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum |
 | rig | character-pose, character-rig |
 | rim | figur-material |
+| rinde | riesenbaum-netz |
 | ring | grosszauber-wand |
 | riss | grosszauber-riss, grosszauber-riss-ansicht |
 | rock | character-parts-becken |
@@ -561,6 +585,7 @@
 | ruhe | character-anim-idle |
 | rückstoß | horde |
 | rüstung | character-parts-torso |
+| saat | gauss-saat |
 | salto | character-anim-zustand |
 | schaden | kampf-werte, kampf, treffer-zahlen |
 | schal | character-parts-zubehoer |
@@ -585,23 +610,27 @@
 | schwert | character-ausruestung |
 | schwimmen | character-motor, koerper, character-animator, character-gang |
 | schürze | character-parts-becken, character-parts-torso |
+| sdf | sdf-netz, sdf, riesenbaum-form, riesenbaum-netz, riesenbaum |
 | see | wasser-glanz, worldgen-chunkfluss |
 | seed | rng, wetter |
 | seen | worldgen-hydrology |
 | seerose | pflanze-boden |
 | sekundaer | character-sekundaer |
-| shader | figur-material, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-welle-ansicht, natur-material, niederschlag, psx, splat-look, zauber-effekte, himmel, wasser-glanz |
+| shader | figur-material, gauss-wolke, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-welle-ansicht, natur-material, niederschlag, psx, splat-look, zauber-effekte, himmel, wasser-glanz |
 | sicht | character-sinne |
 | skelett | character-rig, baum-skelett |
+| smooth-min | sdf |
 | sockel | character-ausruestung, character-rig |
 | sog | grosszauber-sturm |
 | sonne | himmel-stand, himmel |
+| sortierung | gauss-sortierung |
 | sound | klang |
 | speichern | speicher, zeit, behaelter, inventar, character-look, welt-aenderung |
 | spell | zauber-daten, zauber |
 | spieler | character, character-animator, character-look, character-model |
 | spielstand | speicher, menue |
-| splat | splat-look |
+| splat | gauss-saat, gauss-sortierung, gauss-wolke, splat-look |
+| splats | riesenbaum-krone, riesenbaum-netz, riesenbaum |
 | spline | welt-plan-formen |
 | splitscreen | psx |
 | sprechblase | figur-schild |
@@ -624,8 +653,10 @@
 | strassen | worldgen-wege |
 | strauch | pflanze-busch |
 | streaming | worldgen-chunks |
+| streuen | gauss-saat |
 | sturm | grosszauber-sturm, grosszauber, grosszauber-mesh, grosszauber-sturm-ansicht |
 | sukkulente | pflanze-wueste |
+| surface-nets | sdf-netz |
 | synth | klang |
 | tabelle | zauber-daten |
 | tag | himmel-stand, himmel |
@@ -641,6 +672,7 @@
 | terrain | noise, terrain-farben, terrain-mesh, welt-aenderung, worldgen-chunks, worldgen-erosion, worldgen-height, worldgen-shape, worldgen |
 | test | bau-pruefung, gebaeude-pruefen, fake-dom |
 | third-person | follow-camera |
+| tiefe | gauss-sortierung |
 | toast | hud |
 | tod | character-reaktion |
 | tor | tueren, mauer |
@@ -648,6 +680,7 @@
 | totholz | totholz-form, totholz |
 | touch | move-input, touch-stick, inventar-ansicht, kampf-leiste |
 | training | bau-uebung |
+| transparenz | gauss-sortierung, gauss-wolke |
 | treffer | character-reaktion, treffer-zahlen |
 | truhe | behaelter, inventar-ansicht |
 | tuer | interaktion, tueren |
@@ -663,6 +696,7 @@
 | umkreis | raum-gitter |
 | undo | welt-aenderung |
 | unendlich | worldgen-chunkfluss, worldgen-chunks |
+| urwald | riesenbaum-form, riesenbaum |
 | varianten | natur-assets |
 | variation | character-anim-idle |
 | vegetation | baum, natur-assets, natur-material, scatter-mesh, worldgen-vegetation |
@@ -677,7 +711,7 @@
 | wachturm | wachturm |
 | waffe | nahkampf-daten, nahkampf, character-ausruestung |
 | wahrnehmung | character-sinne |
-| wald | baum |
+| wald | baum, riesenbaum |
 | wand | grosszauber-wand, grosszauber, grosszauber-mesh, grosszauber-wand-ansicht |
 | wandern | character-steering |
 | wasser | grosszauber-welle, grosszauber-welle-ansicht, terrain-mesh, wasser-glanz, worldgen-adapter, worldgen-hydrology, worldgen-rivers |
@@ -687,7 +721,7 @@
 | wegfindung | worldgen-path |
 | wegweiser | bau-wegbau |
 | welle | grosszauber-welle, grosszauber, grosszauber-mesh, grosszauber-welle-ansicht |
-| welt | noise, rng, grosszauber, kampf, welt-dinge, kollision, scatter-mesh, terrain-farben, terrain-mesh, wasser-glanz, wege-lage, wege-mesh, welt-aenderung, welt-plan-formen, welt-plan, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
+| welt | noise, rng, sdf-netz, sdf, grosszauber, kampf, welt-dinge, kollision, scatter-mesh, terrain-farben, terrain-mesh, wasser-glanz, wege-lage, wege-mesh, welt-aenderung, welt-plan-formen, welt-plan, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | werfen | welt-dinge |
 | werkbank | rezepte, stationen |
 | werkzeug | hand, rohstoffe, character-ausruestung |
@@ -697,9 +731,12 @@
 | wirbel | grosszauber-sturm |
 | wirkbalken | kampf-leiste |
 | wirkzeit | faehigkeiten |
+| wolke | gauss-wolke |
 | wolken | grosszauber-sturm-ansicht, himmel |
 | worldgen | welt-plan, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | wueste | pflanze-wueste |
+| wurzel | riesenbaum-form, riesenbaum |
+| zaehlsortierung | gauss-sortierung |
 | zahlen | treffer-zahlen |
 | zauber | klang, grosszauber-riss, grosszauber-sturm, grosszauber-wand, grosszauber-welle, grosszauber, zauber-daten, zauber, character-clips-zauber, grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht, zauber-effekte |
 | zauberhut | character-parts-hut |
@@ -754,7 +791,7 @@ cam.setPreset('schulter'); cam.fahrt({ pos: { x: 5, y: 8, z: 5 }, blick: turm, d
 renderer.render(szene, cam.kamera);
 ```
 
-Genutzt von: enklave, figuren-labor, testwelt · Tags: kamera, third-person, first-person, orbit, folgen, zoom, figur, lock-on, schuetteln, kollision, kamerafahrt, preset · THREE: ja
+Genutzt von: daemmerwald, enklave, figuren-labor, testwelt · Tags: kamera, third-person, first-person, orbit, folgen, zoom, figur, lock-on, schuetteln, kollision, kamerafahrt, preset · THREE: ja
 
 ### ziel-wahl · `engine/camera/ziel-wahl.js` · v1.0.0 · entwurf
 Lock-On-Ziel auswählen: bestes Ziel vor der Figur (Winkel + Abstand) oder nächstes Ziel links/rechts vom aktuellen (Ziel wechseln)
@@ -825,7 +862,7 @@ const n = createNoise2D(42);
 const hoehe = fbm2(n, x * 0.01, y * 0.01, 5);
 ```
 
-Genutzt von: figuren-labor · Tags: rauschen, noise, terrain, welt, prozedural · THREE: nein
+Genutzt von: daemmerwald, figuren-labor · Tags: rauschen, noise, terrain, welt, prozedural · THREE: nein
 
 ### raum-gitter · `engine/core/raum-gitter.js` · v1.0.0 · entwurf
 Räumliches Raster (Spatial Hash in x/z) für bewegliche Dinge: Einträge mit id setzen/verschieben/entfernen und schnell alle im Umkreis finden – Grundlage für Kollision, Interaktion, Sinne und Sichtbereiche (Mehrspieler)
@@ -879,7 +916,7 @@ const r = rng(hashSeed('insel', 42));
 const baum = pick(r, ['eiche', 'tanne']);
 ```
 
-Genutzt von: enklave, figuren-labor, testwelt · Tags: zufall, seed, hash, welt · THREE: nein
+Genutzt von: daemmerwald, enklave, figuren-labor, natur-labor, testwelt · Tags: zufall, seed, hash, welt · THREE: nein
 
 ### schleife · `engine/core/schleife.js` · v1.0.0 · entwurf
 Spielschleife mit variablem oder festem Zeitschritt, dt-Begrenzung, FPS-Anzeige und Tab-Pause
@@ -892,7 +929,7 @@ const loop = createSchleife({ update: (dt) => welt.step(dt), render: () => rende
 loop.start();
 ```
 
-Genutzt von: enklave, testwelt · Tags: schleife, loop, zeitschritt, raf, fps · THREE: nein
+Genutzt von: daemmerwald, enklave, testwelt · Tags: schleife, loop, zeitschritt, raf, fps · THREE: nein
 
 ### schnappschuss-puffer · `engine/core/schnappschuss-puffer.js` · v1.0.0 · entwurf
 Mehrspieler-Grundlage: speichert verspätete Zustände fremder Figuren mit Zeitstempel und liefert weich interpolierte Zustände (leicht in der Vergangenheit)
@@ -907,6 +944,37 @@ const z = puffer.lese(jetzt, zielObjekt);                      // je Bild, ohne 
 ```
 
 Genutzt von: – · Tags: netzwerk, mehrspieler, interpolation, zeit · THREE: nein
+
+### sdf-netz · `engine/core/sdf-netz.js` · v1.0.1 · entwurf
+Macht aus einem Abstandsfeld (sdf.js) ein Dreiecksnetz (Surface Nets, glatte Normalen) und eine begehbare Höhenkarte
+
+- `sdfNetz(sdf, { zelle = 0.5, grenzen, maxZellen = 3e6, block = 4 }) -> { position, normal, index, dreiecke, zelle }`
+- `sdfHoehenkarte(sdf, { zelle = 0.5, grenzen, maxHoehe = 6, kopf = 2.2 }) -> { x0, z0, zelle, breite, tiefe, hoehe: Float32Array ‹NaN = nichts›, hoeheBei(x, z) }`
+
+```js
+import { createSdf } from '../../engine/core/sdf.js';
+import { sdfNetz, sdfHoehenkarte } from '../../engine/core/sdf-netz.js';
+const sdf = createSdf(); sdf.kugel([0, 1, 0], 2);
+const netz = sdfNetz(sdf, { zelle: 0.25 });             // → BufferGeometry: position, normal, index
+const karte = sdfHoehenkarte(sdf, { zelle: 0.5 });      // karte.hoeheBei(0, 0) ≈ 3
+```
+
+Genutzt von: – · Tags: sdf, netz, mesh, surface-nets, hoehenkarte, kollision, welt, modell · THREE: nein
+
+### sdf · `engine/core/sdf.js` · v1.0.0 · entwurf
+Abstandsfelder (SDF) aus Kapseln, Kugeln, Ellipsoiden und Ketten, weich vereinigt (smooth-min) – formt organische Körper wie Wurzeln und Stämme
+
+- `createSdf({ glatt }) -> { kapsel(a,b,ra,rb?,glatt?), kugel(m,r,glatt?), ellipsoid(m,radien,glatt?), kette(punkte,radien,{glatt,streckY}?), abzugKugel(m,r,glatt?), stoerung(fn,maxBetrag?), abstand(x,y,z) -> m, normale(x,y,z,out,eps?) -> out, grenzen() -> {min,max}, eingrenzen(min,max,rand?) -> anzahl, anzahl, spiel }`
+
+```js
+import { createSdf } from '../../engine/core/sdf.js';
+const sdf = createSdf({ glatt: 0.8 });
+sdf.kapsel([0, 0, 0], [0, 10, 0], 2, 1.5);            // Stamm
+sdf.kette([[1, 2, 0], [5, 0.5, 1], [9, -0.5, 0]], [1, 0.6, 0.3]);   // Wurzel, in sich hart, zum Rest weich
+const d = sdf.abstand(3, 1, 0);                        // < 0 = innen
+```
+
+Genutzt von: – · Tags: sdf, abstandsfeld, form, organisch, smooth-min, welt, modell · THREE: nein
 
 ### speicher · `engine/core/speicher.js` · v1.0.0 · entwurf
 Spielstände sicher speichern/laden (localStorage mit Arbeitsspeicher-Fallback), Versionen, Migration, Autospeichern, Export/Import als Text, TypedArrays
@@ -1138,7 +1206,7 @@ const bauer = createCharacter({ look, welt, name: 'Jupp', schilder });
 bauer.sage('Moin!', { geste: 'winken' }); bauer.blickZu(held); bauer.ausruesten('handR', mistgabel);
 ```
 
-Genutzt von: enklave, figuren-labor, testwelt · Tags: figur, charakter, spieler, npc, bewegung, animation, controller, avatar · THREE: nein
+Genutzt von: daemmerwald, enklave, figuren-labor, testwelt · Tags: figur, charakter, spieler, npc, bewegung, animation, controller, avatar · THREE: nein
 
 ### faehigkeiten-daten · `engine/gameplay/faehigkeiten-daten.js` · v1.0.0 · entwurf
 Beispiel-Fähigkeiten (Krieger, Magier, Heiler) für die MMO-Leiste; reine Daten
@@ -1645,7 +1713,7 @@ const ein2 = createMoveInput({ aktionen: ['rollen', 'interagieren'], belegung: {
 figur.update(dt, zuAbsicht(ein2.lesen(), kamera.blickYaw()));   // alle Aktions-Flags (rollen …) gehen mit zum Motor
 ```
 
-Genutzt von: enklave, figuren-labor, testwelt · Tags: eingabe, tastatur, maus, touch, gamepad, joystick, figur, steuerung · THREE: nein
+Genutzt von: daemmerwald, enklave, figuren-labor, testwelt · Tags: eingabe, tastatur, maus, touch, gamepad, joystick, figur, steuerung · THREE: nein
 
 ### touch-stick · `engine/input/touch-stick.js` · v1.1.1 · entwurf
 Touch-Steuerung fürs Handy: dynamischer virtueller Joystick (linke Hälfte), Kamera-Wischen + Pinch-Zoom (rechte Hälfte), runde Aktionsknöpfe unten rechts
@@ -1753,7 +1821,7 @@ import { createLagerfeuer } from '../../engine/models/bau/licht.js';
 const feuer = createLagerfeuer({ seed: 5 });   // feuer.leucht = Flammen, feuer.anker.licht = PointLight-Vorlage
 ```
 
-Genutzt von: enklave · Tags: bau, licht, laterne, fackel, lagerfeuer, leucht, asset, lowpoly · THREE: ja
+Genutzt von: daemmerwald, enklave · Tags: bau, licht, laterne, fackel, lagerfeuer, leucht, asset, lowpoly · THREE: ja
 
 ### bau-markt · `engine/models/bau/markt.js` · v1.0.0 · entwurf
 Marktplatz-Kleinkram als Low-Poly-Asset: Marktstand mit Stoffdach (4 Farben), Brunnen mit Holzdach, Sitzbank
@@ -1873,7 +1941,7 @@ import { createWegweiser } from '../../engine/models/bau/wegbau.js';
 const w = createWegweiser({ schilder: [{ winkel: 1.2, text: 'Enklave' }] });   // w.anker.schild = [{ winkel, text, x, y, z }]
 ```
 
-Genutzt von: enklave · Tags: bau, wegweiser, zaun, steinkreis, asset, lowpoly, mittelalter · THREE: ja
+Genutzt von: daemmerwald, enklave · Tags: bau, wegweiser, zaun, steinkreis, asset, lowpoly, mittelalter · THREE: ja
 
 ### character-anim-blick · `engine/models/character/character-anim-blick.js` · v1.0.0 · entwurf
 Blick einer Figur (rein): Richtung oder Weltpunkt → verteilt auf Torso/Hals/Kopf mit Grenzen, Augen eilen voraus; Blinzeln per Seed; Werte für einen Mimik-Hook
@@ -2080,7 +2148,7 @@ const held = createLook({ ...VORLAGEN.wanderer, haar: { farbe: '#c8a040' }, bril
 const npc = randomLook(hashSeed('dorf', 7));   // gleicher Seed → gleicher Look
 ```
 
-Genutzt von: enklave, figuren-labor, testwelt · Tags: figur, charakter, aussehen, look, spieler, npc, avatar, editor, speichern, accessoires, mimik · THREE: nein
+Genutzt von: daemmerwald, enklave, figuren-labor, testwelt · Tags: figur, charakter, aussehen, look, spieler, npc, avatar, editor, speichern, accessoires, mimik · THREE: nein
 1.1: neue Stile (Haar, Bart, Oberteil, Hose, Schuhe, Kopfbedeckung, Umhang), neue Teile brille/schal/schmuck,
    Körper schultern/muskeln, Feld ausdruck (Grund-Mimik), neue Vorlagen. Alte Spielstände bleiben gültig
    (fehlende Felder → Standard; erste Einträge in STILE und Körper-Standards unverändert).
@@ -2411,7 +2479,7 @@ const { geometrie, hoehe } = erzeuge('birke', 7, { detail: 1, jahreszeit: 'herbs
 szene.add(new THREE.Mesh(geometrie, standardMaterial()));
 ```
 
-Genutzt von: – · Tags: natur, baum, wald, vegetation, lowpoly, prozedural, wind, jahreszeit · THREE: ja
+Genutzt von: natur-labor · Tags: natur, baum, wald, vegetation, lowpoly, prozedural, wind, jahreszeit · THREE: ja
 
 ### fels-basis · `engine/models/natur/fels-basis.js` · v1.0.0 · neu
 Kleine Helfer für Felsen/Totholz: Dreiecke mit Flächenfarben sammeln → nicht-indizierte BufferGeometry (position, normal, color, wind=0), Farb-Mischen
@@ -2460,7 +2528,7 @@ const { geometrie } = erzeuge('felsbrocken', 42, { gestein: 'granit', moos: 0.4 
 scene.add(new THREE.Mesh(geometrie, standardMaterial()));
 ```
 
-Genutzt von: – · Tags: natur, fels, stein, geroell, prozedural, lowpoly, vertexfarben · THREE: ja
+Genutzt von: daemmerwald · Tags: natur, fels, stein, geroell, prozedural, lowpoly, vertexfarben · THREE: ja
 
 ### natur-assets · `engine/models/natur/natur-assets.js` · v1.0.0 · entwurf
 Registry der Natur-Generatoren (Bäume, Felsen, Totholz, Büsche, Bodendecker, Wüste): Typname → Generator, Asset bauen, Varianten-Cache mit gemeinsamen Geometrien
@@ -2480,7 +2548,7 @@ const { geometrie, hoehe } = cache.holen('eiche', 2);   // gleiche Geometrie bei
 cache.dispose();
 ```
 
-Genutzt von: enklave, figuren-labor, natur-labor, testwelt · Tags: natur, vegetation, baum, fels, busch, registry, cache, varianten, prozedural · THREE: ja
+Genutzt von: daemmerwald, enklave, figuren-labor, natur-labor, testwelt · Tags: natur, vegetation, baum, fels, busch, registry, cache, varianten, prozedural · THREE: ja
 
 ### natur-basis · `engine/models/natur/natur-basis.js` · v1.0.0 · entwurf
 Gemeinsame Helfer für Natur-Assets: Dreiecke sammeln → nicht-indizierte Geometrie (position/normal/color/wind), Farben, Fake-AO, Schnee, Ast-Röhre, Laub-Blob, Kegel-Lage, Wedel
@@ -2548,7 +2616,7 @@ const gras = erzeuge('grasbueschel', 9);
 const mohn = erzeuge('blume', 3, { sorte: 'mohn' });   // Sorten: BLUMEN_SORTEN in pflanze-formen.js
 ```
 
-Genutzt von: – · Tags: natur, pflanze, gras, farn, blume, pilz, schilf, seerose, bodendecker, lowpoly, wind · THREE: ja
+Genutzt von: daemmerwald · Tags: natur, pflanze, gras, farn, blume, pilz, schilf, seerose, bodendecker, lowpoly, wind · THREE: ja
 
 ### pflanze-busch · `engine/models/natur/pflanze-busch.js` · v1.0.0 · entwurf
 Prozedurale Low-Poly-Büsche: busch (Laubballen + Zweige), beerenbusch (rote/blaue Beeren), ginster (Ruten mit gelben Blüten), zwergstrauch (flach, heidekrautig)
@@ -2599,6 +2667,71 @@ const { geometrie, stammRadius } = erzeuge('kaktus', 12, { detail: 1 });
 
 Genutzt von: – · Tags: natur, pflanze, wueste, kaktus, agave, sukkulente, lowpoly · THREE: ja
 
+### riesenbaum-form · `engine/models/natur/riesenbaum-form.js` · v1.0.0 · entwurf
+Reine Form eines Urwald-Riesen in echter Größe (ohne THREE): Stamm-Achse, Brettwurzeln, optionaler Wurzelbogen als SDF, dazu Maße und Kronen-Skelett
+
+- `baueForm({ seed, hoehe = 110, stammRadius = 5.5, wurzeln = 7, wurzelWeite = 22, detail = 1, bogen = false }) -> { opts, sdf, naht, achse(y,out), radius(y), stoer(x,y,z), furche(x,y,z) -> 0..1, wurzeln [{ punkte, radien, streck, laenge, winkel }], krone { aeste, buschel, kronenRadius }, masse { hoehe, stammRadius, kronenAb, kronenRadius, grenzen, bogen? } }`
+
+```js
+import { baueForm } from '../../engine/models/natur/riesenbaum-form.js';
+const form = baueForm({ seed: 7, bogen: true });
+form.sdf.abstand(0, 5, 0) < 0;                 // im Stamm
+form.masse.bogen.mitte;                         // [x, 0, z] – hier führt der Pfad unter der Wurzel durch
+```
+
+Genutzt von: – · Tags: natur, baum, riesenbaum, urwald, sdf, wurzel, form, prozedural, daemmerwald · THREE: nein
+
+### riesenbaum-krone · `engine/models/natur/riesenbaum-krone.js` · v1.0.0 · entwurf
+Krone des Riesenbaums (rein, ohne THREE): wenige sehr dicke Hauptäste als Skelett, Laub als große weiche Gauß-Blobs, hängende Bartflechten
+
+- `baueKrone({ H, R, kronenAb, achse, radius, detail, r }) -> { aeste [{ punkte [[x,y,z,radius]…], ordnung }], buschel [{ m, r }], kronenRadius }`
+- `laubSplats(ziel, krone, { seed, anzahl, H, kronenAb }) -> gesetzt`
+- `bartSplats(ziel, krone, { seed, anzahl }) -> gesetzt`
+- `glaette(punkte, teile)`
+- `farbeLin('#rrggbb') -> [r,g,b] linear`
+- `mische(a, b, t)`
+
+```js
+import { createSplatDaten } from '../../engine/render/gauss-saat.js';
+import { laubSplats } from '../../engine/models/natur/riesenbaum-krone.js';
+const ziel = createSplatDaten();
+laubSplats(ziel, form.krone, { seed: 7, anzahl: 5000, H: 110, kronenAb: 60 });   // form aus riesenbaum-form.js
+```
+
+Genutzt von: – · Tags: natur, baum, riesenbaum, krone, laub, splats, gauss, flechte, daemmerwald · THREE: nein
+
+### riesenbaum-netz · `engine/models/natur/riesenbaum-netz.js` · v1.0.0 · entwurf
+Baut aus der Riesenbaum-Form die rohen Daten (rein, ohne THREE): SDF-Netz für Wurzeln und Stammfuß, verjüngter Stamm, Ast-Röhren, Rindenfarben, Splats, Höhenkarte
+
+- `baueRiesenbaumRoh(opts) -> { form, position, normal, farbe, index, dreiecke, splats ‹daten›, hoehenkarte, masse, teile { wurzel, stamm, aeste } }`
+- `rindenFarbe(form) -> (x,y,z,nx,ny,nz,out) -> out`
+- `WETTER [x,y,z]`
+
+```js
+import { baueRiesenbaumRoh } from '../../engine/models/natur/riesenbaum-netz.js';
+const roh = baueRiesenbaumRoh({ seed: 7, bogen: true });
+roh.dreiecke;                       // ≤ 60 000
+roh.hoehenkarte.hoeheBei(9, 2);     // Höhe des Wurzelrückens dort (NaN = blanker Boden)
+```
+
+Genutzt von: – · Tags: natur, baum, riesenbaum, sdf, netz, rinde, moos, splats, hoehenkarte, daemmerwald · THREE: nein
+
+### riesenbaum · `engine/models/natur/riesenbaum.js` · v1.0.0 · entwurf
+Urwald-Riese in echter Größe (~110 m): Wurzeln und Stammfuß weich aus dem SDF, darüber Stamm und dicke Äste als EINE Geometrie; Laub, Moos und Flechten als Gauß-Splat-Daten
+
+- `createRiesenbaum({ seed, hoehe = 110, stammRadius = 5.5, wurzeln = 7, wurzelWeite = 22, detail = 1, bogen = false }) -> { geometrie, splats, kollision { stammRadius, hoehenkarte { hoeheBei(x,z) } }, masse { hoehe, stammRadius, kronenAb, kronenRadius, grenzen, bogen? { mitte, achse, quer, lichteHoehe, lichteWeite } }, dreiecke, dispose() }`
+
+```js
+import { createRiesenbaum } from '../../engine/models/natur/riesenbaum.js';
+import { createGaussWolke } from '../../engine/render/gauss-wolke.js';
+const baum = createRiesenbaum({ seed: 7, bogen: true });
+szene.add(new THREE.Mesh(baum.geometrie, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 })));
+const wolke = createGaussWolke(); wolke.fuege(baum.splats); szene.add(wolke.mesh);
+baum.kollision.hoehenkarte.hoeheBei(9, 2);      // lokal zum Baumfuß; NaN = blanker Boden
+```
+
+Genutzt von: daemmerwald, natur-labor · Tags: natur, baum, riesenbaum, urwald, wald, sdf, splats, gauss, wurzel, groesse, daemmerwald · THREE: ja
+
 ### totholz-form · `engine/models/natur/totholz-form.js` · v1.0.0 · neu
 Reine Röhren-Geometrie (ohne THREE) für Totholz/Äste: Ringe entlang eines Pfads, Enden zu/Spitze/Jahresring-Scheibe, Markierung je Dreieck
 
@@ -2640,6 +2773,52 @@ const geist = figurMaterial({ rand: 1, randFarbe: 0x80c0ff, material: { transpar
 ```
 
 Genutzt von: – · Tags: figur, charakter, material, shader, randlicht, rim, look · THREE: ja
+
+### gauss-saat · `engine/render/gauss-saat.js` · v1.0.0 · entwurf
+Prozedurale Gauß-Splats erzeugen: wachsender Daten-Sammler, Quaternion aus einer Normalen und flächengleiche Aussaat flacher Scheiben auf einem Dreiecksnetz (Moos, Flechten, Laub)
+
+- `createSplatDaten(start = 1024) -> { anzahl, plus(x,y,z, sx,sy,sz, qx,qy,qz,qw, r,g,b, deck, wind = 0), fertig() -> daten { anzahl, position, skala, drehung, farbe, deck, wind } }`
+- `quatAusNormale(nx, ny, nz, dreh, out = [0,0,0,1]) -> out`
+- `saatAufNetz(ziel, netz { position, normal, index }, { anzahl, seed, groesse = [0.15, 0.5], flach = 0.25, abheben = 0.03, deck = 0.9, wind = 0, farbe ‹(x,y,z,nx,ny,nz,zufall) -> [r,g,b] | null› }) -> gesetzt`
+
+```js
+import { createSplatDaten, saatAufNetz } from '../../engine/render/gauss-saat.js';
+const saat = createSplatDaten();
+saatAufNetz(saat, { position, normal, index }, { anzahl: 4000, seed: 7, farbe: (x, y, z, nx, ny) => ny > 0.3 ? [0.10, 0.22, 0.05] : null });   // Moos nur oben
+saat.plus(0, 30, 0, 4, 3, 4, 0, 0, 0, 1, 0.08, 0.2, 0.06, 0.35, 1);                  // ein großer weicher Laub-Blob, wiegt im Wind
+wolke.fuege(saat.fertig());
+```
+
+Genutzt von: daemmerwald, natur-labor · Tags: splat, gauss, gaussian, saat, streuen, netz, moos, laub, prozedural, quaternion · THREE: nein
+
+### gauss-sortierung · `engine/render/gauss-sortierung.js` · v1.0.0 · entwurf
+Tiefen-Sortierung für Gauß-Splats: 16-Bit-Zähl-Sortierung entlang der Blickrichtung (hinten→vorn), ohne Allokation je Aufruf – 120 k Splats in ~1–3 ms
+
+- `createTiefenSortierer(max) -> { max, sortiere(position ‹Float32Array 3n›, anzahl, blick ‹[x,y,z]›, auge ‹[x,y,z]›) -> Uint32Array Reihenfolge hinten→vorn – gleicher Puffer bei jedem Aufruf }`
+
+```js
+import { createTiefenSortierer } from '../../engine/render/gauss-sortierung.js';
+const sortierer = createTiefenSortierer(120000);
+const reihenfolge = sortierer.sortiere(positionen, anzahl, [0, 0, -1], [0, 2, 10]);   // reihenfolge[0] = fernster Splat
+```
+
+Genutzt von: – · Tags: splat, gauss, gaussian, sortierung, tiefe, transparenz, zaehlsortierung, radix · THREE: nein
+
+### gauss-wolke · `engine/render/gauss-wolke.js` · v1.0.0 · entwurf
+Echte 3D-Gauß-Splats, prozedural befüllt: jeder Splat ist ein Ellipsoid (Mitte, 3 Standardabweichungen, Drehung, Farbe, Deckkraft), gezeichnet als instanziertes Viereck mit 3D→2D-Kovarianz, vormultipliziertem Alpha und Tiefen-Sortierung – Meshes verdecken Splats korrekt
+
+- `createGaussWolke({ max = 120000, sortiereAlle = 3, maxPixel = 220 }) -> { mesh, anzahl, max, fuege(daten, { matrix = null, anteil = 1 }) -> anzahl neu, leere(), setze({ nebelFarbe, nebelDichte, licht, wind }), update(kamera, zeit, breitePx, hoehePx), dispose() }`
+
+```js
+import { createGaussWolke } from '../../engine/render/gauss-wolke.js';
+const wolke = createGaussWolke({ max: 90000 });
+szene.add(wolke.mesh);
+wolke.fuege(baum.splats, { matrix: baumMatrix, anteil: 0.7 });      // daten aus gauss-saat.js (lokal) → Welt
+wolke.setze({ nebelFarbe: szene.fog.color, nebelDichte: szene.fog.density, licht: [1.1, 0.95, 0.8], wind: 0.6 });
+// je Bild VOR renderer.render: wolke.update(kamera, zeit, canvas.width, canvas.height);
+```
+
+Genutzt von: daemmerwald, natur-labor · Tags: splat, gauss, gaussian, 3dgs, wolke, instanziert, shader, transparenz, moos, laub, dunst · THREE: ja
 
 ### grosszauber-mesh · `engine/render/grosszauber-mesh.js` · v1.0.0 · entwurf
 Zeichnet laufende Großzauber (gameplay/grosszauber): je Wirkung eine Ansicht aus einer Ansichts-Fabrik je Art, legt sie an und räumt sie ab, sobald die Wirkung endet
@@ -2761,7 +2940,7 @@ baum.customDepthMaterial = mat.tiefenMaterial;   // Schatten schwingt mit
 // je Bild: mat.update(zeit, { staerke: 1, richtung: [1, 0.3] });
 ```
 
-Genutzt von: figuren-labor, natur-labor · Tags: natur, material, wind, shader, vegetation, instanzen, render · THREE: ja
+Genutzt von: daemmerwald, figuren-labor, natur-labor · Tags: natur, material, wind, shader, vegetation, instanzen, render · THREE: ja
 
 ### niederschlag · `engine/render/niederschlag.js` · v1.0.0 · entwurf
 Regen/Schnee als ein Points-Objekt um die Kamera; Bewegung komplett im Vertex-Shader (kein CPU-Aufwand je Partikel)
@@ -2809,7 +2988,7 @@ const s = q.update(echtDt);                       // jedes Bild; s = neue Stufe 
 if (s) { renderer.setPixelRatio(Math.min(devicePixelRatio, s.pixel)); sonne.castShadow = s.schatten > 0; fx.anteil = s.partikel; }
 ```
 
-Genutzt von: enklave, figuren-labor · Tags: qualität, leistung, fps, bildzeit, adaptiv, auflösung, schatten, handy, performance · THREE: nein
+Genutzt von: daemmerwald, enklave, figuren-labor · Tags: qualität, leistung, fps, bildzeit, adaptiv, auflösung, schatten, handy, performance · THREE: nein
 Stufe 0 = beste. Jede Stufe: { pixel (max. Pixelverhältnis), schatten (Kartengröße, 0 = aus), partikel (Anteil 0…1), zahlen (max. Schadens-Zahlen) }.
 Schlechter: geglättete Bildzeit > ziel × 1.15 für `schlechtNach` s. Besser: < ziel × 0.85 für `besserNach` s (verdoppelt sich, wenn eine
 Verbesserung binnen 20 s wieder zurückgenommen werden musste – verhindert Hin-und-her). Pausen (Bildzeit > 0.5 s) zählen nicht.
@@ -3032,7 +3211,7 @@ const motor = createMotor({ welt });                             // läuft gegen
 const t = welt.strahl({ x: 0, y: 1.5, z: 0 }, { x: 0, y: 0, z: 1 }, 30);   // → { distanz, x, y, z, id, art }
 ```
 
-Genutzt von: enklave, testwelt · Tags: kollision, physik, welt, hindernis, koerper, strahl, raycast, begehbar, adapter · THREE: nein
+Genutzt von: daemmerwald, enklave, testwelt · Tags: kollision, physik, welt, hindernis, koerper, strahl, raycast, begehbar, adapter · THREE: nein
 Körper: { form: 'kreis' (Standard) | 'kasten', x, z, radius | bx, bz (halbe Breite/Tiefe) + winkel (Drehung um Y),
 y0 (Unterkante; Standard = Boden an der Stelle), hoehe (Standard unendlich), begehbar (Oberseite trägt Figuren),
 weich (0…1 Anteil des Ausschiebens; 0.5 = Figuren drängeln sich aneinander vorbei), fest (false = kein Ausschieben, nur Strahl),

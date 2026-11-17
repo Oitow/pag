@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Riesenbaum-Test</title>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a2226; color: #dfe6e2; font: 13px/1.35 system-ui, sans-serif; }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #info { position: fixed; left: 8px; bottom: 8px; padding: 4px 8px; background: rgba(12,16,18,.6); border-radius: 8px; }
+  #wahl { position: fixed; top: 8px; left: 8px; display: flex; gap: 6px; }
+  #wahl a { color: #dfe6e2; text-decoration: none; background: rgba(12,16,18,.7); border: 1px solid rgba(255,255,255,.15); border-radius: 8px; padding: 8px 12px; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="wahl"><a href="?sicht=fuss">Fuß</a><a href="?sicht=ganz">Ganz</a><a href="?sicht=bogen">Bogen</a><a href="index.html">Labor</a></div>
+<div id="info">baut …</div>
+<script type="module">
+// Sicht-Prüfung für engine/models/natur/riesenbaum.js: ein Riese, daneben ein 1.8-m-Mensch und ein normaler Baum als Größenvergleich.
+// ?sicht=fuss|ganz|bogen · ?seed=7 · ?bogen=0 · ?splats=0
+import * as THREE from 'three';
+import { createRiesenbaum } from '../../engine/models/natur/riesenbaum.js';
+import { createGaussWolke } from '../../engine/render/gauss-wolke.js';
+import { erzeuge } from '../../engine/models/natur/baum.js';
+
+const q = new URLSearchParams(location.search), sicht = q.get('sicht') || 'fuss', seed = +(q.get('seed') || 7);
+const canvas = document.getElementById('c'), info = document.getElementById('info');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
+const szene = new THREE.Scene();
+const nebelFarbe = new THREE.Color('#5f7178'), nebelDichte = 0.0075;
+szene.background = nebelFarbe; szene.fog = new THREE.FogExp2(nebelFarbe, nebelDichte);
+const kamera = new THREE.PerspectiveCamera(50, 1, 0.3, 1500);
+
+// Dämmerung: tiefe warme Sonne, kühles Himmelslicht
+const sonne = new THREE.DirectionalLight('#ffc090', 2.6); sonne.position.set(-60, 28, -70); szene.add(sonne);
+szene.add(new THREE.HemisphereLight('#7f9fb0', '#232a22', 1.5));
+
+const boden = new THREE.Mesh(new THREE.CircleGeometry(600, 48).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#23261d', roughness: 1 }));
+szene.add(boden);
+
+const t0 = performance.now();
+const baum = createRiesenbaum({ seed, bogen: q.get('bogen') !== '0' });
+const bauzeit = performance.now() - t0;
+const rinde = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 });
+szene.add(new THREE.Mesh(baum.geometrie, rinde));
+
+const wolke = createGaussWolke({ max: 20000 });
+if (q.get('splats') !== '0') { wolke.fuege(baum.splats); szene.add(wolke.mesh); }
+wolke.setze({ nebelFarbe, nebelDichte, licht: [1.1, 1.0, 0.9], wind: 0.6 });
+
+// Größenvergleich: Mensch (1.8 m) und ein normaler Engine-Baum
+const b = baum.masse.bogen, R = baum.masse.stammRadius;
+const mensch = (x, z) => { const m = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 1.24, 4, 10), new THREE.MeshStandardMaterial({ color: '#d8c9a8', roughness: 0.9 })); m.position.set(x, 0.9, z); szene.add(m); return m; };
+const vor = b ? new THREE.Vector3(b.achse[0], 0, b.achse[2]) : new THREE.Vector3(0, 0, -1);      // Blickachse: durch den Bogen bzw. von Süden
+const mitte = b ? new THREE.Vector3(b.mitte[0], 0, b.mitte[2]) : new THREE.Vector3(0, 0, 0);
+const quer = b ? new THREE.Vector3(b.quer[0], 0, b.quer[2]) : new THREE.Vector3(1, 0, 0);
+mensch(mitte.x, mitte.z);                                                                             // steht unter dem Bogen
+const m2 = mitte.clone().addScaledVector(vor, -9).addScaledVector(quer, 5); mensch(m2.x, m2.z);
+const normal = erzeuge('buche', 3, { detail: 2 });
+const nb = new THREE.Mesh(normal.geometrie, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
+const np = mitte.clone().addScaledVector(vor, -4).addScaledVector(quer, 14); nb.position.copy(np); nb.scale.setScalar(12 / normal.hoehe); szene.add(nb);
+mensch(np.x + 1.5, np.z + 1);
+for (const w of [0.6, 2.2, 4.1]) mensch(Math.cos(b ? b.winkel + w : w) * (R + 4.5), Math.sin(b ? b.winkel + w : w) * (R + 4.5)).position.y += baum.kollision.hoehenkarte.hoeheBei(Math.cos(b ? b.winkel + w : w) * (R + 4.5), Math.sin(b ? b.winkel + w : w) * (R + 4.5)) || 0;   // stehen auf den Wurzeln
+
+if (sicht === 'ganz') { const p = new THREE.Vector3(-0.55, 0, -0.83).normalize().multiplyScalar(150); kamera.position.set(p.x, 6, p.z); kamera.lookAt(0, 50, 0); }
+else if (sicht === 'bogen') { kamera.position.copy(mitte).addScaledVector(vor, -17).addScaledVector(quer, 1.5); kamera.position.y = 1.7; kamera.lookAt(mitte.x, 4.2, mitte.z); }
+else { const aus = b ? quer.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.9) : new THREE.Vector3(0, 0, -1); kamera.position.copy(aus).multiplyScalar(R + 25); kamera.position.y = 1.7; kamera.lookAt(0, 9, 0); }
+
+function groesse() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); kamera.aspect = w / h; kamera.updateProjectionMatrix(); }
+addEventListener('resize', groesse); groesse();
+info.textContent = `Riesenbaum · Seed ${seed} · ${baum.dreiecke} Dreiecke · ${baum.splats.anzahl} Splats · Bauzeit ${bauzeit.toFixed(0)} ms · Höhe ${baum.masse.hoehe} m`;
+window.riesenbaumTest = { baum, wolke, kamera, szene };
+renderer.setAnimationLoop((ms) => { wolke.update(kamera, ms / 1000, canvas.width, canvas.height); renderer.render(szene, kamera); });
+</script>
+</body>
+</html>
