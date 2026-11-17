@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Der Dämmerwald</title>
+<meta name="description" content="Der Dämmerwald: Ankunft am stillen Wasser, ein Pfad zwischen hundert Meter hohen Bäumen bis zur Lichtung – Startgebiet im PAG-Baukasten.">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #8a9c98; color: #e8ece8; font: 14px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #oben { position: fixed; top: max(8px, env(safe-area-inset-top)); right: max(8px, env(safe-area-inset-right)); z-index: 4; }
+  #oben a { color: #e8ece8; text-decoration: none; background: rgba(16,22,22,.6); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 6px 10px; min-height: 40px; display: grid; place-items: center; }
+  #info { position: fixed; left: 8px; bottom: max(6px, env(safe-area-inset-bottom)); padding: 3px 8px; font-size: 11px; color: #c8d2cc; background: rgba(16,22,22,.55); border-radius: 8px; pointer-events: none; z-index: 2; }
+  #info:empty { display: none; }
+  #lade { position: fixed; inset: 0; display: grid; place-items: center; background: #1b2423; font-size: 1.1rem; z-index: 30; text-align: center; letter-spacing: .04em; }
+  #lade small { display: block; opacity: .6; margin-top: 6px; font-size: .8rem; letter-spacing: 0; }
+  #lade[hidden], #fehler[hidden] { display: none; }
+  #fehler { position: fixed; left: 8px; right: 8px; top: 120px; padding: 10px; background: #5a1f1f; border-radius: 8px; white-space: pre-wrap; font: 12px monospace; z-index: 40; }
+  #titel { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; pointer-events: none; z-index: 20; background: #1b2423; opacity: 0; transition: opacity 2.4s ease, background-color 3s ease; }
+  #titel.an { opacity: 1; }
+  #titel.klar { background: transparent; }
+  #titel b { display: block; font: 300 clamp(1.8rem, 7vw, 3.4rem)/1.1 Georgia, "Times New Roman", serif; letter-spacing: .14em; text-shadow: 0 2px 18px rgba(0,0,0,.6); }
+  #titel span { display: block; margin-top: 10px; opacity: .75; letter-spacing: .08em; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
+  #ort { position: fixed; left: 0; right: 0; top: 18%; text-align: center; pointer-events: none; z-index: 5; opacity: 0; transition: opacity 1.6s ease;
+    font: 300 clamp(1.1rem, 4.5vw, 1.7rem) Georgia, "Times New Roman", serif; letter-spacing: .16em; text-shadow: 0 2px 12px rgba(0,0,0,.75); }
+  #ort.an { opacity: .92; }
+  #weiter { position: fixed; left: 50%; bottom: max(96px, calc(env(safe-area-inset-bottom) + 96px)); transform: translateX(-50%); z-index: 6; color: #f4ead8; text-decoration: none;
+    background: rgba(30,34,28,.82); border: 1px solid rgba(255,220,160,.45); border-radius: 12px; padding: 12px 18px; min-height: 44px; font-size: 1rem; letter-spacing: .04em; }
+  #weiter[hidden] { display: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="oben"><a id="back" href="../../">← Spiele</a></div>
+<div id="info"></div>
+<div id="ort"></div>
+<a id="weiter" href="../enklave/" hidden>Weiter zur Enklave →</a>
+<div id="titel"><div><b>Der Dämmerwald</b><span>Folge dem Pfad nach Norden</span></div></div>
+<div id="lade">Der Dämmerwald erwacht …<small>Riesen wachsen, Dunst zieht auf</small></div>
+<div id="fehler" hidden></div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

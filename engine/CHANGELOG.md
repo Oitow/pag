@@ -1,5 +1,10 @@
 # Engine-Changelog
 
+## 2026-11 – Dämmerwald: SDF + echte Gauß-Splats
+- core/sdf 1.0.0, core/sdf-netz 1.0.1 (neu): Abstandsfelder mit weicher Vereinigung (Kapsel, Kugel, Ellipsoid, Kette, Abzug, Störung), Surface-Nets-Netz mit Block-Vorauswahl (Wicklung an den Gradienten ausgerichtet) und begehbare Höhenkarte
+- render/gauss-wolke 1.0.0, gauss-saat 1.0.0, gauss-sortierung 1.0.0 (neu): echte prozedurale 3D-Gauß-Splats – instanzierte Vierecke mit 3D→2D-Kovarianz, vormultipliziertem Alpha, exp²-Nebel, Wind, 16-Bit-Tiefensortierung über Index-Attribut + Float-Datentextur; Aussaat auf Netzen. Demo games/natur-labor/splat-test.html
+- models/natur/riesenbaum 1.0.0 (+ riesenbaum-form, -krone, -netz; neu): Urwald-Riese in echter Größe (110 m) mit SDF-Brettwurzeln, optionalem Wurzelbogen, Ast-Röhren, Laub/Moos/Flechten als Gauß-Splat-Daten, Höhenkarte für die Kollision; `detail` 0.2–2. Demo games/natur-labor/riesenbaum-test.html. Nutzer: games/daemmerwald
+
 ## 2026-11 – Meer-Flackern, Splat-Look
 - render/psx 1.2.0 (additiv): `defines.PSX_KEIN_RASTER` – Material rastet nicht ein. Behebt das Meer, das beim Laufen kurz über dem ganzen Boden aufblitzte (seine Ecken liegen km weit weg; das Einrasten kippte die ganze Fläche um Meter)
 - world/terrain-mesh 1.3.1 (intern): Meer und Meeresgrund mit `PSX_KEIN_RASTER`

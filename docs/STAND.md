@@ -1,40 +1,29 @@
 # Stand
 
-> Wird von `/ende` überschrieben und von `/start` gelesen. Höchstens 40 Zeilen.
+> Wird von `/ende` überschrieben und von `/start` gelesen. Höchstens 35 Zeilen. Dauerhafte Festlegungen: `docs/ENTSCHEIDUNGEN.md`.
 
 ## Zuletzt gemacht
-- Meer blitzte beim Laufen über dem Boden auf (PS1-Einrasten der km-großen Meer-Fläche kippte sie) → psx 1.2 `PSX_KEIN_RASTER` für Meer/Grund. Neu: `render/splat-look` + Grafik-Stil PS1/Klar/Splat im Enklave-Menü. Shader nur einzeln geprüft (kein three/Netz), im Spiel ungetestet
-- Wasser-Glitch (Wasser scheint beim Laufen durch Ufer/Boden) behoben: psx 1.1 `PSX_ANKER` – Wasser rastet mit dem Gelände darunter ein; neu `world/wasser-glanz` (Wellen, Glitzern, Ufer-Schaum) in der Enklave. Shader nur einzeln in Chromium kompiliert, Spiel nicht im Browser geprüft (kein three/Netz in der Sitzung)
-- Neues Spiel **games/enklave** (Bauplan `docs/WELT-ENKLAVE.md`): Tutorial-Tal (16 Schritte, automatisiert komplett durchgespielt), Pfad ~540 m mit Wegweisern/Brücke/Aussicht,
-  ummauerte Stadt mit 29 NPCs, Tag/Nacht, Rauch/Glühwürmchen, Ambiente-Klang, Asset-Galerie `games/enklave/galerie.html`
-- Engine neu: `world/welt-plan`(+formen), `models/bau/*` (35 Assets), `gameplay/aufgaben`, `ui/aufgaben-anzeige`, `models/character/character-lod`; klang 1.2, character 1.4
-- Davor: Figuren-Labor (Kampf, Großzauber, Schlacht-Modus, Qualitätsstufe)
+- Neues Spiel **games/daemmerwald** (Bauplan `docs/WELT-DAEMMERWALD.md`): Ufer → Tor der Alten → Wurzelbogen → gestürzter Riese → Lichtung; 46 Riesen (110 m) in 5 Varianten,
+  3 Detailstufen nach Pfad-Abstand, Dunst-Staffelung, Lichtbahnen, Laternen, Pilze, Glühwürmchen; `?ort=` `?q=` `?splats=0` `?test=1` `?debug`
+- Engine neu: `core/sdf`, `core/sdf-netz`, `render/gauss-wolke` (+ `-saat`, `-sortierung`), `models/natur/riesenbaum` (+ `-form`, `-krone`, `-netz`); Demos im Natur-Labor (`splat-test.html`, `riesenbaum-test.html`)
+- KI-Struktur: Wegweiser + „Sehen statt glauben“ in `CLAUDE.md`, `docs/ART-DIRECTION.md`, `docs/RENDER-TECHNIK.md`, `docs/TESTEN.md`, `docs/ENTSCHEIDUNGEN.md`,
+  Agent `gucker`, Befehl `/bild`, Werkzeug `tools/bild.mjs` (Bildschirmfotos)
 
 ## Läuft / kaputt
-- Alles grün (717 Tests, Smoke 6 Spiele inkl. enklave, Build dist/enklave.html)
-- Draw-Calls Enklave: Tal ~138, Stadt ~129 (Ziel ≤ 120) – Hauptposten Bäume + volle Figuren; Handy nicht auf echtem Gerät gemessen
-- Ambiente-Klang nur per Test geprüft, nicht angehört; Wegweiser-Texte nicht im Bild geprüft; Tor-Zustand nach Tutorial-Ende nicht direkt abgefragt
-- enklave/js/figur.js + menue.js sind Kopien aus der Testwelt (≥ 2 Spiele → in die Engine befördern)
-- Bekannt (alt): Truhe durch Schuppenwand, Viniland eigene psx.js, Rivalen-Treffer zählen nicht in der Schlacht-Statistik
+- Engine-Tests + Katalog grün, Smoke daemmerwald ok, alle 5 Orte + Hochformat + `?splats=0` als Bild angesehen (Software-Renderer)
+- NICHT geprüft: echtes Handy (Bildrate!), `npm run build` (kein esbuild in der Sitzung → CI), Durchlaufen der Strecke (Kollision an Wurzeln, Bogen, Kerbe nur als Standbild)
+- Zu schwer fürs Handy? `mittel` ~1.2 Mio. Dreiecke, `niedrig` ~640 k, 60–83 Draw-Calls; Ladezeit durch 5 Varianten × 3 Detailstufen (SDF-Vernetzung) spürbar
+- Spielzeug-Reste: Laterne (oranger Kasten), Lowpoly-Vergleichsbäume und -Farn, Boot, Menhir; gestürzter Riese liest sich als Wand; Schattenbereiche sehr dunkel
+- Rinde ist doppelseitig gezeichnet (einzelne SDF-Dreiecke sonst als Loch sichtbar – Ursache in `core/sdf-netz` noch nicht ganz behoben)
+- Splats sind unbeleuchtet/ohne Schatten (pauschal gedämpft); Nebel der Splats vor dem Tonemapping (im Spiel vor-entzerrt)
+- Alt: Enklave Draw-Calls > 120; enklave/js/figur.js + menue.js sind Kopien aus der Testwelt
 
 ## Nächster Schritt
-- Enklave am Handy spielen; Draw-Calls unter 120 (Bäume zusammenfassen/LOD, Schatten nur nah)
-- Spieler-Figur + Pause-Menü in die Engine befördern (testwelt + enklave), Innenräume/Dialoge, erste Quests in der Stadt
-- MMO-Fundament: Entitäts-IDs + Befehls-Schicht, dann Netzwerk-Prototyp (zwei Spieler in der Enklave)
-
-## Entscheidungen
-- Geplante Gebiete per `welt-plan` als worldgen-Stufen (deterministisch, Seed fest) statt zufällig gefundener Orte; Plan-Daten gelten nur für ihren Seed
-- Ferne Figuren als ein InstancedMesh (`character-lod`), nah höchstens 3 volle Figuren
-- PS1-Look liegt als Schicht über der Szene (Materialien werden gepatcht, nicht ersetzt) – Module müssen nichts davon wissen
-- Im Repo zählen nur Spiele und Tests
-- Mehrspieler: noch kein Netzwerk; Regeln dafür stehen in `docs/ENGINE-FAHRPLAN.md` („Fundament für Mehrspieler“)
-- Lose Dinge stoßen nicht untereinander zusammen (billig, reicht); Figuren-Kollision ist weich (0.5)
-- Werkzeug ist in der Testwelt nie Pflicht (nur schneller); Ausnahme Schaufel (liegt in der Truhe, Rezept an der Werkbank)
-- Spielzeit für Nachwachsen = Tage als Kommazahl (`uhr.tag + uhr.stunde / 24`)
-- `welt-aenderung` schreibt direkt in `welt.hoehe` (Adapter/Kollision sehen es sofort); vom Spiel vorbereitete Plätze per `festschreiben()` aus dem Spielstand halten
-- UI-Module: alle Stile inline (Spiele haben eigene globale Knopf-Regeln), keine Timer – alles über `update(dt)`
-- Abgebaute Bäume/Felsen bleiben bei `gameplay/rohstoffe` (wachsen nach); `welt-aenderung.entferneObjekt` ist für dauerhaftes Entfernen
+- Dämmerwald am Handy spielen und Bildrate melden; danach Dreiecke weiter senken (Stufe 0 nur für die 4–6 nächsten Riesen, `games/daemmerwald/js/wald.js`)
+- Spielzeug-Reste ersetzen: Laterne, Farn und Unterholz als Splat-Büschel, Vergleichsbäume mit Splat-Laub (`games/daemmerwald/js/bewuchs.js`, `dinge.js`)
+- Dämmerwald-Ende mit der Enklave verbinden (ein Weg, eine Welt); Mentorin/erste Aufgabe am Ufer
+- MMO-Fundament: Entitäts-IDs + Befehls-Schicht, dann Netzwerk-Prototyp
 
 ## Ideen-Parkplatz
-- Sammelspiel mit den Voxel-Tieren (Draufsicht, Tiere freischalten)
-- Sichtlinien-Prüfung in `gameplay/interaktion` (Strahl aus `world/kollision`)
+- SDF-Kreaturen und -Zauber (weich verschmelzende Formen), Splat-LOD nach Entfernung, Koloss-Silhouette fern zwischen den Stämmen
+- Sammelspiel mit den Voxel-Tieren; Sichtlinien-Prüfung in `gameplay/interaktion`
