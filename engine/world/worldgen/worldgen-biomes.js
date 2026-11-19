@@ -1,13 +1,13 @@
 /**
  * @modul    worldgen-biomes
  * @zweck    Biome nach Whittaker (Temperatur × Feuchte, als schnelle Nachschlagetabelle) plus Prioritätsregeln (Wasser, Schnee, Fels, Strand, Sumpf); Biomliste per Spiel erweiterbar
- * @api      STANDARD_BIOME ; erstelleBiomTabelle(biomOpts) -> {liste,idVon(key)} ; klassifiziere(tab,h,hang,temp,feuchte,wasserDist,meerDist,flags) -> id ; berechneHang(H,b,t,aus?) -> Float32Array ; stufeBiome(welt, opts) -> void ; biomId(welt,key) -> id
+ * @api      STANDARD_BIOME ; erstelleBiomTabelle(biomOpts) -> {liste,idVon(key)} ; klassifiziere(tab,h,hang,temp,feuchte,wasserDist,meerDist,flags) -> id ; berechneHang(H,b,t,aus?) -> Float32Array ; stufeBiome(welt, opts) -> void ; biomId(welt,key) -> id ; URWALD_BIOM
  * @beispiel
  *   import { erstelleBiomTabelle } from '../../engine/world/worldgen/worldgen-biomes.js';
  *   const tab = erstelleBiomTabelle({ extra: [{ key: 'pilzhain', name: 'Pilzhain', farbe: 0x8a5cc0, temp: [0.4, 0.6], feuchte: [0.8, 1] }] });
  *   const id = tab.idVon('pilzhain');
  * @tags     welt, worldgen, biome, klima, whittaker
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
@@ -40,6 +40,10 @@ export const STANDARD_BIOME = [
   { key: 'schnee', name: 'Schnee', farbe: 0xf2f5f8, temp: [0, 0.06], feuchte: [0, 1], regel: { prio: 80, temp: [0, 0.055] } },
   { key: 'hartlaubwald', name: 'Hartlaubwald', farbe: 0x7b8f45, temp: [0.72, 1], feuchte: [0.46, 0.64] },
 ];
+
+/** Zusatz-Biom Urwald (Dämmerwald-Stil): feucht-gemäßigtes Land, eben bis sanft; nicht in STANDARD_BIOME – per biome.extra einschalten (Preset 'urwald'). */
+export const URWALD_BIOM = { key: 'urwald', name: 'Urwald', farbe: 0x2e4a30, temp: [0.4, 0.75], feuchte: [0.6, 1],
+  regel: { prio: 40, temp: [0.3, 0.85], feuchte: [0.5, 1], hoehe: [0.015, 0.6], hang: [0, 0.07] } };
 
 const LN = 64; // Auflösung der Whittaker-Tabelle
 const WTYP = { land: 0, meer: 1, see: 2, fluss: 3, egal: 4 };

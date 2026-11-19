@@ -6,7 +6,7 @@ import { createNaturMaterial } from '../../../engine/render/natur-material.js';
 
 const $ = (id) => document.getElementById(id);
 const HIMMEL = 0x9cc4e4;
-const FAMILIEN_NAMEN = { baum: '🌳 Bäume', fels: '🪨 Felsen', totholz: '🪵 Totholz', busch: '🌿 Büsche', bodendecker: '🍄 Bodendecker', wueste: '🌵 Wüste' };
+const FAMILIEN_NAMEN = { baum: '🌳 Bäume', fels: '🪨 Felsen', totholz: '🪵 Totholz', busch: '🌿 Büsche', bodendecker: '🍄 Bodendecker', wueste: '🌵 Wüste', unterwuchs: '🌱 Urwald-Unterwuchs' };
 
 function zeigeFehler(e) { const f = $('fehler'); f.hidden = false; f.textContent = 'Fehler: ' + (e?.stack || e); }
 addEventListener('error', (e) => zeigeFehler(e.error || e.message));

@@ -1,6 +1,6 @@
 /**
  * @modul    natur-assets
- * @zweck    Registry der Natur-Generatoren (Bäume, Felsen, Totholz, Büsche, Bodendecker, Wüste): Typname → Generator, Asset bauen, Varianten-Cache mit gemeinsamen Geometrien
+ * @zweck    Registry der Natur-Generatoren (Bäume, Felsen, Totholz, Büsche, Bodendecker, Wüste, Urwald-Unterwuchs): Typname → Generator, Asset bauen, Varianten-Cache mit gemeinsamen Geometrien
  * @api      TYP_ZU_GENERATOR { typ: erzeuge } ; FAMILIEN { familie: [typ…] } ; familieVon(typ) -> string|null ; alleTypen() -> [typ…] ; erzeugeAsset(typ, seed, opts) -> { geometrie, hoehe, radius, stammRadius } | null ; varianteOpts(typ, variante, opts) -> opts ; createAssetCache({ varianten, detail, jahreszeit, seed, opts }) -> { holen(typ, variante), hat(typ), varianten, detail, jahreszeit, anzahl(), dispose() }
  * @beispiel
  *   import { createAssetCache } from '../../engine/models/natur/natur-assets.js';
@@ -8,7 +8,7 @@
  *   const { geometrie, hoehe } = cache.holen('eiche', 2);   // gleiche Geometrie bei jedem Aufruf
  *   cache.dispose();
  * @tags     natur, vegetation, baum, fels, busch, registry, cache, varianten, prozedural
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    ja
  */
@@ -19,8 +19,9 @@ import * as totholz from './totholz.js';
 import * as busch from './pflanze-busch.js';
 import * as boden from './pflanze-boden.js';
 import * as wueste from './pflanze-wueste.js';
+import * as unterwuchs from './pflanze-unterwuchs.js';
 
-const MODULE = { baum, fels, totholz, busch, bodendecker: boden, wueste };
+const MODULE = { baum, fels, totholz, busch, bodendecker: boden, wueste, unterwuchs };
 
 /** Familie → Typen (Reihenfolge wie in den Generatoren). */
 export const FAMILIEN = Object.fromEntries(Object.entries(MODULE).map(([k, m]) => [k, [...m.TYPEN]]));

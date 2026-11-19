@@ -13,6 +13,7 @@ import { createBewuchs } from './bewuchs.js';
 import { createDinge } from './dinge.js';
 import { createLicht, SONNE } from './licht.js';
 import { createSplats } from './splats.js';
+import { createKronen } from './kronen.js';                       // KRONEN: dichtes Laub der Riesen
 import { createSpielerFigur, SICHTFELD } from './figur.js';
 
 const $ = (id) => document.getElementById(id);
@@ -44,7 +45,7 @@ groesse();
 const qual = createQualitaet({ ziel: 1 / 40 });
 if (testModus) qual.fest(true);
 
-let gelaende, wald, bewuchs, dinge, licht, splats, figur, welt, zeit = testModus ? 40 : 0, infoZeit = 0, ortAktiv = null, ortUhr = 0;
+let kronen, gelaende, wald, bewuchs, dinge, licht, splats, figur, welt, zeit = testModus ? 40 : 0, infoZeit = 0, ortAktiv = null, ortUhr = 0;
 const bahnen = [];
 
 async function baue() {
@@ -53,12 +54,12 @@ async function baue() {
   const varianten = baueVarianten({ modul: riesenModul, detail: Q.detail });
   await pause();
   const riesen = riesenListe().map((b) => (b.variante === BOGEN_VARIANTE ? richteBogenAus(b, varianten[b.variante].masse) : b));
-  gelaende = createGelaende({ szene, riesen });
-  wald = createWald({ szene, riesen, varianten, bodenHoehe: gelaende.bodenHoehe });
+  gelaende = createGelaende({ szene, riesen, varianten });
+  wald = createWald({ szene, riesen, varianten, bodenHoehe: gelaende.bodenHoehe, fussHoehe: gelaende.fussHoehe });
   welt = createKollisionsWelt({ welt: { bodenHoehe: (x, z) => Math.max(gelaende.bodenHoehe(x, z), wald.wurzelHoehe(x, z)), wasserHoehe: gelaende.wasserHoehe } });
   wald.meldeKollision(welt);
   await pause();
-  bewuchs = createBewuchs({ szene, hf: gelaende.hf, riesen, dichte: Q.dichte });
+  bewuchs = createBewuchs({ szene, hf: gelaende.hf, bodenHoehe: gelaende.bodenHoehe, riesen, dichte: Q.dichte });   // [bewuchs] Bodenhöhe aus gelaende.js
   dinge = createDinge({ szene, bodenHoehe: gelaende.bodenHoehe, welt, test: testModus });
   // Lichtbahnen: Sonnenstrahlen, die zwischen den Stämmen bis auf den Pfad fallen; die Lichtsäule steht steil über dem Menhir
   for (const [z, s, breite] of [[34, -5, 7], [84, 6, 6], [118, -4, 8], [171, 5, 6], [204, -7, 8], [262, 4, 7], [318, -5, 7], [362, 6, 6]]) {
@@ -68,6 +69,7 @@ async function baue() {
   bahnen.push({ x: dinge.menhir.x, y: gelaende.bodenHoehe(dinge.menhir.x, dinge.menhir.z), z: dinge.menhir.z, breite: 11, laenge: 120, staerke: 0.3, richtung: new THREE.Vector3(0.2, 0.93, -0.3).normalize() });
   licht = createLicht({ szene, renderer, bodenHoehe: gelaende.bodenHoehe, bahnen });
   licht.setzeSchatten(Q.schatten);
+  kronen = createKronen({ szene, wald, licht, detail: Q.detail, dichte: Q.dichte });   // KRONEN
   await pause();
   if (mitSplats) {
     splats = createSplats({ szene, budget: Q.splats, belichtung: renderer.toneMappingExposure, dunstFarbe: licht.dunstFarbe });
@@ -92,6 +94,7 @@ function update(dt) {
   const p = figur.position;
   gelaende.update(zeit); bewuchs.update(zeit); dinge.update(dt, zeit, p);
   licht.update(zeit, kamera, p);
+  kronen.update(zeit);                                                   // KRONEN
   // Ortsnamen: dezent einblenden, wenn man eine Wegmarke erreicht
   const nah = ORTE.find((o) => Math.abs(MARKEN[o.id] - p.z) < 14 && Math.abs(o.x - p.x) < 30);
   if (nah && nah.id !== ortAktiv) { ortAktiv = nah.id; if (!testModus) zeigeOrt(nah); }
@@ -117,7 +120,7 @@ function render() {
 
 const schleife = createSchleife({ update, render, fehler: zeigeFehler });
 const griff = window.daemmerwald = { bereit: false, renderer, szene, kamera, qual, stufe: qName, orte: ORTE, SONNE,
-  get gelaende() { return gelaende; }, get wald() { return wald; }, get bewuchs() { return bewuchs; }, get dinge() { return dinge; }, get licht() { return licht; },
+  get gelaende() { return gelaende; }, get wald() { return wald; }, get bewuchs() { return bewuchs; }, get dinge() { return dinge; }, get licht() { return licht; }, get kronen() { return kronen; },
   get splats() { return splats; }, get figur() { return figur; }, get welt() { return welt; },
   /** Für die Konsole: daemmerwald.gehe('bogen') */
   gehe(id) { const o = ORTE.find((x) => x.id === id); if (o) figur.stelle(o); return !!o; },

@@ -12,6 +12,8 @@ test('Registry kennt alle Typen aus dem Vertrag', () => {
   assert.equal(familieVon('eiche'), 'baum');
   assert.equal(familieVon('seerose'), 'bodendecker');
   assert.equal(familieVon('quatsch'), null);
+  assert.equal(familieVon('wedelfarn'), 'unterwuchs');
+  for (const t of ['wedelfarn', 'busch_unterholz', 'moospolster', 'wurzelschoessling', 'laubstreu']) assert.equal(typeof TYP_ZU_GENERATOR[t], 'function', t);
 });
 
 test('erzeugeAsset: Vertrag + unbekannter Typ → null', () => {

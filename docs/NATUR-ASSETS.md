@@ -57,5 +57,6 @@ export function erzeuge(typ, seed, opts = {}) -> {
 | Büsche | busch, beerenbusch, ginster, zwergstrauch |
 | Bodendecker | farn, grasbueschel, blume, pilz, schilf, seerose |
 | Wüste | kaktus, saeulenkaktus, agave |
+| Urwald-Unterwuchs | wedelfarn, busch_unterholz, moospolster, wurzelschoessling, laubstreu (`pflanze-unterwuchs.js`; Platzhalter `riese` baut das Spiel selbst) |
 
 Ein Generator darf mehr Typen können; die Welt nutzt nur, was in der Tabelle steht.

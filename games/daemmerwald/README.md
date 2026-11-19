@@ -19,7 +19,7 @@ Konsole: `daemmerwald.gehe('bogen')`, `daemmerwald.zahlen`.
 | `plan-daten.js` | reine Daten: Pfad (x als Funktion von z), Orte, Riesen-Varianten, Helden-Bäume, gestreute Riesen |
 | `gelaende.js` | Höhenfunktion (Ufer → Kies → Waldboden mit Hohlweg, eben um Riesen), Netz mit Vertexfarben, Wasser mit Himmelsspiegelung |
 | `wald.js` | Riesen aus `engine/models/natur/riesenbaum.js` als InstancedMesh (nah fein / fern grob), Wurzel-Kollision, Fern-Silhouetten |
-| `bewuchs.js` | Maßstabs-Anker aus dem Baukasten: normale Bäume 8–16 m, Farn, Pilze, Steine, Schilf, Totholz (entsättigt) |
+| `bewuchs.js` | Maßstabs-Anker aus dem Baukasten: normale Bäume 8–16 m, Pilze, Steine, Schilf, Totholz (entsättigt) + Urwald-Unterwuchs (Wedelfarn, Unterholz, Moos, Wurzelschösslinge, Laub) über `worldgen-scatter` `verteile` mit `URWALD_OBJEKTE`: Pfad/Stämme frei, dichter an Stammfüßen, nach außen ausgedünnt, Lichtung frei |
 | `dinge.js` | Boot, Laternen, Wanderer am Tor, gestürzter Riese, Menhir, Wegweiser, Leuchtpilze |
 | `licht.js` | Dämmerung, exp²-Dunst + Höhendunst, Verlaufshimmel, Lichtbahnen, Glühwürmchen, Vögel |
 | `splats.js` | eine Gauß-Wolke: Laub/Moos der Riesen (nach Pfad-Nähe ausgedünnt), Bodendunst, Moosteppich, Lichtstaub |
