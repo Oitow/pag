@@ -1,6 +1,6 @@
 /**
  * @modul    worldgen-scatter
- * @zweck    Blue-Noise-Verteilung von Objekten (Bäume, Büsche, Felsen, Kakteen, Schilf, Blumen …) mit Dichte pro Biom, Lichtungen und Hangregeln; reihenfolgeunabhängig und dadurch nahtlos über Chunks
+ * @zweck    Blue-Noise-Verteilung von Objekten (Bäume, Büsche, Felsen, Kakteen, Schilf, Blumen …) mit Dichte pro Biom, Lichtungen (je Art oder gemeinsam), Stammfuß-Häufung, Dichtefeld der Quelle und Hangregeln; reihenfolgeunabhängig und dadurch nahtlos über Chunks
  * @api      STANDARD_OBJEKTE (Daten aus worldgen-vegetation) ; verteile(quelle, arten, opts, bereich) -> objekte ; weltQuelle(welt) -> quelle ; stufeObjekte(welt, opts) -> void
  * @beispiel
  *   import { stufeObjekte } from '../../engine/world/worldgen/worldgen-scatter.js';
@@ -8,7 +8,7 @@
  *   const o = welt.objekte;   // { anzahl, x, y, art, typ, skala, drehung, arten:[…], typen:[…] }
  *   for (let i = 0; i < o.anzahl; i++) if (o.arten[o.art[i]] === 'baum') pflanze(o.typen[o.typ[i]], o.x[i], o.y[i]);
  * @tags     welt, worldgen, objekte, baeume, verteilung, poisson, blue-noise
- * @version  1.1.0
+ * @version  1.2.0
  * @status   entwurf
  * @three    nein
  */
@@ -24,6 +24,7 @@ export { STANDARD_OBJEKTE };
 /**
  * Quelle für eine fertige Welt: punkt(x,y,aus) füllt aus = [biom, hang, hoehe, wasserDist, flags, belegt, temperatur, feuchte, wasserspiegel]
  * (x,y in Zellen; die Felder ab 6 nur, wenn aus lang genug ist).
+ * Eigene Quellen (Spiele ohne Welt-Raster) liefern dasselbe punkt(); optional belege(x,y,r) und dichte(x,y) → Faktor 0..1 (z. B. dünner fern vom Pfad).
  */
 export function weltQuelle(welt) {
   const { breite: b, tiefe: t } = welt;
@@ -115,6 +116,10 @@ export function verteile(quelle, arten, opts, bereich) {
   const info = new Float64Array(9), nb = new Float64Array(9);
   const nCl = createNoise2D(hashSeed(seed, 'lichtung'));
   const clusterBei = (cl, a, x, y) => smoothstep(cl.schwelle, cl.schwelle + cl.weich, nCl(x * s * cl.frequenz + a * 31.7, y * s * cl.frequenz - a * 17.3));
+  // Gemeinsame Lichtungen (art.lichtung): dasselbe Rauschen für alle Arten → alle weichen an denselben Stellen aus
+  const nLi = createNoise2D(hashSeed(seed, 'lichtung-gemeinsam'));
+  const lichtungBei = (li, x, y) => 1 - smoothstep(li.schwelle, li.schwelle + (li.weich ?? 0.15), nLi(x * s * li.frequenz, y * s * li.frequenz));
+  const dichteFeld = typeof quelle.dichte === 'function' ? quelle.dichte : null;
 
   // Kronendach-Wert (0..1) aus Baumdichte des Bioms × Lichtungsrauschen der Baumart – reine Funktion von Ort und Punktinfo
   const wA = arten.findIndex(a => a.key === (opts.waldArt ?? 'baum'));
@@ -141,8 +146,9 @@ export function verteile(quelle, arten, opts, bereich) {
     const af = faktor * (opts.artDichte?.[art.key] ?? 1);
     let maxD = 0;
     for (let i = 0; i < 256; i++) if (dichte[i] > maxD) maxD = dichte[i];
-    const rand = art.rand, hf = art.hangFuss, unterWald = art.unterWald ?? 0;
-    maxD *= af * (rand ? 1 + (rand.gewicht ?? 2) : 1);
+    const rand = art.rand, hf = art.hangFuss, unterWald = art.unterWald ?? 0, fuss = art.fuss, li = art.lichtung;
+    const boost = (rand ? 1 + (rand.gewicht ?? 2) : 1) * (fuss ? 1 + (fuss.gewicht ?? 2) : 1);
+    maxD *= af * boost;
     if (maxD <= 0) continue;
     const hang = art.hang || [0, 1e9], hoehe = art.hoehe || [-1e9, 1e9], wd = art.wasserDist || [0, 1e9];
     const imSee = art.wasser === 'see', tiefe = art.tiefe || [-1e9, 1e9], ohneBelegt = art.belegt === false;
@@ -172,7 +178,20 @@ export function verteile(quelle, arten, opts, bereich) {
       if (p <= 0) continue;
       if (cl) p *= clusterBei(cl, a, x, y);
       if (unterWald > 0) p *= smoothstep(unterWald - 0.2, unterWald + 0.15, waldBei(info, x, y));
-      if (wurf >= p * (rand ? 1 + (rand.gewicht ?? 2) : 1)) continue;
+      if (li) p *= lichtungBei(li, x, y);
+      if (dichteFeld) p *= dichteFeld(x, y);
+      if (wurf >= p * boost) continue;
+      if (fuss) {
+        // Stammfuß: belegte Zellen (Stämme mit platz) im Abstand dist rundum → dichter (Farn und Moos an den Wurzeln)
+        const dd = fuss.dist ?? 3;
+        let n = 0;
+        for (let q = 0; q < 4; q++) {
+          quelle.punkt(x + RX[q] * dd, y + RY[q] * dd, nb); if (nb[5]) n++;
+          quelle.punkt(x + (RX[q] - RY[q]) * dd * 0.42, y + (RY[q] + RX[q]) * dd * 0.42, nb); if (nb[5]) n++;   // 45° gedreht, 0,6 × dist
+        }
+        p *= 1 + (fuss.gewicht ?? 2) * Math.min(1, n / 3);
+        if (!rand && !hf && wurf >= p) continue;
+      }
       if (rand || hf) {
         // Umgebung: stärkster Wald / steilster Hang rundum (mitten im Wald gibt es keinen Rand → Abkürzung)
         const w0 = rand ? waldBei(info, x, y) : 0;

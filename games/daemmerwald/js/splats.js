@@ -21,26 +21,30 @@ export function vorTonemapping(ziel, belichtung = 1) {
   return new THREE.Color(x[0], x[1], x[2]);
 }
 
-/** Dünnt Splat-Daten aus und gleicht die Fläche über größere Splats aus; mischt hohe Splats in den Dunst (Kronen verschwinden). */
-function stufe(daten, anteil, seed, dunst, { ab = 34, bis = 112, max = 0.9 } = {}) {
+/** Dünnt Splat-Daten aus und gleicht die Fläche über größere Splats aus; mischt hohe Splats leicht in den Dunst.
+ *  Kronen-Laub (y > kronenAb) ist nur noch weicher Rand um die Blatt-Karten (kronen.js): ausgedünnt und durchsichtiger, kein Blob-Nebel. */
+const KRONE = { ab: 44, rest: 0.3, deck: 0.45 };
+function stufe(daten, anteil, seed, dunst, { ab = 60, bis = 150, max = 0.4 } = {}) {
   const s = createSplatDaten(Math.ceil(daten.anzahl * anteil) + 16), gross = Math.min(2.4, Math.pow(anteil, -0.42));
   const { position: p, skala: k, drehung: q, farbe: f, deck: d, wind: w } = daten;
   for (let i = 0; i < daten.anzahl; i++) {
     if (anteil < 1 && hash2(i, 17, seed) >= anteil) continue;
-    const y = p[i * 3 + 1], t = Math.min(1, Math.max(0, (y - ab) / (bis - ab))), h = t * t * (3 - 2 * t) * max, g = y > 20 ? gross : Math.min(gross, 1.5);
+    const y = p[i * 3 + 1], krone = y > KRONE.ab && Math.max(k[i * 3], k[i * 3 + 1], k[i * 3 + 2]) >= 1.2;
+    if (krone && hash2(i, 41, seed) >= KRONE.rest) continue;
+    const t = Math.min(1, Math.max(0, (y - ab) / (bis - ab))), h = t * t * (3 - 2 * t) * max, g = y > 20 ? gross : Math.min(gross, 1.5);
     let fr = f[i * 3], fg = f[i * 3 + 1], fb = f[i * 3 + 2];
     const hellig = 0.3 * fr + 0.6 * fg + 0.1 * fb;                      // sehr helle Tupfer (Flechten) wirken im Dämmerlicht wie Schnee → dämpfen
     if (hellig > 0.11) { const m = 0.11 / hellig; fr *= m; fg *= m; fb *= m; }
     const klein = Math.max(k[i * 3], k[i * 3 + 1], k[i * 3 + 2]) < 1.2;       // kleine Tupfer nicht aufhellen (sähe aus wie Schnee), sondern ausblenden
     s.plus(p[i * 3], y, p[i * 3 + 2], k[i * 3] * g, k[i * 3 + 1] * g, k[i * 3 + 2] * g, q[i * 4], q[i * 4 + 1], q[i * 4 + 2], q[i * 4 + 3],
-      klein ? fr : fr + (dunst.r / LICHT - fr) * h, klein ? fg : fg + (dunst.g / LICHT - fg) * h, klein ? fb : fb + (dunst.b / LICHT - fb) * h, d[i] * (klein ? 1 - h : 1 - 0.35 * h), w[i]);
+      klein ? fr : fr + (dunst.r / LICHT - fr) * h, klein ? fg : fg + (dunst.g / LICHT - fg) * h, klein ? fb : fb + (dunst.b / LICHT - fb) * h, d[i] * (klein ? 1 - h : 1 - 0.35 * h) * (krone ? KRONE.deck : 1), w[i]);
   }
   return s.fertig();
 }
 const LICHT = 0.62;
 const STUFEN = [1, 0.62, 0.38, 0.22, 0.12, 0.06];
 
-/** opts: { szene, budget, maxPixel, belichtung, dunstFarbe (THREE.Color) } → { wolke, anzahl, teile, fuegeBaeume(wald), fuegeSzene(…), update(kamera, zeit, b, h), dispose() } */
+/** opts: { szene, budget, maxPixel, belichtung, dunstFarbe (THREE.Color) } → { wolke, anzahl, teile, fuegeBaeume(wald), fuegeSzene(…), setzeLicht(dunst, faktor), update(kamera, zeit, b, h), dispose() } */
 export function createSplats({ szene, budget = 90000, maxPixel = 220, belichtung = 1, dunstFarbe, seed = 1 }) {
   const wolke = createGaussWolke({ max: budget, sortiereAlle: 3, maxPixel });
   const dunst = vorTonemapping(dunstFarbe, belichtung);
@@ -99,6 +103,10 @@ export function createSplats({ szene, budget = 90000, maxPixel = 220, belichtung
   return {
     wolke, teile, fuegeBaeume, fuegeSzene,
     get anzahl() { return wolke.anzahl; },
+    /** Tageszeit: dunst = THREE.Color (wie szene.fog), faktor = [r, g, b] relativ zum Standard-Look (Splats sind unbeleuchtet). */
+    setzeLicht(dunstNeu, faktor) {
+      wolke.setze({ nebelFarbe: vorTonemapping(dunstNeu, belichtung), licht: [LICHT * faktor[0], LICHT * faktor[1], LICHT * faktor[2]] });
+    },
     update(kamera, zeit, breite, hoehe) { wolke.update(kamera, zeit, breite, hoehe); },
     dispose() { szene.remove(wolke.mesh); wolke.dispose(); },
   };

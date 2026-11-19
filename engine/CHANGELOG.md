@@ -1,5 +1,12 @@
 # Engine-Changelog
 
+## 2026-11 – Dämmerwald: Boden, Kronen, Unterwuchs, Tageslicht
+- world/boden-anpassung 1.0.0 (neu): Gelände schmiegt sich an große Objekte – Erdwulst aus lokalen Höhenkarten (Wurzeln, Felsen), Verdeckung/AO am Fuß, Bucket-Gitter statt Suche über alle Objekte. Nutzer: games/daemmerwald
+- models/natur/laub-klumpen 1.0.0 (neu, ohne THREE) + render/laub-karten 1.1.0 (neu): Kronen als deckende Blatt-Karten (Blattform prozedural im Shader, Alpha-Test), Durchscheinen zur Sonne, `setzeLicht`, `deckMaterial`, `durchlass`. Nutzer: games/daemmerwald
+- models/natur/pflanze-unterwuchs 1.0.0 (neu): Wedelfarn, Unterholz-Busch, Moospolster, Wurzelschössling, Laubstreu; natur-assets 1.1.0 (Familie `unterwuchs`, im Natur-Labor)
+- world/worldgen: worldgen-scatter 1.2.0 (`lichtung`, `fuss`, Quelle `dichte(x,y)`), worldgen-vegetation 1.1.0 (`URWALD_OBJEKTE`, `URWALD_TYPEN`), worldgen-biomes 1.1.0 (`URWALD_BIOM` über `biome.extra`), worldgen-presets 1.3.0 (Presets `urwald`, `daemmerwald`) – alles additiv
+- render/kronen-lichtkarte 1.0.0 (neu): kleine Lichtkarte des Kronendachs aus Sonnensicht (nur selten neu), Lichtflecken per Texture-Lookup, Lückensuche für Lichtstrahlen, `lichtBei` für Staub. Nutzer: games/daemmerwald
+
 ## 2026-11 – Dämmerwald: SDF + echte Gauß-Splats
 - core/sdf 1.0.0, core/sdf-netz 1.0.1 (neu): Abstandsfelder mit weicher Vereinigung (Kapsel, Kugel, Ellipsoid, Kette, Abzug, Störung), Surface-Nets-Netz mit Block-Vorauswahl (Wicklung an den Gradienten ausgerichtet) und begehbare Höhenkarte
 - render/gauss-wolke 1.0.0, gauss-saat 1.0.0, gauss-sortierung 1.0.0 (neu): echte prozedurale 3D-Gauß-Splats – instanzierte Vierecke mit 3D→2D-Kovarianz, vormultipliziertem Alpha, exp²-Nebel, Wind, 16-Bit-Tiefensortierung über Index-Attribut + Float-Datentextur; Aussaat auf Netzen. Demo games/natur-labor/splat-test.html

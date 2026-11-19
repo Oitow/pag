@@ -1,13 +1,13 @@
 /**
  * @modul    worldgen-vegetation
- * @zweck    Standard-Objektarten des Weltgenerators als reine Daten: Kronendach, Totholz, Unterholz, Büsche (Waldrand), Felsen/Findlinge, Geröll am Hangfuß, Kakteen, Schilf, Seerosen, Blumen und Bodendecker – mit gewichteten Typen je Biom und Typmischung nach Höhe/Feuchte/Temperatur
- * @api      STANDARD_OBJEKTE ; VEGETATION_TYPEN ; typenVon(art) -> string[]
+ * @zweck    Standard-Objektarten des Weltgenerators als reine Daten: Kronendach, Totholz, Unterholz, Büsche (Waldrand), Felsen/Findlinge, Geröll am Hangfuß, Kakteen, Schilf, Seerosen, Blumen und Bodendecker, dazu Urwald-Arten (Riesen, Wedelfarn, Unterholz, Moospolster, Wurzelschösslinge, Laubstreu) – mit gewichteten Typen je Biom und Typmischung nach Höhe/Feuchte/Temperatur
+ * @api      STANDARD_OBJEKTE ; VEGETATION_TYPEN ; typenVon(art) -> string[] ; URWALD_OBJEKTE ; URWALD_TYPEN
  * @beispiel
  *   import { STANDARD_OBJEKTE, VEGETATION_TYPEN } from '../../engine/world/worldgen/worldgen-vegetation.js';
  *   createWorld({ preset: 'insel', objekte: { arten: STANDARD_OBJEKTE.filter(a => a.key !== 'bodendecker') } });
  *   VEGETATION_TYPEN.includes('fichte');   // true
  * @tags     welt, worldgen, objekte, vegetation, baeume, felsen, bodendecker, daten
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
@@ -18,7 +18,9 @@
  *   dichte { biomKey: p, _: Rest }, typen { biomKey: [Eintrag…], _: [...] }, cluster { frequenz, schwelle, weich },
  *   hang, hoehe, wasserDist, skala [min,max],
  *   unterWald (0..1: nur unter Kronendach), rand { dist, gewicht } (mehr am Waldrand), hangFuss { dist, min, weich } (unter Hängen),
- *   wasser: 'see' (nur auf Seen) + tiefe [min,max] (normiert).
+ *   wasser: 'see' (nur auf Seen) + tiefe [min,max] (normiert),
+ *   lichtung { frequenz, schwelle, weich } (gemeinsames Lichtungsrauschen aller Arten: höhere Schwelle = nur der Kern bleibt frei),
+ *   fuss { dist, gewicht } (dichter neben belegten Zellen, z. B. an Stammfüßen von Arten mit platz).
  * Typ-Eintrag: 'name' oder { typ, w (Gewicht), hoehe, temp, feuchte, hang, wasserDist, skala }. Bedingungen werden
  * leicht verrauscht geprüft → weiche Übergänge (z. B. Fichte höher, Buche tiefer).
  */
@@ -26,7 +28,7 @@ export const STANDARD_OBJEKTE = [
   // ---- Kronendach ----
   { key: 'baum', radius: 2, platz: 1, skala: [0.75, 1.25],
     dichte: { laubwald: 0.85, nadelwald: 0.9, birkenwald: 0.8, regenwald: 0.95, hartlaubwald: 0.5, wiese: 0.05, savanne: 0.07, sumpf: 0.25,
-      heide: 0.04, tundra: 0.03, steppe: 0.01, strand: 0.05 },
+      heide: 0.04, tundra: 0.03, steppe: 0.01, strand: 0.05, urwald: 0.22 },
     typen: {
       laubwald: [{ typ: 'buche', w: 3, feuchte: [0.6, 1], temp: [0.45, 1] }, { typ: 'eiche', w: 3, temp: [0.52, 1] }, { typ: 'ahorn', w: 2 },
         { typ: 'birke', w: 0.6 }, { typ: 'fichte', w: 3, temp: [0, 0.48] }, { typ: 'weide', w: 3, wasserDist: [0, 3] }],
@@ -40,12 +42,13 @@ export const STANDARD_OBJEKTE = [
       heide: [{ typ: 'kiefer', w: 3 }, { typ: 'birke', w: 1 }], tundra: [{ typ: 'fichte', w: 2 }, { typ: 'tanne', w: 1 }],
       wiese: [{ typ: 'eiche', w: 3 }, { typ: 'ahorn', w: 1.5 }, { typ: 'birke', w: 1 }, { typ: 'buche', w: 0.6 }, { typ: 'weide', w: 4, wasserDist: [0, 3] }],
       strand: [{ typ: 'palme', w: 1, temp: [0.62, 1] }],
+      urwald: [{ typ: 'buche', w: 3 }, { typ: 'tanne', w: 2 }, { typ: 'fichte', w: 2, temp: [0, 0.5] }, { typ: 'birke', w: 0.5 }],
       _: ['eiche', 'birke'],
     },
     cluster: { frequenz: 14, schwelle: -0.3, weich: 0.35 }, hang: [0, 0.08], wasserDist: [1, 1e9] },
   // ---- Totholz im Wald (Lücken zwischen den Stämmen) ----
   { key: 'totholz', radius: 2.4, skala: [0.7, 1.2],
-    dichte: { laubwald: 0.1, nadelwald: 0.13, birkenwald: 0.08, regenwald: 0.08, sumpf: 0.14, hartlaubwald: 0.04 },
+    dichte: { laubwald: 0.1, nadelwald: 0.13, birkenwald: 0.08, regenwald: 0.08, sumpf: 0.14, hartlaubwald: 0.04, urwald: 0.2 },
     typen: { _: [{ typ: 'baumstumpf', w: 3 }, { typ: 'liegenderStamm', w: 2, hang: [0, 0.05] }, { typ: 'ast', w: 3 }] },
     unterWald: 0.35, hang: [0, 0.08], wasserDist: [1, 1e9] },
   // ---- Büsche, gehäuft am Waldrand ----
@@ -68,7 +71,7 @@ export const STANDARD_OBJEKTE = [
     unterWald: 0.4, cluster: { frequenz: 30, schwelle: -0.25, weich: 0.4 }, hang: [0, 0.1], wasserDist: [1, 1e9] },
   // ---- Felsen und Findlinge ----
   { key: 'fels', radius: 2.6, platz: 1, skala: [0.7, 1.3],
-    dichte: { fels: 0.3, tundra: 0.1, schnee: 0.04, heide: 0.06, wueste: 0.04, steppe: 0.05, strand: 0.03, nadelwald: 0.04, wiese: 0.025 },
+    dichte: { fels: 0.3, tundra: 0.1, schnee: 0.04, heide: 0.06, wueste: 0.04, steppe: 0.05, strand: 0.03, nadelwald: 0.04, wiese: 0.025, urwald: 0.03 },
     typen: {
       fels: [{ typ: 'fels', w: 3 }, { typ: 'felsbrocken', w: 2 }, { typ: 'felsnadel', w: 1.5, hang: [0.11, 99] }, { typ: 'felsplatte', w: 1.5, hang: [0, 0.1] }],
       wiese: [{ typ: 'findling', w: 4 }, { typ: 'fels', w: 1 }], heide: [{ typ: 'findling', w: 3 }, { typ: 'fels', w: 1 }],
@@ -102,6 +105,27 @@ export const STANDARD_OBJEKTE = [
     typen: { _: ['grasbueschel'] }, cluster: { frequenz: 18, schwelle: -0.35, weich: 0.5 }, hang: [0, 0.07], wasserDist: [1, 1e9] },
 ];
 
+/**
+ * Urwald (Dämmerwald-Stil, Biom 'urwald'): zuerst verteilen (vor STANDARD_OBJEKTE), damit die Riesen Platz bekommen.
+ * 'riese' ist ein reiner Platzhalter-Typ – das Spiel baut ihn selbst (z. B. engine/models/natur/riesenbaum.js).
+ * Gemeinsame Lichtungen: Riesen weichen ab Schwelle 0,2 aus, Unterwuchs erst im Kern (0,45) → offene Mitte mit Farnsaum.
+ */
+const LICHTUNG = { frequenz: 9, weich: 0.15 };
+export const URWALD_OBJEKTE = [
+  { key: 'riese', radius: 9, platz: 3, skala: [0.85, 1.2], dichte: { urwald: 0.95 }, typen: { _: ['riese'] },
+    lichtung: { ...LICHTUNG, schwelle: 0.2 }, hang: [0, 0.06], wasserDist: [2, 1e9] },
+  { key: 'urwald_unterwuchs', radius: 1.1, belegt: false, skala: [0.75, 1.3], dichte: { urwald: 0.55 },
+    typen: { _: [{ typ: 'wedelfarn', w: 4 }, { typ: 'busch_unterholz', w: 1.4 }, { typ: 'farn', w: 0.5, feuchte: [0, 0.6] }, { typ: 'pilz', w: 0.3 }] },
+    lichtung: { ...LICHTUNG, schwelle: 0.45 }, fuss: { dist: 3.5, gewicht: 2 }, cluster: { frequenz: 28, schwelle: -0.45, weich: 0.5 },
+    hang: [0, 0.09], wasserDist: [1, 1e9] },
+  { key: 'moospolster', radius: 1.5, belegt: false, skala: [0.7, 1.4], dichte: { urwald: 0.3 }, typen: { _: ['moospolster'] },
+    lichtung: { ...LICHTUNG, schwelle: 0.55 }, fuss: { dist: 2.5, gewicht: 4 }, hang: [0, 0.1], wasserDist: [0.5, 1e9] },
+  { key: 'wurzelschoessling', radius: 2.2, belegt: false, skala: [0.8, 1.3], dichte: { urwald: 0.08 }, typen: { _: ['wurzelschoessling'] },
+    fuss: { dist: 3, gewicht: 8 }, hang: [0, 0.07], wasserDist: [1, 1e9] },
+  { key: 'laubstreu', radius: 1.6, belegt: false, skala: [0.8, 1.5], dichte: { urwald: 0.35 }, typen: { _: ['laubstreu'] },
+    cluster: { frequenz: 20, schwelle: -0.2, weich: 0.4 }, hang: [0, 0.08], wasserDist: [1, 1e9] },
+];
+
 /** Alle Typnamen, die in einer Art vorkommen (ohne Doppelte). */
 export function typenVon(art) {
   const s = new Set();
@@ -112,3 +136,6 @@ export function typenVon(art) {
 
 /** Alle Typnamen der Standardarten. */
 export const VEGETATION_TYPEN = [...new Set(STANDARD_OBJEKTE.flatMap(typenVon))];
+
+/** Alle Typnamen der Urwald-Arten (inkl. Platzhalter 'riese'). */
+export const URWALD_TYPEN = [...new Set(URWALD_OBJEKTE.flatMap(typenVon))];

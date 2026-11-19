@@ -1,8 +1,8 @@
 # 🌿 Natur-Labor
 
-Betrachter für die prozeduralen Natur-Assets des Baukastens – Bäume, Felsen, Totholz, Büsche, Bodendecker, Wüstenpflanzen.
+Betrachter für die prozeduralen Natur-Assets des Baukastens – Bäume, Felsen, Totholz, Büsche, Bodendecker, Wüstenpflanzen, Urwald-Unterwuchs (Wedelfarn, Unterholz-Busch, Moospolster, Wurzelschössling, Laubstreu).
 
-- **Ansicht:** ◻ einzeln (mit Figur 1,8 m als Maßstab) oder ▦ alle 36 Typen im Raster (📏 echter Maßstab / ⤢ alle gleich groß).
+- **Ansicht:** ◻ einzeln (mit Figur 1,8 m als Maßstab) oder ▦ alle 41 Typen im Raster (📏 echter Maßstab / ⤢ alle gleich groß).
   Im Raster ein Asset antippen → einzeln ansehen.
 - **Einstellungen:** Typ, Seed (🎲), Detail 0/1/2, Jahreszeit (Sommer/Herbst/Winter – Winter gibt Felsen/Totholz Schnee), 🌬 Wind an/aus.
 - **Anzeige:** Dreiecke, Höhe, Radius, Stammradius, Bauzeit; Draw-Calls und Dreiecke im Bild, fps.

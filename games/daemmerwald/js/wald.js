@@ -5,7 +5,7 @@ import { rng, hashSeed } from '../../../engine/core/rng.js';
 import { RIESEN_VARIANTEN, WELT, pfadX, pfadYaw, pfadAbstand } from './plan-daten.js';
 import { mitHoehenDunst } from './licht.js';
 
-const EINSINKEN = 0.45;      // Riesen stehen etwas im Boden, damit kein Wurzelrand schwebt
+const EINSINKEN = 0.45;      // nur ohne fussHoehe: Riesen stehen etwas im Boden, damit kein Wurzelrand schwebt
 
 /** Platzhalter-Riese: gedrehtes Profil mit Wurzelanlauf, Rindenfarbe mit Streifen. */
 function platzhalter(v, segmente = 18) {
@@ -52,15 +52,15 @@ export function richteBogenAus(b, masse) {
 }
 
 /**
- * opts: { szene, riesen, varianten, bodenHoehe (Gelände), kollision (Kollisions-Welt) | null, schatten, fern = 150, seed }
+ * opts: { szene, riesen, varianten, bodenHoehe (Gelände), fussHoehe(b, i) (Gelände: Fuß passend zum Erdwulst) | null, schatten, fern = 150, seed }
  * → { meshes, instanzen, fernMesh, wurzelHoehe(x,z), dreiecke, update(), dispose() }
  */
-export function createWald({ szene, riesen, varianten, bodenHoehe, schatten = true, fern = 150, nahWeite = 30, seed = WELT.seed }) {
+export function createWald({ szene, riesen, varianten, bodenHoehe, fussHoehe = null, schatten = true, fern = 150, nahWeite = 30, seed = WELT.seed }) {
   const echt = varianten[0].echt;
   const material = mitHoehenDunst(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0, color: echt ? 0xc6cccc : 0xffffff, side: echt ? THREE.DoubleSide : THREE.FrontSide }), echt ? { ab: 34, bis: 110, max: 0.9 } : { ab: 26, bis: 96, max: 1 });
   const dummy = new THREE.Object3D(), farbe = new THREE.Color(), zufall = rng(hashSeed('wald', seed));
-  const instanzen = riesen.map((b) => {
-    const y = bodenHoehe(b.x, b.z) - EINSINKEN;
+  const instanzen = riesen.map((b, nr) => {
+    const fy = fussHoehe?.(b, nr), y = Number.isFinite(fy) ? fy : bodenHoehe(b.x, b.z) - EINSINKEN;   // Gelände kennt den Fuß (Wulst ist darauf gebaut)
     return { ...b, y, cos: Math.cos(b.drehung), sin: Math.sin(b.drehung), v: varianten[b.variante], weite: RIESEN_VARIANTEN[b.variante].wurzelWeite * b.skala * 1.35,
       matrix: new THREE.Matrix4().compose(new THREE.Vector3(b.x, y, b.z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), b.drehung), new THREE.Vector3(b.skala, b.skala, b.skala)) };
   });

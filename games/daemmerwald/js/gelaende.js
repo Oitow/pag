@@ -1,15 +1,23 @@
 // Dämmerwald – Gelände: Höhenfunktion h(x, z) (Wasser z < 0 → Kiesstrand → ansteigender, welliger Waldboden mit Hohlweg), Netz mit Vertexfarben, stille Wasserfläche.
-// Um jeden Riesen wird der Boden eingeebnet (die Wurzeln der Engine-Riesen sitzen auf einer Ebene). Der Pfad ist heller eingefärbt und leicht eingeebnet.
+// Um jeden Riesen wird der Boden eingeebnet und wölbt sich dann weich an die Wurzeln (engine/world/boden-anpassung: Erdwulst + Verdeckung).
+// Der Pfad ist heller eingefärbt und leicht eingeebnet.
 import * as THREE from 'three';
 import { createNoise2D, fbm2 } from '../../../engine/core/noise.js';
+import { createBodenAnpassung } from '../../../engine/world/boden-anpassung.js';
 import { HIMMEL_GLSL, himmelUniforms, DUNST_DICHTE } from './licht.js';
 import { WELT, PFAD_BREITE, LICHTUNG, STAMM, RIESEN_VARIANTEN, pfadX, pfadAbstand, stammAbstand } from './plan-daten.js';
 
 const glatt = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const misch = (a, b, t) => a + (b - a) * t;
 
-/** Reine Höhenfunktion. riesen: [{x, z, variante, skala}] (Einebnung um die Stämme). → { hoehe(x,z), roh(x,z), uferVersatz(x), feucht(x,z) } */
-export function createHoehe({ seed = WELT.seed, riesen = [] } = {}) {
+/** So tief steht der Fuß eines Riesen unter der eingeebneten Fläche (die Wurzelunterseite steckt im Boden). */
+export const RIESEN_EINSINKEN = 0.3;
+
+/**
+ * Reine Höhenfunktion. riesen: [{x, z, variante, skala, drehung}] (Einebnung um die Stämme); varianten (optional, aus wald.baueVarianten):
+ * mit kollision.hoehenkarte wölbt sich der Boden an die Wurzeln. → { hoehe(x,z), grund(x,z), verdeckung(x,z), fussY[], roh(x,z), uferVersatz(x), flecken, rausch }
+ */
+export function createHoehe({ seed = WELT.seed, riesen = [], varianten = null } = {}) {
   const n = createNoise2D(seed), n2 = createNoise2D(seed + 77);
   const uferVersatz = (x) => 5 * n(x * 0.007, 3.3) + 0.00035 * x * x;   // Bucht: an den Seiten greift das Wasser etwas weiter ins Land
   function roh(x, z) {
@@ -38,7 +46,7 @@ export function createHoehe({ seed = WELT.seed, riesen = [] } = {}) {
     return h;
   }
   for (const f of flecken) f.h = ohneRiesen(f.x, f.z);
-  function hoehe(x, z) {
+  function grund(x, z) {
     let h = ohneRiesen(x, z);
     for (const f of flecken) {
       const dx = x - f.x, dz = z - f.z;
@@ -48,7 +56,15 @@ export function createHoehe({ seed = WELT.seed, riesen = [] } = {}) {
     }
     return h;
   }
-  return { hoehe, roh, uferVersatz, flecken, rausch: n2 };
+  // Fuß jedes Riesen: eingeebnete Höhe − Einsinken; mit Höhenkarte zusätzlich ein Erdwulst an den Wurzeln (kein Luftspalt am Wurzelrand)
+  const fussY = flecken.map((f) => f.h - RIESEN_EINSINKEN);
+  const boden = createBodenAnpassung({ grundHoehe: grund });
+  riesen.forEach((b, i) => {
+    const karte = varianten?.[b.variante]?.kollision?.hoehenkarte;
+    if (!karte) return;
+    boden.fuegeFussabdruck({ x: b.x, z: b.z, y: fussY[i], drehung: b.drehung ?? 0, skala: b.skala, hoeheBei: karte.hoeheBei, radius: RIESEN_VARIANTEN[b.variante].wurzelWeite * b.skala * 1.7, ueberdeckung: 0.22 });
+  });
+  return { hoehe: boden.hoehe, grund, verdeckung: boden.verdeckung, fussY, roh, uferVersatz, flecken, rausch: n2 };
 }
 
 // Ungleichmäßiges Raster: fein im Spielbereich, nach außen immer gröber (ein nahtloses Netz bis in den Dunst)
@@ -88,16 +104,18 @@ export function bodenFarbe(hf, x, z, h, out = [0, 0, 0]) {
   return out;
 }
 
-/** → { hf, mesh, wasser, bodenHoehe(x,z), wasserHoehe(x,z), netzStreifen(), update(zeit), dispose() } */
-export function createGelaende({ szene, riesen = [], seed = WELT.seed } = {}) {
-  const hf = createHoehe({ seed, riesen });
+/** varianten: optional (Wurzel-Höhenkarten). → { hf, mesh, wasser, bodenHoehe(x,z), fussHoehe(b,i), wasserHoehe(x,z), netzStreifen(), update(zeit), dispose() } */
+export function createGelaende({ szene, riesen = [], varianten = null, seed = WELT.seed, himmel = himmelUniforms() } = {}) {
+  const hf = createHoehe({ seed, riesen, varianten });
   const xs = achse(-170, 170, 2.5, -900, 900), zs = achse(-30, 480, 2.5, -500, 1300);
   const nx = xs.length, nz = zs.length;
   const pos = new Float32Array(nx * nz * 3), col = new Float32Array(nx * nz * 3), tmp = [0, 0, 0];
   for (let j = 0, p = 0; j < nz; j++) for (let i = 0; i < nx; i++, p += 3) {
     const x = xs[i], z = zs[j], h = hf.hoehe(x, z);
     pos[p] = x; pos[p + 1] = h; pos[p + 2] = z;
-    bodenFarbe(hf, x, z, h, tmp); col[p] = tmp[0]; col[p + 1] = tmp[1]; col[p + 2] = tmp[2];
+    bodenFarbe(hf, x, z, h, tmp);
+    const ao = 1 - 0.62 * hf.verdeckung(x, z);                            // Verdeckung: dunkler am Wurzelansatz und Stammfuß
+    col[p] = tmp[0] * ao; col[p + 1] = tmp[1] * ao; col[p + 2] = tmp[2] * ao;
   }
   const idx = new Uint32Array((nx - 1) * (nz - 1) * 6);
   for (let j = 0, q = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {
@@ -118,10 +136,22 @@ float bodenHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5
 float bodenRausch(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(bodenHash(i), bodenHash(i + vec2(1, 0)), f.x), mix(bodenHash(i + vec2(0, 1)), bodenHash(i + vec2(1, 1)), f.x), f.y); }
 ` + s.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
-  { float fern = 1.0 - smoothstep(25.0, 90.0, length(vBodenPos - cameraPosition));
-    float kb = bodenRausch(vBodenPos.xz * 1.7) * 0.55 + bodenRausch(vBodenPos.xz * 7.3) * 0.45;
-    float gb = bodenRausch(vBodenPos.xz * 0.23);
-    diffuseColor.rgb *= mix(1.0, 0.62 + 0.7 * kb, fern) * (0.86 + 0.28 * gb); }`);
+  { vec2 q = vBodenPos.xz;
+    float abst = length(vBodenPos - cameraPosition), fern = 1.0 - smoothstep(25.0, 90.0, abst), nah = 1.0 - smoothstep(8.0, 34.0, abst);
+    float kb = bodenRausch(q * 1.7) * 0.55 + bodenRausch(q * 7.3) * 0.45;
+    float gb = bodenRausch(q * 0.23);
+    vec3 c = diffuseColor.rgb;
+    float wald = smoothstep(0.02, 0.05, c.g - c.b * 0.6) * smoothstep(0.3, 0.12, c.r);   // nur Waldboden (nicht Kies/Pfad-Mitte)
+    // Moos-Flecken (weich, ~2 m), Laub-Tupfer (~0.4 m), dunkle Erde dazwischen – alles prozedural, nach Abstand ausgeblendet
+    float moos = smoothstep(0.55, 0.78, bodenRausch(q * 0.45 + 3.1) * 0.7 + bodenRausch(q * 1.9) * 0.3);
+    float laub = smoothstep(0.62, 0.8, bodenRausch(q * 2.6 + 7.7)) * (1.0 - moos);
+    float erde = smoothstep(0.6, 0.85, bodenRausch(q * 0.9 + 11.3)) * (1.0 - moos);
+    vec3 d = mix(c, c * vec3(0.95, 1.32, 0.62), moos * 0.8);
+    d = mix(d, c * vec3(1.45, 1.05, 0.62), laub * 0.55 * smoothstep(0.35, 0.75, bodenRausch(q * 9.0)));
+    d = mix(d, c * vec3(0.78, 0.7, 0.62), erde * 0.6);
+    c = mix(c, d, wald * fern);
+    float korn = bodenRausch(q * 23.0);                                    // feinste Körnung nur ganz nah
+    diffuseColor.rgb = c * mix(1.0, 0.62 + 0.7 * kb, fern) * mix(1.0, 0.85 + 0.3 * korn, nah) * (0.86 + 0.28 * gb); }`);
   };
   const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true; mesh.name = 'gelaende';
@@ -131,7 +161,7 @@ float bodenRausch(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 
   // (engine/world/wasser-glanz ist ein Wellen-/Schaum-Hook für Gelände-Wasser – hier braucht es Spiegelung und Horizont-Dunst, daher ein kleiner eigener Shader.)
   const wasserMat = new THREE.ShaderMaterial({
     transparent: true, fog: false, toneMapped: false,
-    uniforms: { ...himmelUniforms(), uZeit: { value: 0 }, uDichte: { value: DUNST_DICHTE }, uTief: { value: new THREE.Vector3(0.07, 0.105, 0.11) } },
+    uniforms: { ...himmel, uZeit: { value: 0 }, uDichte: { value: DUNST_DICHTE } },   // uTief kommt mit den Himmels-Uniformen (folgt der Tageszeit)
     vertexShader: 'varying vec3 vW;\nvoid main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
     fragmentShader: 'varying vec3 vW;\nuniform float uZeit, uDichte;\nuniform vec3 uTief;\n' + HIMMEL_GLSL + `void main() {
   vec3 zu = vW - cameraPosition; float d = length(zu); vec3 v = zu / d;
@@ -153,6 +183,8 @@ float bodenRausch(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 
   return {
     hf, mesh, wasser,
     bodenHoehe: hf.hoehe,
+    /** Fußhöhe des Riesen Nr. i (für wald.js – dieselbe, mit der der Wulst gebaut wurde). */
+    fussHoehe: (b, i) => hf.fussY[i],
     wasserHoehe: (x, z) => (z - hf.uferVersatz(x) < 6 ? 0 : null),
     /** Schmales Netz entlang des Pfads (für Splat-Teppiche): { position, normal, index }. */
     netzStreifen({ breite = 13, schritt = 2, zVon = 8, zBis = 436 } = {}) {

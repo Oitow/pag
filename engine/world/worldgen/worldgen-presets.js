@@ -1,15 +1,17 @@
 /**
  * @modul    worldgen-presets
- * @zweck    Standardoptionen und benannte Voreinstellungen (insel, archipel, kontinent, gebirge, wueste, tundra, sumpfland, vulkaninsel, canyon, flachland, kueste, hochebene, unendlich) plus tiefes Zusammenführen von Optionen
+ * @zweck    Standardoptionen und benannte Voreinstellungen (insel, archipel, kontinent, gebirge, wueste, tundra, sumpfland, vulkaninsel, canyon, flachland, kueste, hochebene, unendlich, urwald/daemmerwald) plus tiefes Zusammenführen von Optionen
  * @api      STANDARD_OPTIONEN ; PRESETS ; mischeOptionen(...quellen) -> opts ; aufloesen(optionen) -> opts
  * @beispiel
  *   import { aufloesen } from '../../engine/world/worldgen/worldgen-presets.js';
  *   const opts = aufloesen({ preset: 'vulkaninsel', seed: 9, klima: { feuchte: 0.8 } });
  * @tags     welt, worldgen, presets, optionen, insel
- * @version  1.2.0
+ * @version  1.3.0
  * @status   entwurf
  * @three    nein
  */
+import { URWALD_BIOM } from './worldgen-biomes.js';
+import { STANDARD_OBJEKTE, URWALD_OBJEKTE } from './worldgen-vegetation.js';
 
 /** Alle Optionen mit Standardwerten (Höhen normiert: Meeresspiegel 0, hohe Gipfel ≈ 1). */
 export const STANDARD_OPTIONEN = {
@@ -95,11 +97,20 @@ export const PRESETS = {
     name: 'Hochebene', form: { typ: 'plateau', stufen: 3, kantenHaerte: 0.8 },
     hoehe: { flach: 0.6, gebirge: { menge: 0.3, hoehe: 0.5 } }, klima: { temperatur: 0.6, feuchte: 0.4 }, orte: { hoeheMax: 0.8 },
   },
+  // Dämmerwald-Stil: feucht-gemäßigt, sanftes Relief, riesige Bäume mit Mindestabstand, dichter Unterwuchs, gemeinsame Lichtungen
+  urwald: {
+    name: 'Urwald', form: { typ: 'insel', radius: 0.9, kuestenRauschen: 0.35 },
+    hoehe: { flach: 0.3, huegel: 0.7, gebirge: { menge: 0.15, hoehe: 0.4 }, klippen: 0.05 },
+    klima: { temperatur: 0.55, feuchte: 0.78, hoehenKaelte: 0.4 }, wasser: { flussMenge: 0.5 },
+    biome: { extra: [URWALD_BIOM] }, objekte: { arten: [...URWALD_OBJEKTE, ...STANDARD_OBJEKTE] }, orte: { doerfer: 1 },
+  },
   unendlich: {
     name: 'Unendlich (Chunks)', form: { typ: 'unendlich' },
     hoehe: { massstab: 256, landAnteil: 0.12, kontinente: 0.6, kontinentFrequenz: 0.18 },
   },
 };
+
+PRESETS.daemmerwald = { ...PRESETS.urwald, name: 'Dämmerwald' };
 
 const istObjekt = v => v !== null && typeof v === 'object' && !Array.isArray(v) && !ArrayBuffer.isView(v);
 
