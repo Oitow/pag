@@ -62,7 +62,7 @@ float lkLicht(vec3 w, float nurLaub) {
 /**
  * opts: renderer; groesse (Pixel², 256–512); weite (m quer zur Lichtrichtung); abstand (m, Kamera vor der Mitte zum Licht hin);
  * hoehe/verschiebung (Neu-Rendern, siehe brauchtNeu); minBilder (mindestens so viele update-Aufrufe zwischen zwei Neu-Rendern → Kosten gedeckelt); wegAnteil (Mitte darf so viel der weite wandern); minHoehe (flachste Lichthöhe, sonst endlose Schatten);
- * aussen (Verdeckung außerhalb der Karte); stammBis (Welt-y: Standard-Verdecker darüber ignorieren, z. B. Astwerk im Laub); luft (m über dem Boden, die noch abgedeckt sein sollen: Staub, Figur); lesen (Readback für lichtBei – synchron, nur beim Neu-Rendern).
+ * aussen (Verdeckung außerhalb der Karte); stammBis (Welt-y: Standard-Verdecker darüber ignorieren, z. B. Astwerk im Laub); luft (m über dem Boden, die noch abgedeckt sein sollen: Staub, Figur); lesen (Readback für lichtBei – synchron, im Bild NACH dem Neu-Rendern; lichtBei erst dann gültig).
  */
 export function createKronenLichtkarte({ renderer, groesse = 256, weite = 140, abstand = 700, hoehe = 80, verschiebung = 1.2, wegAnteil = 0.2, minHoehe = 0.12, aussen = 0.7, luft = 25, stammBis = Infinity, minBilder = 20, lesen = true } = {}) {
   const ziel = new THREE.WebGLRenderTarget(groesse, groesse, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: true, generateMipmaps: false });
@@ -87,15 +87,15 @@ export function createKronenLichtkarte({ renderer, groesse = 256, weite = 140, a
   const stellvertreter = [], daten = lesen ? new Uint8Array(groesse * groesse * 4) : null;
   const uniforms = { uLkKarte: { value: ziel.texture }, uLkMatrix: { value: new THREE.Matrix4() }, uLkStaerke: { value: 1 }, uLkAussen: { value: aussen } };
   const zahlen = { neu: 0, calls: 0 };
-  let stand = null, gelesen = false, bilder = Infinity;
+  let stand = null, gelesen = false, lesenOffen = false, bilder = Infinity;
   const r = new THREE.Vector3(), farbeAlt = new THREE.Color();
 
   /** Verdecker eintragen: Mesh/InstancedMesh (Geometrie und Instanzen werden geteilt, nicht kopiert). geometrie: z. B. eine grobe LOD-Stufe.
    *  Standard: undurchsichtig nur in R (Stamm). material (optional, z. B. laub.deckMaterial): schreibt rgb = Durchlass je Fragment; wird auf multiplikative Mischung umgestellt. */
   function fuege(objekt, { geometrie = objekt.geometry, material = standard } = {}) {
     if (material !== standard) malMischung(material);
-    const s = objekt.isInstancedMesh ? new THREE.InstancedMesh(geometrie, material, 0) : new THREE.Mesh(geometrie, material);
-    if (objekt.isInstancedMesh) { s.instanceMatrix = objekt.instanceMatrix; s.count = objekt.count; }
+    const s = objekt.isInstancedMesh ? new THREE.InstancedMesh(geometrie, material, 1) : new THREE.Mesh(geometrie, material);
+    if (objekt.isInstancedMesh) { s.instanceMatrix = objekt.instanceMatrix; s.count = objekt.count; }   // teilt den Puffer der Quelle (der eigene 1-Instanz-Puffer wird verworfen)
     s.matrixAutoUpdate = false; s.frustumCulled = false; s.userData.quelle = objekt;
     szene.add(s); stellvertreter.push(s);
     return s;
@@ -106,6 +106,7 @@ export function createKronenLichtkarte({ renderer, groesse = 256, weite = 140, a
     r.set(richtung.x, Math.max(richtung.y, minHoehe), richtung.z).normalize();
     const neu = { richtung: [r.x, r.y, r.z], mitte: [mitte.x, mitte.y, mitte.z] };
     bilder++;
+    if (lesenOffen) { lesenOffen = false; renderer.readRenderTargetPixels(ziel, 0, 0, groesse, groesse, daten); gelesen = true; }   // Readback erst im Bild nach dem Neu-Rendern
     if (!zwingen && (bilder < minBilder || !brauchtNeu(stand, neu, { hoehe, verschiebung, weg: weite * wegAnteil }))) return false;
     stand = neu; bilder = 0;
     kamera.position.set(mitte.x, mitte.y, mitte.z).addScaledVector(r, abstand);
@@ -125,11 +126,12 @@ export function createKronenLichtkarte({ renderer, groesse = 256, weite = 140, a
     const altZiel = renderer.getRenderTarget(), altAlpha = renderer.getClearAlpha(), sm = renderer.shadowMap, altAuto = sm.autoUpdate, altNeed = sm.needsUpdate, altReset = renderer.info.autoReset;
     renderer.getClearColor(farbeAlt);
     sm.autoUpdate = false; sm.needsUpdate = false; renderer.info.autoReset = false;
-    const c0 = renderer.info.render.calls;
+    const c0 = renderer.info.render.calls, t0 = renderer.info.render.triangles, p0 = renderer.info.render.points, l0 = renderer.info.render.lines, f0 = renderer.info.render.frame;
     renderer.setRenderTarget(ziel); renderer.setClearColor(0xffffff, 1); renderer.clear(true, true, false);
     renderer.render(szene, kamera);
     zahlen.calls = renderer.info.render.calls - c0; zahlen.neu++;
-    if (daten) { renderer.readRenderTargetPixels(ziel, 0, 0, groesse, groesse, daten); gelesen = true; }
+    Object.assign(renderer.info.render, { calls: c0, triangles: t0, points: p0, lines: l0, frame: f0 });   // Hauptszene zählt die Karte nicht mit
+    if (daten) lesenOffen = true;
     renderer.setRenderTarget(altZiel); renderer.setClearColor(farbeAlt, altAlpha);
     sm.autoUpdate = altAuto; sm.needsUpdate = altNeed; renderer.info.autoReset = altReset;
     return true;
@@ -173,6 +175,6 @@ export function createKronenLichtkarte({ renderer, groesse = 256, weite = 140, a
     get gelesen() { return gelesen; },
     /** Letzter Readback (RGBA8, groesse²) – für Fehlersuche. */
     get daten() { return daten; },
-    dispose() { for (const s of stellvertreter) szene.remove(s); stellvertreter.length = 0; standard.dispose(); ziel.dispose(); },
+    dispose() { for (const s of stellvertreter) { szene.remove(s); s.dispose?.(); } stellvertreter.length = 0; standard.dispose(); ziel.dispose(); },
   };
 }

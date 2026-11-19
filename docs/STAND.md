@@ -3,20 +3,18 @@
 > Wird von `/ende` überschrieben und von `/start` gelesen. Höchstens 35 Zeilen. Dauerhafte Festlegungen: `docs/ENTSCHEIDUNGEN.md`.
 
 ## Zuletzt gemacht
-- Neues Spiel **games/daemmerwald** (Bauplan `docs/WELT-DAEMMERWALD.md`): Ufer → Tor der Alten → Wurzelbogen → gestürzter Riese → Lichtung; 46 Riesen (110 m) in 5 Varianten,
-  3 Detailstufen nach Pfad-Abstand, Dunst-Staffelung, Lichtbahnen, Laternen, Pilze, Glühwürmchen; `?ort=` `?q=` `?splats=0` `?test=1` `?debug`
-- Engine neu: `core/sdf`, `core/sdf-netz`, `render/gauss-wolke` (+ `-saat`, `-sortierung`), `models/natur/riesenbaum` (+ `-form`, `-krone`, `-netz`); Demos im Natur-Labor (`splat-test.html`, `riesenbaum-test.html`)
-- KI-Struktur: Wegweiser + „Sehen statt glauben“ in `CLAUDE.md`, `docs/ART-DIRECTION.md`, `docs/RENDER-TECHNIK.md`, `docs/TESTEN.md`, `docs/ENTSCHEIDUNGEN.md`,
-  Agent `gucker`, Befehl `/bild`, Werkzeug `tools/bild.mjs` (Bildschirmfotos)
+- **Dämmerwald verbessert** (Branch daemmerwald-licht-kronen-boden): Wurzeln sitzen im Boden (Erdwulst + AO, `world/boden-anpassung`), Kronen als dichte Blatt-Karten statt Nebel
+  (`models/natur/laub-klumpen`, `render/laub-karten`), Unterwuchs Farn/Busch/Moos/Schössling/Laub (`models/natur/pflanze-unterwuchs`), Boden-Detail im Shader
+- Tag-Nacht-Zyklus (`?zeit=` `?tempo=` `?licht=einfach`, Standard 17:45), Kronen-Lichtkarte (`render/kronen-lichtkarte`): Sonnentupfer, Strahlen nur in Kronenlücken (9 Lücken in `kronen.js`), Staub leuchtet im Licht; Mond + Sterne
+- Weltgenerator: Biom `URWALD_BIOM`, Presets `urwald`/`daemmerwald`, worldgen-scatter mit `lichtung`/`fuss`/`dichte`
 
 ## Läuft / kaputt
-- Engine-Tests + Katalog grün, Smoke daemmerwald ok, alle 5 Orte + Hochformat + `?splats=0` als Bild angesehen (Software-Renderer)
-- NICHT geprüft: echtes Handy (Bildrate!), `npm run build` (kein esbuild in der Sitzung → CI), Durchlaufen der Strecke (Kollision an Wurzeln, Bogen, Kerbe nur als Standbild)
-- Zu schwer fürs Handy? `mittel` ~1.2 Mio. Dreiecke, `niedrig` ~640 k, 60–83 Draw-Calls; Ladezeit durch 5 Varianten × 3 Detailstufen (SDF-Vernetzung) spürbar
-- Spielzeug-Reste: Laterne (oranger Kasten), Lowpoly-Vergleichsbäume und -Farn, Boot, Menhir; gestürzter Riese liest sich als Wand; Schattenbereiche sehr dunkel
-- Rinde ist doppelseitig gezeichnet (einzelne SDF-Dreiecke sonst als Loch sichtbar – Ursache in `core/sdf-netz` noch nicht ganz behoben)
-- Splats sind unbeleuchtet/ohne Schatten (pauschal gedämpft); Nebel der Splats vor dem Tonemapping (im Spiel vor-entzerrt)
-- Alt: Enklave Draw-Calls > 120; enklave/js/figur.js + menue.js sind Kopien aus der Testwelt
+- `npm test` grün (Engine + Smoke), Dämmerwald-Daten grün; Bilder tor/bogen/lichtung/ufer zu 8/13/18.5/23 Uhr angesehen (Software-Renderer)
+- NICHT geprüft: echtes Handy (Bildrate, Readback der Lichtkarte 256², Alpha-Test-Kanten der Blatt-Karten), `npm run build`
+- Zahlen ?q=niedrig: Tor 88 Calls / ~756 k Dreiecke; mittel ~1.26 Mio. Dreiecke
+- Offen: Moos-/Dunst-Splats unbeleuchtet, Laub wirft keinen Schatten, Klumpenränder etwas „Blumenkohl“, Büsche facettig/ohne Splat-Rand, Tor abends/nachts sehr dunkel,
+  Sonnentupfer springen bei Neu-Rendern um 1–3 m (beschleunigter Tag), Boden-Shader erkennt Waldboden über Vertexfarbe
+- Alt: Rinde doppelseitig (core/sdf-netz), Spielzeug-Reste (Laterne, Boot, Menhir), Enklave Draw-Calls > 120
 
 ## Nächster Schritt
 - Dämmerwald am Handy spielen und Bildrate melden; danach Dreiecke weiter senken (Stufe 0 nur für die 4–6 nächsten Riesen, `games/daemmerwald/js/wald.js`)

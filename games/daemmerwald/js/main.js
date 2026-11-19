@@ -13,7 +13,7 @@ import { createGelaende } from './gelaende.js';
 import { baueVarianten, richteBogenAus, createWald } from './wald.js';
 import { createBewuchs } from './bewuchs.js';
 import { createDinge } from './dinge.js';
-import { createLicht, SONNE } from './licht.js';
+import { createLicht, SONNE, himmelUniforms } from './licht.js';
 import { START_STUNDE, MOND_TAG } from './tageslicht.js';
 import { createSplats } from './splats.js';
 import { createKronen } from './kronen.js';                       // KRONEN: dichtes Laub der Riesen
@@ -27,7 +27,7 @@ addEventListener('unhandledrejection', (e) => zeigeFehler(e.reason));
 const pause = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
 
 // ---- Qualität: Splat-Budget und Pixelverhältnis (§3 C) ----
-const STUFEN = { niedrig: { splats: 40000, pixel: 1, schatten: 1024, detail: 0.45, dichte: 0.6 }, mittel: { splats: 90000, pixel: 1.5, schatten: 2048, detail: 1, dichte: 1 }, hoch: { splats: 160000, pixel: 2, schatten: 2048, detail: 1, dichte: 1 } };
+const STUFEN = { niedrig: { splats: 40000, pixel: 1, schatten: 1024, detail: 0.45, dichte: 0.6 }, mittel: { splats: 90000, pixel: 1.5, schatten: 2048, detail: 1, dichte: 1, bewuchs: 0.75 }, hoch: { splats: 160000, pixel: 2, schatten: 2048, detail: 1, dichte: 1 } };
 const handy = matchMedia('(pointer: coarse)').matches;
 const qName = STUFEN[url.get('q')] ? url.get('q') : handy ? 'niedrig' : 'mittel', Q = STUFEN[qName];
 const testModus = url.has('test'), mitSplats = url.get('splats') !== '0', debug = url.has('debug'), lichtEinfach = url.get('licht') === 'einfach';
@@ -54,7 +54,7 @@ if (testModus) qual.fest(true);
 
 let splatUhr = 0;
 const REF = new THREE.Color(0x9bbcc0);                                  // Himmelslicht des Standard-Looks (Splat-Faktor 1)
-let kronen, gelaende, wald, bewuchs, dinge, licht, splats, figur, welt, zeit = testModus ? 40 : 0, infoZeit = 0, ortAktiv = null, ortUhr = 0;
+let himmelU, kronen, gelaende, wald, bewuchs, dinge, licht, splats, figur, welt, zeit = testModus ? 40 : 0, infoZeit = 0, ortAktiv = null, ortUhr = 0;
 const bahnen = [];
 
 async function baue() {
@@ -63,12 +63,13 @@ async function baue() {
   const varianten = baueVarianten({ modul: riesenModul, detail: Q.detail });
   await pause();
   const riesen = riesenListe().map((b) => (b.variante === BOGEN_VARIANTE ? richteBogenAus(b, varianten[b.variante].masse) : b));
-  gelaende = createGelaende({ szene, riesen, varianten });
+  himmelU = himmelUniforms();   // ein Satz für Himmel, Wasser (gelaende) und Licht
+  gelaende = createGelaende({ szene, riesen, varianten, himmel: himmelU });
   wald = createWald({ szene, riesen, varianten, bodenHoehe: gelaende.bodenHoehe, fussHoehe: gelaende.fussHoehe });
   welt = createKollisionsWelt({ welt: { bodenHoehe: (x, z) => Math.max(gelaende.bodenHoehe(x, z), wald.wurzelHoehe(x, z)), wasserHoehe: gelaende.wasserHoehe } });
   wald.meldeKollision(welt);
   await pause();
-  bewuchs = createBewuchs({ szene, hf: gelaende.hf, bodenHoehe: gelaende.bodenHoehe, riesen, dichte: Q.dichte });   // [bewuchs] Bodenhöhe aus gelaende.js
+  bewuchs = createBewuchs({ szene, hf: gelaende.hf, bodenHoehe: gelaende.bodenHoehe, riesen, dichte: Q.bewuchs ?? Q.dichte });   // [bewuchs] Bodenhöhe aus gelaende.js
   dinge = createDinge({ szene, bodenHoehe: gelaende.bodenHoehe, welt, test: testModus });
   // Lichtbahnen: Sonnenstrahlen, die zwischen den Stämmen bis auf den Pfad fallen; die Lichtsäule steht steil über dem Menhir
   for (const [z, s, breite] of [[34, -5, 7], [84, 6, 6], [118, -4, 8], [171, 5, 6], [204, -7, 8], [262, 4, 7], [318, -5, 7], [362, 6, 6]]) {
@@ -76,7 +77,7 @@ async function baue() {
     bahnen.push({ x: p.x, y: gelaende.bodenHoehe(p.x, p.z), z: p.z, breite, laenge: 90, staerke: 0.13 });
   }
   bahnen.push({ x: dinge.menhir.x, y: gelaende.bodenHoehe(dinge.menhir.x, dinge.menhir.z), z: dinge.menhir.z, breite: 11, laenge: 120, staerke: 0.3, richtung: new THREE.Vector3(0.2, 0.93, -0.3).normalize() });
-  licht = createLicht({ szene, renderer, bodenHoehe: gelaende.bodenHoehe, bahnen, einfach: lichtEinfach, karte: { groesse: qName === 'niedrig' ? 256 : 384 }, staub: qName === 'niedrig' ? 450 : 900 });
+  licht = createLicht({ szene, renderer, bodenHoehe: gelaende.bodenHoehe, bahnen, einfach: lichtEinfach, himmel: himmelU, karte: { groesse: qName === 'niedrig' ? 256 : 384, minBilder: qName === 'niedrig' ? 60 : 20 }, staub: qName === 'niedrig' ? 450 : 900 });
   licht.setzeSchatten(Q.schatten);
   kronen = createKronen({ szene, wald, licht, detail: Q.detail, dichte: Q.dichte });   // KRONEN
   // Kronen-Lichtkarte: Laub (Blatt-Silhouetten) + Riesen (grobe Stufe) verdecken; Sonnentupfer auf Boden, Bewuchs, Dingen und (nur Laub) auf den Stämmen

@@ -53,13 +53,14 @@ vec3 dwHimmel(vec3 d) {
 }
 `;
 // Gemeinsame Uniformen (Himmel + Wasser): ein Satz, je Bild von createLicht gesetzt
-const HIMMEL_U = { uSonne: { value: SONNE.clone() }, uDunst: { value: srgb(FARBEN.dunst) }, uWarm: { value: srgb(FARBEN.warm) }, uZenit: { value: srgb(FARBEN.zenit) },
-  uSonnenFarbe: { value: srgb(FARBEN.sonne) }, uSterne: { value: 0 }, uTief: { value: new THREE.Vector3(0.07, 0.105, 0.11) } };
-export const himmelUniforms = () => HIMMEL_U;
+const neueHimmelUniforms = () => ({ uSonne: { value: SONNE.clone() }, uDunst: { value: srgb(FARBEN.dunst) }, uWarm: { value: srgb(FARBEN.warm) }, uZenit: { value: srgb(FARBEN.zenit) },
+  uSonnenFarbe: { value: srgb(FARBEN.sonne) }, uSterne: { value: 0 }, uTief: { value: new THREE.Vector3(0.07, 0.105, 0.11) } });
+/** Frischer Satz je Aufruf (kein modulweiter Zustand): main legt ihn an und reicht ihn an gelaende und createLicht weiter. */
+export const himmelUniforms = neueHimmelUniforms;
 
-function baueHimmel() {
+function baueHimmel(himmelU) {
   const mat = new THREE.ShaderMaterial({
-    side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false, toneMapped: false, uniforms: himmelUniforms(),
+    side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false, toneMapped: false, uniforms: himmelU,
     vertexShader: 'varying vec3 vR;\nvoid main() { vR = position; gl_Position = projectionMatrix * viewMatrix * vec4(position + cameraPosition, 1.0); gl_Position.z = gl_Position.w; }',
     fragmentShader: 'varying vec3 vR;\n' + HIMMEL_GLSL + 'void main() { gl_FragColor = vec4(dwHimmel(normalize(vR)), 1.0); }',
   });
@@ -175,11 +176,11 @@ const lin = (c, rgb) => c.setRGB(rgb[0], rgb[1], rgb[2], THREE.SRGBColorSpace);
  * → { sonne, himmelslicht, dunstFarbe, richtung (Vector3, aktuell), zustand (tageslicht), kronenLicht, lichtkarte|null, setzeSchatten(groesse),
  *     fuegeVerdecker(objekt, opts), mitLichtkarte(material), update(zeit, kamera, mitte, stunde), dispose() }
  */
-export function createLicht({ szene, renderer, bodenHoehe, seed = 1, bahnen = [], einfach = false, karte = {}, staub = 700 }) {
+export function createLicht({ szene, renderer, bodenHoehe, seed = 1, bahnen = [], einfach = false, karte = {}, staub = 700, himmel: himmelU = himmelUniforms() }) {
   szene.fog = new THREE.FogExp2(FARBEN.dunst, DUNST_DICHTE);
   const dunstFarbe = szene.fog.color;                                        // FogExp2 kopiert die Farbe → genau dieses Objekt nachführen
   szene.background = dunstFarbe;
-  const himmel = baueHimmel();
+  const himmel = baueHimmel(himmelU);
   const sonne = new THREE.DirectionalLight(0xffe0c2, 2.3);
   sonne.castShadow = true;
   const s = sonne.shadow; s.mapSize.set(2048, 2048); s.bias = -0.0006; s.normalBias = 0.35;
@@ -192,15 +193,15 @@ export function createLicht({ szene, renderer, bodenHoehe, seed = 1, bahnen = []
     platz: (r) => { const z = 45 + r() * (PFAD_ENDE - 35), x = pfadX(z) + (r() - 0.5) * 34; return [x, bodenHoehe(x, z) + 0.4 + r() * 2.4, z]; } });
   const voegel = bauePunkte({ art: 'voegel', anzahl: 16, seed, farbe: 0x2a3034, groesse: 0.9, additiv: false,
     platz: (r, i) => [(r() - 0.5) * 160, 62 + r() * 50, i < 6 ? -60 - r() * 120 : 40 + r() * 260] });
-  const lk = einfach ? null : createKronenLichtkarte({ renderer, groesse: karte.groesse ?? 256, weite: karte.weite ?? 150, hoehe: 80, verschiebung: 1.0, aussen: 0.75, stammBis: 62 });
+  const lk = einfach ? null : createKronenLichtkarte({ renderer, groesse: karte.groesse ?? 256, weite: karte.weite ?? 150, hoehe: 80, verschiebung: 1.0, aussen: 0.75, stammBis: 62, minBilder: karte.minBilder ?? 20 });
   const lichtstaub = lk ? baueStaub(staub, seed, lk) : null;
   szene.add(himmel, sonne, sonne.target, himmelslicht, gegen, strahlen, gluehen, voegel);
   if (lichtstaub) szene.add(lichtstaub);
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
   const raster = (120 / 2048) * 4;
   const richtung = SONNE.clone(), zustand = tageslicht(START_STUNDE), kronenLicht = { sonne: richtung, farbe: new THREE.Color(), umgebung: new THREE.Color(), boden: new THREE.Color() };
-  const fwd = new THREE.Vector3(), letzte = { richtung: new THREE.Vector3(), yaw: 1e9, stunde: -1 };
-  const U = himmelUniforms();
+  const fwd = new THREE.Vector3(), letzte = { richtung: new THREE.Vector3(), yaw: 1e9, stunde: -1, suche: 0, strahlenAn: false };
+  const U = himmelU;
 
   function setzeFarben(z) {
     const f = z.farben;
@@ -232,10 +233,10 @@ export function createLicht({ szene, renderer, bodenHoehe, seed = 1, bahnen = []
       const px = cx + x, pz = cz + z, y = bodenHoehe(px, pz), l = lk.lichtBei(px, y + 1, pz, 2);
       if (l > 0.5) punkte.push({ x: px, y, z: pz, licht: l });
     }
-    const hoch = Math.max(richtung.y, 0.12), laenge = Math.min(230, 80 / hoch);
+    const hoch = Math.max(richtung.y, 0.12), flach = 1 - 0.4 * (1 - Math.min(1, richtung.y / 0.3)), laenge = Math.min(230, 80 / hoch);
     return waehleLuecken(punkte, { max: MAX_STRAHLEN, abstand: 7, schwelle: 0.62 }).map((p) => {
       const weit = lk.lichtBei(p.x, p.y + 1, p.z, 5);                           // breite Lücke → breiter Strahl
-      return { ...p, breite: 1.6 + 4 * weit * weit, laenge, staerke: 0.05 + 0.08 * (p.licht - 0.6) / 0.4 + 0.04 * weit };
+      return { ...p, breite: 1.6 + 4 * weit * weit * flach, laenge, staerke: 0.05 + 0.08 * (p.licht - 0.6) / 0.4 + 0.04 * weit * flach };
     });
   }
 
@@ -253,16 +254,21 @@ export function createLicht({ szene, renderer, bodenHoehe, seed = 1, bahnen = []
     mitLichtkarte(material, opts) { if (lk) lk.mitLichtkarte(material, opts); return material; },
     update(zeit, kamera, mitte, stunde = START_STUNDE) {
       himmel.scale.setScalar(kamera.far * 0.9);
-      if (Math.abs(stunde - letzte.stunde) > 1e-4) { tageslicht(stunde, undefined, zustand); setzeFarben(zustand); letzte.stunde = stunde; }
+      if (letzte.stunde < 0 || Math.abs(stunde - letzte.stunde) >= 0.05) { tageslicht(stunde, undefined, zustand); setzeFarben(zustand); letzte.stunde = stunde; }
       // Schattenkarte nur nah um die Figur (≤ 60 m), auf ein Raster gerundet (kein Flimmern)
       const mx = Math.round(mitte.x / raster) * raster, mz = Math.round(mitte.z / raster) * raster;
       sonne.target.position.set(mx, mitte.y, mz);
       sonne.position.copy(sonne.target.position).addScaledVector(richtung, 420);
       if (lk) {
+        // Bild N: Neu-Rendern · N+1: Readback (in lk.update) · N+2: Strahlensuche
         const neu = lk.update(richtung, mitte);
         kamera.getWorldDirection(fwd);
         const yaw = Math.atan2(fwd.x, fwd.z), gedreht = Math.abs(Math.atan2(Math.sin(yaw - letzte.yaw), Math.cos(yaw - letzte.yaw))) > 0.5;
-        if (neu || gedreht) { strahlen.userData.setze(zustand.strahlen > 0.02 ? sucheStrahlen(mitte, kamera) : [], richtung); letzte.yaw = yaw; }
+        const an = zustand.strahlen > 0.02, schwelle = an && !letzte.strahlenAn;      // Schwelle von unten überschritten → neu suchen
+        letzte.strahlenAn = an;
+        if (neu) letzte.suche = 2;
+        else if (letzte.suche > 0) { if (--letzte.suche === 0) { strahlen.userData.setze(an ? sucheStrahlen(mitte, kamera) : [], richtung); letzte.yaw = yaw; } }
+        else if ((gedreht || schwelle) && lk.gelesen) { strahlen.userData.setze(an ? sucheStrahlen(mitte, kamera) : [], richtung); letzte.yaw = yaw; }
         const u = lichtstaub.material.uniforms; u.uZeit.value = zeit; u.uMitte.value.copy(kamera.position);
       } else if (letzte.richtung.angleTo(richtung) > 0.01) {
         letzte.richtung.copy(richtung);

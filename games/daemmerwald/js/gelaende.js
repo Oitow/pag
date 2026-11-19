@@ -105,7 +105,7 @@ export function bodenFarbe(hf, x, z, h, out = [0, 0, 0]) {
 }
 
 /** varianten: optional (Wurzel-Höhenkarten). → { hf, mesh, wasser, bodenHoehe(x,z), fussHoehe(b,i), wasserHoehe(x,z), netzStreifen(), update(zeit), dispose() } */
-export function createGelaende({ szene, riesen = [], varianten = null, seed = WELT.seed } = {}) {
+export function createGelaende({ szene, riesen = [], varianten = null, seed = WELT.seed, himmel = himmelUniforms() } = {}) {
   const hf = createHoehe({ seed, riesen, varianten });
   const xs = achse(-170, 170, 2.5, -900, 900), zs = achse(-30, 480, 2.5, -500, 1300);
   const nx = xs.length, nz = zs.length;
@@ -161,7 +161,7 @@ float bodenRausch(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 
   // (engine/world/wasser-glanz ist ein Wellen-/Schaum-Hook für Gelände-Wasser – hier braucht es Spiegelung und Horizont-Dunst, daher ein kleiner eigener Shader.)
   const wasserMat = new THREE.ShaderMaterial({
     transparent: true, fog: false, toneMapped: false,
-    uniforms: { ...himmelUniforms(), uZeit: { value: 0 }, uDichte: { value: DUNST_DICHTE } },   // uTief kommt mit den Himmels-Uniformen (folgt der Tageszeit)
+    uniforms: { ...himmel, uZeit: { value: 0 }, uDichte: { value: DUNST_DICHTE } },   // uTief kommt mit den Himmels-Uniformen (folgt der Tageszeit)
     vertexShader: 'varying vec3 vW;\nvoid main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
     fragmentShader: 'varying vec3 vW;\nuniform float uZeit, uDichte;\nuniform vec3 uTief;\n' + HIMMEL_GLSL + `void main() {
   vec3 zu = vW - cameraPosition; float d = length(zu); vec3 v = zu / d;
