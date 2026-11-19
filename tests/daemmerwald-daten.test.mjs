@@ -78,3 +78,20 @@ test('Determinismus: gleiche Liste bei gleichem Seed, andere bei anderem', () =>
   assert.deepEqual(riesenListe({ seed: 5 }), riesenListe({ seed: 5 }));
   assert.notDeepEqual(riesenListe({ seed: 5 }), riesenListe({ seed: 6 }));
 });
+
+import { tageslicht, START_STUNDE, PALETTE } from '../games/daemmerwald/js/tageslicht.js';
+test('tageslicht: Standard = bisheriger Look, Tag/Nacht plausibel', () => {
+  const s = tageslicht(START_STUNDE);
+  const r = s.richtung, n = Math.hypot(0.52, 0.34, -0.78);
+  assert.ok(Math.abs(r[0] - 0.52 / n) < 0.02 && Math.abs(r[1] - 0.34 / n) < 0.03 && Math.abs(r[2] + 0.78 / n) < 0.02, 'Abendsonne wie SONNE');
+  const hex = (c) => c.map((v) => Math.round(v * 255));
+  assert.deepEqual(hex(s.farben.dunst), [0x8a, 0x9c, 0x98], 'Dunst wie bisher');
+  assert.ok(s.strahlen > 0.9 && !s.mond);
+  const mittag = tageslicht(13), nacht = tageslicht(23);
+  assert.ok(mittag.h > 0.8 && mittag.strahlen < 0.4 && mittag.lichtI > s.lichtI);
+  assert.ok(nacht.mond && nacht.nacht > 0.95 && nacht.sterne > 0.5 && nacht.lichtI > 0, 'Mondlicht');
+  assert.ok(nacht.farben.dunst[2] > nacht.farben.dunst[0], 'nachts kühles Blau');
+  assert.ok(nacht.himmelI > 0.8, 'nie schwarz');
+  for (let i = 1; i < PALETTE.length; i++) assert.ok(PALETTE[i].h > PALETTE[i - 1].h);
+  const z = tageslicht(8); assert.equal(tageslicht(9, undefined, z), z, 'Ziel wird wiederverwendet');
+});

@@ -44,7 +44,7 @@ function stufe(daten, anteil, seed, dunst, { ab = 60, bis = 150, max = 0.4 } = {
 const LICHT = 0.62;
 const STUFEN = [1, 0.62, 0.38, 0.22, 0.12, 0.06];
 
-/** opts: { szene, budget, maxPixel, belichtung, dunstFarbe (THREE.Color) } → { wolke, anzahl, teile, fuegeBaeume(wald), fuegeSzene(…), update(kamera, zeit, b, h), dispose() } */
+/** opts: { szene, budget, maxPixel, belichtung, dunstFarbe (THREE.Color) } → { wolke, anzahl, teile, fuegeBaeume(wald), fuegeSzene(…), setzeLicht(dunst, faktor), update(kamera, zeit, b, h), dispose() } */
 export function createSplats({ szene, budget = 90000, maxPixel = 220, belichtung = 1, dunstFarbe, seed = 1 }) {
   const wolke = createGaussWolke({ max: budget, sortiereAlle: 3, maxPixel });
   const dunst = vorTonemapping(dunstFarbe, belichtung);
@@ -103,6 +103,10 @@ export function createSplats({ szene, budget = 90000, maxPixel = 220, belichtung
   return {
     wolke, teile, fuegeBaeume, fuegeSzene,
     get anzahl() { return wolke.anzahl; },
+    /** Tageszeit: dunst = THREE.Color (wie szene.fog), faktor = [r, g, b] relativ zum Standard-Look (Splats sind unbeleuchtet). */
+    setzeLicht(dunstNeu, faktor) {
+      wolke.setze({ nebelFarbe: vorTonemapping(dunstNeu, belichtung), licht: [LICHT * faktor[0], LICHT * faktor[1], LICHT * faktor[2]] });
+    },
     update(kamera, zeit, breite, hoehe) { wolke.update(kamera, zeit, breite, hoehe); },
     dispose() { szene.remove(wolke.mesh); wolke.dispose(); },
   };

@@ -69,7 +69,7 @@ function instanzen(geo, mat, matrizen, name) {
   return m;
 }
 
-/** opts: { szene, bodenHoehe, welt (Kollisions-Welt), wald (für Pilz-Plätze an Wurzeln), seed, test } → { laternen, pilze, wanderer, menhir, schildPos, update(dt, zeit, spielerPos), dispose() } */
+/** opts: { szene, bodenHoehe, welt (Kollisions-Welt), wald (für Pilz-Plätze an Wurzeln), seed, test } → { laternen, pilze, wanderer, menhir, schildPos, materialien, update(dt, zeit, spielerPos), setzeNacht(n), dispose() } */
 export function createDinge({ szene, bodenHoehe, welt, seed = 1, test = false }) {
   const r = rng(hashSeed('dinge', seed)), dummy = new THREE.Object3D(), weg = [];
   const matrix = (x, z, ry = 0, s = 1, dy = 0) => { dummy.position.set(x, bodenHoehe(x, z) + dy, z); dummy.rotation.set(0, ry, 0); dummy.scale.setScalar(s); dummy.updateMatrix(); return dummy.matrix.clone(); };
@@ -91,7 +91,7 @@ export function createDinge({ szene, bodenHoehe, welt, seed = 1, test = false })
   dazu(instanzen(lat.leucht, leuchtMat, latMat, 'laternen-licht'));
   for (const p of latPlaetze) welt.fuege({ form: 'kreis', x: p.x, z: p.z, radius: 0.14, hoehe: 2.2 });
   const lichter = [0, 1, 2].map(() => dazu(new THREE.PointLight(0xffa860, 0, 26, 1.6)));
-  let lichtUhr = 0;
+  let lichtUhr = 0, nacht = 0;
 
   // Gestürzter Riese
   const sy = bodenHoehe(STAMM.x, STAMM.z) + STAMM.radius * 0.66;
@@ -139,13 +139,19 @@ export function createDinge({ szene, bodenHoehe, welt, seed = 1, test = false })
   wanderer.update(0.016);
 
   return {
-    laternen: latPlaetze, pilze, wanderer, menhir: { x: LICHTUNG.x, z: mz }, schildPos,
+    laternen: latPlaetze, pilze, wanderer, menhir: { x: LICHTUNG.x, z: mz }, schildPos, materialien: { holz, stein, rinde },
     update(dt, zeit, pos) {
       if (!test) wanderer.update(dt);
       if ((lichtUhr -= dt) > 0) return;
       lichtUhr = 0.4;
       const nah = latPlaetze.map((p) => ({ p, d: Math.hypot(p.x - pos.x, p.z - pos.z) })).sort((a, b) => a.d - b.d);
-      lichter.forEach((l, i) => { const n = nah[i]; l.position.set(n.p.x, bodenHoehe(n.p.x, n.p.z) + 2.0, n.p.z); l.intensity = n.d < 70 ? 22 : 0; });
+      lichter.forEach((l, i) => { const n = nah[i]; l.position.set(n.p.x, bodenHoehe(n.p.x, n.p.z) + 2.0, n.p.z); l.intensity = n.d < 70 ? 22 * (1 + 1.3 * nacht) : 0; l.distance = 26 + 14 * nacht; });
+    },
+    /** Tageszeit: n = 0 (Tag) … 1 (Nacht) – Laternen und Leuchtpilze tragen nachts mehr. */
+    setzeNacht(n) {
+      if (Math.abs(n - nacht) < 0.01) return;
+      nacht = n; lichtUhr = 0;
+      leuchtMat.color.setHex(0xf2b060).multiplyScalar(0.75 + 0.25 * n); pilzMat.color.setHex(0x5fe6d6).multiplyScalar(0.6 + 0.4 * n);
     },
     dispose() {
       for (const o of weg) { szene.remove(o); o.geometry?.dispose?.(); }

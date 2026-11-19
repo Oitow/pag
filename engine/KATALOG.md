@@ -134,6 +134,7 @@
 | grosszauber-wand-ansicht | `engine/render/grosszauber-wand.js` | Ansicht des Großzaubers 'Erdwall': kantige Felspfeiler (InstancedMesh, Low-Poly, Risse + Moos), Erdwulst und Trümmer am Fuß, Staubwolke beim Aufsteigen und Zerfallen, Zittern beim Steigen | entwurf |
 | grosszauber-welle-ansicht | `engine/render/grosszauber-welle.js` | Ansicht der Flutwelle: gebogenes, verformtes Wellen-Gitter mit überrollendem Kamm, Schaumkrone und Fresnel-Rand, Gischt als Punkte, auslaufende Flutfläche – 3 Draw-Calls, ~3500 Dreiecke, Tiefenfarben + Schaumstreifen prozedural, keine Schatten | entwurf |
 | horde-mesh | `engine/render/horde-mesh.js` | Zeichnet eine Horde (gameplay/horde) mit wenigen Draw-Calls: je Modell und Lauf-Bild ein InstancedMesh; Hüpfer, Überschlag im Flug, Treffer-Aufblitzen, Leichen auf der Seite, Versinken | entwurf |
+| kronen-lichtkarte | `engine/render/kronen-lichtkarte.js` | Lichtkarte unter einem Kronendach: kleines Render-Target, orthografisch entlang der Licht-(Sonnen-/Mond-)Richtung, nur Verdecker (Laub, Stämme) – selten neu gerendert (Sonne merklich gewandert oder Mitte verlassen). Liefert Sonnentupfer für beliebige beleuchtete Materialien (ein Texture-Lookup je Fragment, dämpft nur das erste Richtungslicht), GLSL für eigene Shader, CPU-Abfrage aus dem Readback (Lücken für Lichtstrahlen) und reine Helfer zur Lücken-Wahl | entwurf |
 | laub-karten | `engine/render/laub-karten.js` | Dichtes Laub als EIN instanziertes Mesh aus Blatt-Karten (zur Kamera gedreht): Blatt-Silhouette prozedural im Fragment-Shader (keine Textur), Alpha-Test bzw. alphaToCoverage, Richtungslicht mit Durchscheinen zur Sonne, dunkler Kern, Wind, exp²-Nebel + eigener Höhendunst | entwurf |
 | mesh-builder | `engine/render/mesh-builder.js` | Low-Poly-Modelle aus Primitiven (Box, Kugel, Zylinder …) mit Vertexfarben zu EINER Geometrie verschmelzen; Farbvariation pro Dreieck per Seed | entwurf |
 | natur-material | `engine/render/natur-material.js` | Gemeinsames Material für Natur-Assets: MeshStandardMaterial (Vertexfarben, flatShading) mit Wind-Schwingen im Vertex-Shader über das Attribut 'wind' (0 starr … 1 voll); Phase je Instanz aus der Weltposition; passendes Schatten-Material; optional Ausblenden ab Kamera-Entfernung | entwurf |
@@ -442,6 +443,7 @@
 | kristall | tempel |
 | krit | kampf-werte |
 | krone | character-parts-hut, character-parts-kopf, laub-klumpen, riesenbaum-krone, laub-karten |
+| kronen | kronen-lichtkarte |
 | körper | character-parts |
 | l-system | baum-skelett |
 | ladungen | faehigkeiten |
@@ -456,7 +458,8 @@
 | leiste | faehigkeiten, hud, kampf-leiste |
 | leistung | qualitaet |
 | leucht | bau-licht |
-| licht | bau-licht, himmel-stand, himmel |
+| licht | bau-licht, kronen-lichtkarte, himmel-stand, himmel |
+| lichtstrahlen | kronen-lichtkarte |
 | localStorage | speicher |
 | lock-on | follow-camera, ziel-wahl |
 | locken | character-parts-haar |
@@ -500,7 +503,7 @@
 | nachbearbeitung | splat-look |
 | nachricht | ereignisse |
 | nachschwingen | character-sekundaer |
-| nacht | himmel-stand, himmel |
+| nacht | kronen-lichtkarte, himmel-stand, himmel |
 | nachwachsen | rohstoffe |
 | nahkampf | nahkampf-daten, nahkampf |
 | namensschild | figur-schild |
@@ -570,7 +573,8 @@
 | register | register |
 | registry | natur-assets |
 | reichweite | faehigkeiten, interaktion |
-| render | grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht, laub-karten, natur-material |
+| render | grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht, kronen-lichtkarte, laub-karten, natur-material |
+| render-target | kronen-lichtkarte |
 | rendern | horde-mesh |
 | ressource | faehigkeiten, kampf-leiste |
 | retro | psx |
@@ -597,7 +601,7 @@
 | salto | character-anim-zustand |
 | schaden | kampf-werte, kampf, treffer-zahlen |
 | schal | character-parts-zubehoer |
-| schatten | qualitaet, himmel |
+| schatten | kronen-lichtkarte, qualitaet, himmel |
 | schaum | wasser-glanz |
 | schild | character-ausruestung, ziel-rahmen |
 | schilf | pflanze-boden |
@@ -631,6 +635,7 @@
 | sockel | character-ausruestung, character-rig |
 | sog | grosszauber-sturm |
 | sonne | himmel-stand, himmel |
+| sonnentupfer | kronen-lichtkarte |
 | sortierung | gauss-sortierung |
 | sound | klang |
 | speichern | speicher, zeit, behaelter, inventar, character-look, welt-aenderung |
@@ -667,7 +672,7 @@
 | surface-nets | sdf-netz |
 | synth | klang |
 | tabelle | zauber-daten |
-| tag | himmel-stand, himmel |
+| tag | kronen-lichtkarte, himmel-stand, himmel |
 | tagesablauf | character-brain |
 | tageszeit | zeit |
 | tank | bedrohung |
@@ -722,7 +727,7 @@
 | wachturm | wachturm |
 | waffe | nahkampf-daten, nahkampf, character-ausruestung |
 | wahrnehmung | character-sinne |
-| wald | baum, riesenbaum |
+| wald | baum, riesenbaum, kronen-lichtkarte |
 | wand | grosszauber-wand, grosszauber, grosszauber-mesh, grosszauber-wand-ansicht |
 | wandern | character-steering |
 | wasser | grosszauber-welle, grosszauber-welle-ansicht, terrain-mesh, wasser-glanz, worldgen-adapter, worldgen-hydrology, worldgen-rivers |
@@ -1018,7 +1023,7 @@ uhr.on('tag', (tag) => console.log('Neuer Tag', tag));
 uhr.update(dt); // je Bild, dt in echten Sekunden
 ```
 
-Genutzt von: enklave, testwelt · Tags: zeit, tageszeit, jahreszeit, kalender, uhr, speichern · THREE: nein
+Genutzt von: daemmerwald, enklave, testwelt · Tags: zeit, tageszeit, jahreszeit, kalender, uhr, speichern · THREE: nein
 
 ### aufgaben · `engine/gameplay/aufgaben.js` · v1.0.0 · entwurf
 Aufgaben-/Tutorial-Logik: Schritte (gehe-zu, sprich-mit, sammle, besiege, benutze, warte), Fortschritt, Signale, Speicherstand; reine Daten, serialisierbar
@@ -2955,10 +2960,28 @@ Genutzt von: enklave, figuren-labor · Tags: horde, gegner, instancing, instance
 Erwartet je Wesen (wie gameplay/horde): { def: { modell }, x, y, z, yaw, skala, phase, hub, dreh, zustand, blitz, verfall, ton, hoehe }.
 Modelle: Nase nach +Z, Füße auf y = 0. Die Geometrien gehören dem Aufrufer (dispose() gibt sie nicht frei).
 
-### laub-karten · `engine/render/laub-karten.js` · v1.0.0 · entwurf
+### kronen-lichtkarte · `engine/render/kronen-lichtkarte.js` · v1.0.0 · entwurf
+Lichtkarte unter einem Kronendach: kleines Render-Target, orthografisch entlang der Licht-(Sonnen-/Mond-)Richtung, nur Verdecker (Laub, Stämme) – selten neu gerendert (Sonne merklich gewandert oder Mitte verlassen). Liefert Sonnentupfer für beliebige beleuchtete Materialien (ein Texture-Lookup je Fragment, dämpft nur das erste Richtungslicht), GLSL für eigene Shader, CPU-Abfrage aus dem Readback (Lücken für Lichtstrahlen) und reine Helfer zur Lücken-Wahl
+
+- `createKronenLichtkarte({ renderer, groesse = 256, weite = 140, abstand = 700, hoehe = 80, verschiebung = 1.2, wegAnteil = 0.2, minHoehe = 0.12, aussen = 0.7, luft = 25, stammBis = Infinity, minBilder = 20, lesen = true }) -> { textur, uniforms: { uLkKarte, uLkMatrix, uLkStaerke, uLkAussen }, GLSL, fuege(objekt, { geometrie?, material? }), mitLichtkarte(material, { nurLaub }), update(richtung, mitte, zwingen?) -> bool, lichtBei(x, y, z, radius = 1, kanal = 0) -> 0..1, zahlen: { neu, calls }, dispose() }`
+- `brauchtNeu(alt, neu, opts) -> bool`
+- `probeKarte(daten, groesse, u, v, radius = 1, kanal = 0, stride = 4) -> 0..1 Mittelwert`
+- `waehleLuecken(punkte, { max = 10, abstand = 8, schwelle = 0.5 }) -> punkte`
+
+```js
+import { createKronenLichtkarte } from '../../engine/render/kronen-lichtkarte.js';
+const lk = createKronenLichtkarte({ renderer, groesse: 256, weite: 140 });
+lk.fuege(laub.mesh, { material: laub.deckMaterial }); for (const m of riesen) lk.fuege(m);
+lk.mitLichtkarte(boden.material);                     // vor dem ersten Rendern: Sonnentupfer auf dem Boden
+if (lk.update(sonnenRichtung, figur.position)) baueStrahlen(lk.lichtBei);   // nur bei Neu-Rendern true
+```
+
+Genutzt von: daemmerwald · Tags: licht, schatten, kronen, wald, sonnentupfer, lichtstrahlen, render-target, tag, nacht, render · THREE: ja
+
+### laub-karten · `engine/render/laub-karten.js` · v1.1.0 · entwurf
 Dichtes Laub als EIN instanziertes Mesh aus Blatt-Karten (zur Kamera gedreht): Blatt-Silhouette prozedural im Fragment-Shader (keine Textur), Alpha-Test bzw. alphaToCoverage, Richtungslicht mit Durchscheinen zur Sonne, dunkler Kern, Wind, exp²-Nebel + eigener Höhendunst
 
-- `createLaubKarten({ karten, sonne: Vector3, sonnenFarbe: Color, umgebung: Color, boden: Color, blatt = 0.6, hoehenDunst = { ab: 60, bis: 170, max: 0.4 }, wind = 1, alphaToCoverage = false }) -> { mesh, material, anzahl, setzeLicht({ sonne, farbe, umgebung, boden }), update(zeit), dispose() }`
+- `createLaubKarten({ karten, sonne: Vector3, sonnenFarbe: Color, umgebung: Color, boden: Color, blatt = 0.6, hoehenDunst = { ab: 60, bis: 170, max: 0.4 }, wind = 1, alphaToCoverage = false, durchlass = 0.5 }) -> { mesh, material, deckMaterial (weiß × durchlass, für Lichtkarten), anzahl, setzeLicht({ sonne, farbe, umgebung, boden }), update(zeit), dispose() }`
 
 ```js
 import { createLaubKarten } from '../../engine/render/laub-karten.js';
@@ -3256,7 +3279,7 @@ const stand = himmelStand({ stunde: uhr.stunde, jahresAnteil: uhr.jahresAnteil, 
 himmel.update(stand, { kamera, mitte: figur.position });
 ```
 
-Genutzt von: enklave, testwelt · Tags: himmel, tag, nacht, sonne, mond, sterne, licht, farben, dämmerung, wetter · THREE: nein
+Genutzt von: daemmerwald, enklave, testwelt · Tags: himmel, tag, nacht, sonne, mond, sterne, licht, farben, dämmerung, wetter · THREE: nein
 
 ### himmel · `engine/world/himmel.js` · v1.1.0 · entwurf
 Zeichnet den Himmel aus einem himmel-stand: Himmelskuppel mit Farbverlauf, Sonnenscheibe mit Schein, Mond mit Phase, ziehende Wolken, Sterne; steuert Sonnen-/Mondlicht mit mitlaufendem Schatten, Umgebungslicht und Nebel der Szene

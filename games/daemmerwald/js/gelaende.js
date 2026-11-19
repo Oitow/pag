@@ -161,7 +161,7 @@ float bodenRausch(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 
   // (engine/world/wasser-glanz ist ein Wellen-/Schaum-Hook für Gelände-Wasser – hier braucht es Spiegelung und Horizont-Dunst, daher ein kleiner eigener Shader.)
   const wasserMat = new THREE.ShaderMaterial({
     transparent: true, fog: false, toneMapped: false,
-    uniforms: { ...himmelUniforms(), uZeit: { value: 0 }, uDichte: { value: DUNST_DICHTE }, uTief: { value: new THREE.Vector3(0.07, 0.105, 0.11) } },
+    uniforms: { ...himmelUniforms(), uZeit: { value: 0 }, uDichte: { value: DUNST_DICHTE } },   // uTief kommt mit den Himmels-Uniformen (folgt der Tageszeit)
     vertexShader: 'varying vec3 vW;\nvoid main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
     fragmentShader: 'varying vec3 vW;\nuniform float uZeit, uDichte;\nuniform vec3 uTief;\n' + HIMMEL_GLSL + `void main() {
   vec3 zu = vW - cameraPosition; float d = length(zu); vec3 v = zu / d;

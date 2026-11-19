@@ -18,5 +18,6 @@ test('laub-karten: ein instanziertes Mesh, Licht setzbar, dispose', () => {
   assert.ok(Math.abs(u.uSonne.value.y - 1) < 1e-6 && u.uSonnenFarbe.value.r === 1 && u.uUmgebung.value.g === 1);
   l.update(3); assert.equal(u.uZeit.value, 3);
   assert.ok(l.material.fog && u.fogColor && u.fogDensity, 'Szenen-Nebel');
+  assert.ok(l.deckMaterial.defines.NUR_DECKUNG !== undefined && l.deckMaterial.uniforms.uZeit === u.uZeit, 'Deckungs-Material teilt Wind');
   l.dispose();
 });

@@ -1,7 +1,7 @@
 /**
  * @modul    laub-karten
  * @zweck    Dichtes Laub als EIN instanziertes Mesh aus Blatt-Karten (zur Kamera gedreht): Blatt-Silhouette prozedural im Fragment-Shader (keine Textur), Alpha-Test bzw. alphaToCoverage, Richtungslicht mit Durchscheinen zur Sonne, dunkler Kern, Wind, exp²-Nebel + eigener Höhendunst
- * @api      createLaubKarten({ karten, sonne: Vector3, sonnenFarbe: Color, umgebung: Color, boden: Color, blatt = 0.6, hoehenDunst = { ab: 60, bis: 170, max: 0.4 }, wind = 1, alphaToCoverage = false }) -> { mesh, material, anzahl, setzeLicht({ sonne, farbe, umgebung, boden }), update(zeit), dispose() }
+ * @api      createLaubKarten({ karten, sonne: Vector3, sonnenFarbe: Color, umgebung: Color, boden: Color, blatt = 0.6, hoehenDunst = { ab: 60, bis: 170, max: 0.4 }, wind = 1, alphaToCoverage = false, durchlass = 0.5 }) -> { mesh, material, deckMaterial (weiß × durchlass, für Lichtkarten), anzahl, setzeLicht({ sonne, farbe, umgebung, boden }), update(zeit), dispose() }
  * @beispiel
  *   import { createLaubKarten } from '../../engine/render/laub-karten.js';
  *   const laub = createLaubKarten({ karten, sonne: new THREE.Vector3(0.5, 0.4, -0.8).normalize(), sonnenFarbe: new THREE.Color(0.7, 0.6, 0.5), umgebung: new THREE.Color(0.25, 0.32, 0.33) });
@@ -9,7 +9,7 @@
  *   laub.setzeLicht({ sonne: neueRichtung });             // Tag-Nacht: je Bild setzbar (Richtung ZUR Sonne, Farben linear inkl. Stärke)
  *   laub.update(zeit);                                    // Wind
  * @tags     natur, laub, blatt, karten, instanziert, shader, alpha, transluzenz, wind, krone, render
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    ja
  */
@@ -37,7 +37,7 @@ void main() {
 
 const FRAG = /* glsl */`
 uniform vec3 uSonne, uSonnenFarbe, uUmgebung, uBoden, uDunst;
-uniform float uBlatt;
+uniform float uBlatt, uDurchlass;
 varying vec2 vUv; varying vec3 vFarbe, vN, vBeule, vW; varying float vTief, vSkala, vSaat;
 #include <fog_pars_fragment>
 float h21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -70,6 +70,9 @@ void main() {
     if (a < 0.5) discard;
     a = 1.0;
   #endif
+  #ifdef NUR_DECKUNG
+    gl_FragColor = vec4(vec3(uDurchlass), 1.0); return;             // Licht-/Verdeckungskarte (z. B. kronen-lichtkarte): Durchlass je Karte, nur in der Blatt-Silhouette
+  #endif
   // Licht: Kartennormale + Wölbung des Klumpens + Blattneigung
   vec3 n = normalize(vN + vBeule * 0.55 + (vec3(h21(vec2(ton, 1.0)), h21(vec2(ton, 2.0)), h21(vec2(ton, 3.0))) - 0.5) * 0.5);
   vec3 L = normalize(uSonne), V = normalize(vW - cameraPosition);
@@ -91,7 +94,7 @@ void main() {
 
 /** Laub-Mesh aus Karten (laub-klumpen.js, Weltkoordinaten). Ein Draw-Call, keine Textur. */
 export function createLaubKarten({ karten, sonne = new THREE.Vector3(0.5, 0.5, -0.7), sonnenFarbe = new THREE.Color(0.7, 0.62, 0.52), umgebung = new THREE.Color(0.22, 0.3, 0.31),
-  boden = new THREE.Color(0.06, 0.07, 0.06), blatt = 0.6, hoehenDunst = { ab: 60, bis: 170, max: 0.4 }, wind = 1, alphaToCoverage = false } = {}) {
+  boden = new THREE.Color(0.06, 0.07, 0.06), blatt = 0.6, hoehenDunst = { ab: 60, bis: 170, max: 0.4 }, wind = 1, alphaToCoverage = false, durchlass = 0.5 } = {}) {
   const geo = new THREE.InstancedBufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute([-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0], 3));
   geo.setIndex([0, 1, 2, 0, 2, 3]);
@@ -111,12 +114,14 @@ export function createLaubKarten({ karten, sonne = new THREE.Vector3(0.5, 0.5, -
     vertexShader: VERT, fragmentShader: FRAG, fog: true, side: THREE.DoubleSide, alphaToCoverage,
     defines: alphaToCoverage ? { MIT_A2C: '' } : {},
     uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {
-      uZeit: { value: 0 }, uWind: { value: wind }, uBlatt: { value: blatt },
+      uZeit: { value: 0 }, uWind: { value: wind }, uBlatt: { value: blatt }, uDurchlass: { value: durchlass },
       uSonne: { value: new THREE.Vector3() }, uSonnenFarbe: { value: new THREE.Color() }, uUmgebung: { value: new THREE.Color() }, uBoden: { value: new THREE.Color() },
       uDunst: { value: new THREE.Vector3(hoehenDunst.ab, hoehenDunst.bis, hoehenDunst.max) },
     }]),
   });
   const u = material.uniforms;
+  // Deckungs-Material: gleiche Silhouette und gleicher Wind (geteilte Uniformen), Farbe = Durchlass je Karte, ohne Licht/Nebel – für Licht-/Verdeckungskarten
+  const deckMaterial = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: FRAG, fog: false, side: THREE.DoubleSide, defines: { NUR_DECKUNG: '' }, uniforms: u });
   /** Licht je Bild setzbar (Tag-Nacht): sonne = Richtung ZUR Sonne, Farben linear inkl. Stärke. Fehlende Werte bleiben. */
   function setzeLicht({ sonne: s, farbe, umgebung: um, boden: bo } = {}) {
     if (s) u.uSonne.value.copy(s).normalize();
@@ -128,8 +133,8 @@ export function createLaubKarten({ karten, sonne = new THREE.Vector3(0.5, 0.5, -
   const mesh = new THREE.Mesh(geo, material);
   mesh.name = 'laub-karten';
   return {
-    mesh, material, anzahl: n, setzeLicht,
+    mesh, material, deckMaterial, anzahl: n, setzeLicht,
     update(zeit) { u.uZeit.value = zeit; },
-    dispose() { mesh.removeFromParent(); geo.dispose(); material.dispose(); },
+    dispose() { mesh.removeFromParent(); geo.dispose(); material.dispose(); deckMaterial.dispose(); },
   };
 }
