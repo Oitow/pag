@@ -26,7 +26,7 @@ Ziel des Ganzen: das MMO **Erlenwacht** (Repo `Oitow/Erlenwacht`, noch leer – 
 - Spielspezifisches bleibt in `games/<spiel>/`.
 - Modulvertrag: ≤ ~300 Zeilen, eine Aufgabe, keine Globals, Fabrik `createX(opts)` mit Defaults + `dispose()`,
   Zufall nur über Seed (`engine/core/rng.js`), THREE nur via `import * as THREE from 'three'`, reine Logik ohne THREE.
-- Schichten (nur abwärts importieren): core → render → world/models → input/audio/camera → gameplay → ui.
+- Schichten (nur abwärts importieren): core → render → world/models → input/audio/camera → gameplay → ui → spiel (Host + Module, `docs/ERLENWACHT-MODULE.md`).
 
 ## Engine-API ändern
 - Additiv (neue optionale Option) → Minor-Version im Kopf erhöhen.

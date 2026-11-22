@@ -28,3 +28,5 @@
 - PAG ist die Werkstatt, `Oitow/Erlenwacht` das spätere MMO-Repo – Umzug erst mit einem spielbaren Gebiet, damit nicht zwei halbe Engines entstehen (16.11.2026)
 - Sichtbares gilt erst als fertig, wenn ein Bild gemacht und angesehen wurde (`tools/bild.mjs`, Agent `gucker`) – frühere Sitzungen haben Shader „blind“ abgeliefert (16.11.2026)
 - Parallele Agenten nur mit festen Verträgen im Bauplan und getrennten Dateien (bewährt bei Enklave und Dämmerwald)
+- Neue oberste Schicht `engine/spiel/` (Host + fertige Spiel-Module). Neue Spiele stecken Module an (`createSpiel({ module })`) statt alles selbst zu verdrahten; Erlenwacht ist die Sammelwelt, in der alles zusammen getestet wird (22.11.2026)
+- Agenten-Runden: höchstens ~10 neue Testdateien je Runde, nur reine Logik (22.11.2026)

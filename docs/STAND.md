@@ -3,25 +3,25 @@
 > Wird von `/ende` überschrieben und von `/start` gelesen. Höchstens 35 Zeilen. Dauerhafte Festlegungen: `docs/ENTSCHEIDUNGEN.md`.
 
 ## Zuletzt gemacht
-- **Dämmerwald verbessert** (Branch daemmerwald-licht-kronen-boden): Wurzeln sitzen im Boden (Erdwulst + AO, `world/boden-anpassung`), Kronen als dichte Blatt-Karten statt Nebel
-  (`models/natur/laub-klumpen`, `render/laub-karten`), Unterwuchs Farn/Busch/Moos/Schössling/Laub (`models/natur/pflanze-unterwuchs`), Boden-Detail im Shader
-- Tag-Nacht-Zyklus (`?zeit=` `?tempo=` `?licht=einfach`, Standard 17:45), Kronen-Lichtkarte (`render/kronen-lichtkarte`): Sonnentupfer, Strahlen nur in Kronenlücken (9 Lücken in `kronen.js`), Staub leuchtet im Licht; Mond + Sterne
-- Weltgenerator: Biom `URWALD_BIOM`, Presets `urwald`/`daemmerwald`, worldgen-scatter mit `lichtung`/`fuss`/`dichte`
+- **Erlenwacht – die vereinte Welt** (Branch erlenwacht-modul-welt, `games/erlenwacht`): Engine als Module – `core/modul-kern` + Host `engine/spiel/spiel.js`,
+  8 Module (welt, himmel, riesenwald, entitaeten, spieler, bewohner, gegner, zauber). Vertrag: `docs/ERLENWACHT-MODULE.md`. 5 Agents parallel.
+- Welt 4×4 km gestreamt (`world/welt-regionen`, `chunk-strom`, `welt-streu`): Küste → Dämmerwald → Siedlung → Hochland/Nebelmoor/Grauzinnen (Gipfel 352 m)
+- Dämmerwald-Riesen in der großen Welt (138–161 Riesen, Tor-Bogen, Kronen-Loch-Schatten statt Lichtkarte), Himmel-Modul (Tag/Nacht, Wetter)
+- Neu: Ausdauer + Sprint + Klettern, Bewohner mit Tagesablauf, Entitäten-IDs + Befehls-Schicht (MMO), Rattenlager, Zauber mit 10 Element-Reaktionen
 
 ## Läuft / kaputt
-- `npm test` grün (Engine + Smoke), Dämmerwald-Daten grün; Bilder tor/bogen/lichtung/ufer zu 8/13/18.5/23 Uhr angesehen (Software-Renderer)
-- NICHT geprüft: echtes Handy (Bildrate, Readback der Lichtkarte 256², Alpha-Test-Kanten der Blatt-Karten), `npm run build`
-- Zahlen ?q=niedrig: Tor 88 Calls / ~756 k Dreiecke; mittel ~1.26 Mio. Dreiecke
-- Offen: Moos-/Dunst-Splats unbeleuchtet, Laub wirft keinen Schatten, Klumpenränder etwas „Blumenkohl“, Büsche facettig/ohne Splat-Rand, Tor abends/nachts sehr dunkel,
-  Sonnentupfer springen bei Neu-Rendern um 1–3 m (beschleunigter Tag), Boden-Shader erkennt Waldboden über Vertexfarbe
-- Alt: Rinde doppelseitig (core/sdf-netz), Spielzeug-Reste (Laterne, Boot, Menhir), Enklave Draw-Calls > 120
+- `npm test` grün (798 Tests, Smoke 8 Spiele); Bilder tor (10 Uhr), Hochlandlager (Kampf, Zauber), Start hochkant angesehen – keine Konsolen-Fehler
+- Zahlen ?q=niedrig: Welt allein 17–33 Calls / ≤ 104 k △; Riesenwald +18 Calls / +250 k △; Siedlung mittel 129 Calls (Bewohner)
+- NICHT geprüft: echtes Handy (Bildrate, Touch-Knöpfe), `npm run build`
+- Offen: Fern-Bäume fehlen (Streu nur ≤ 150 m), kein Worker, Kartenrand hart; Wurzeln der Riesen nicht begehbar; 18 Uhr im Wald ohne warmes Gold/Lichtbahnen;
+  Großzauber verformen `welt.bodenHoehe` nicht (nur Zauber-Adapter); Gegner-Laden nicht gebaut; kein Klang im Zauber-Modul; Streu-Bäume bei niedrig spielzeughaft
 
 ## Nächster Schritt
-- Dämmerwald am Handy spielen und Bildrate melden; danach Dreiecke weiter senken (Stufe 0 nur für die 4–6 nächsten Riesen, `games/daemmerwald/js/wald.js`)
-- Spielzeug-Reste ersetzen: Laterne, Farn und Unterholz als Splat-Büschel, Vergleichsbäume mit Splat-Laub (`games/daemmerwald/js/bewuchs.js`, `dinge.js`)
-- Dämmerwald-Ende mit der Enklave verbinden (ein Weg, eine Welt); Mentorin/erste Aufgabe am Ufer
-- MMO-Fundament: Entitäts-IDs + Befehls-Schicht, dann Netzwerk-Prototyp
+- Erlenwacht am Handy spielen, Bildrate + Touch melden
+- Fern-Wald (Impostor-Kacheln), Lichtbahnen/Goldton am Abend, Wurzeln in `welt.bodenHoehe`
+- Quest-Faden: Mentorin am Strand → durch den Wald → Siedlung → erstes Rattenlager (`gameplay/aufgaben`)
+- Netzwerk-Prototyp auf `entitaeten.aenderungenSeit` + `befehle`
 
 ## Ideen-Parkplatz
-- SDF-Kreaturen und -Zauber (weich verschmelzende Formen), Splat-LOD nach Entfernung, Koloss-Silhouette fern zwischen den Stämmen
+- SDF-Kreaturen und -Zauber, Splat-LOD nach Entfernung, Koloss-Silhouette fern zwischen den Stämmen
 - Sammelspiel mit den Voxel-Tieren; Sichtlinien-Prüfung in `gameplay/interaktion`

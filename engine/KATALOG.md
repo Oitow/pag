@@ -10,8 +10,10 @@
 | klang | `engine/audio/klang.js` | Synthetische WebAudio-Geräusche (Zauber, Horden-Kampf) ohne Audiodateien; ohne AudioContext still | entwurf |
 | follow-camera | `engine/camera/follow-camera.js` | Third-Person-Orbitkamera: weiches Folgen (vertikal träger), Kollision entlang des Sichtstrahls (Boden + Hindernisse, sanftes Zurückfahren), Auto-Ausrichtung, Sprint-FOV, Zoom, Schütteln, weiches Lock-On mit Zielwechsel, Erste-Person beim Reinzoomen, Presets (nah/weit/Schulter), Kamerafahrten | entwurf |
 | ziel-wahl | `engine/camera/ziel-wahl.js` | Lock-On-Ziel auswählen: bestes Ziel vor der Figur (Winkel + Abstand) oder nächstes Ziel links/rechts vom aktuellen (Ziel wechseln) | entwurf |
+| entitaeten | `engine/core/entitaeten.js` | Mehrspieler-Fundament: Entitäten (Spieler, Gegner, NPCs, Dinge) mit stabilen, deterministischen IDs ('g:12'), Team, Position, Leben und Daten – räumliche Abfrage, Ereignisse, kompakter Zustand und Änderungs-Zähler für spätere Netz-Deltas | entwurf |
 | ereignisse | `engine/core/ereignisse.js` | Event-Bus mit Prioritäten, einmaligen Hörern, Platzhalter '*' und Warteschlange für deterministische Reihenfolge | entwurf |
 | math | `engine/core/math.js` | Kleine Mathe-Helfer: clamp, lerp, smoothstep, framerate-unabhängiges Dämpfen, Winkel | stabil |
+| modul-kern | `engine/core/modul-kern.js` | Modul-System für Spiele: Module (Welt, Figur, Zauber …) mit Abhängigkeiten anmelden, in richtiger Reihenfolge starten, je Bild/festem Schritt takten, Dienste teilen, Zustand speichern und rückwärts aufräumen – an/abschaltbar per Name | entwurf |
 | noise | `engine/core/noise.js` | Seedbares Simplex-Rauschen 2D/3D plus fBm, Grat-Rauschen und Domain-Warp für Terrain, Biome und Texturen | stabil |
 | raum-gitter | `engine/core/raum-gitter.js` | Räumliches Raster (Spatial Hash in x/z) für bewegliche Dinge: Einträge mit id setzen/verschieben/entfernen und schnell alle im Umkreis finden – Grundlage für Kollision, Interaktion, Sinne und Sichtbereiche (Mehrspieler) | entwurf |
 | register | `engine/core/register.js` | Datenkatalog für Gegenstände, Rezepte usw. mit stabilen Nummern und eingefrorenen Einträgen | entwurf |
@@ -23,7 +25,9 @@
 | speicher | `engine/core/speicher.js` | Spielstände sicher speichern/laden (localStorage mit Arbeitsspeicher-Fallback), Versionen, Migration, Autospeichern, Export/Import als Text, TypedArrays | entwurf |
 | zeit | `engine/core/zeit.js` | Spieluhr: Tageszeit, Tage, Jahreszeiten und Jahre mit Ereignissen, Pause, Tempo und Speicherstand | entwurf |
 | aufgaben | `engine/gameplay/aufgaben.js` | Aufgaben-/Tutorial-Logik: Schritte (gehe-zu, sprich-mit, sammle, besiege, benutze, warte), Fortschritt, Signale, Speicherstand; reine Daten, serialisierbar | entwurf |
+| ausdauer | `engine/gameplay/ausdauer.js` | Ausdauer für Sprint, Rolle/Dash, Schwimmen, Klettern, Springen: Kosten-Tabelle als Daten, Erholung nach Verzögerung, Erschöpft-Zustand (gesperrte Aktionen bis zur Schwelle) | entwurf |
 | bedrohung | `engine/gameplay/bedrohung.js` | Klassische Aggro-Tabelle: Bedrohung je Gegner und Quelle, Zielwechsel erst bei 110 %, Spott, Heilungs-Bedrohung | entwurf |
+| befehle | `engine/gameplay/befehle.js` | Befehls-Schicht „Wer will was“: Befehle ({von, art, daten}) in eine Warteschlange, je Art Prüfer (lebt, Reichweite, Abklingzeit) + Ausführer, fester Takt, Protokoll zum Nachspielen – gleiche Befehle → gleiches Ergebnis (Server-tauglich) | entwurf |
 | behaelter | `engine/gameplay/behaelter.js` | Behälter in der Welt (Truhe, Fass, Schrank): eigenes Inventar, öffnen/schließen je Figur, Schloss mit Schlüssel, Ablegen/Entnehmen, Speichern | entwurf |
 | character-brain | `engine/gameplay/character-brain.js` | NPC-Verhaltensplaner (Zustandsautomat) über Steering + Sinne: idle, wandern, patrouille, arbeiten, folgen, fliehen, angreifen, suchen, plaudern; Tagesablauf nach Stunde; liefert Absicht + Aktions-Clip | entwurf |
 | character-gruppe | `engine/gameplay/character-gruppe.js` | Schwarm-/Herdenverhalten für NPCs (Boids in x/z): Separation, Kohäsion, Ausrichtung – liefert eine Zusatzkraft für die Absicht | entwurf |
@@ -33,8 +37,10 @@
 | character-steering-extra | `engine/gameplay/character-steering-extra.js` | Reine Steering-Rechnungen: Patrouillen-Fortschritt (Schleife/Pingpong/einmal), Umkreisen, Abstand halten, Versteckpunkt hinter Deckung | entwurf |
 | character-steering | `engine/gameplay/character-steering.js` | NPC-Bewegungs-Gehirn: liefert dieselbe Absicht wie die Eingabe – Ziel/Ankommen, Wandern, Folgen, Fliehen, Pfad, Patrouille, Umkreisen, Abstand halten, Verstecken, Schwarm, Ausweichen, Steckenbleiben auflösen | entwurf |
 | character | `engine/gameplay/character.js` | Fertige Spielfigur in einem Objekt: Modell (Look) + Animator + Bewegungs-Motor, für Spieler und NPCs gleich | entwurf |
+| element-reaktionen | `engine/gameplay/element-reaktionen.js` | Element-Reaktionen ohne THREE: Elemente (Feuer, Wasser, Frost, Blitz, Erde, Wind) hinterlassen Zustände auf Zielen UND auf Boden-Flecken (nass, brennend, gefroren, kalt, geladen, schlamm); trifft ein Element auf einen passenden Zustand, gibt es eine Reaktion aus einer Daten-Tabelle (Schock, Einfrieren, Feuersturm, Dampf, Schlamm, Schmelzen …) mit Faktor, neuen Zuständen und Folge-Effekten – deterministisch | entwurf |
 | faehigkeiten-daten | `engine/gameplay/faehigkeiten-daten.js` | Beispiel-Fähigkeiten (Krieger, Magier, Heiler) für die MMO-Leiste; reine Daten | entwurf |
 | faehigkeiten | `engine/gameplay/faehigkeiten.js` | Klassische MMO-Fähigkeitsleiste ohne THREE: globale Abklingzeit (GCD), Ressourcen (Mana, Wut, Energie), Wirkzeit mit Abbruch bei Bewegung und Pushback, Kanalisieren mit Takten, Ladungen, Reichweite/Ziel-Prüfung, Sperren | entwurf |
+| gegner-lager | `engine/gameplay/gegner-lager.js` | Ein Gegnerlager ohne THREE: Horde (gameplay/horde) an einem Ort, je Tier eine Entität (core/entitaeten, Team 'feind'), Wache → Jagd auf nahe Spieler → Verlieren → Heimkehr + Heilung, Bisse als Befehle (gameplay/befehle), Tod → Entität weg, Respawn nach Spielzeit, Nacht = mehr und aggressiver | entwurf |
 | grosszauber-riss | `engine/gameplay/grosszauber-riss.js` | Großzauber Erdriss: ein gezackter Riss rast in Blickrichtung über den Boden, wirft Ziele hoch, speit Lava-Säulen, steht ~8 s als Graben und schließt sich abgekühlt wieder | entwurf |
 | grosszauber-sturm | `engine/gameplay/grosszauber-sturm.js` | Großzauber 'sturm' (Zyklon): ein Wirbelsturm formt sich, zieht schlängelnd übers Feld, saugt Ziele an, hebt sie spiralförmig hoch, schleudert sie am Rand weg und schlägt Blitze ein | entwurf |
 | grosszauber-wand | `engine/gameplay/grosszauber-wand.js` | Großzauber 'Erdwall': eine Felswand (bei voller Überladung ein Ring „Festung“) bricht in einer Steinwelle aus dem Boden, schleudert Ziele hoch, steht als echtes Hindernis und bröckelt dann weg | entwurf |
@@ -46,6 +52,7 @@
 | inventar | `engine/gameplay/inventar.js` | Inventar mit festen Plätzen, Stapeln, Gewichtsgrenze, Speichern/Laden und Änderungs-Meldung | entwurf |
 | kampf-werte | `engine/gameplay/kampf-werte.js` | Kämpfer (Leben, Schild, Haltung, Werte, Mods) und reine Schadensformel mit Rüstung, Krit, Parade, Block | entwurf |
 | kampf | `engine/gameplay/kampf.js` | Kampf-Welt (Befehlsschicht): Kämpfer + Zustände + Bedrohung verbinden, schade/heile/gibZustand, DoT-Takte, DPS, Ereignisse | entwurf |
+| klettern | `engine/gameplay/klettern.js` | Klettern an sehr steilen Hängen (Gelände steiler als hangGrad) und hohen Hindernissen (Stämme, Felsen, Mauern): erkennt die Wand vor der Figur, steuert den Motor über absicht.klettern (hoch/runter/seitlich, Hochziehen oben, Absprung), kostet Ausdauer – leer = abrutschen | entwurf |
 | koerper | `engine/gameplay/koerper.js` | Leichte Physik für lose Dinge (Gegenstände, Beute, Bälle, Kisten-Trümmer) ohne THREE: Kugeln mit Schwerkraft, Abprallen, Reibung, Haften am flachen Hang, Rutschen am steilen, Schwimmen/Sinken, Hindernisse, Einschlafen – fester Zeitschritt, deterministisch | entwurf |
 | nahkampf-daten | `engine/gameplay/nahkampf-daten.js` | Waffen-Tabelle für den Action-Nahkampf (Kombo-Ketten, schwerer Schlag, Tempo) – reine Daten | entwurf |
 | nahkampf | `engine/gameplay/nahkampf.js` | Deterministischer Action-Nahkampf als reine Logik: Kombo-Kette, schwerer Schlag, Block/Parade, Ausweichen, Taumeln, Kegel-Treffer | entwurf |
@@ -80,7 +87,7 @@
 | character-anim-zustand | `engine/models/character/character-anim-zustand.js` | Posen für Sonder-Zustände des Motors (rein): Rolle (rollAnteil), Luft-Dash, Salto beim Doppelsprung, Gleiten, Arme rudern an der Kante, Betäubt-Taumeln | entwurf |
 | character-animator | `engine/models/character/character-animator.js` | Prozedurale Figuren-Animation aus dem Motor-Zustand: idle/gehen/laufen/sprinten ohne Fußrutschen, Luft, Landung, Schwimmen, Ducken, Rutschen, Kurvenlage, Atmen, Hang, Idle-Varianten, sekundäre Bewegung, Treffer/Umfallen, Aktions-Clips mit Masken, Blick + Mimik-Hook | entwurf |
 | character-ausruestung | `engine/models/character/character-ausruestung.js` | Low-Poly-Gegenstände für Figuren-Sockel (Schwert, Dolch, Axt, Hammer, Hacke, Schaufel, Speer, Stab, Zauberstab, Schild, Bogen, Fackel, Laterne, Korb, Becher, Buch): je ein Mesh + optional Leucht-Mesh, passend ausgerichtet für model.befestigen(sockel, obj) | entwurf |
-| character-clips-mehr | `engine/models/character/character-clips-mehr.js` | Weitere Aktions-Clips als reine Keyframe-Daten (Emotes, Kampf, Arbeit, Ruhe, Idle-Varianten); wird von character-clips registriert | entwurf |
+| character-clips-mehr | `engine/models/character/character-clips-mehr.js` | Weitere Aktions-Clips als reine Keyframe-Daten (Emotes, Kampf, Arbeit, Ruhe, Idle-Varianten, Klettern); wird von character-clips registriert | entwurf |
 | character-clips-zauber | `engine/models/character/character-clips-zauber.js` | Wuchtige Zauber-Gesten als reine Keyframe-Daten (Wurf, Stoß, Fingerzeig, Himmelsruf, Bodenschlag, Griff, Selbstzauber) mit Spann-Moment zum Aufladen; wird von character-clips registriert | entwurf |
 | character-clips | `engine/models/character/character-clips.js` | Aktions-Clips einer Figur als Keyframe-Daten (winken, schlagen, hacken, werfen, aufheben, tod, rolle, sitzen, tanzen … + character-clips-mehr + character-clips-zauber) und ihr Abtaster | entwurf |
 | character-gang | `engine/models/character/character-gang.js` | Fortbewegungs-Posen einer Figur (rein): Fußziele aus Gangphase (gehen/laufen/sprinten ohne Fußrutschen), Bein-IK, Rumpf/Arme, Luft- und Schwimm-Pose | entwurf |
@@ -143,6 +150,18 @@
 | qualitaet | `engine/render/qualitaet.js` | Automatische Qualitätsstufe nach Bildzeit (Handy-Schutz): wird es langsam, sinken Pixelverhältnis, Schattenkarte, Partikel und Schadens-Zahlen; wird es lange schnell, steigen sie wieder – mit Hysterese, reine Logik (das Spiel wendet die Werte an) | entwurf |
 | splat-look | `engine/render/splat-look.js` | Gaussian-Splat-Look für eine fertige Szene: das Bild wird klein gerendert und als zehntausende weiche, längliche Gauß-Flecken neu gemalt (entlang der Kanten ausgerichtet, nah größer als fern) – Stil-Experiment, keine echten 3D-Splats | entwurf |
 | zauber-effekte | `engine/render/zauber-effekte.js` | Leichte Zauber-Effekte fürs Handy: ein Partikel-Points-Objekt (Funken, Schweife), leuchtende Geschoss-Kugeln, Schockwellen-Ringe, Blitze, Erdstacheln, Schutz-Aura, Meteor-Sturz – alles aus Pools | entwurf |
+| modul-bewohner | `engine/spiel/modul-bewohner.js` | Spiel-Modul 'bewohner': 6–10 Siedler an welt.ort('siedlung') mit Tagesablauf (character-brain, Stunde aus himmel.uhr), Namensschildern, Entität je Bewohner (Team freund), Treffer/Tod-Reaktion, LOD (ferne NPCs seltener, ganz ferne eingefroren) | entwurf |
+| modul-entitaeten | `engine/spiel/modul-entitaeten.js` | Spiel-Modul 'entitaeten': stabile IDs, Leben/Schaden über die Befehls-Schicht (gameplay/befehle), Ereignisse ent:* auf dem Spiel-Bus, schwebende Schadenszahlen + Lebensbalken über getroffenen Zielen (mit 'render') | entwurf |
+| modul-gegner | `engine/spiel/modul-gegner.js` | Spiel-Modul 'gegner': Rattenlager an allen welt.orte der Art 'gegnerlager' (+ ein kleines am Waldrand beim 'tor'), Horden mit je einer Entität pro Tier (Team 'feind'), Jagd/Heimkehr/Respawn, Interest-Management (nur Lager nahe dem Fokus laufen und sind sichtbar), nachts mehr und aggressiver | entwurf |
+| modul-himmel | `engine/spiel/modul-himmel.js` | Spiel-Modul 'himmel': Spieluhr, Himmel (Sonne, Mond, Sterne, Wolken, Nebel), Wetter mit Regen/Schnee; Sonnenlicht mit Schatten, der dem Fokus folgt (Größe nach Qualitätsstufe); Walddunst für andere Module (`dunst` 0..1) | entwurf |
+| modul-riesenwald | `engine/spiel/modul-riesenwald.js` | Spiel-Modul 'riesenwald': Urwald-Riesen in echter Größe (Stamm 6–12 m dick, 60–90 m hoch) entlang der Wege in Region 'daemmerwald' – Weg frei, Tor-Paar mit Astbogen, dichte Blatt-Karten-Kronen mit Kronen-Schatten, Unterwuchs am Weg; Stämme als Hindernisse; Detailstufen nach Entfernung zum Fokus | entwurf |
+| modul-spieler | `engine/spiel/modul-spieler.js` | Spiel-Modul 'spieler': Spielfigur (character) mit Eingabe, tiefer Verfolger-Kamera (Riesen wirken groß), Lock-On auf Entitäten, Ausdauer (Sprint, Rolle, Schwimmen, Klettern, Springen), Klettern an Fels/Stämmen, eigene Entität mit Treffer-Reaktion + Wiederbeleben, Notlicht ohne Himmel | entwurf |
+| modul-welt | `engine/spiel/modul-welt.js` | Erlenwacht-Welt (≈4×4 km): Karte/Regionen/Orte/Wege aus world/welt-regionen, Gelände als gestreamte Kacheln mit Detailstufen (world/chunk-strom), Streu-Bäume/Felsen/Büsche je Kachel als Instanzen samt Kollision, Meer und Moortümpel – rund um den Dienst `fokus` | entwurf |
+| modul-zauber | `engine/spiel/modul-zauber.js` | Spiel-Modul 'zauber': Zauberbuch (gameplay/zauber) + Effekte + Großzauber (Flutwelle, Erdwall, Zyklon, Erdriss) in der großen Welt, alle Treffer laufen durch gameplay/element-reaktionen (Schock, Einfrieren, Dampf, Feuersturm …); Ziele = Entitäten Team 'feind'; Zauber-Gesten der Figur; Handy-Leiste mit Halten = Aufladen und Mana-Balken | entwurf |
+| riesenwald-teile | `engine/spiel/riesenwald-teile.js` | Bauteile des Riesenwald-Moduls: Fern-Silhouette eines Riesen (eine Drehform mit Kronen-Wulst, ~150 Dreiecke), Astbogen zwischen zwei Tor-Riesen (gebogene, verjüngte Röhre mit Moos oben) und eine Loch-Maske für Kronen-Schatten | entwurf |
+| spiel | `engine/spiel/spiel.js` | Spiel-Host: die ganze Engine in einem Aufruf – Renderer, Szene, Kamera, Schleife (fester Schritt + Bild), Handy-Qualität, URL-Schalter und Modul-Kern; Module (Welt, Figur, Zauber, Gegner …) werden nur noch angesteckt | entwurf |
+| zauber-anzeige | `engine/spiel/zauber-anzeige.js` | Sichtbares zu Element-Reaktionen fürs Zauber-Modul: Boden-Flecken (nass, brennend, gefroren, schlamm, geladen) als weiche Scheiben in einem Draw-Call, Dampfwolken (Sprites), Eis-Glanz (Eis-Hülle), Funken/Feuersturm über zauber-effekte und der Ziel-Kreis beim Aufladen – alles aus Pools, fürs Handy sparsam | entwurf |
+| zauber-gross | `engine/spiel/zauber-gross.js` | Großzauber fürs Zauber-Modul in der großen Welt: Logik (gameplay/grosszauber + welle/wand/sturm/riss) und Bild (render/grosszauber-*); Erdwall-Pfeiler werden echte Körper in welt.kollision, die Flutwelle macht den Boden nass, Zyklon/Erdriss legen Wind/Feuer auf den Boden (Element-Reaktionen) | entwurf |
 | fake-dom | `engine/test/fake-dom.mjs` | Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame | stabil |
 | aufgaben-anzeige | `engine/ui/aufgaben-anzeige.js` | Ziel-Zeile oben links (Titel, Schritt-Text, Fortschritt), Ziel-Marker (Raute + Meter) bzw. Randpfeil, Blitz-Meldung/Banner; DOM, THREE nur für project() | entwurf |
 | figur-schild | `engine/ui/figur-schild.js` | Namensschild + Sprechblase + Lebensbalken über Figuren (DOM-Overlay): folgt dem Kopf, skaliert und blendet nach Abstand aus, verschwindet hinter der Kamera | entwurf |
@@ -151,11 +170,14 @@
 | kampf-leiste | `engine/ui/kampf-leiste.js` | MMO-Aktionsleiste als DOM-Overlay: Plätze mit Symbol/Taste, Abklingzeit, GCD, Ladungen, Ausgrauen, Wirkbalken, Ressourcenbalken | entwurf |
 | menue | `engine/ui/menue.js` | Menü/Fenster als DOM-Overlay mit Seiten (Pause, Optionen, Spielstände, Truhe, Werkbank …): Knöpfe, Schalter, Regler, Auswahl, eigene Elemente; Escape/Rand-Tipp, fingerfreundlich, alle Stile inline | entwurf |
 | treffer-zahlen | `engine/ui/treffer-zahlen.js` | Schadens-Zahlen als DOM-Overlay: ploppen über Treffern auf, schweben nach oben und blenden aus (fester Pool, handytauglich) | entwurf |
+| zauber-leiste | `engine/ui/zauber-leiste.js` | Handy-taugliche Zauber-Leiste als DOM-Overlay: große Knöpfe (≥ 44 px) mit Symbol, Taste, Abklingzeit-Schleier und Lade-Ring; Halten = Aufladen/Überladen, Loslassen = Wirken (Zeiger UND Tasten 1–8); Mana-Balken darüber | entwurf |
 | ziel-rahmen | `engine/ui/ziel-rahmen.js` | MMO-Ziel-/Spieler-Rahmen als DOM-Overlay: Name, Lebensbalken mit Schild und Schaden-Rest, Haltung, Ressource, Zustands-Symbole | entwurf |
 | boden-anpassung | `engine/world/boden-anpassung.js` | Gelände schmiegt sich an große Objekte (Wurzeln, Felsen, Ruinen): weicher Erdwulst aus lokalen Höhenkarten, Verdeckung (AO) am Fuß | entwurf |
+| chunk-strom | `engine/world/chunk-strom.js` | Gelände-Kacheln um einen Fokus streamen (reine Logik): Quadtree-Detailstufen (nah fein, fern grob) bis zur Sichtweite, Bau-Budget je Bild, alte Kacheln bleiben, bis die neuen fertig sind (keine Löcher); dazu ein einfacher Kachel-Ring für Nahbereichs-Daten (Streu, Kollision) | entwurf |
 | himmel-stand | `engine/world/himmel-stand.js` | Himmel als reine Daten: Sonnen- und Mondbahn aus Stunde/Jahreszeit/Breitengrad, Mondphase, Himmels-, Nebel- und Lichtfarben über den Tag (Nacht, Dämmerung, goldene Stunde, Mittag), Sterne, Einfluss von Wolken/Nebel/Regen/Blitz | entwurf |
 | himmel | `engine/world/himmel.js` | Zeichnet den Himmel aus einem himmel-stand: Himmelskuppel mit Farbverlauf, Sonnenscheibe mit Schein, Mond mit Phase, ziehende Wolken, Sterne; steuert Sonnen-/Mondlicht mit mitlaufendem Schatten, Umgebungslicht und Nebel der Szene | entwurf |
 | kollision | `engine/world/kollision.js` | Kollisions-Welt über einem Welt-Adapter: bewegliche und entfernbare Körper (Zylinder, gedrehte Kästen) mit Höhe – man kann draufsteigen, drüberspringen, sich aneinander vorbeischieben; dazu ein Strahl-Test gegen Gelände und Körper (Zielen, Sichtlinie, Ablegen) | entwurf |
+| riesenwald-plan | `engine/world/riesenwald-plan.js` | Plan eines Riesenwalds als reine Daten (ohne THREE): Urwald-Riesen in Reihen entlang von Wegen (Weg bleibt frei), Tor-Paar links/rechts am Waldeingang, Kranz um eine Lichtung, Hinterland bis zu einer Tiefe aufgefüllt – deterministisch per Seed | entwurf |
 | scatter-mesh | `engine/world/scatter-mesh.js` | Zeichnet die Objekte einer erzeugten Welt (welt.objekte) als InstancedMesh je (Typ, Variante): mit Asset-Cache prozedurale Natur-Assets in Metern (Bäume, Felsen, Büsche, Bodendecker …) mit Wind, sonst einfache Low-Poly-FORMEN; unbekannte Typen → Ersatz nach Art oder weglassen; Seerosen auf dem Wasser | entwurf |
 | terrain-farben | `engine/world/terrain-farben.js` | Geländefarben je Gitterzelle aus einer erzeugten Welt: weiche Biom-Übergänge mit ausgefransten Grenzen, Wiesenflecken und trockene Grastöne, Mikrovariation, Hangfels mit Gesteinsbändern, nasser Sand, Flusskies und Seeschlamm, festgetretene Wege (FLAG.WEG), Meeresgrund nach Tiefe, Schnee mit Rauschgrenze (an Nordhängen tiefer), Mulden dunkler | entwurf |
 | terrain-mesh | `engine/world/terrain-mesh.js` | Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit weich gemischten Biomfarben, Wiesenflecken, Hangfels, Ufern (Sand/Kies/Schlamm) und Schnee (terrain-farben), Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont | entwurf |
@@ -165,6 +187,8 @@
 | welt-aenderung | `engine/world/welt-aenderung.js` | Änderungs-Schicht über einer erzeugten Welt (ohne THREE): Gelände mit Pinseln heben, senken, glätten, einebnen und Objekte entfernen; gemerkt werden nur die Unterschiede zum Seed (kleiner Spielstand), mit Rückgängig/Wiederholen, Sperrzonen (Wasser, Wege) und Meldung des geänderten Bereichs fürs Neuzeichnen | entwurf |
 | welt-plan-formen | `engine/world/welt-plan-formen.js` | Form-Rechnungen für den Welt-Plan (ohne THREE): Ring-Mauer aus Segmenten/Türmen/Torhaus, Höhenprofil mit Gefälle-Grenze, geschwungene Pfad-Kurve, Gitter-Zuordnung, Boxen-Tests | entwurf |
 | welt-plan | `engine/world/welt-plan.js` | Deterministischer Welt-Plan als worldgen-Stufen: Zonen (Plateau, Mulde, Kuppe), Gewässer-Rinnen, ebene Plätze, Orte, geschwungene Pfade mit begrenztem Gefälle und Brücken, Mauer-Ring; dazu Prüfung (Plateau eben, Gefälle, Objekte im Weg, Tor erreichbar) | entwurf |
+| welt-regionen | `engine/world/welt-regionen.js` | Erlenwacht-Weltkarte als reine Logik: Regionen (Küste, Dämmerwald, Talkessel, Moor, Hochland, Gebirge), Orte, Wege und eine punktweise, seedbare Höhe (entlang der Wege geglättet), Wasser, Biome, Bodenfarben und Streu-Regeln | entwurf |
+| welt-streu | `engine/world/welt-streu.js` | Streu-Objekte (Bäume, Felsen, Büsche, Bodendecker) für eine Kachel deterministisch aus Seed + Biom-Regeln setzen – mit Lücken an Wegen, Orten, Wasser, steilen Hängen und gesperrten Flächen (reine Logik) | entwurf |
 | wetter | `engine/world/wetter.js` | Wetter-Zustand: Wetterarten wechseln per Seed nach Klima (Feuchte/Temperatur), Werte laufen weich, Wind, Blitz, Nässe | entwurf |
 | worldgen-adapter | `engine/world/worldgen/worldgen-adapter.js` | Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md | entwurf |
 | worldgen-biomes | `engine/world/worldgen/worldgen-biomes.js` | Biome nach Whittaker (Temperatur × Feuchte, als schnelle Nachschlagetabelle) plus Prioritätsregeln (Wasser, Schnee, Fels, Strand, Sumpf); Biomliste per Spiel erweiterbar | entwurf |
@@ -194,9 +218,11 @@
 | abbauen | rohstoffe |
 | abfluss | worldgen-hydrology, worldgen-rivers |
 | abfrage | raum-gitter, worldgen-query |
+| abhaengigkeit | modul-kern |
 | abklingzeit | faehigkeiten, zauber, kampf-leiste |
 | ablegen | welt-dinge |
 | abprallen | koerper |
+| absicht | befehle |
 | abstand | worldgen-grid |
 | abstandsfeld | sdf |
 | accessoire | character-parts-zubehoer |
@@ -205,7 +231,7 @@
 | adaptiv | qualitaet |
 | aendern | welt-aenderung |
 | agave | pflanze-wueste |
-| aggro | bedrohung, kampf |
+| aggro | bedrohung, gegner-lager, kampf |
 | aktion | interaktion, character-animator, character-clips |
 | alpha | laub-karten |
 | amboss | stationen, bau-uebung |
@@ -217,16 +243,17 @@
 | arbeit | character-clips-mehr |
 | art | baum-arten |
 | asset | bau-basis, bau-pruefung, gebaeude-pruefen, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau |
-| ast | totholz-form, totholz |
+| ast | totholz-form, totholz, riesenwald-teile |
 | astar | worldgen-path |
 | attrappe | fake-dom |
 | audio | klang |
 | aufgabe | aufgaben, aufgaben-anzeige |
 | aufheben | interaktion, welt-dinge |
-| aufladen | zauber |
+| aufladen | zauber, zauber-leiste |
 | auflösung | qualitaet |
 | augen | character-anim-blick, character-parts-gesicht |
 | augenklappe | character-parts-zubehoer |
+| ausdauer | ausdauer, klettern, modul-spieler |
 | ausdruck | character-parts-gesicht |
 | ausruesten | hand |
 | ausrüstung | character-ausruestung, character-model |
@@ -236,23 +263,26 @@
 | autosave | speicher |
 | avatar | character, character-look, character-model |
 | axt | character-ausruestung |
-| baeume | scatter-mesh, worldgen-scatter, worldgen-vegetation |
+| baeume | scatter-mesh, welt-streu, worldgen-scatter, worldgen-vegetation |
 | balken | hud |
 | bank | bau-markt |
 | banner | bau-vorrat, aufgaben-anzeige |
 | bart | character-parts-haar, character-parts-kopf |
 | bau | bau-basis, bau-pruefung, bau-teile, gebaeude-pruefen, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau |
 | bauen | welt-aenderung |
-| baum | baum-arten, baum-skelett, baum, laub-klumpen, natur-assets, natur-basis, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum |
+| baukasten | modul-kern, spiel |
+| baum | klettern, baum-arten, baum-skelett, baum, laub-klumpen, natur-assets, natur-basis, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum |
 | baumstumpf | totholz |
 | beben | grosszauber-riss, grosszauber-wand, grosszauber-welle, grosszauber, grosszauber-mesh |
 | bedrohung | bedrohung |
 | beeren | pflanze-busch |
+| befehl | befehle, modul-entitaeten |
 | begehbar | kollision |
 | behaelter | behaelter |
 | betaeubt | character-anim-zustand |
 | beute | rohstoffe, welt-dinge |
-| bewegung | character-motor-tuning, character-motor, character-steering, character |
+| bewegung | character-motor-tuning, character-motor, character-steering, character, klettern |
+| bewohner | modul-bewohner |
 | bildzeit | qualitaet |
 | biome | terrain-farben, terrain-mesh, worldgen-biomes, worldgen-query |
 | blatt | laub-klumpen, laub-karten |
@@ -262,10 +292,11 @@
 | block | nahkampf |
 | blue-noise | worldgen-scatter |
 | blume | pflanze-blume, pflanze-boden, pflanze-formen |
-| boden | grosszauber-wand, boden-anpassung, wege-lage, worldgen-adapter |
+| boden | element-reaktionen, grosszauber-wand, zauber-anzeige, boden-anpassung, wege-lage, worldgen-adapter |
 | bodendecker | pflanze-blume, pflanze-boden, pflanze-unterwuchs, worldgen-vegetation |
-| bogen | character-ausruestung |
+| bogen | character-ausruestung, riesenwald-teile |
 | boids | character-gruppe |
+| brennend | element-reaktionen |
 | brille | character-parts-kopf, character-parts-zubehoer |
 | bruecke | wege-lage, wege-mesh, welt-plan, worldgen-wege |
 | brunnen | bau-markt |
@@ -275,16 +306,19 @@
 | cache | natur-assets |
 | cape | character-parts-ruecken |
 | charakter | character, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-lod, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-material |
-| chunks | worldgen-chunkfluss, worldgen-chunks |
+| chunks | chunk-strom, worldgen-chunkfluss, worldgen-chunks |
 | clip | character-animator, character-clips-mehr, character-clips-zauber, character-clips |
 | controller | character-motor, character |
 | crafting | rezepte, stationen |
 | dach | bau-teile |
-| daemmerwald | laub-klumpen, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum |
+| daemmerwald | laub-klumpen, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum, modul-riesenwald, riesenwald-plan |
+| dampf | element-reaktionen, zauber-anzeige |
 | dash | character-motor, character-anim-zustand |
 | daten | register, faehigkeiten-daten, nahkampf-daten, zauber-daten, baum-arten, worldgen-vegetation |
 | debuff | kampf, zustaende, ziel-rahmen |
-| deterministisch | nahkampf |
+| delta | entitaeten |
+| detailstufen | chunk-strom |
+| deterministisch | nahkampf, welt-streu |
 | dialog | figur-schild, menue |
 | dithering | psx |
 | dom | fake-dom, menue, treffer-zahlen |
@@ -295,15 +329,20 @@
 | dunst | gauss-wolke |
 | dämmerung | himmel-stand |
 | editor | character-look, character-model, welt-aenderung |
-| effekt | grosszauber-mesh, zauber-effekte |
+| effekt | grosszauber-mesh, zauber-effekte, zauber-anzeige |
 | eingabe | move-input, touch-stick |
+| eis | zauber-anzeige |
+| element | element-reaktionen, modul-zauber, zauber-anzeige, zauber-gross |
 | emote | character-clips-mehr, character-clips |
 | emotion | character-parts-gesicht |
+| entitaet | entitaeten, gegner-lager, modul-entitaeten |
 | episch | grosszauber-riss, grosszauber-sturm, grosszauber-wand, grosszauber-welle, grosszauber, grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht |
 | erdbeben | grosszauber-riss, grosszauber-riss-ansicht |
 | erdwall | grosszauber-wand-ansicht |
 | ereignis | ereignisse |
+| erlenwacht | modul-welt, welt-regionen, welt-streu |
 | erosion | worldgen-erosion |
+| erschoepft | ausdauer |
 | esse | schmiede |
 | event | ereignisse |
 | export | speicher |
@@ -316,17 +355,18 @@
 | fass | behaelter, bau-vorrat |
 | fbm | worldgen-height |
 | feder | character-sekundaer |
-| fels | grosszauber-wand, fels-basis, fels-form, fels, natur-assets, grosszauber-wand-ansicht |
-| felsen | scatter-mesh, worldgen-vegetation |
+| fels | grosszauber-wand, klettern, fels-basis, fels-form, fels, natur-assets, grosszauber-wand-ansicht |
+| felsen | scatter-mesh, welt-streu, worldgen-vegetation |
 | fenster | bau-teile, menue |
 | fern | character-lod |
 | festung | grosszauber-wand |
 | feuchte | worldgen-climate |
 | feuer | grosszauber-riss, grosszauber-riss-ansicht |
 | feuerstelle | stationen |
-| figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-lod, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-material, figur-schild, wege-lage, worldgen-adapter |
+| figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-lod, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-material, modul-spieler, figur-schild, wege-lage, worldgen-adapter |
 | first-person | follow-camera |
 | flechte | riesenbaum-krone |
+| fleck | zauber-anzeige |
 | fluss | wasser-glanz, worldgen-chunkfluss, worldgen-rivers |
 | flut | grosszauber-welle, grosszauber-welle-ansicht |
 | flächenschaden | grosszauber-riss, grosszauber-sturm, grosszauber-welle, grosszauber, zauber-daten, zauber |
@@ -339,7 +379,7 @@
 | funken | zauber-effekte |
 | fähigkeit | faehigkeiten-daten, faehigkeiten, zauber |
 | gamepad | move-input |
-| gameplay | ereignisse, aufgaben, behaelter, character-brain, character-gruppe, character-motor-tuning, character-motor, character-sinne, character-steering-extra, character-steering, hand, horde, interaktion, inventar, koerper, rezepte, rohstoffe, stationen, tueren, welt-dinge |
+| gameplay | entitaeten, ereignisse, aufgaben, ausdauer, befehle, behaelter, character-brain, character-gruppe, character-motor-tuning, character-motor, character-sinne, character-steering-extra, character-steering, gegner-lager, hand, horde, interaktion, inventar, klettern, koerper, rezepte, rohstoffe, stationen, tueren, welt-dinge |
 | gang | character-animator, character-gang |
 | gauss | riesenbaum-krone, riesenbaum, gauss-saat, gauss-sortierung, gauss-wolke, splat-look |
 | gaussian | gauss-saat, gauss-sortierung, gauss-wolke, splat-look |
@@ -348,9 +388,10 @@
 | gebirge | worldgen-height |
 | gedaechtnis | character-sinne |
 | gefaelle | welt-plan-formen |
+| gefroren | element-reaktionen |
 | gegenstand | register, inventar, koerper, welt-dinge |
-| gegner | horde, ratte, horde-mesh |
-| gelaende | character-anim-hang, boden-anpassung, terrain-farben, terrain-mesh, welt-aenderung |
+| gegner | gegner-lager, horde, ratte, horde-mesh, modul-gegner |
+| gelaende | character-anim-hang, modul-welt, boden-anpassung, chunk-strom, terrain-farben, terrain-mesh, welt-aenderung |
 | gelenke | character-rig |
 | generator | worldgen |
 | geometrie | fels-basis, fels-form, natur-basis, pflanze-basis, totholz-form, mesh-builder, welt-plan-formen |
@@ -370,15 +411,16 @@
 | grading | psx |
 | gras | pflanze-boden |
 | groesse | riesenbaum |
-| großzauber | grosszauber-riss, grosszauber-sturm, grosszauber-wand, grosszauber-welle, grosszauber, grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht |
+| großzauber | grosszauber-riss, grosszauber-sturm, grosszauber-wand, grosszauber-welle, grosszauber, grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht, modul-zauber, zauber-gross |
 | gürtel | character-parts-becken |
 | haar | character-parts-haar, character-parts-kopf, character-sekundaer |
 | halm | pflanze-formen |
 | haltbarkeit | hand |
+| halten | zauber-leiste |
 | haltung | kampf-werte, ziel-rahmen |
 | hand | hand |
-| handy | touch-stick, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, qualitaet, menue |
-| hang | character-anim-hang |
+| handy | touch-stick, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, qualitaet, modul-zauber, menue, zauber-leiste |
+| hang | klettern, character-anim-hang |
 | hash | rng |
 | haus | haus |
 | heap | worldgen-grid |
@@ -387,23 +429,26 @@
 | herde | character-gruppe |
 | herstellen | rezepte, stationen |
 | hilfen | character-parts-basis |
-| himmel | himmel-stand, himmel |
+| himmel | modul-himmel, himmel-stand, himmel |
 | hindernis | grosszauber-wand, kollision |
 | hinweis | interaktion, hud |
-| hoehe | worldgen-height, worldgen-query |
+| hoehe | welt-regionen, worldgen-height, worldgen-query |
 | hoehenkarte | sdf-netz, riesenbaum-netz, boden-anpassung |
 | hoeren | character-sinne |
 | holz | wege-mesh |
-| horde | horde, zauber-daten, zauber, ratte, horde-mesh |
+| horde | gegner-lager, horde, zauber-daten, zauber, ratte, horde-mesh, modul-gegner |
+| host | spiel |
 | hot | zustaende |
-| hotbar | inventar-ansicht, kampf-leiste |
+| hotbar | inventar-ansicht, kampf-leiste, zauber-leiste |
 | hp | figur-schild |
 | hud | figur-schild, hud, inventar-ansicht |
 | hut | character-parts-hut, character-parts-kopf |
 | hydraulik | worldgen-erosion |
 | hydrologie | worldgen-chunkfluss |
+| id | entitaeten |
 | idle | character-anim-idle, character-clips-mehr |
 | ik | character-anim-hang, character-gang |
+| impostor | riesenwald-teile |
 | insel | worldgen-presets, worldgen-shape, worldgen |
 | instanced | character-lod |
 | instancedmesh | horde-mesh |
@@ -411,19 +456,22 @@
 | instanzen | laub-klumpen, natur-material, scatter-mesh |
 | instanziert | gauss-wolke, laub-karten |
 | interaktion | interaktion, tueren |
+| interest | modul-gegner |
 | interpolation | math, schnappschuss-puffer |
 | inventar | behaelter, hand, inventar, rezepte, welt-dinge, inventar-ansicht |
 | jahreszeit | zeit, baum |
 | joystick | move-input, touch-stick |
+| kachel | welt-streu |
+| kacheln | chunk-strom |
 | kaktus | pflanze-wueste |
 | kalender | zeit |
-| kamera | follow-camera, ziel-wahl, math |
+| kamera | follow-camera, ziel-wahl, math, modul-spieler |
 | kamerafahrt | follow-camera |
-| kampf | klang, ziel-wahl, bedrohung, character-steering-extra, character-steering, faehigkeiten-daten, faehigkeiten, grosszauber-riss, grosszauber-sturm, grosszauber-wand, grosszauber-welle, grosszauber, horde, kampf-werte, kampf, nahkampf-daten, nahkampf, zauber-daten, zauber, zustaende, character-clips-mehr, character-reaktion, kampf-leiste, ziel-rahmen |
+| kampf | klang, ziel-wahl, bedrohung, befehle, character-steering-extra, character-steering, element-reaktionen, faehigkeiten-daten, faehigkeiten, grosszauber-riss, grosszauber-sturm, grosszauber-wand, grosszauber-welle, grosszauber, horde, kampf-werte, kampf, nahkampf-daten, nahkampf, zauber-daten, zauber, zustaende, character-clips-mehr, character-reaktion, modul-zauber, kampf-leiste, ziel-rahmen |
 | kanal | faehigkeiten |
 | kante | character-anim-zustand |
 | kapuze | character-parts-hut |
-| karte | worldgen |
+| karte | welt-regionen, worldgen |
 | karten | laub-klumpen, laub-karten |
 | katalog | register |
 | kette | character-parts-zubehoer |
@@ -432,11 +480,13 @@
 | kiste | bau-vorrat |
 | klang | klang |
 | kleidung | character-parts-becken, character-parts-torso, character-parts |
+| klettern | ausdauer, klettern, modul-spieler |
 | klima | wetter, worldgen-biomes, worldgen-climate |
 | knoepfe | touch-stick |
 | koerper | koerper, kollision |
-| kollision | follow-camera, raum-gitter, sdf-netz, grosszauber, tueren, bau-basis, kollision, worldgen-adapter |
+| kollision | follow-camera, raum-gitter, sdf-netz, grosszauber, tueren, bau-basis, modul-riesenwald, zauber-gross, kollision, worldgen-adapter |
 | kombo | nahkampf-daten, nahkampf |
+| kommando | befehle |
 | kopf | character-anim-blick, character-parts-haar, character-parts-hut, character-parts-kopf |
 | korb | character-ausruestung |
 | kreatur | ratte |
@@ -447,40 +497,41 @@
 | körper | character-parts |
 | l-system | baum-skelett |
 | ladungen | faehigkeiten |
-| lager | behaelter |
+| lager | behaelter, gegner-lager, modul-gegner |
 | lagerfeuer | bau-licht |
 | laterne | bau-licht, character-ausruestung |
-| laub | laub-klumpen, pflanze-unterwuchs, riesenbaum-krone, gauss-saat, gauss-wolke, laub-karten |
+| laub | laub-klumpen, pflanze-unterwuchs, riesenbaum-krone, gauss-saat, gauss-wolke, laub-karten, modul-riesenwald |
 | laufen | character-animator, character-gang |
 | lava | grosszauber-riss, grosszauber-riss-ansicht |
-| leben | kampf-werte, kampf, hud |
-| lebensbalken | figur-schild, ziel-rahmen |
-| leiste | faehigkeiten, hud, kampf-leiste |
+| leben | entitaeten, kampf-werte, kampf, modul-entitaeten, hud |
+| lebensbalken | modul-entitaeten, figur-schild, ziel-rahmen |
+| lebenszyklus | modul-kern |
+| leiste | faehigkeiten, modul-zauber, hud, kampf-leiste, zauber-leiste |
 | leistung | qualitaet |
 | leucht | bau-licht |
 | licht | bau-licht, kronen-lichtkarte, himmel-stand, himmel |
 | lichtstrahlen | kronen-lichtkarte |
 | localStorage | speicher |
-| lock-on | follow-camera, ziel-wahl |
+| lock-on | follow-camera, ziel-wahl, modul-spieler |
 | locken | character-parts-haar |
-| lod | character-lod, laub-klumpen |
+| lod | character-lod, laub-klumpen, modul-bewohner, modul-riesenwald, modul-welt, riesenwald-teile, chunk-strom |
 | logik | pflanze-formen |
 | look | character-look, figur-material, psx, splat-look |
 | loop | schleife |
 | lowpoly | bau-teile, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau, character-parts, ratte, baum, fels-form, fels, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-unterwuchs, pflanze-wueste, totholz-form, totholz, mesh-builder |
-| magie | grosszauber-riss, grosszauber-sturm, grosszauber-welle, grosszauber, zauber-daten, zauber, character-clips-zauber, zauber-effekte |
+| magie | element-reaktionen, grosszauber-riss, grosszauber-sturm, grosszauber-welle, grosszauber, zauber-daten, zauber, character-clips-zauber, zauber-effekte, modul-zauber |
 | maler | splat-look |
-| mana | zauber |
+| mana | zauber, zauber-leiste |
 | mantel | character-parts-becken, character-parts-torso |
 | marker | aufgaben-anzeige |
 | markt | bau-markt |
-| maske | character-pose, worldgen-shape |
+| maske | character-pose, riesenwald-teile, worldgen-shape |
 | material | figur-material, natur-material |
 | mathe | math |
 | mauer | mauer, welt-plan-formen |
 | maus | move-input |
 | meer | terrain-mesh, wasser-glanz |
-| mehrspieler | raum-gitter, schnappschuss-puffer |
+| mehrspieler | entitaeten, raum-gitter, schnappschuss-puffer, befehle |
 | meldung | hud |
 | menge | character-lod |
 | menue | menue |
@@ -491,30 +542,32 @@
 | mischen | character-pose |
 | mitreißen | grosszauber-welle |
 | mittelalter | bau-markt, bau-vorrat, bau-wegbau |
-| mmo | bedrohung, faehigkeiten-daten, faehigkeiten, grosszauber-wand, grosszauber-welle, grosszauber, kampf-werte, kampf, nahkampf-daten, nahkampf, zustaende, character-lod, kampf-leiste, ziel-rahmen |
+| mmo | entitaeten, bedrohung, befehle, faehigkeiten-daten, faehigkeiten, gegner-lager, grosszauber-wand, grosszauber-welle, grosszauber, kampf-werte, kampf, nahkampf-daten, nahkampf, zustaende, character-lod, modul-entitaeten, modul-gegner, modul-welt, spiel, kampf-leiste, ziel-rahmen, welt-regionen |
 | mobil | grosszauber-riss-ansicht, grosszauber-welle-ansicht |
 | modell | sdf-netz, sdf, character-model, ratte, mesh-builder |
-| mond | himmel-stand, himmel |
+| modul | modul-kern, modul-bewohner, modul-entitaeten, modul-gegner, modul-himmel, modul-riesenwald, modul-spieler, modul-welt, modul-zauber, spiel |
+| mond | modul-himmel, himmel-stand, himmel |
 | monokel | character-parts-zubehoer |
 | monster | horde, horde-mesh |
 | moos | pflanze-unterwuchs, riesenbaum-netz, gauss-saat, gauss-wolke |
-| motor | character-anim-zustand |
+| motor | klettern, character-anim-zustand |
 | nachbarn | raum-gitter |
 | nachbearbeitung | splat-look |
 | nachricht | ereignisse |
 | nachschwingen | character-sekundaer |
-| nacht | kronen-lichtkarte, himmel-stand, himmel |
+| nacht | kronen-lichtkarte, modul-himmel, himmel-stand, himmel |
 | nachwachsen | rohstoffe |
 | nahkampf | nahkampf-daten, nahkampf |
-| namensschild | figur-schild |
+| namensschild | modul-bewohner, figur-schild |
+| nass | element-reaktionen |
 | natur | baum-arten, baum-skelett, baum, fels-basis, fels-form, fels, laub-klumpen, natur-assets, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-unterwuchs, pflanze-wueste, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum, totholz-form, totholz, laub-karten, natur-material, scatter-mesh |
-| nebel | himmel, wetter |
-| netz | sdf-netz, riesenbaum-netz, gauss-saat, worldgen-wege |
+| nebel | modul-himmel, himmel, wetter |
+| netz | entitaeten, sdf-netz, riesenbaum-netz, gauss-saat, worldgen-wege |
 | netzwerk | schnappschuss-puffer |
 | node | fake-dom |
 | noise | noise |
 | normale | worldgen-query |
-| npc | character-brain, character-gruppe, character-sinne, character-steering-extra, character-steering, character, interaktion, character-anim-idle, character-animator, character-lod, character-look, character-model, figur-schild |
+| npc | character-brain, character-gruppe, character-sinne, character-steering-extra, character-steering, character, interaktion, character-anim-idle, character-animator, character-lod, character-look, character-model, modul-bewohner, figur-schild |
 | oberteil | character-parts-torso |
 | objekte | scatter-mesh, welt-aenderung, worldgen-scatter, worldgen-vegetation |
 | oeffnen | tueren |
@@ -523,8 +576,8 @@
 | orbit | follow-camera |
 | organisch | sdf |
 | ort | stationen |
-| orte | worldgen-sites |
-| overlay | aufgaben-anzeige, figur-schild, hud, kampf-leiste, menue, treffer-zahlen, ziel-rahmen |
+| orte | welt-regionen, worldgen-sites |
+| overlay | aufgaben-anzeige, figur-schild, hud, kampf-leiste, menue, treffer-zahlen, zauber-leiste, ziel-rahmen |
 | parade | nahkampf |
 | parameter | baum-arten |
 | partikel | niederschlag, zauber-effekte |
@@ -540,8 +593,10 @@
 | pinch | touch-stick |
 | pinsel | welt-aenderung |
 | pixel | psx |
-| plan | welt-plan-formen, welt-plan |
+| plan | riesenwald-plan, welt-plan-formen, welt-plan |
 | plateau | welt-plan |
+| platzierung | riesenwald-plan |
+| plugin | modul-kern |
 | poi | worldgen-sites |
 | poisson | worldgen-scatter |
 | pose | character-pose |
@@ -551,11 +606,13 @@
 | primitive | mesh-builder |
 | priority-flood | worldgen-hydrology |
 | profil | welt-plan-formen |
+| protokoll | befehle |
 | prozedural | noise, baum-skelett, baum, fels-form, fels, natur-assets, natur-basis, riesenbaum-form, totholz, gauss-saat, worldgen |
 | pruefung | bau-pruefung, gebaeude-pruefen |
 | ps1 | psx |
 | psx | psx |
 | puppe | bau-uebung |
+| quadtree | chunk-strom |
 | qualität | qualitaet |
 | quaternion | gauss-saat |
 | quest | aufgaben |
@@ -564,30 +621,35 @@
 | ragdoll | character-reaktion |
 | randlicht | figur-material |
 | raster | raum-gitter, inventar-ansicht |
-| ratte | horde, ratte, horde-mesh |
-| raum | raum-gitter |
+| ratte | gegner-lager, horde, ratte, horde-mesh, modul-gegner |
+| raum | entitaeten, raum-gitter |
 | rauschen | noise |
 | raycast | kollision |
-| reaktion | character-reaktion |
-| regen | niederschlag, wetter, worldgen-climate |
+| reaktion | element-reaktionen, character-reaktion, modul-zauber, zauber-anzeige |
+| regen | niederschlag, modul-himmel, wetter, worldgen-climate |
+| regionen | modul-welt, welt-regionen |
 | register | register |
 | registry | natur-assets |
 | reichweite | faehigkeiten, interaktion |
 | render | grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht, kronen-lichtkarte, laub-karten, natur-material |
 | render-target | kronen-lichtkarte |
+| renderer | spiel |
 | rendern | horde-mesh |
+| replay | befehle |
+| respawn | gegner-lager, modul-gegner |
 | ressource | faehigkeiten, kampf-leiste |
 | retro | psx |
 | rezept | register, rezepte |
-| riesenbaum | laub-klumpen, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum, boden-anpassung |
+| riesenbaum | laub-klumpen, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum, modul-riesenwald, boden-anpassung, riesenwald-plan |
+| riesenwald | riesenwald-teile |
 | rig | character-pose, character-rig |
 | rim | figur-material |
 | rinde | riesenbaum-netz |
 | ring | grosszauber-wand |
-| riss | grosszauber-riss, grosszauber-riss-ansicht |
+| riss | grosszauber-riss, grosszauber-riss-ansicht, zauber-gross |
 | rock | character-parts-becken |
 | rohstoff | rohstoffe |
-| rolle | character-motor, character-anim-zustand |
+| rolle | ausdauer, character-motor, character-anim-zustand |
 | rollen | koerper |
 | rosette | pflanze-formen |
 | rpg | kampf-werte |
@@ -599,19 +661,20 @@
 | rüstung | character-parts-torso |
 | saat | gauss-saat |
 | salto | character-anim-zustand |
-| schaden | kampf-werte, kampf, treffer-zahlen |
+| schaden | kampf-werte, kampf, modul-entitaeten, treffer-zahlen |
 | schal | character-parts-zubehoer |
-| schatten | kronen-lichtkarte, qualitaet, himmel |
+| schatten | kronen-lichtkarte, qualitaet, modul-himmel, riesenwald-teile, himmel |
 | schaum | wasser-glanz |
 | schild | character-ausruestung, ziel-rahmen |
 | schilf | pflanze-boden |
 | schleichen | character-sinne |
-| schleife | schleife |
+| schleife | schleife, spiel |
 | schluessel | behaelter, tueren |
 | schmiede | schmiede |
 | schmuck | character-parts-zubehoer |
 | schnee | niederschlag, terrain-farben, wetter |
 | schnellleiste | hand, inventar-ansicht |
+| schock | element-reaktionen |
 | schockwelle | zauber-effekte |
 | schrank | behaelter |
 | schritt | aufgaben |
@@ -620,7 +683,7 @@
 | schwarm | character-gruppe, character-steering, horde, horde-mesh |
 | schwerkraft | koerper |
 | schwert | character-ausruestung |
-| schwimmen | character-motor, koerper, character-animator, character-gang |
+| schwimmen | ausdauer, character-motor, koerper, character-animator, character-gang |
 | schürze | character-parts-becken, character-parts-torso |
 | sdf | sdf-netz, sdf, riesenbaum-form, riesenbaum-netz, riesenbaum |
 | see | wasser-glanz, worldgen-chunkfluss |
@@ -628,19 +691,22 @@
 | seen | worldgen-hydrology |
 | seerose | pflanze-boden |
 | sekundaer | character-sekundaer |
+| server | befehle |
 | shader | figur-material, gauss-wolke, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-welle-ansicht, laub-karten, natur-material, niederschlag, psx, splat-look, zauber-effekte, himmel, wasser-glanz |
 | sicht | character-sinne |
+| siedlung | modul-bewohner |
 | skelett | character-rig, baum-skelett |
 | smooth-min | sdf |
 | sockel | character-ausruestung, character-rig |
 | sog | grosszauber-sturm |
-| sonne | himmel-stand, himmel |
+| sonne | modul-himmel, himmel-stand, himmel |
 | sonnentupfer | kronen-lichtkarte |
 | sortierung | gauss-sortierung |
 | sound | klang |
 | speichern | speicher, zeit, behaelter, inventar, character-look, welt-aenderung |
 | spell | zauber-daten, zauber |
-| spieler | character, character-animator, character-look, character-model |
+| spiel | modul-kern, modul-bewohner, modul-entitaeten, modul-gegner, modul-himmel, modul-riesenwald, modul-spieler, modul-welt, modul-zauber, riesenwald-teile, spiel, zauber-anzeige, zauber-gross |
+| spieler | character, character-animator, character-look, character-model, modul-spieler |
 | spielstand | speicher, menue |
 | splat | gauss-saat, gauss-sortierung, gauss-wolke, splat-look |
 | splats | riesenbaum-krone, riesenbaum-netz, riesenbaum |
@@ -648,7 +714,9 @@
 | splitscreen | psx |
 | sprechblase | figur-schild |
 | springen | character-animator |
+| sprint | ausdauer, modul-spieler |
 | sprung | character-motor |
+| stamina | ausdauer |
 | stamm | totholz-form, totholz |
 | stapel | inventar |
 | start | worldgen-sites |
@@ -665,24 +733,27 @@
 | strahl | kollision |
 | strassen | worldgen-wege |
 | strauch | pflanze-busch |
-| streaming | worldgen-chunks |
+| streaming | modul-welt, chunk-strom, worldgen-chunks |
+| streu | welt-streu |
 | streuen | gauss-saat |
-| sturm | grosszauber-sturm, grosszauber, grosszauber-mesh, grosszauber-sturm-ansicht |
+| sturm | grosszauber-sturm, grosszauber, grosszauber-mesh, grosszauber-sturm-ansicht, zauber-gross |
 | sukkulente | pflanze-wueste |
 | surface-nets | sdf-netz |
 | synth | klang |
+| system | modul-kern |
 | tabelle | zauber-daten |
-| tag | kronen-lichtkarte, himmel-stand, himmel |
-| tagesablauf | character-brain |
+| tag | kronen-lichtkarte, modul-himmel, himmel-stand, himmel |
+| tagesablauf | character-brain, modul-bewohner |
 | tageszeit | zeit |
 | tank | bedrohung |
 | tasche | character-parts-becken |
 | tastatur | move-input |
 | taverne | taverne |
+| team | entitaeten |
 | teilupdate | terrain-mesh |
 | tempel | tempel |
 | temperatur | worldgen-climate |
-| terrain | noise, terrain-farben, terrain-mesh, welt-aenderung, worldgen-chunks, worldgen-erosion, worldgen-height, worldgen-shape, worldgen |
+| terrain | noise, terrain-farben, terrain-mesh, welt-aenderung, welt-regionen, worldgen-chunks, worldgen-erosion, worldgen-height, worldgen-shape, worldgen |
 | test | bau-pruefung, gebaeude-pruefen, fake-dom |
 | third-person | follow-camera |
 | tiefe | gauss-sortierung |
@@ -691,11 +762,11 @@
 | tor | tueren, mauer |
 | tornado | grosszauber-sturm, grosszauber-sturm-ansicht |
 | totholz | totholz-form, totholz |
-| touch | move-input, touch-stick, inventar-ansicht, kampf-leiste |
+| touch | move-input, touch-stick, inventar-ansicht, kampf-leiste, zauber-leiste |
 | training | bau-uebung |
 | transluzenz | laub-karten |
 | transparenz | gauss-sortierung, gauss-wolke |
-| treffer | character-reaktion, treffer-zahlen |
+| treffer | character-reaktion, modul-entitaeten, treffer-zahlen |
 | truhe | behaelter, inventar-ansicht |
 | tuer | interaktion, tueren |
 | tuning | character-motor-tuning |
@@ -703,18 +774,18 @@
 | turm | tempel |
 | tutorial | aufgaben, aufgaben-anzeige, welt-plan |
 | ufer | terrain-farben, wasser-glanz |
-| uhr | zeit |
-| ui | aufgaben-anzeige, figur-schild, hud, inventar-ansicht, kampf-leiste, menue, treffer-zahlen, ziel-rahmen |
+| uhr | zeit, modul-himmel |
+| ui | aufgaben-anzeige, figur-schild, hud, inventar-ansicht, kampf-leiste, menue, treffer-zahlen, zauber-leiste, ziel-rahmen |
 | umfallen | character-reaktion |
 | umhang | character-parts-ruecken, character-parts, character-sekundaer |
 | umkreis | raum-gitter |
 | undo | welt-aenderung |
-| unendlich | worldgen-chunkfluss, worldgen-chunks |
+| unendlich | chunk-strom, worldgen-chunkfluss, worldgen-chunks |
 | unterholz | pflanze-unterwuchs |
-| urwald | pflanze-unterwuchs, riesenbaum-form, riesenbaum |
+| urwald | pflanze-unterwuchs, riesenbaum-form, riesenbaum, modul-riesenwald, riesenwald-plan |
 | varianten | natur-assets |
 | variation | character-anim-idle |
-| vegetation | baum, natur-assets, natur-material, scatter-mesh, worldgen-vegetation |
+| vegetation | baum, natur-assets, natur-material, scatter-mesh, welt-streu, worldgen-vegetation |
 | verdeckung | boden-anpassung |
 | verfolgen | horde |
 | verhalten | character-brain |
@@ -723,25 +794,26 @@
 | vertex-snap | psx |
 | vertexfarben | fels-basis, fels, natur-basis, pflanze-basis, totholz, mesh-builder, terrain-farben |
 | verzweigung | baum-skelett |
-| vfx | zauber-effekte |
+| vfx | zauber-effekte, zauber-anzeige |
 | wachturm | wachturm |
 | waffe | nahkampf-daten, nahkampf, character-ausruestung |
 | wahrnehmung | character-sinne |
-| wald | baum, riesenbaum, kronen-lichtkarte |
-| wand | grosszauber-wand, grosszauber, grosszauber-mesh, grosszauber-wand-ansicht |
+| wald | baum, riesenbaum, kronen-lichtkarte, modul-riesenwald, riesenwald-plan |
+| wand | grosszauber-wand, grosszauber, klettern, grosszauber-mesh, grosszauber-wand-ansicht, zauber-gross |
 | wandern | character-steering |
-| wasser | grosszauber-welle, grosszauber-welle-ansicht, terrain-mesh, wasser-glanz, worldgen-adapter, worldgen-hydrology, worldgen-rivers |
+| wasser | grosszauber-welle, grosszauber-welle-ansicht, modul-welt, terrain-mesh, wasser-glanz, worldgen-adapter, worldgen-hydrology, worldgen-rivers |
 | webaudio | klang |
 | wedel | pflanze-formen |
-| wege | wege-lage, wege-mesh, worldgen-wege |
+| weg | riesenwald-plan |
+| wege | modul-welt, wege-lage, wege-mesh, welt-regionen, worldgen-wege |
 | wegfindung | worldgen-path |
 | wegweiser | bau-wegbau |
-| welle | grosszauber-welle, grosszauber, grosszauber-mesh, grosszauber-welle-ansicht |
-| welt | noise, rng, sdf-netz, sdf, grosszauber, kampf, welt-dinge, boden-anpassung, kollision, scatter-mesh, terrain-farben, terrain-mesh, wasser-glanz, wege-lage, wege-mesh, welt-aenderung, welt-plan-formen, welt-plan, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
+| welle | grosszauber-welle, grosszauber, grosszauber-mesh, grosszauber-welle-ansicht, zauber-gross |
+| welt | noise, rng, sdf-netz, sdf, grosszauber, kampf, welt-dinge, modul-welt, zauber-gross, boden-anpassung, chunk-strom, kollision, scatter-mesh, terrain-farben, terrain-mesh, wasser-glanz, wege-lage, wege-mesh, welt-aenderung, welt-plan-formen, welt-plan, welt-regionen, welt-streu, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | werfen | welt-dinge |
 | werkbank | rezepte, stationen |
 | werkzeug | hand, rohstoffe, character-ausruestung |
-| wetter | niederschlag, himmel-stand, wetter |
+| wetter | niederschlag, modul-himmel, himmel-stand, wetter |
 | whittaker | worldgen-biomes |
 | wind | grosszauber-sturm, baum, natur-basis, pflanze-basis, pflanze-boden, pflanze-busch, pflanze-unterwuchs, grosszauber-sturm-ansicht, laub-karten, natur-material, scatter-mesh, wetter |
 | wirbel | grosszauber-sturm |
@@ -749,13 +821,13 @@
 | wirkzeit | faehigkeiten |
 | wolke | gauss-wolke |
 | wolken | grosszauber-sturm-ansicht, himmel |
-| worldgen | boden-anpassung, welt-plan, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
+| worldgen | boden-anpassung, riesenwald-plan, welt-plan, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | wueste | pflanze-wueste |
 | wurzel | pflanze-unterwuchs, riesenbaum-form, riesenbaum |
 | wurzeln | boden-anpassung |
 | zaehlsortierung | gauss-sortierung |
 | zahlen | treffer-zahlen |
-| zauber | klang, grosszauber-riss, grosszauber-sturm, grosszauber-wand, grosszauber-welle, grosszauber, zauber-daten, zauber, character-clips-zauber, grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht, zauber-effekte |
+| zauber | klang, element-reaktionen, grosszauber-riss, grosszauber-sturm, grosszauber-wand, grosszauber-welle, grosszauber, zauber-daten, zauber, character-clips-zauber, grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht, zauber-effekte, modul-zauber, zauber-anzeige, zauber-gross, zauber-leiste |
 | zauberhut | character-parts-hut |
 | zaun | bau-wegbau |
 | zeit | schnappschuss-puffer, zeit |
@@ -769,7 +841,7 @@
 | zoom | follow-camera, touch-stick |
 | zopf | character-parts-haar |
 | zufall | rng |
-| zustand | zustaende |
+| zustand | element-reaktionen, zustaende |
 | zustandsautomat | character-brain |
 | zutaten | rezepte |
 
@@ -825,6 +897,27 @@ cam.lockOn(ziel ? () => zielPos(ziel) : null);
 
 Genutzt von: enklave, figuren-labor, testwelt · Tags: kamera, lock-on, ziel, zielen, auswahl, kampf · THREE: nein
 
+### entitaeten · `engine/core/entitaeten.js` · v1.0.0 · entwurf
+Mehrspieler-Fundament: Entitäten (Spieler, Gegner, NPCs, Dinge) mit stabilen, deterministischen IDs ('g:12'), Team, Position, Leben und Daten – räumliche Abfrage, Ereignisse, kompakter Zustand und Änderungs-Zähler für spätere Netz-Deltas
+
+- `createEntitaeten({ereignisse,zelle,praefixe}) -> { neu({id?,art,team,pos,radius,leben,lebenMax,name,daten})->id, hole(id), entferne(id), bewege(id,x,y,z)->bool, aendere(id,felder), markiere(id), leben(id,delta,{quelle,element,krit,stoss})->echt, belebe(id,anteil), imUmkreis(x,z,r,{team,ausser,art,tote},out?)->[ent], naechster(x,z,r,filter), alle(), anzahl, takt, aenderungenSeit(takt)->{takt,geaendert,weg}, kompakt(ent), zustand(), lade(z), dispose() }`
+
+```js
+import { createEntitaeten } from '../../engine/core/entitaeten.js';
+const ents = createEntitaeten({ ereignisse });               // ereignisse: core/ereignisse (optional)
+const id = ents.neu({ art: 'gegner', team: 'feind', pos: { x: 3, y: 0, z: 4 }, leben: 12, name: 'Ratte' });   // 'g:1'
+ents.leben(id, -5, { quelle: 's:2', element: 'feuer' });     // → ent:treffer, bei 0 → ent:tod
+const nah = ents.imUmkreis(0, 0, 10, { team: 'feind' });
+const delta = ents.aenderungenSeit(letzterTakt);            // { takt, geaendert:[kompakt…], weg:[id…] }
+```
+
+Genutzt von: – · Tags: entitaet, id, mehrspieler, mmo, netz, delta, leben, team, raum, gameplay · THREE: nein
+Entität: { id, art: 'spieler'|'gegner'|'npc'|'ding', team: 'spieler'|'feind'|'freund', pos:{x,y,z}, radius, leben, lebenMax, lebt,
+name, daten (reine Daten! werte: kampf-werte, hoehe: m für Anzeigen …), v (Änderungs-Takt) }.
+IDs: Kürzel der Art + ':' + laufende Nummer (ein Zähler für alle) → gleiche Reihenfolge von neu() = gleiche IDs.
+takt zählt jede Änderung (neu, bewegen, Leben, aendere, weg). Jede Entität merkt sich in v den Takt ihrer letzten Änderung.
+Ereignisse: ent:neu {id} · ent:treffer {id,menge,element,quelle,pos,krit,stoss} · ent:heil {id,menge,quelle} · ent:tod {id,quelle} · ent:weg {id}
+
 ### ereignisse · `engine/core/ereignisse.js` · v1.0.0 · entwurf
 Event-Bus mit Prioritäten, einmaligen Hörern, Platzhalter '*' und Warteschlange für deterministische Reihenfolge
 
@@ -861,6 +954,23 @@ zoom = clamp(zoom, 5, 80);
 ```
 
 Genutzt von: figuren-labor · Tags: mathe, interpolation, kamera · THREE: nein
+
+### modul-kern · `engine/core/modul-kern.js` · v1.0.0 · entwurf
+Modul-System für Spiele: Module (Welt, Figur, Zauber …) mit Abhängigkeiten anmelden, in richtiger Reihenfolge starten, je Bild/festem Schritt takten, Dienste teilen, Zustand speichern und rückwärts aufräumen – an/abschaltbar per Name
+
+- `createModulKern({ereignisse,optionen,seed,fehler}) -> {registriere(modul),starte(namen?)->Promise,api(name),hat(name),dienst(name,wert?),update(dt),fest(dt),spaet(dt),zustand(),lade(z),aktiv,reihenfolge,ereignisse,dispose()}`
+- `ordneModule(module,{aus}) -> {reihenfolge,uebersprungen}`
+
+```js
+import { createModulKern } from '../../engine/core/modul-kern.js';
+const kern = createModulKern({ optionen: { gegner: { anzahl: 20 } } });
+kern.registriere({ name: 'welt', start: () => ({ bodenHoehe: () => 0 }) });
+kern.registriere({ name: 'gegner', braucht: ['welt'], start: (ctx) => { const w = ctx.braucht('welt'); return { anzahl: ctx.optionen.anzahl }; }, update(dt) {} });
+await kern.starte();               // welt → gegner
+kern.update(1 / 60);
+```
+
+Genutzt von: – · Tags: modul, plugin, system, abhaengigkeit, lebenszyklus, spiel, baukasten · THREE: nein
 
 ### noise · `engine/core/noise.js` · v1.0.0 · stabil
 Seedbares Simplex-Rauschen 2D/3D plus fBm, Grat-Rauschen und Domain-Warp für Terrain, Biome und Texturen
@@ -1042,6 +1152,22 @@ anzeige.setze(a.aktuell());
 
 Genutzt von: enklave · Tags: aufgabe, tutorial, quest, schritt, fortschritt, gameplay · THREE: nein
 
+### ausdauer · `engine/gameplay/ausdauer.js` · v1.0.0 · entwurf
+Ausdauer für Sprint, Rolle/Dash, Schwimmen, Klettern, Springen: Kosten-Tabelle als Daten, Erholung nach Verzögerung, Erschöpft-Zustand (gesperrte Aktionen bis zur Schwelle)
+
+- `createAusdauer({max,erholung,verzoegerung,erschoepftBis,kosten}) -> {wert,max,anteil,voll,leer,erschoepft,kosten,kann(aktion),zahle(aktion,faktor?)->bool,verbrauche(aktion,dt,faktor?)->bool,update(dt),setze(w),reset(),zustand(),lade(z),dispose()}`
+- `AUSDAUER_KOSTEN`
+
+```js
+import { createAusdauer } from '../../engine/gameplay/ausdauer.js';
+const ausdauer = createAusdauer({ max: 100 });
+absicht.sprint = absicht.sprint && ausdauer.kann('sprint') && ausdauer.verbrauche('sprint', dt);
+if (gedrueckt('rollen') && !ausdauer.zahle('rollen')) absicht.rollen = false;
+ausdauer.update(dt);              // Erholung (nach Verzögerung seit dem letzten Verbrauch)
+```
+
+Genutzt von: – · Tags: ausdauer, stamina, sprint, klettern, schwimmen, rolle, erschoepft, gameplay · THREE: nein
+
 ### bedrohung · `engine/gameplay/bedrohung.js` · v1.0.0 · entwurf
 Klassische Aggro-Tabelle: Bedrohung je Gegner und Quelle, Zielwechsel erst bei 110 %, Spott, Heilungs-Bedrohung
 
@@ -1056,6 +1182,26 @@ b.spott('ork', 'tank', 3);
 ```
 
 Genutzt von: – · Tags: aggro, bedrohung, tank, kampf, ki, mmo · THREE: nein
+
+### befehle · `engine/gameplay/befehle.js` · v1.0.0 · entwurf
+Befehls-Schicht „Wer will was“: Befehle ({von, art, daten}) in eine Warteschlange, je Art Prüfer (lebt, Reichweite, Abklingzeit) + Ausführer, fester Takt, Protokoll zum Nachspielen – gleiche Befehle → gleiches Ergebnis (Server-tauglich)
+
+- `createBefehle({entitaeten,ereignisse,seed,takt,protokollMax,arten}) -> { sende({von,art,daten})->nr, fuehre({von,art,daten})->ergebnis, registriere(art,def), update(dt)->ergebnisse, schritt()->ergebnisse, nachspielen(protokoll)->ergebnisse[], bereit(von,art,schluessel?)->s, protokoll, takt, zeit, wartend, zustand(), lade(z), dispose() }`
+- `STANDARD_BEFEHLE`
+
+```js
+import { createBefehle } from '../../engine/gameplay/befehle.js';
+const befehle = createBefehle({ entitaeten: ents, seed: 7 });            // ents: core/entitaeten
+befehle.sende({ von: 's:1', art: 'schaden', daten: { ziel: 'g:2', menge: 10, element: 'feuer', reichweite: 20 } });
+for (const e of befehle.update(dt)) if (!e.ok) console.log(e.grund);     // fester Takt (Standard 1/20 s)
+const sofort = befehle.fuehre({ von: 's:1', art: 'heilen', daten: { ziel: 's:1', menge: 5 } });   // gleich ausführen (auch protokolliert)
+```
+
+Genutzt von: – · Tags: befehl, kommando, absicht, mehrspieler, mmo, server, protokoll, replay, kampf, gameplay · THREE: nein
+Art-Definition: { reichweite (m, Rand zu Rand; null = egal), abklingzeit (s je von+art+daten.faehigkeit), vonLebt (true), zielLebt (true),
+pruefe(b, ctx) -> true | 'grund' (zusätzlich), fuehreAus(b, ctx) -> ergebnis-Objekt }. ctx = { ents, von, ziel, zufall, zeit, takt, ereignisse }.
+daten.reichweite / daten.abklingzeit dürfen die Art-Werte überschreiben (z. B. je Zauber). von darf auch keine Entität sein ('welt').
+Ergebnis: { nr, takt, von, art, ok, grund?, …vom Ausführer }. Protokoll: [{ t (Takt), von, art, daten }] in Ausführungs-Reihenfolge.
 
 ### behaelter · `engine/gameplay/behaelter.js` · v1.0.0 · entwurf
 Behälter in der Welt (Truhe, Fass, Schrank): eigenes Inventar, öffnen/schließen je Figur, Schloss mit Schlüssel, Ablegen/Entnehmen, Speichern
@@ -1131,7 +1277,7 @@ const motor = createMotor({ welt, tuning: { ...MOTOR_TUNING, doppelSprung: 1 } }
 
 Genutzt von: – · Tags: figur, bewegung, tuning, gameplay · THREE: nein
 
-### character-motor · `engine/gameplay/character-motor.js` · v1.2.0 · entwurf
+### character-motor · `engine/gameplay/character-motor.js` · v1.3.0 · entwurf
 Kinematischer Figuren-Controller ohne THREE: Beschleunigung, Coyote-Time, Jump-Buffer, variable Sprunghöhe, Doppelsprung, Rolle/Dash, Gleiten, Tauchen, Kantenschutz, Stufen, Hang-Rutschen, Hindernisse, Schwimmen, Stöße
 
 - `createMotor({welt,pos,yaw,radius,hoehe,tuning,kantenSchutz,kollisionsId}) -> {zustand,tuning,radius,hoehe,kollisionsId,update(dt,absicht),teleport(pos,yaw?),stoss(x,y,z,{betaeubung}?),setTuning(teil),springeJetzt(),rolleJetzt(richtung?),speichern(),laden(stand),dispose()}`
@@ -1154,6 +1300,8 @@ schleicht, anKante (Kantenschutz hat gebremst), betaeubt (Rest-s nach Stoß), ge
 Seit 1.2.0: welt.bodenHoehe(x, z, fussY) und welt.hindernisse(x, z, radius, { y, hoehe, ausser: kollisionsId }) bekommen Hinweise
 (alte Adapter ignorieren sie) → mit engine/world/kollision.js auf Kisten steigen, über Niedriges springen, eigener Körper zählt nicht.
 Schnelle Bewegung (Dash, Stoß) wird feiner unterteilt, damit nichts durch dünne Stämme tunnelt. speichern()/laden() = ganzer Zustand.
+Seit 1.3.0: absicht.klettern = { x, y, z (m/s), haften (am Gelände kleben), blickYaw } → Kletter-Modus ohne Schwerkraft
+(Steuerung: engine/gameplay/klettern.js); Zustand klettert = true. Ohne absicht.klettern läuft alles wie bisher.
 
 ### character-sinne · `engine/gameplay/character-sinne.js` · v1.0.0 · entwurf
 NPC-Wahrnehmung ohne THREE: Sichtkegel (Winkel, Reichweite, Rundum-Nahbereich), Hören (Radius × Lautstärke), Sichtlinie über welt.bodenHoehe, Gedächtnis mit Verdacht und Vergessen
@@ -1208,7 +1356,7 @@ Genutzt von: figuren-labor · Tags: npc, ki, steering, bewegung, wandern, pfad, 
 Absicht: { x, z, sprint, springen (Puls beim Steckenbleiben), ducken, blickYaw (beim Umkreisen/Abstand/Wartepunkt) }.
 Steckenbleiben eskaliert: seitlich ausweichen → andere Seite + Hüpfer → Wanderziel/Wegpunkt überspringen bzw. `steckt = true`.
 
-### character · `engine/gameplay/character.js` · v1.4.0 · entwurf
+### character · `engine/gameplay/character.js` · v1.5.0 · entwurf
 Fertige Spielfigur in einem Objekt: Modell (Look) + Animator + Bewegungs-Motor, für Spieler und NPCs gleich
 
 - `createCharacter(opts) -> { root, model, animator, motor, zustand, look, name, schild, brain, update(dt,absicht?,brainKontext?), setBrain(brain|opts|null), spiele(name,opts), loese(opts), stoppe(name?), aktion(name,opts), sage(text,{dauer,geste,ausdruck}), setName(t), setLeben(anteil|null), ausruesten(sockel,obj), ablegen(sockel|obj), ausruestung, setAusdruck(name|null,opts), treffer(richtung,staerke,opts), umfallen(richtung,opts), aufstehen(dauer), blickZu(punkt|figur|fn|null), setSichtbar(bool), abstandZu(punkt|figur), setLook(teil), teleport(pos,yaw?), stoss(x,y,z,opts?), dispose() }`
@@ -1224,6 +1372,30 @@ bauer.sage('Moin!', { geste: 'winken' }); bauer.blickZu(held); bauer.ausruesten(
 ```
 
 Genutzt von: daemmerwald, enklave, figuren-labor, testwelt · Tags: figur, charakter, spieler, npc, bewegung, animation, controller, avatar · THREE: nein
+
+### element-reaktionen · `engine/gameplay/element-reaktionen.js` · v1.0.0 · entwurf
+Element-Reaktionen ohne THREE: Elemente (Feuer, Wasser, Frost, Blitz, Erde, Wind) hinterlassen Zustände auf Zielen UND auf Boden-Flecken (nass, brennend, gefroren, kalt, geladen, schlamm); trifft ein Element auf einen passenden Zustand, gibt es eine Reaktion aus einer Daten-Tabelle (Schock, Einfrieren, Feuersturm, Dampf, Schlamm, Schmelzen …) mit Faktor, neuen Zuständen und Folge-Effekten – deterministisch
+
+- `createElementReaktionen({reaktionen,zustaende,maxFlecken,zelle}) -> { treffer(id,element,{x,z,menge,folge}) -> ergebnis, boden(element,x,z,radius,{dauer}) -> ergebnis, amBoden(id,x,z) -> [neue Zustände], update(dt) -> ticks[], zustaende(id) -> {name:rest}, hat(id,name), setze(id,name,dauer?), loesche(id,name?), bodenBei(x,z) -> [fleck], flecken, tempo(id) (0 … 1), betaeubt(id) -> s, vergiss(id), leeren(), zustand(), lade(z), dispose() }`
+- `ELEMENTE`
+- `ZUSTAENDE`
+- `REAKTIONEN`
+- `normElement(name) -> element|null`
+
+```js
+import { createElementReaktionen } from '../../engine/gameplay/element-reaktionen.js';
+const er = createElementReaktionen();
+er.boden('wasser', 10, 4, 3);                                  // Pfütze: Boden-Fleck 'nass'
+const r = er.treffer('ratte-3', 'blitz', { x: 10, z: 4, menge: 20 });   // steht im Nassen → r.reaktion.name === 'schock'
+schade(id, r.menge); for (const f of r.folgen) zeigeEffekt(f);  // f: { art:'flaeche'|'wolke'|'glanz'|…, element, x, z, radius, faktor, dauer }
+```
+
+Genutzt von: – · Tags: zauber, element, reaktion, zustand, nass, brennend, gefroren, schock, dampf, boden, kampf, magie · THREE: nein
+Reaktion = { name, text, braucht (Zustand am Ziel oder am Boden), element (eintreffend), faktor (Schaden ×), entfernt [Zustände],
+setzt { zustand: dauer }, folge { art, radius, faktor (Anteil des Treffer-Schadens), element, dauer }, betaeubt (s), farbe }.
+Erst wird das Ziel geprüft, dann der Boden-Fleck unter ihm (Reihenfolge der Tabelle entscheidet). Ohne Reaktion hinterlässt das
+Element seinen eigenen Zustand (HINTERLAESST). Folge-Treffer (opts.folge) lösen keine weiteren Folgen aus (keine Endlos-Ketten).
+update(dt) meldet Schadens-Takte brennender Ziele: [{ id, menge, element:'feuer' }].
 
 ### faehigkeiten-daten · `engine/gameplay/faehigkeiten-daten.js` · v1.0.0 · entwurf
 Beispiel-Fähigkeiten (Krieger, Magier, Heiler) für die MMO-Leiste; reine Daten
@@ -1260,6 +1432,21 @@ Ereignisse: { typ:'wirkStart'|'fertig'|'kanalTakt'|'unterbrochen', name, def, zi
 Kosten werden beim Start bezahlt und bei Unterbrechung erstattet. Ziel = { id, feind?: bool } (feind:false = Verbündeter).
 sperren = { kannHandeln, kannZaubern } (false = gesperrt; wie zustaende.faktoren()). Zauber-Fähigkeiten: wirkung.typ 'zauber' oder ressource 'mana'.
 Wirkzeit/Kanal bricht bei Bewegung ab (außer beiBewegung:'erlaubt'). Treffer in der Wirkzeit: +0.2 s, höchstens 2x.
+
+### gegner-lager · `engine/gameplay/gegner-lager.js` · v1.0.0 · entwurf
+Ein Gegnerlager ohne THREE: Horde (gameplay/horde) an einem Ort, je Tier eine Entität (core/entitaeten, Team 'feind'), Wache → Jagd auf nahe Spieler → Verlieren → Heimkehr + Heilung, Bisse als Befehle (gameplay/befehle), Tod → Entität weg, Respawn nach Spielzeit, Nacht = mehr und aggressiver
+
+- `createGegnerLager({id,x,z,radius,ents,befehle,welt,seed,besatzung,nachtExtra,aggro,leine,respawn,werte,frei,schadenFaktor}) -> { id, x, z, radius, horde, modus, zielId, lebend, wesen(entId), ids, fest(dt,{aktiv,nacht}), treffer(d), tod(id), weg(id), stoss(id,x,z,kraft), betaeube(id,s), sog(x,z,r,kraft)->n, zustand(), dispose() }`
+
+```js
+import { createGegnerLager } from '../../engine/gameplay/gegner-lager.js';
+const lager = createGegnerLager({ id: 'lager-moor', x: -900, z: 100, ents, befehle, welt, seed: 3, besatzung: { ratte: 8, riesenratte: 1 } });
+lager.fest(1 / 60, { aktiv: true, nacht: false });   // jedes feste Bild; Treffer kommen über lager.treffer(ent:treffer-Daten)
+```
+
+Genutzt von: – · Tags: gegner, lager, horde, respawn, aggro, entitaet, mmo, ratte, gameplay · THREE: nein
+ents: core/entitaeten (oder die API des Moduls 'entitaeten'), befehle: gameplay/befehle. Ziele = lebende Entitäten mit team 'spieler'.
+stoss(id, x, z, kraft): x,z = RICHTUNG (normiert), kraft in m/s. sog: x,z = Mitte. Inaktive Lager (fern vom Fokus) zählen nur die Uhr.
 
 ### grosszauber-riss · `engine/gameplay/grosszauber-riss.js` · v1.0.0 · entwurf
 Großzauber Erdriss: ein gezackter Riss rast in Blickrichtung über den Boden, wirft Ziele hoch, speit Lava-Säulen, steht ~8 s als Graben und schließt sich abgekühlt wieder
@@ -1471,6 +1658,24 @@ for (const ev of k.update(1)) console.log(ev.typ); // kampf:treffer, kampf:tot, 
 ```
 
 Genutzt von: figuren-labor · Tags: kampf, schaden, leben, buff, debuff, aggro, mmo, welt · THREE: nein
+
+### klettern · `engine/gameplay/klettern.js` · v1.0.0 · entwurf
+Klettern an sehr steilen Hängen (Gelände steiler als hangGrad) und hohen Hindernissen (Stämme, Felsen, Mauern): erkennt die Wand vor der Figur, steuert den Motor über absicht.klettern (hoch/runter/seitlich, Hochziehen oben, Absprung), kostet Ausdauer – leer = abrutschen
+
+- `createKlettern({welt,motor,ausdauer,hangGrad,tempo,seitTempo,anlauf,minHoehe,abSprung}) -> {klettert,wand,hochziehen,update(dt,absicht)->absicht,loslassen(),suche(pos,richtung)->wand|null,dispose()}`
+
+```js
+import { createKlettern } from '../../engine/gameplay/klettern.js';
+const klettern = createKlettern({ welt: { bodenHoehe, normale, hindernisse: kollision.hindernisse }, motor: figur.motor, ausdauer });
+zuAbsicht(eingabe.lesen(), cam.blickYaw(), absicht);
+klettern.update(dt, absicht);     // setzt absicht.klettern (Motor ≥ 1.3.0) oder löscht es
+figur.update(dt, absicht);
+```
+
+Genutzt von: – · Tags: klettern, wand, hang, fels, baum, ausdauer, motor, bewegung, gameplay · THREE: nein
+Wand: { art: 'gelaende'|'hindernis', nx, nz (waagerechte Normale, zeigt von der Wand weg), n:{x,y,z} (Gelände-Normale) }.
+Start: Stick ≥ 60 % in die Wand, anlauf Sekunden lang, Ausdauer nicht erschöpft. Hindernisse zählen nur, wenn sie
+auch auf Kopfhöhe + minHoehe noch da sind (keine Figuren/Kisten). Springen = Absprung von der Wand, Ducken = loslassen.
 
 ### koerper · `engine/gameplay/koerper.js` · v1.0.0 · entwurf
 Leichte Physik für lose Dinge (Gegenstände, Beute, Bälle, Kisten-Trümmer) ohne THREE: Kugeln mit Schwerkraft, Abprallen, Reibung, Haften am flachen Hang, Rutschen am steilen, Schwimmen/Sinken, Hindernisse, Einschlafen – fester Zeitschritt, deterministisch
@@ -2058,8 +2263,8 @@ halt 'schraeg' (Fackel): schräg nach vorn-oben · 'aufrecht' (Stab, Speer): sen
 halt 'seite' (Schild): Fläche nach außen (handL → +X, handR → −X) · 'haengend' (Laterne, Korb, Becher): hängt nach −Y
 ruecken/umhang: schräg über den Rücken (Griff oben) · guertel: an der linken Hüfte, Spitze nach unten · kopf: unverändert
 
-### character-clips-mehr · `engine/models/character/character-clips-mehr.js` · v1.0.0 · entwurf
-Weitere Aktions-Clips als reine Keyframe-Daten (Emotes, Kampf, Arbeit, Ruhe, Idle-Varianten); wird von character-clips registriert
+### character-clips-mehr · `engine/models/character/character-clips-mehr.js` · v1.1.0 · entwurf
+Weitere Aktions-Clips als reine Keyframe-Daten (Emotes, Kampf, Arbeit, Ruhe, Idle-Varianten, Klettern); wird von character-clips registriert
 
 - `MEHR_CLIPS`
 - `IDLE_VARIANTEN`
@@ -3108,6 +3313,185 @@ fx.update(dt, { hoehePx: renderer.domElement.height });
 
 Genutzt von: enklave, figuren-labor · Tags: zauber, magie, effekt, partikel, funken, blitz, schockwelle, shader, vfx · THREE: ja
 
+### modul-bewohner · `engine/spiel/modul-bewohner.js` · v1.0.0 · entwurf
+Spiel-Modul 'bewohner': 6–10 Siedler an welt.ort('siedlung') mit Tagesablauf (character-brain, Stunde aus himmel.uhr), Namensschildern, Entität je Bewohner (Team freund), Treffer/Tod-Reaktion, LOD (ferne NPCs seltener, ganz ferne eingefroren)
+
+- `BEWOHNER_MODUL`
+
+```js
+import { BEWOHNER_MODUL } from '../../engine/spiel/modul-bewohner.js';
+const spiel = await createSpiel({ canvas, module: [WELT_MODUL, SPIELER_MODUL, BEWOHNER_MODUL], optionen: { bewohner: { anzahl: 6 } } });
+```
+
+Genutzt von: erlenwacht · Tags: spiel, modul, npc, bewohner, siedlung, tagesablauf, namensschild, lod · THREE: ja
+Modul-API: { bewohner [{figur,name,id,heim}], mitte {x,z}, schilder, stunde }.
+
+### modul-entitaeten · `engine/spiel/modul-entitaeten.js` · v1.0.0 · entwurf
+Spiel-Modul 'entitaeten': stabile IDs, Leben/Schaden über die Befehls-Schicht (gameplay/befehle), Ereignisse ent:* auf dem Spiel-Bus, schwebende Schadenszahlen + Lebensbalken über getroffenen Zielen (mit 'render')
+
+- `ENTITAETEN_MODUL`
+- `createEntitaetenModul() -> modul, start(ctx) -> { neu({art,team,pos,radius,leben,name,daten})->id, hole(id), entferne(id), bewege(id,x,y,z), imUmkreis(x,z,r,{team,ausser,art}), schade(id,{menge,element,quelle,stoss:{x,z,kraft}})->echt, heile(id,menge,quelle?)->echt, befehle, alle(), kern, aenderungenSeit(takt), takt }`
+
+```js
+import { ENTITAETEN_MODUL } from '../../engine/spiel/modul-entitaeten.js';
+const ents = kern.api('entitaeten');
+const id = ents.neu({ art: 'gegner', team: 'feind', pos: { x, y, z }, leben: 40, name: 'Wolf', daten: { hoehe: 0.9, werte: { ruestung: 20 } } });
+ents.schade(id, { menge: 12, element: 'feuer', quelle: spieler.id, stoss: { x: 0, z: 1, kraft: 6 } });   // → ent:treffer / ent:tod
+```
+
+Genutzt von: erlenwacht · Tags: spiel, modul, entitaet, leben, schaden, befehl, mmo, treffer, lebensbalken · THREE: ja
+stoss: x,z = RICHTUNG (wird normiert), kraft = m/s. Er wird nur im Ereignis ent:treffer weitergereicht – wer Körper hat (gegner), wendet ihn an.
+Optionen: { zahlen: true, balken: true, balkenZeit: 6 (s nach letztem Treffer), takt: 1/20 (Befehls-Takt) }.
+
+### modul-gegner · `engine/spiel/modul-gegner.js` · v1.0.0 · entwurf
+Spiel-Modul 'gegner': Rattenlager an allen welt.orte der Art 'gegnerlager' (+ ein kleines am Waldrand beim 'tor'), Horden mit je einer Entität pro Tier (Team 'feind'), Jagd/Heimkehr/Respawn, Interest-Management (nur Lager nahe dem Fokus laufen und sind sichtbar), nachts mehr und aggressiver
+
+- `GEGNER_MODUL`
+- `createGegnerModul() -> modul, start(ctx) -> { lager, horden, wesen(id), lagerVon(id), stoss(id,x,z,kraft), betaeube(id,s), sog(x,z,r,kraft)->anzahl, aktive() }`
+
+```js
+import { GEGNER_MODUL } from '../../engine/spiel/modul-gegner.js';
+const gegner = kern.api('gegner');
+gegner.sog(x, z, 6, 8);                              // Zauber: alles im Umkreis 6 m zur Mitte ziehen
+gegner.stoss('g:14', dirX, dirZ, 9); gegner.betaeube('g:14', 2);
+```
+
+Genutzt von: erlenwacht · Tags: spiel, modul, gegner, lager, horde, ratte, respawn, interest, mmo · THREE: ja
+stoss: x,z = RICHTUNG (normiert), kraft m/s. Ziele sind Entitäten mit team 'spieler' (spieler.id). Hat das Modul 'spieler' keine
+Entität, legt gegner eine Stellvertreter-Entität an der Spielerposition an (Bisse zählen, Wiederbelebung nach 5 s).
+Optionen: { aktivBis: 160 (m vom Fokus), besatzung, nachtExtra, waldrand: true, nester: true }.
+
+### modul-himmel · `engine/spiel/modul-himmel.js` · v1.0.0 · entwurf
+Spiel-Modul 'himmel': Spieluhr, Himmel (Sonne, Mond, Sterne, Wolken, Nebel), Wetter mit Regen/Schnee; Sonnenlicht mit Schatten, der dem Fokus folgt (Größe nach Qualitätsstufe); Walddunst für andere Module (`dunst` 0..1)
+
+- `HIMMEL_MODUL -> api { uhr, stand(), wetter, sonne (DirectionalLight), umgebung, sonnenRichtung (Vector3 zur Sonne), lichtRichtung (Vector3 zum Hauptlicht, nachts Mond), himmel, dunst (0..1, setzbar), setzeStunde(h), setzeWetter(art, sofort) }`
+
+```js
+import { HIMMEL_MODUL } from '../../engine/spiel/modul-himmel.js';
+const spiel = await createSpiel({ canvas, module: [WELT_MODUL, HIMMEL_MODUL] });   // URL: ?zeit=18 ?tempo=20 ?wetter=regen ?test=1 (Uhr steht)
+spiel.api('himmel').setzeStunde(6.5);
+```
+
+Genutzt von: erlenwacht · Tags: spiel, modul, himmel, tag, nacht, sonne, mond, wetter, regen, nebel, schatten, uhr · THREE: ja
+
+### modul-riesenwald · `engine/spiel/modul-riesenwald.js` · v1.0.0 · entwurf
+Spiel-Modul 'riesenwald': Urwald-Riesen in echter Größe (Stamm 6–12 m dick, 60–90 m hoch) entlang der Wege in Region 'daemmerwald' – Weg frei, Tor-Paar mit Astbogen, dichte Blatt-Karten-Kronen mit Kronen-Schatten, Unterwuchs am Weg; Stämme als Hindernisse; Detailstufen nach Entfernung zum Fokus
+
+- `RIESENWALD_MODUL -> api { riesen [{x,y,z,variante,skala,radius,reihe,…}], tor, imGebiet(x,z), zahlen() -> { riesen, stufen [voll,mittel,grob,fern], laubSichtbar, unterwuchs } }`
+
+```js
+import { RIESENWALD_MODUL } from '../../engine/spiel/modul-riesenwald.js';
+const spiel = await createSpiel({ canvas, module: [WELT_MODUL, HIMMEL_MODUL, RIESENWALD_MODUL] });
+spiel.api('riesenwald').zahlen();
+```
+
+Genutzt von: erlenwacht · Tags: spiel, modul, wald, riesenbaum, urwald, laub, lod, kollision, daemmerwald · THREE: ja
+
+### modul-spieler · `engine/spiel/modul-spieler.js` · v1.0.0 · entwurf
+Spiel-Modul 'spieler': Spielfigur (character) mit Eingabe, tiefer Verfolger-Kamera (Riesen wirken groß), Lock-On auf Entitäten, Ausdauer (Sprint, Rolle, Schwimmen, Klettern, Springen), Klettern an Fels/Stämmen, eigene Entität mit Treffer-Reaktion + Wiederbeleben, Notlicht ohne Himmel
+
+- `SPIELER_MODUL`
+
+```js
+import { SPIELER_MODUL } from '../../engine/spiel/modul-spieler.js';
+const spiel = await createSpiel({ canvas, module: [WELT_MODUL, SPIELER_MODUL], optionen: { spieler: { fov: 66 } } });
+spiel.api('spieler').teleport(10, 20, Math.PI);
+```
+
+Genutzt von: erlenwacht · Tags: spiel, modul, spieler, figur, kamera, lock-on, ausdauer, klettern, sprint · THREE: ja
+Modul-API: { figur, position, kamera, eingabe, id, teleport(x,z,yaw?), blickYaw, ziel, ausdauer, klettern, tot }; setzt Dienst fokus;
+sendet spieler:aktion {name: springen|rollen|sprint|klettern|ziel|tod|wiederbelebt}.
+Steuerung: WASD/Stick laufen · Shift/🏃 Sprint (halten) · Leertaste/⤒ springen (an der Wand: abspringen) · Q/🌀 Rolle/Dash ·
+C ducken (an der Wand: loslassen) · T/Tab/🎯 Ziel erfassen/wechseln · Maus ziehen/Mausrad bzw. rechte Bildschirmhälfte: Kamera.
+Klettern: gegen steilen Fels (> 55°) oder hohe Stämme laufen – kostet Ausdauer, leer = abrutschen.
+
+### modul-welt · `engine/spiel/modul-welt.js` · v1.0.0 · entwurf
+Erlenwacht-Welt (≈4×4 km): Karte/Regionen/Orte/Wege aus world/welt-regionen, Gelände als gestreamte Kacheln mit Detailstufen (world/chunk-strom), Streu-Bäume/Felsen/Büsche je Kachel als Instanzen samt Kollision, Meer und Moortümpel – rund um den Dienst `fokus`
+
+- `WELT_MODUL -> api wie im Vertrag (docs/ERLENWACHT-MODULE.md) + karte, statistik`
+
+```js
+import { WELT_MODUL } from '../../engine/spiel/modul-welt.js';
+const welt = spiel.api('welt'); welt.bodenHoehe(0, 600); welt.region(-1200, 400).id; // 'moor'
+// Optionen: kachelSegmente, streuWeite, kleinWeite, teilung, budget · Debug-Kamera: ?weltblick=gipfel oder ?weltblick=x,z,hoehe,yaw,pitch
+```
+
+Genutzt von: erlenwacht · Tags: spiel, modul, welt, gelaende, streaming, lod, regionen, wege, wasser, erlenwacht, mmo · THREE: ja
+
+### modul-zauber · `engine/spiel/modul-zauber.js` · v1.0.0 · entwurf
+Spiel-Modul 'zauber': Zauberbuch (gameplay/zauber) + Effekte + Großzauber (Flutwelle, Erdwall, Zyklon, Erdriss) in der großen Welt, alle Treffer laufen durch gameplay/element-reaktionen (Schock, Einfrieren, Dampf, Feuersturm …); Ziele = Entitäten Team 'feind'; Zauber-Gesten der Figur; Handy-Leiste mit Halten = Aufladen und Mana-Balken
+
+- `ZAUBER_MODUL -> api { buch, elemente, wirke(name,{halten}) -> bool, loslassen(), abbrechen(), leiste (Namen), tabelle, grosszauber, weltAdapter, tempoFaktor, ladung }`
+
+```js
+import { ZAUBER_MODUL } from '../../engine/spiel/modul-zauber.js';
+// in module-liste.js anstecken; ?zauber=wasserguss,blitz wirkt in ?test=1 nacheinander, ?puppen=5 stellt Übungsziele auf
+kern.api('zauber').wirke('feuerball');
+```
+
+Genutzt von: erlenwacht · Tags: spiel, modul, zauber, magie, element, reaktion, großzauber, kampf, leiste, handy · THREE: ja
+Optionen: { leiste: [8 Namen], mana: 100, manaRegen: 8, partikel: 900, freiesMana: false, leisteUnten (px; Handy 228 = über Stick/Knöpfen) }.
+Ereignisse: sendet 'zauber:wirke' {name}, 'zauber:reaktion' {name,id,pos}; hört auf 'ent:tod' (vergisst Zustände).
+Mit Modul 'gegner': hat es horde(id) -> {horde, wesen}, bekommen Treffer zusätzlich Sog/Umwerfen/Verlangsamen und Einfrieren = benommen.
+
+### riesenwald-teile · `engine/spiel/riesenwald-teile.js` · v1.0.0 · entwurf
+Bauteile des Riesenwald-Moduls: Fern-Silhouette eines Riesen (eine Drehform mit Kronen-Wulst, ~150 Dreiecke), Astbogen zwischen zwei Tor-Riesen (gebogene, verjüngte Röhre mit Moos oben) und eine Loch-Maske für Kronen-Schatten
+
+- `fernRiese({ hoehe, stammRadius, kronenAb, kronenRadius, segmente = 9 }) -> BufferGeometry`
+- `astBogen({ a {x,y,z,r}, b {x,y,z,r}, scheitel = 26, dicke = 1.8, seed }) -> { geometrie, punkte [[x,y,z]…] }`
+- `lochMaske({ seed, groesse = 64, dicht = 0.42 }) -> DataTexture`
+
+```js
+import { fernRiese, astBogen, lochMaske } from '../../engine/spiel/riesenwald-teile.js';
+const geo = fernRiese({ hoehe: 80, stammRadius: 5, kronenAb: 44, kronenRadius: 32 });
+const bogen = astBogen({ a: { x: -9, y: 0, z: 0, r: 6 }, b: { x: 9, y: 0, z: 0, r: 5 } });
+```
+
+Genutzt von: – · Tags: spiel, riesenwald, impostor, lod, ast, bogen, schatten, maske · THREE: ja
+
+### spiel · `engine/spiel/spiel.js` · v1.0.0 · entwurf
+Spiel-Host: die ganze Engine in einem Aufruf – Renderer, Szene, Kamera, Schleife (fester Schritt + Bild), Handy-Qualität, URL-Schalter und Modul-Kern; Module (Welt, Figur, Zauber, Gegner …) werden nur noch angesteckt
+
+- `createSpiel({canvas,module,optionen,seed,url,qualitaet,fest,fehler,hintergrund}) -> Promise<{kern,api(name),renderer,szene,kamera,ui,url,test,stufe,schleife,pause(bool),dispose()}>`
+- `leseUrl(suche) -> {aus,test,seed,q,ort,debug,werte}`
+
+```js
+import { createSpiel } from '../../engine/spiel/spiel.js';
+import { WELT_MODUL } from '../../engine/spiel/modul-welt.js';
+const spiel = await createSpiel({ canvas: document.getElementById('c'), module: [WELT_MODUL, SPIELER_MODUL] });
+spiel.api('spieler').teleport(10, 20);
+```
+
+Genutzt von: erlenwacht · Tags: spiel, host, modul, renderer, schleife, baukasten, mmo · THREE: ja
+
+### zauber-anzeige · `engine/spiel/zauber-anzeige.js` · v1.0.0 · entwurf
+Sichtbares zu Element-Reaktionen fürs Zauber-Modul: Boden-Flecken (nass, brennend, gefroren, schlamm, geladen) als weiche Scheiben in einem Draw-Call, Dampfwolken (Sprites), Eis-Glanz (Eis-Hülle), Funken/Feuersturm über zauber-effekte und der Ziel-Kreis beim Aufladen – alles aus Pools, fürs Handy sparsam
+
+- `createZauberAnzeige({szene,welt,fx,anteil}) -> { flecken(liste), reaktion(folge|reaktion,pos), wolke(x,z,radius,dauer), glanz(pos,radius,dauer), kreis(pos|null,radius,farbe,anteil), update(dt), dispose() }`
+
+```js
+import { createZauberAnzeige } from '../../engine/spiel/zauber-anzeige.js';
+const an = createZauberAnzeige({ szene, welt, fx });
+an.flecken(reaktionen.flecken); an.wolke(10, 4, 3, 4); an.update(dt);
+```
+
+Genutzt von: – · Tags: spiel, zauber, effekt, element, reaktion, dampf, eis, boden, fleck, vfx · THREE: ja
+
+### zauber-gross · `engine/spiel/zauber-gross.js` · v1.0.0 · entwurf
+Großzauber fürs Zauber-Modul in der großen Welt: Logik (gameplay/grosszauber + welle/wand/sturm/riss) und Bild (render/grosszauber-*); Erdwall-Pfeiler werden echte Körper in welt.kollision, die Flutwelle macht den Boden nass, Zyklon/Erdriss legen Wind/Feuer auf den Boden (Element-Reaktionen)
+
+- `createZauberGross({szene,welt,fx,amBoden,treffer,spieler,seed}) -> { wirke(e) -> id|null, fest(dt,ziele), update(dt), logik, weltAdapter, dispose() }`
+
+```js
+import { createZauberGross } from '../../engine/spiel/zauber-gross.js';
+const gross = createZauberGross({ szene, welt, fx, amBoden, treffer, spieler });
+gross.wirke(ereignisVomZauberbuch);   // e.typ === 'gross'
+```
+
+Genutzt von: – · Tags: spiel, zauber, großzauber, welle, wand, sturm, riss, kollision, welt, element · THREE: ja
+weltAdapter: welt + Großzauber (bodenHoehe mit Gräben/Podesten, wasserHoehe mit Flut, hindernisse mit Wänden) für Module, die ihn nutzen wollen.
+welt selbst wird nicht verändert (das Gelände-Streaming liest das Grund-Gelände).
+
 ### fake-dom · `engine/test/fake-dom.mjs` · v1.1.0 · stabil
 Minimale Browser-Attrappe für Node-Tests: document, window, localStorage, requestAnimationFrame
 
@@ -3236,6 +3620,22 @@ zahlen.update(kamera, dt); // jedes Bild
 
 Genutzt von: enklave, figuren-labor · Tags: ui, treffer, schaden, zahlen, overlay, dom · THREE: ja
 
+### zauber-leiste · `engine/ui/zauber-leiste.js` · v1.0.0 · entwurf
+Handy-taugliche Zauber-Leiste als DOM-Overlay: große Knöpfe (≥ 44 px) mit Symbol, Taste, Abklingzeit-Schleier und Lade-Ring; Halten = Aufladen/Überladen, Loslassen = Wirken (Zeiger UND Tasten 1–8); Mana-Balken darüber
+
+- `createZauberLeiste({eltern,plaetze,onDruck,onLos,unten,groesse,tasten}) -> { element, update({mana,manaMax,abkling(name)->0…1,kann(name)->bool,ladung:{name,anteil,ueber}|null}), blitz(name), dispose() }`
+
+```js
+import { createZauberLeiste } from '../../engine/ui/zauber-leiste.js';
+const leiste = createZauberLeiste({ eltern: render.ui, plaetze: [{ name: 'feuerball', symbol: '🔥', farbe: 0xff7a2a }],
+onDruck: (n) => zauber.wirke(n, { halten: true }), onLos: () => buch.lasseLos() });
+leiste.update({ mana: buch.mana, manaMax: buch.manaMax, abkling: (n) => buch.abklingAnteil(n), kann: (n) => buch.kann(n).ok, ladung: buch.ladung });
+```
+
+Genutzt von: – · Tags: ui, overlay, zauber, leiste, hotbar, touch, handy, mana, aufladen, halten · THREE: nein
+plaetze: [{ name, symbol, farbe (Zahl), taste (Standard '1' … '8'), gross (Großzauber: goldener Rand) }].
+Die Wurzel hat pointer-events:none, nur die Knöpfe fangen Zeiger. Tasten mit Wiederholung werden ignoriert.
+
 ### ziel-rahmen · `engine/ui/ziel-rahmen.js` · v1.0.0 · entwurf
 MMO-Ziel-/Spieler-Rahmen als DOM-Overlay: Name, Lebensbalken mit Schild und Schaden-Rest, Haltung, Ressource, Zustands-Symbole
 
@@ -3265,6 +3665,21 @@ const h = boden.hoehe(12, 41), ao = boden.verdeckung(12, 41);
 ```
 
 Genutzt von: daemmerwald · Tags: gelaende, boden, wurzeln, hoehenkarte, ao, verdeckung, welt, worldgen, riesenbaum · THREE: nein
+
+### chunk-strom · `engine/world/chunk-strom.js` · v1.0.0 · entwurf
+Gelände-Kacheln um einen Fokus streamen (reine Logik): Quadtree-Detailstufen (nah fein, fern grob) bis zur Sichtweite, Bau-Budget je Bild, alte Kacheln bleiben, bis die neuen fertig sind (keine Löcher); dazu ein einfacher Kachel-Ring für Nahbereichs-Daten (Streu, Kollision)
+
+- `createChunkStrom({wurzel,blatt,teilung,sicht,budget,grenze,baue(k)->obj,entferne(k,obj)}) -> {update(fx,fz)->{gebaut,entfernt,offen},waehle(fx,fz)->[k],geladen:Map,anzahl,fertig,dispose()}`
+- `createKachelRing({groesse,radius,budget,lade(k)->obj,entlade(k,obj)}) -> {update(fx,fz)->{geladen,entladen,offen},geladen:Map,neuLaden(fn?),dispose()}`
+
+```js
+import { createChunkStrom } from '../../engine/world/chunk-strom.js';
+const strom = createChunkStrom({ wurzel: 512, blatt: 64, sicht: 800, baue: (k) => baueMesh(k), entferne: (k, m) => m.dispose() });
+strom.update(spieler.x, spieler.z);   // je Bild: baut höchstens `budget` Kacheln, nächste zuerst
+// k = { key, x0, z0, groesse, stufe (0 = feinste), cx, cz }
+```
+
+Genutzt von: – · Tags: welt, streaming, chunks, kacheln, lod, quadtree, detailstufen, gelaende, unendlich · THREE: nein
 
 ### himmel-stand · `engine/world/himmel-stand.js` · v1.0.0 · entwurf
 Himmel als reine Daten: Sonnen- und Mondbahn aus Stunde/Jahreszeit/Breitengrad, Mondphase, Himmels-, Nebel- und Lichtfarben über den Tag (Nacht, Dämmerung, goldene Stunde, Mittag), Sterne, Einfluss von Wolken/Nebel/Regen/Blitz
@@ -3317,6 +3732,23 @@ id (sonst fortlaufende Nummer), daten }
 filter für hindernisse (alles optional): { y (Fußhöhe), hoehe (Körpergröße), ausser (eigene id) }.
 Mit y werden Körper übersprungen, über oder unter denen man ist; begehbare schon ab „Oberkante ≤ y + stufe“ (hochsteigen).
 bodenHoehe(x, z, y): ohne y nur das Gelände des Adapters; mit y zusätzlich begehbare Oberseiten bis y + stufe.
+
+### riesenwald-plan · `engine/world/riesenwald-plan.js` · v1.0.0 · entwurf
+Plan eines Riesenwalds als reine Daten (ohne THREE): Urwald-Riesen in Reihen entlang von Wegen (Weg bleibt frei), Tor-Paar links/rechts am Waldeingang, Kranz um eine Lichtung, Hinterland bis zu einer Tiefe aufgefüllt – deterministisch per Seed
+
+- `planeRiesenwald({ wege, imGebiet(x,z), varianten [{radius,weite}], seed, wegBreite=3, tor, lichtung, tiefe=150, abstand=26, max=220, frei(x,z,r)? }) -> { riesen [{x,z,variante,skala,drehung,radius,weite,reihe,held,seite}], tor { x,z,richtung,links,rechts } | null }`
+- `wegAbstand(wege,x,z) -> { d, x, z, rx, rz }`
+- `wegPunkt(weg, s) -> { x, z, rx, rz } | null`
+- `wegLaenge(weg) -> m`
+
+```js
+import { planeRiesenwald } from '../../engine/world/riesenwald-plan.js';
+const plan = planeRiesenwald({ wege: welt.wege, imGebiet: (x, z) => welt.region(x, z).id === 'daemmerwald',
+varianten: [{ radius: 4.2, weite: 16 }, { radius: 5.6, weite: 21 }], seed: 7, tor: welt.ort('tor') });
+for (const r of plan.riesen) welt.kollision.fuege({ form: 'kreis', x: r.x, z: r.z, radius: r.radius });
+```
+
+Genutzt von: – · Tags: wald, riesenbaum, urwald, platzierung, weg, worldgen, daemmerwald, plan · THREE: nein
 
 ### scatter-mesh · `engine/world/scatter-mesh.js` · v2.2.0 · entwurf
 Zeichnet die Objekte einer erzeugten Welt (welt.objekte) als InstancedMesh je (Typ, Variante): mit Asset-Cache prozedurale Natur-Assets in Metern (Bäume, Felsen, Büsche, Bodendecker …) mit Wind, sonst einfache Low-Poly-FORMEN; unbekannte Typen → Ersatz nach Art oder weglassen; Seerosen auf dem Wasser
@@ -3465,6 +3897,35 @@ const welt = createWorld({ preset: 'insel', seed: 1, stufen: plan.stufen });   /
 ```
 
 Genutzt von: enklave · Tags: welt, plan, worldgen, zonen, pfad, bruecke, plateau, tutorial · THREE: nein
+
+### welt-regionen · `engine/world/welt-regionen.js` · v1.0.0 · entwurf
+Erlenwacht-Weltkarte als reine Logik: Regionen (Küste, Dämmerwald, Talkessel, Moor, Hochland, Gebirge), Orte, Wege und eine punktweise, seedbare Höhe (entlang der Wege geglättet), Wasser, Biome, Bodenfarben und Streu-Regeln
+
+- `createWeltRegionen({seed}) -> {hoehe(x,z),wasserHoehe(x,z,h?),region(x,z)->{id,name,biom},biom(x,z,h?),farbe(x,z,h,steil,aus),wegInfo(x,z)->{d,h},abstandZumWeg(x,z),regionen,orte,ort(id),wege,startPunkt,groesse,meerZ(x),moor}`
+- `STREU {biom: {gross:[p,[[typ,w]…]], klein:[p,[[typ,w]…]]}}`
+- `MOOR_WASSER`
+
+```js
+import { createWeltRegionen } from '../../engine/world/welt-regionen.js';
+const k = createWeltRegionen({ seed: 7 });
+const y = k.hoehe(0, 600);                    // Talkessel der Siedlung
+const r = k.region(-1200, 400).id;            // 'moor'
+```
+
+Genutzt von: – · Tags: welt, karte, regionen, orte, wege, hoehe, terrain, erlenwacht, mmo · THREE: nein
+
+### welt-streu · `engine/world/welt-streu.js` · v1.0.0 · entwurf
+Streu-Objekte (Bäume, Felsen, Büsche, Bodendecker) für eine Kachel deterministisch aus Seed + Biom-Regeln setzen – mit Lücken an Wegen, Orten, Wasser, steilen Hängen und gesperrten Flächen (reine Logik)
+
+- `streuKachel(karte, kachel, {art,seed,dichte,regeln,frei(x,z,r)->bool,info(typ)->{radius,stammRadius}}) -> [{typ,v,x,y,z,rot,s,r}]`
+- `STREU_ARTEN`
+
+```js
+import { streuKachel } from '../../engine/world/welt-streu.js';
+const objs = streuKachel(karte, { x0: 0, z0: 0, groesse: 64, cx: 0, cz: 0 }, { art: 'gross', seed: 7 });
+```
+
+Genutzt von: – · Tags: welt, streu, vegetation, baeume, felsen, kachel, deterministisch, erlenwacht · THREE: nein
 
 ### wetter · `engine/world/wetter.js` · v1.0.0 · entwurf
 Wetter-Zustand: Wetterarten wechseln per Seed nach Klima (Feuchte/Temperatur), Werte laufen weich, Wind, Blitz, Nässe

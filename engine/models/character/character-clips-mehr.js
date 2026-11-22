@@ -1,12 +1,12 @@
 /**
  * @modul    character-clips-mehr
- * @zweck    Weitere Aktions-Clips als reine Keyframe-Daten (Emotes, Kampf, Arbeit, Ruhe, Idle-Varianten); wird von character-clips registriert
+ * @zweck    Weitere Aktions-Clips als reine Keyframe-Daten (Emotes, Kampf, Arbeit, Ruhe, Idle-Varianten, Klettern); wird von character-clips registriert
  * @api      MEHR_CLIPS ; IDLE_VARIANTEN
  * @beispiel
  *   import { CLIPS } from '../../engine/models/character/character-clips.js';   // registriert MEHR_CLIPS automatisch
  *   anim.spiele('verbeugen'); anim.spiele('fegen', { schleife: true }); anim.spiele('tragen');  // Dauer-Aktion bis stoppe()
  * @tags     figur, charakter, animation, clip, keyframe, emote, kampf, arbeit, idle
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
@@ -65,7 +65,16 @@ function winkenBeideKeys() {
 const AUSWEICHEN_L = { basisPos: [0.14, -0.12, 0], torso: [0.1, 0, -0.35], hals: [0, 0, 0.2], schulterL: [-0.3, 0, 0.55],
   schulterR: [-0.5, 0, -0.3], ellbogenL: [-0.4], ellbogenR: [-0.9], becken: [0, 0, -0.1] };
 
+// Klettern (1.1.0): Arme wechselnd über Kopf greifen, Beine wechselnd hochsteigen, Blick nach oben (Schleife, ganzer Körper)
+const KLETTER_A = { schulterR: [-2.75, 0, -0.25], ellbogenR: [-0.35], schulterL: [-1.7, 0, 0.3], ellbogenL: [-1.5], handL: [0.4],
+  huefteL: [-1.25, 0, 0.15], knieL: [1.7], fussL: [-0.3], huefteR: [-0.35, 0, -0.1], knieR: [0.5], fussR: [0.2],
+  torso: [0.12], hals: [-0.15], kopf: [-0.3], basisPos: [0, 0, 0.12] };
+const KLETTER_B = spiegel(KLETTER_A);
+
 export const MEHR_CLIPS = {
+  klettern: { dauer: 1.2, trefferBei: 0, maske: 'ganz', schleife: true, schleifeAb: 0, einblenden: 0.15, ausblenden: 0.2, keys: [
+    K(0, KLETTER_A), K(0.6, KLETTER_B), K(1.2, KLETTER_A),
+  ] },
   // --- Emotes ---
   verbeugen: { dauer: 1.6, trefferBei: 0.6, maske: 'ganz', fuesseFest: true, einblenden: 0.2, ausdruck: 'freundlich', keys: [
     K(0, {}),

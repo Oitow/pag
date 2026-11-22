@@ -11,7 +11,7 @@
  *   const bauer = createCharacter({ look, welt, name: 'Jupp', schilder });
  *   bauer.sage('Moin!', { geste: 'winken' }); bauer.blickZu(held); bauer.ausruesten('handR', mistgabel);
  * @tags     figur, charakter, spieler, npc, bewegung, animation, controller, avatar
- * @version  1.4.0
+ * @version  1.5.0
  * @status   entwurf
  * @three    nein
  */
@@ -113,7 +113,7 @@ export function createCharacter(opts = {}) {
       }
       const a = animator.aktion;
       const gesperrt = a && CLIPS[a]?.maske === 'ganz';
-      motor.update(dt, gesperrt ? STOP : absicht);
+      motor.update(dt, gesperrt && !absicht?.klettern ? STOP : absicht);   // 1.5.0: Klettern läuft auch unter Ganz-Clips (Kletter-Clip)
       sync();
       if (blickPunkt) blickAktualisieren();
       if (ausdruckRest > 0 && (ausdruckRest -= dt) <= 0) animator.ausdruck = null;
