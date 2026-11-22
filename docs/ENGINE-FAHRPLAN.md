@@ -45,16 +45,17 @@
 - [ ] `render/qualitaet` – automatische Stufen fürs Handy (Auflösung, Schatten, Sichtweite)
 
 ### 5 · Unendliche Welt
-- [ ] `world/chunk-strom` – Chunks um die Figur laden/entladen (Worker), Detailstufen, Fern-Gelände
+- [x] `world/chunk-strom` – Kacheln um die Figur laden/entladen, Detailstufen, Fern-Gelände (Erlenwacht) – Worker fehlt noch
 - [ ] Änderungen je Chunk speichern; Karte/Minimap als Modul (`ui/karte`)
 
 ### 6 · Bewohner & Leben
 - [ ] `models/tiere/*` (prozedurale Tiere, Rig + Gang), `gameplay/tier-brain` (Herden, Flucht, Jagd)
 - [ ] `models/bau/haeuser` + `world/worldgen-dorf` – Dörfer mit Häusern, Feldern, Zäunen
 - [ ] `gameplay/dialog`, `gameplay/aufgaben` (Quests), `gameplay/handel`, `gameplay/beduerfnisse` (Hunger, Schlaf)
-- [ ] `gameplay/kampf` (Treffer, Leben, Beute)
+- [x] Treffer/Leben über `core/entitaeten` + `gameplay/befehle`, Gegnerlager (`gameplay/gegner-lager`) – Beute fehlt
 
 ### 7 · Baukasten rund machen
+- [x] `engine/spiel/` – Host + Module (`createSpiel`), Sammelwelt `games/erlenwacht`
 - [ ] `games/_vorlage` – neues Spiel per `cp -r` (Schleife, Himmel, Figur, Speicher fertig verdrahtet)
 - [ ] Welt-Editor als eigenes Spiel (`games/weltbau`) – alles aus Etappe 2–6 zusammen
 - [ ] Module von `entwurf` auf `stabil` heben, Leistungs-Messung im Smoke-Test
@@ -68,7 +69,8 @@ Kein Netzwerk-Code, aber die Regeln, die einen Umbau später billig machen:
 - **Änderungen als Ereignisse:** Spielregeln melden über `core/ereignisse` (`ding:aufgehoben`, `abgebaut` …) statt direkt die Anzeige anzufassen.
 - **Raum-Abfragen:** `core/raum-gitter` für „wer ist in meiner Nähe“ (Kollision heute, Sichtbereich je Spieler später).
 - **Fremde Figuren glätten:** `core/schnappschuss-puffer` (Zustände kommen ruckelig an, gezeigt wird interpoliert).
-- [ ] Offen: stabile Entitäts-IDs für alles (Figuren, Dinge, Bauteile), Befehls-Schicht („Spieler X will Y“) mit Prüfung, Welt-Änderungen je Chunk (Etappe 2/5).
+- [x] Stabile Entitäts-IDs (`core/entitaeten`), Befehls-Schicht mit Prüfung und Nachspielen (`gameplay/befehle`)
+- [ ] Offen: Welt-Änderungen je Chunk (Etappe 2/5), Netzwerk-Prototyp
 
 ## Reihenfolge-Regel
 Immer erst reine Logik (testbar ohne Browser), dann Darstellung, dann Einbau in die Testwelt. Eine Etappe = ein PR.

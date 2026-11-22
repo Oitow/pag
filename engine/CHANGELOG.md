@@ -1,5 +1,16 @@
 # Engine-Changelog
 
+## 2026-11 – Erlenwacht: die Engine als Module, eine große Welt
+- core/modul-kern 1.0.0 (neu): Module mit Abhängigkeiten, Startreihenfolge, Takte fest/update/spaet, Dienste, Zustand, Aufräumen rückwärts; fehlende/abgeschaltete Abhängigkeit überspringt statt zu sprengen
+- **Neue Schicht `spiel/` (Rang 6)**: spiel 1.0.0 (Host: Renderer, Szene, Schleife, Qualität, URL-Schalter `?aus= ?test ?q ?ort ?seed`), modul-welt, modul-himmel, modul-riesenwald (+ riesenwald-teile), modul-entitaeten, modul-spieler, modul-bewohner, modul-gegner, modul-zauber (+ zauber-gross, zauber-anzeige). Vertrag: docs/ERLENWACHT-MODULE.md. Nutzer: games/erlenwacht
+- world/welt-regionen 1.0.0, world/chunk-strom 1.0.0, world/welt-streu 1.0.0 (neu, ohne THREE): 4×4-km-Welt aus Regionen (Küste, Dämmerwald, Erlenwacht, Nebelmoor, Hochland, Grauzinnen), Orte, 3 Wege; Quadtree-Gelände-Streaming 64–512 m mit Baubudget; Streu je 64-m-Kachel (Etappe 5, noch ohne Worker)
+- world/riesenwald-plan 1.0.0 (neu): Riesen entlang der Wege (Tor-Paar, Lichtungs-Kranz, Reihen, Hinterland)
+- core/entitaeten 1.0.0, gameplay/befehle 1.0.0 (neu): stabile IDs (`s:1`, `g:7` …), Raum-Abfrage, Änderungen seit Takt (Netz-Deltas); Befehls-Schicht mit Prüfern, festem Takt und Nachspielen – MMO-Fundament
+- gameplay/gegner-lager 1.0.0 (neu): Horden-Lager mit Ruhe/Jagd/Heimkehr, Bissen als Befehle, Respawn, nachts stärker
+- gameplay/ausdauer 1.0.0, gameplay/klettern 1.0.0 (neu): Ausdauer (Sprint, Rolle, Schwimmen, Klettern, Erschöpfung), Klettern an Hängen > 55° und hohen Hindernissen
+- gameplay/character-motor 1.3.0 (additiv: Kletter-Modus `absicht.klettern`), gameplay/character 1.5.0 (additiv), models/character/character-clips-mehr 1.1.0 (Clip `klettern`)
+- gameplay/element-reaktionen 1.0.0 (neu): Elemente + Zustände auf Zielen und Boden-Flecken, 10 Reaktionen (Schock, Eingefroren, Feuersturm, Dampf, Schlamm, Schmelzen, Zerschmettern …); ui/zauber-leiste 1.0.0 (neu)
+
 ## 2026-11 – Dämmerwald: Boden, Kronen, Unterwuchs, Tageslicht
 - world/boden-anpassung 1.0.0 (neu): Gelände schmiegt sich an große Objekte – Erdwulst aus lokalen Höhenkarten (Wurzeln, Felsen), Verdeckung/AO am Fuß, Bucket-Gitter statt Suche über alle Objekte. Nutzer: games/daemmerwald
 - models/natur/laub-klumpen 1.0.0 (neu, ohne THREE) + render/laub-karten 1.1.0 (neu): Kronen als deckende Blatt-Karten (Blattform prozedural im Shader, Alpha-Test), Durchscheinen zur Sonne, `setzeLicht`, `deckMaterial`, `durchlass`. Nutzer: games/daemmerwald

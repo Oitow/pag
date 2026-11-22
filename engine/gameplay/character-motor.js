@@ -8,7 +8,7 @@
  *   motor.update(dt, { x: 0, z: 1, sprint: false, springen: false, ducken: false, rollen: false, gleiten: false });
  *   figur.position.set(motor.zustand.pos.x, motor.zustand.pos.y, motor.zustand.pos.z);
  * @tags     figur, bewegung, physik, controller, sprung, schwimmen, rolle, dash, gleiten, gameplay
- * @version  1.2.0
+ * @version  1.3.0
  * @status   entwurf
  * @three    nein
  *
@@ -21,6 +21,8 @@
  * Seit 1.2.0: welt.bodenHoehe(x, z, fussY) und welt.hindernisse(x, z, radius, { y, hoehe, ausser: kollisionsId }) bekommen Hinweise
  *   (alte Adapter ignorieren sie) → mit engine/world/kollision.js auf Kisten steigen, über Niedriges springen, eigener Körper zählt nicht.
  *   Schnelle Bewegung (Dash, Stoß) wird feiner unterteilt, damit nichts durch dünne Stämme tunnelt. speichern()/laden() = ganzer Zustand.
+ * Seit 1.3.0: absicht.klettern = { x, y, z (m/s), haften (am Gelände kleben), blickYaw } → Kletter-Modus ohne Schwerkraft
+ *   (Steuerung: engine/gameplay/klettern.js); Zustand klettert = true. Ohne absicht.klettern läuft alles wie bisher.
  */
 import { clamp, lerp, damp, dampAngle, angleDiff, numOr } from '../core/math.js';
 import { MOTOR_TUNING } from './character-motor-tuning.js';
@@ -44,7 +46,7 @@ export function createMotor({ welt, pos = { x: 0, y: NaN, z: 0 }, yaw = 0, radiu
     amBoden: true, imWasser: false, duckt: false, sprintet: false, rutscht: false, sprung: false, landung: 0,
     luftZeit: 0, eintauchen: 0,
     rollt: false, dash: false, rollAnteil: 0, abklingzeit: 0, gleitet: false, doppelSprung: false, sprungZahl: 0,
-    taucht: false, tauchTiefe: 0, schleicht: false, anKante: false, betaeubt: 0, getroffen: false,
+    taucht: false, tauchTiefe: 0, schleicht: false, anKante: false, betaeubt: 0, getroffen: false, klettert: false,
   };
   // interner Zustand
   let coyote = 0, puffer = 0, gehaltenVorher = false, rollVorher = false, volleHoehe = false, erzwungen = false;
@@ -264,8 +266,34 @@ export function createMotor({ welt, pos = { x: 0, y: NaN, z: 0 }, yaw = 0, radiu
     z.eintauchen = w === null ? 0 : clamp((w - p.y) / hoehe, 0, 1);
   }
 
+  /** Kletter-Schritt (1.3.0): Bewegung entlang der Wand, keine Schwerkraft, nie unter den Boden, Hindernisse schieben aus. */
+  function kletterSchritt(dt, k) {
+    const p = z.pos, v = z.vel;
+    v.x = numOr(k.x, 0); v.y = numOr(k.y, 0); v.z = numOr(k.z, 0);
+    p.x += v.x * dt; p.y += v.y * dt; p.z += v.z * dt;
+    if (welt.hindernisse) {
+      filter.y = p.y; filter.hoehe = hoehe; filter.ausser = kollisionsId;
+      const s = welt.hindernisse(p.x, p.z, radius, filter);
+      if (s) { p.x += numOr(s.x, 0); p.z += numOr(s.z, 0); }
+    }
+    const b = boden(p.x, p.z);
+    if (k.haften || p.y < b) p.y = b;
+    if (Number.isFinite(+k.blickYaw)) z.yaw = angleDiff(0, dampAngle(z.yaw, +k.blickYaw, T.drehRate, dt));
+    z.klettert = true; z.amBoden = false; z.imWasser = false; z.rutscht = false; z.duckt = false; z.sprintet = false;
+    z.luftZeit = 0; z.sprungZahl = 0; z.gleitet = false; coyote = puffer = 0; dashVerbraucht = false; stossX = stossZ = 0;
+    if (rollRest > 0) rollEnde();
+    z.tempo = Math.hypot(v.x, v.z); z.tempoAnteil = 0; z.schleicht = false;
+    return z;
+  }
+
   function update(dt, absicht) {
     dt = clamp(numOr(dt, 0), 0, MAX_DT);
+    if (absicht?.klettern) {
+      z.sprung = false; z.landung = 0; z.doppelSprung = false; z.anKante = false; z.getroffen = stossNeu; stossNeu = false;
+      gehaltenVorher = !!absicht.springen; rollVorher = !!absicht.rollen;
+      return kletterSchritt(dt, absicht.klettern);
+    }
+    z.klettert = false;
     z.sprung = false; z.landung = 0; z.doppelSprung = false; z.anKante = false;
     z.getroffen = stossNeu; stossNeu = false;
     const ab = absicht || {};

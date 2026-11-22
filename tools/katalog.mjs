@@ -11,7 +11,7 @@ const ZIEL = path.join(ENGINE, 'KATALOG.md');
 const CHECK = process.argv.includes('--check');
 
 // Schichten: Importe nur in niedrigere Schichten oder innerhalb desselben Ordners.
-const SCHICHT = { core: 0, render: 1, world: 2, models: 2, input: 3, audio: 3, camera: 3, gameplay: 4, ui: 5 };
+const SCHICHT = { core: 0, render: 1, world: 2, models: 2, input: 3, audio: 3, camera: 3, gameplay: 4, ui: 5, spiel: 6 };
 
 const fehler = [];
 const rel = p => path.relative(ROOT, p).split(path.sep).join('/');
