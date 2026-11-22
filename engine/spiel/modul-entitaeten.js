@@ -29,7 +29,7 @@ export function createEntitaetenModul() {
   let intern = null;
   return {
   name: 'entitaeten', braucht: [], optional: ['render'],
-  standard: { zahlen: true, balken: true, balkenZeit: 6, takt: 1 / 20 },
+  standard: { zahlen: true, balken: true, balkenZeit: 6, takt: 1 / 20, zielRahmen: true },   // 1.1: zielRahmen:false (Erlenwacht: Oberfläche zeigt ihn)
   start(ctx) {
     const o = ctx.optionen, bus = ctx.ereignisse;
     const ents = createEntitaeten({ ereignisse: bus });
@@ -86,7 +86,7 @@ export function createEntitaetenModul() {
         // Ziel-Rahmen für das Lock-On-Ziel des Spielers (falls Modul spieler da ist)
         const z = ctx.optional('spieler')?.ziel;
         const e = z ? ents.hole(typeof z === 'string' ? z : z.id) : null;
-        if (e && ui && !rahmen) rahmen = createZielRahmen({ eltern: ui, ecke: 'oben-mitte', breite: 200 });
+        if (e && ui && !rahmen && ctx.optionen.zielRahmen !== false) rahmen = createZielRahmen({ eltern: ui, ecke: 'oben-mitte', breite: 200 });
         if (rahmen) {
           if (e) rahmen.zeige({ name: e.name || e.art, leben: e.leben, lebenMax: e.lebenMax, feindlich: e.team === 'feind' });
           else if (rahmenId) rahmen.zeige(null);

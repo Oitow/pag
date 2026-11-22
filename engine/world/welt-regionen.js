@@ -1,24 +1,30 @@
 /**
  * @modul    welt-regionen
- * @zweck    Erlenwacht-Weltkarte als reine Logik: Regionen (Küste, Dämmerwald, Talkessel, Moor, Hochland, Gebirge), Orte, Wege und eine punktweise, seedbare Höhe (entlang der Wege geglättet), Wasser, Biome, Bodenfarben und Streu-Regeln
- * @api      createWeltRegionen({seed}) -> {hoehe(x,z),wasserHoehe(x,z,h?),region(x,z)->{id,name,biom},biom(x,z,h?),farbe(x,z,h,steil,aus),wegInfo(x,z)->{d,h},abstandZumWeg(x,z),regionen,orte,ort(id),wege,startPunkt,groesse,meerZ(x),moor} ; STREU {biom: {gross:[p,[[typ,w]…]], klein:[p,[[typ,w]…]]}} ; MOOR_WASSER
+ * @zweck    Erlenwacht-Weltkarte als reine Logik: Regionen (Küste, Dämmerwald, Talkessel, Moor, Hochland, Gebirge), Orte, Wege und eine punktweise, seedbare Höhe (entlang der Wege geglättet), Wasser, Biome, Bodenfarben und Streu-Regeln; v1.1: weicher Kartenrand (Meer Süd/Ost, Gebirgskette Nord/West), Fluss Gebirge→Hochland→Moor mit Furt, Hügelwellen, Felsnadeln, Moor-Tümpel, Wolfsfels-Terrasse
+ * @api      createWeltRegionen({seed}) -> {hoehe(x,z),wasserHoehe(x,z,h?),region(x,z)->{id,name,biom},biom(x,z,h?),farbe(x,z,h,steil,aus),wegInfo(x,z)->{d,h},abstandZumWeg(x,z),regionen,orte,ort(id),wege,startPunkt,groesse,meerZ(x),moor,fluss:{proben:[{x,z,y,b}],furt:{x,z}},flussInfo(x,z)->{d,y,b}} ; STREU {biom: {gross:[p,[[typ,w]…]], klein:[p,[[typ,w]…]]}} ; MOOR_WASSER
  * @beispiel
  *   import { createWeltRegionen } from '../../engine/world/welt-regionen.js';
  *   const k = createWeltRegionen({ seed: 7 });
  *   const y = k.hoehe(0, 600);                    // Talkessel der Siedlung
  *   const r = k.region(-1200, 400).id;            // 'moor'
  * @tags     welt, karte, regionen, orte, wege, hoehe, terrain, erlenwacht, mmo
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
-import { createNoise2D, fbm2, ridged2 } from '../core/noise.js';
-import { hashSeed } from '../core/rng.js';
+import { createNoise2D, fbm2, ridged2, warp2 } from '../core/noise.js';
+import { hashSeed, hash2 } from '../core/rng.js';
 import { smoothstep, clamp, lerp } from '../core/math.js';
 
 export const MOOR_WASSER = 11.4;
 const MOOR_BOX = { x0: -2600, x1: -650, z0: -450, z1: 1360 };
 const GIPFEL = { x: 260, z: -1480, h: 352 };
+const WOLFSFELS = { x: -150, z: -520, r: 22 };      // flache Felsterrasse im Übergang Hochland/Gebirge
+const AUSSICHT_MOOR = { x: -1640, z: 180 };          // Bult am Fuß der Westkette
+const FURT = { x: 195, z: -190 };                    // Hauptweg quert den Fluss
+// Fluss: Gebirge (NO) → Hochland → Furt → Westen → Nebelmoor (Kontrollpunkte, als glatte Kurve gezogen)
+const FLUSS_PUNKTE = [[250, -1150], [300, -900], [345, -690], [330, -480], [275, -310], [FURT.x + 70, FURT.z - 46], [FURT.x, FURT.z], [FURT.x - 70, FURT.z + 46],
+  [40, -30], [-140, 40], [-340, 140], [-520, 260], [-700, 370], [-840, 440]];
 
 const REGIONEN = [
   { id: 'kueste', name: 'Küste', mitte: { x: 0, z: 1750 }, radius: 600 },
@@ -33,10 +39,13 @@ const ORTE = [
   { id: 'tor', name: 'Waldtor', art: 'tor', x: 0, z: 1480, radius: 10, blick: Math.PI },
   { id: 'lichtung', name: 'Lichtung', art: 'lichtung', x: -20, z: 1180, radius: 28, blick: Math.PI },
   { id: 'siedlung', name: 'Erlenwacht', art: 'siedlung', x: 0, z: 600, radius: 120, blick: Math.PI },
-  { id: 'lager-moor', name: 'Moorlager', art: 'gegnerlager', x: -1220, z: 500, radius: 30 },
-  { id: 'lager-hochland', name: 'Hochlandlager', art: 'gegnerlager', x: 330, z: 60, radius: 30 },
+  { id: 'lager-moor', name: 'Moorlager', art: 'gegnerlager', x: -1220, z: 500, radius: 30, stufe: 6 },
+  { id: 'lager-hochland', name: 'Hochlandlager', art: 'gegnerlager', x: 330, z: 60, radius: 30, stufe: 4 },
   { id: 'ruine', name: 'Alte Wacht', art: 'ruine', x: 680, z: -240, radius: 25 },
   { id: 'gipfel', name: 'Grauzinne', art: 'aussicht', x: GIPFEL.x, z: GIPFEL.z, radius: 15, blick: 0 },
+  { id: 'furt', name: 'Furt', art: 'furt', x: FURT.x, z: FURT.z, radius: 14, blick: Math.PI * 0.8 },
+  { id: 'wolfsfels', name: 'Wolfsfels', art: 'boss', x: WOLFSFELS.x, z: WOLFSFELS.z, radius: WOLFSFELS.r, blick: Math.PI, stufe: 10 },
+  { id: 'aussicht-moor', name: 'Moorblick', art: 'aussicht', x: AUSSICHT_MOOR.x, z: AUSSICHT_MOOR.z, radius: 12, blick: Math.PI / 2 },
 ];
 const weg = (id, name, breite, pts) => Object.assign(pts.map(([x, z]) => ({ x, z })), { id, name, breite });
 const WEGE = [
@@ -44,6 +53,7 @@ const WEGE = [
     [60, 430], [180, 260], [300, 90]]),
   weg('moorweg', 'Moorpfad', 2, [[0, 600], [-160, 640], [-500, 560], [-880, 520], [-1190, 500]]),
   weg('bergpfad', 'Bergpfad', 2, [[300, 90], [520, -110], [680, -240], [560, -700], [400, -1100], [GIPFEL.x + 40, GIPFEL.z + 110]]),
+  weg('wolfsweg', 'Wolfspfad', 2, [[300, 90], [250, -80], [FURT.x, FURT.z], [120, -300], [20, -400], [-100, -480], [WOLFSFELS.x, WOLFSFELS.z]]),
 ];
 
 /**
@@ -82,15 +92,43 @@ export function createWeltRegionen({ seed = 1 } = {}) {
   const n3 = createNoise2D(hashSeed('erlenwacht-berg', seed)), n4 = createNoise2D(hashSeed('erlenwacht-moor', seed));
   const meerZ = (x) => 1900 + n1(x / 400, 3.7) * 45 + n2(x / 90, 9.1) * 10;
 
-  /** Höhe ohne Wege-Glättung. */
+  const nahe = (x, z, o, r) => (x - o.x) ** 2 + (z - o.z) ** 2 < r * r;
+  /** Felsnadeln im Hochland: je 170-m-Zelle höchstens eine (Rasterzelle + Hash), nicht an Orten. */
+  function nadel(x, z) {
+    const gx = Math.floor(x / 170), gz = Math.floor(z / 170), s0 = hashSeed('nadel', seed);
+    if (hash2(gx, gz, s0) > 0.45) return 0;
+    const cx = (gx + 0.25 + hash2(gx, gz, s0 + 1) * 0.5) * 170, cz = (gz + 0.25 + hash2(gx, gz, s0 + 2) * 0.5) * 170;
+    const r = 5 + hash2(gx, gz, s0 + 3) * 5, d = Math.hypot(x - cx, z - cz);
+    if (d > r) return 0;
+    for (const o of ORTE) if (nahe(cx, cz, o, (o.radius || 10) + 50)) return 0;
+    return (1 - d / r) ** 1.6 * (7 + hash2(gx, gz, s0 + 4) * 9);
+  }
+  // Wolfsfels-Terrasse: Höhe = Mittel der Umgebung (einmal bestimmt), damit sie in den Hang geschnitten ist
+  let terrasseH = 0;
+
+  /** Höhe ohne Wege-Glättung und ohne Fluss. */
   function roh(x, z) {
+    let h = basis(x, z);
+    const dw = Math.hypot(x - WOLFSFELS.x, z - WOLFSFELS.z);
+    if (dw < 100) {
+      h = lerp(terrasseH, h, smoothstep(WOLFSFELS.r + 6, WOLFSFELS.r + 44, dw));
+      // Felswand im Norden der Terrasse
+      h += smoothstep(0, 40, WOLFSFELS.z - z) * smoothstep(WOLFSFELS.r + 6, WOLFSFELS.r + 20, dw) * (1 - smoothstep(60, 100, dw)) * 16;
+    }
+    return h;
+  }
+  function basis(x, z) {
     const det = fbm2(n2, x / 140, z / 140, 3);
     const wald = 15 + det * 2.5 + n1(x / 600, z / 600) * 2;
-    const hoch = 40 + fbm2(n1, x / 380, z / 380, 3) * 16 + det * 3;
+    const [hx, hz] = warp2(n2, x / 300 + 40, z / 300, 0.7, 0.8);   // Hügelwellen, verwirbelt
+    const hoch = 40 + fbm2(n1, x / 380, z / 380, 3) * 16 + det * 3 + fbm2(n3, hx, hz, 3) * 9 + nadel(x, z);
     let h = lerp(hoch, wald, smoothstep(420, 900, z));
     if (z < -150) {
       const amp = smoothstep(-350, -1350, z) * 230;
-      const berg = 46 + det * 4 + (1 - Math.abs(fbm2(n3, x / 1500, z / 1500, 3, 2, 0.35))) ** 2 * amp * 1.1 + fbm2(n3, x / 300 + 5, z / 300, 2) * amp * 0.08;
+      const [gx, gz] = warp2(n3, x / 650, z / 650, 0.5, 1.3);   // Grate: Domain-Warp + ridged
+      const grat = ridged2(n3, gx * 1.5 + 9, gz * 1.5, 4);
+      const alt = (1 - Math.abs(fbm2(n3, x / 1500, z / 1500, 3, 2, 0.35))) ** 2;
+      const berg = 46 + det * 4 + (alt * 0.6 + grat * 0.55) * amp * 1.1 + fbm2(n3, x / 300 + 5, z / 300, 2) * amp * 0.08;
       h = lerp(berg, h, smoothstep(-700, -200, z));
       const dg = Math.hypot(x - GIPFEL.x, z - GIPFEL.z);   // Gipfel: steiler, zerfurchter Kegel
       if (dg < 700) h = Math.max(h, GIPFEL.h - (dg < 30 ? dg * dg / 60 : dg - 15) * (0.62 + det * 0.18) - ridged2(n3, x / 90, z / 90, 2) * Math.min(dg, 60) * 0.1);
@@ -101,13 +139,21 @@ export function createWeltRegionen({ seed = 1 } = {}) {
     if (dr < 60) h += (1 - smoothstep(36, 42, dr)) * (13 + det * 3);
     const ax = Math.abs(x);
     if (ax > 1700 && z < 1500) h += smoothstep(1700, 2300, ax) * smoothstep(1500, 1100, z) * (x < 0 ? 60 : 130) * (0.7 + 0.3 * det);
-    // Moor im Westen: flach, Tümpel
+    // Weicher Kartenrand: Westkette (steigt zur Wand), Nordkette (steigt), Ost = Meer
+    if (x < -1700 && z < 1500) h += smoothstep(-1750, -2150, x) * smoothstep(1500, 1100, z) * (120 + ridged2(n3, x / 120, z / 120, 3) * 110 + det * 10);
+    if (z < -1650) h += smoothstep(-1650, -2100, z) * (110 + ridged2(n3, x / 130 + 3, z / 130, 3) * 120 + det * 10);
+    if (x > 1750) h = lerp(h, -14 - Math.max(0, x - 2050) * 0.03, smoothstep(1750, 2050, x) * smoothstep(-1400, -800, z));
+    // Moor im Westen: flach, Tümpel-Muster (verwirbelt, zwei Maßstäbe), Bulten
     if (x < -620 && z > -500 && z < 1450) {
-      const w = smoothstep(-620, -900, x) * smoothstep(-500, -300, z) * smoothstep(1450, 1300, z);
-      const t = fbm2(n4, x / 55, z / 55, 2);
-      const moor = 12.1 + det * 0.25 - smoothstep(0.18, 0.4, t) * 1.8;
+      const w = smoothstep(-620, -900, x) * smoothstep(-500, -300, z) * smoothstep(1450, 1300, z) * smoothstep(-1900, -1650, x);
+      const [mx, mz] = warp2(n4, x / 80, z / 80, 0.9, 0.7);
+      const t = fbm2(n4, mx, mz, 3) * 0.75 + fbm2(n4, x / 21 + 8, z / 21, 2) * 0.25;
+      const moor = 12.1 + det * 0.25 + smoothstep(0.1, 0.5, -t) * 0.35 - smoothstep(0.14, 0.38, t) * 1.8;
       h = lerp(h, moor, w);
     }
+    // Moorblick: Bult am Fuß der Westkette
+    const da = Math.hypot(x - AUSSICHT_MOOR.x, z - AUSSICHT_MOOR.z);
+    if (da < 90) h = lerp(Math.max(h, 12) + 15, h, smoothstep(14, 90, da));
     // Talkessel der Siedlung
     const db = Math.hypot(x, z - 600);
     if (db < 470) {
@@ -121,6 +167,12 @@ export function createWeltRegionen({ seed = 1 } = {}) {
       h = h < kueste ? h : lerp(h, kueste, smoothstep(520, 380, c));
     }
     return h;
+  }
+
+  {
+    let sum = basis(WOLFSFELS.x, WOLFSFELS.z);
+    for (let i = 0; i < 8; i++) sum += basis(WOLFSFELS.x + Math.cos(i * 0.785) * 45, WOLFSFELS.z + Math.sin(i * 0.785) * 45);
+    terrasseH = sum / 9;
   }
 
   // Wege: Abtastpunkte alle 5 m, Höhe längs geglättet (gleitendes Mittel ±45 m)
@@ -157,15 +209,81 @@ export function createWeltRegionen({ seed = 1 } = {}) {
     info.d = Math.sqrt(best); info.h = bh; info.breite = bb;
     return info;
   }
+
+  // Fluss: glatte Kurve (Catmull-Rom, leichte Mäander) mit Dichte ~12 m; Wasserspiegel y fällt nur (laufender Mindestwert), Furt flach, Mündung im Moorwasser
+  const P = FLUSS_PUNKTE, dicht = [];
+  for (let i = 0; i < P.length - 1; i++) {
+    const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(P.length - 1, i + 2)];
+    const n = Math.max(2, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / 12));
+    for (let k = 0; k < n; k++) {
+      const t = k / n, t2 = t * t, t3 = t2 * t, f = (a, b, c, d) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+      dicht.push({ x: f(p0[0], p1[0], p2[0], p3[0]), z: f(p0[1], p1[1], p2[1], p3[1]) });
+    }
+  }
+  dicht.push({ x: P[P.length - 1][0], z: P[P.length - 1][1] });
+  dicht.forEach((q, i) => {   // Mäander quer zur Fließrichtung, nicht an der Furt
+    const a = dicht[Math.max(0, i - 1)], b = dicht[Math.min(dicht.length - 1, i + 1)], l = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+    const m = n4(i / 9, 4.4) * 14 * smoothstep(40, 120, Math.hypot(q.x - FURT.x, q.z - FURT.z));
+    q.x += -(b.z - a.z) / l * m; q.z += (b.x - a.x) / l * m;
+  });
+  {
+    const fHoehe = Math.max(0.6, wegInfo(FURT.x, FURT.z).h);
+    let lauf = Infinity;
+    const roh0 = dicht.map((q) => roh(q.x, q.z));
+    dicht.forEach((q, i) => {
+      let sm = 0, c = 0;
+      for (let j = Math.max(0, i - 7); j <= Math.min(dicht.length - 1, i + 7); j++) { sm += roh0[j]; c++; }
+      const df = Math.hypot(q.x - FURT.x, q.z - FURT.z), dm = smoothstep(-640, -760, q.x);
+      let y = sm / c - 0.3;
+      y = lerp(y, fHoehe - 0.55, 1 - smoothstep(40, 140, df));
+      y = lerp(y, MOOR_WASSER + 0.02, dm);
+      lauf = Math.min(lauf, y); q.y = lauf;
+      const lauflaenge = i / (dicht.length - 1), furtNah = 1 - smoothstep(25, 80, df);
+      q.b = lerp(3.2, 7.5, lauflaenge) * (1 + 0.35 * furtNah);
+      q.tiefe = lerp(1.4, 0.4, furtNah); q.hang = lerp(0.3, 0.1, furtNah);
+    });
+  }
+  const fSeg = new Map(), FZ = 64, FM = 34;   // Raster: Zelle → Segmente, deren Kasten (+ Rand) sie berührt
+  for (let i = 0; i < dicht.length - 1; i++) {
+    const a = dicht[i], b = dicht[i + 1], r = Math.max(a.b, b.b) + FM;
+    for (let cz = Math.floor((Math.min(a.z, b.z) - r) / FZ); cz <= Math.floor((Math.max(a.z, b.z) + r) / FZ); cz++)
+      for (let cx = Math.floor((Math.min(a.x, b.x) - r) / FZ); cx <= Math.floor((Math.max(a.x, b.x) + r) / FZ); cx++) {
+        const key = cx * 4096 + cz; const l = fSeg.get(key); if (l) l.push(i); else fSeg.set(key, [i]);
+      }
+  }
+  const fi = { d: 1e9, y: 0, b: 0, tiefe: 1, hang: 0.3 };
+  /** Nächster Flusspunkt: Abstand d, Wasserspiegel y, halbe Breite b (d = 1e9 → kein Fluss in der Nähe). */
+  function flussInfo(x, z) {
+    fi.d = 1e9;
+    const l = fSeg.get(Math.floor(x / FZ) * 4096 + Math.floor(z / FZ));
+    if (!l) return fi;
+    let best = Infinity, bi = 0, bt = 0;
+    for (const i of l) {
+      const a = dicht[i], b = dicht[i + 1], [d2, t] = strecke(x, z, a, b);
+      if (d2 < best) { best = d2; bi = i; bt = t; }
+    }
+    const a = dicht[bi], b = dicht[bi + 1];
+    fi.d = Math.sqrt(best); fi.y = lerp(a.y, b.y, bt); fi.b = lerp(a.b, b.b, bt); fi.tiefe = lerp(a.tiefe, b.tiefe, bt); fi.hang = lerp(a.hang, b.hang, bt);
+    return fi;
+  }
   function hoehe(x, z) {
-    const h = roh(x, z), w = wegInfo(x, z);
-    if (w.d > 18) return h;
-    return lerp(w.h, h, smoothstep(w.breite, w.breite + 14, w.d));
+    let h = roh(x, z);
+    const w = wegInfo(x, z);
+    if (w.d <= 18) h = lerp(w.h, h, smoothstep(w.breite, w.breite + 14, w.d));
+    const f = flussInfo(x, z);
+    if (f.d < f.b + 14) {
+      const q = f.d / f.b, tgt = f.d < f.b ? f.y - f.tiefe * (1 - q * q) : f.y + (f.d - f.b) * f.hang;
+      h = lerp(h, tgt, 1 - smoothstep(f.b, f.b + 14, f.d));
+    }
+    return h;
   }
   const inMoorBox = (x, z) => x > MOOR_BOX.x0 && x < MOOR_BOX.x1 && z > MOOR_BOX.z0 && z < MOOR_BOX.z1;
   function wasserHoehe(x, z, h = hoehe(x, z)) {
     if (inMoorBox(x, z) && h < MOOR_WASSER) return MOOR_WASSER;
-    return h < 0 ? 0 : null;
+    if (h < 0) return 0;
+    const f = flussInfo(x, z);
+    if (f.d < f.b + 1 && h < f.y - 0.03) return f.y;
+    return null;
   }
 
   const R = Object.fromEntries(REGIONEN.map((r) => [r.id, r]));
@@ -181,11 +299,12 @@ export function createWeltRegionen({ seed = 1 } = {}) {
   }
   function biom(x, z, h = hoehe(x, z)) {
     const id = regionId(x, z), d = n1(x / 260 + 11, z / 260);
+    if (x > 1500 && h < 3.2 && id !== 'gebirge') return 'strand';   // Ostküste
     switch (id) {
       case 'kueste': return h < 3.2 ? 'strand' : 'duene';
       case 'daemmerwald': return Math.abs(x) < 500 + d * 80 ? 'urwald' : 'laubwald';
       case 'erlenwacht': return 'wiese';
-      case 'moor': return 'sumpf';
+      case 'moor': return h > 140 ? 'fels' : h > 40 ? 'heide' : 'sumpf';
       case 'hochland': return d > 0.35 ? 'laubwald' : d < -0.3 ? 'heide' : 'wiese';
       default: return h > 250 + d * 30 ? 'fels' : h > 120 + d * 40 ? 'heide' : 'nadelwald';
     }
@@ -213,7 +332,8 @@ export function createWeltRegionen({ seed = 1 } = {}) {
   }
 
   return {
-    hoehe, wasserHoehe, region, biom, farbe, wegInfo, meerZ, roh,
+    hoehe, wasserHoehe, region, biom, farbe, wegInfo, meerZ, roh, flussInfo,
+    fluss: { proben: dicht.map((q) => ({ x: q.x, z: q.z, y: q.y, b: q.b })), furt: { ...FURT } },
     abstandZumWeg: (x, z) => wegInfo(x, z).d,
     regionen: REGIONEN.map((r) => ({ ...r, mitte: { ...r.mitte } })),
     orte: ORTE.map((o) => ({ ...o })),

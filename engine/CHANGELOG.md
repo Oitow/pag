@@ -1,5 +1,14 @@
 # Engine-Changelog
 
+## 2026-11 – Erlenwacht wird ein MMO (Stufen, Beute, Klassen, Gegner, Tutorial, Oberfläche, Welt v2)
+- gameplay/progression 1.0.0, gameplay/beute 1.0.0, gameplay/gegenstaende-daten 1.0.0 (neu): Stufe 1–15, XP-Kurve, Talentbaum je Klasse (3 Zweige × 4), Beute-Tabellen mit Seltenheit + Affixen
+- gameplay/klassen-daten 1.0.0 (neu): Krieger (Wut), Magier (Mana/Zauber), Waldläufer (Energie) mit Freischaltung auf Stufe 1/3/5/8/12
+- gameplay/boss 1.0.0 (neu): Boss-Phasen, Heulen ruft Rudel, telegrafierte Sprung-/Prankenangriffe, Rücksetzen
+- models/kreaturen wolf, keiler, irrlicht 1.0.0 (neu); gameplay/horde 1.2.0 + gegner-lager 1.1.0 (additiv: Arten, Stufen, Entitäts-Daten)
+- ui/chat, ui/figur-editor, ui/minikarte 1.0.0 (neu)
+- world/welt-regionen 1.1.0 (additiv: weicher Rand, Fluss + Furt, neue Orte wolfsfels/furt/aussicht-moor, Stufen der Lager), world/welt-streu 1.1.0, world/fern-wald 1.0.0 (neu, Impostor-Fernwald)
+- spiel: modul-fortschritt, modul-kampf, modul-tutorial (+ tutorial-daten), modul-oberflaeche (+ oberflaeche-fenster) neu; modul-spieler 1.1 (⚔/💬-Knöpfe, Name), modul-zauber 1.1 (setzeLeiste), modul-gegner 1.1, modul-welt 1.1, modul-entitaeten 1.1 (Option zielRahmen). Bauplan: docs/ERLENWACHT-MMO-PLAN.md
+
 ## 2026-11 – Erlenwacht: die Engine als Module, eine große Welt
 - core/modul-kern 1.0.0 (neu): Module mit Abhängigkeiten, Startreihenfolge, Takte fest/update/spaet, Dienste, Zustand, Aufräumen rückwärts; fehlende/abgeschaltete Abhängigkeit überspringt statt zu sprengen
 - **Neue Schicht `spiel/` (Rang 6)**: spiel 1.0.0 (Host: Renderer, Szene, Schleife, Qualität, URL-Schalter `?aus= ?test ?q ?ort ?seed`), modul-welt, modul-himmel, modul-riesenwald (+ riesenwald-teile), modul-entitaeten, modul-spieler, modul-bewohner, modul-gegner, modul-zauber (+ zauber-gross, zauber-anzeige). Vertrag: docs/ERLENWACHT-MODULE.md. Nutzer: games/erlenwacht
