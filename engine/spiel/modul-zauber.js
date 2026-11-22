@@ -1,13 +1,13 @@
 /**
  * @modul    modul-zauber
  * @zweck    Spiel-Modul 'zauber': Zauberbuch (gameplay/zauber) + Effekte + Großzauber (Flutwelle, Erdwall, Zyklon, Erdriss) in der großen Welt, alle Treffer laufen durch gameplay/element-reaktionen (Schock, Einfrieren, Dampf, Feuersturm …); Ziele = Entitäten Team 'feind'; Zauber-Gesten der Figur; Handy-Leiste mit Halten = Aufladen und Mana-Balken
- * @api      ZAUBER_MODUL -> api { buch, elemente, wirke(name,{halten}) -> bool, loslassen(), abbrechen(), leiste (Namen), tabelle, grosszauber, weltAdapter, tempoFaktor, ladung }
+ * @api      ZAUBER_MODUL -> api { buch, elemente, setzeLeiste(namen) (leer = Leiste aus), wirke(name,{halten}) -> bool, loslassen(), abbrechen(), leiste (Namen), tabelle, grosszauber, weltAdapter, tempoFaktor, ladung }
  * @beispiel
  *   import { ZAUBER_MODUL } from '../../engine/spiel/modul-zauber.js';
  *   // in module-liste.js anstecken; ?zauber=wasserguss,blitz wirkt in ?test=1 nacheinander, ?puppen=5 stellt Übungsziele auf
  *   kern.api('zauber').wirke('feuerball');
  * @tags     spiel, modul, zauber, magie, element, reaktion, großzauber, kampf, leiste, handy
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    ja
  *
@@ -224,11 +224,19 @@ function starte(ctx) {
 
   // ---- Leiste ----
   const leisteNamen = (o.leiste || LEISTE).filter((n) => tabelle[n]).slice(0, 8);
-  const leiste = createZauberLeiste({
+  const baueLeiste = (namen) => createZauberLeiste({
     eltern: render.ui, groesse: render.handy ? 46 : 52, unten: o.leisteUnten ?? (render.handy ? 228 : 12),   // Handy: über Stick und Knopf-Bogen
-    plaetze: leisteNamen.map((n, i) => ({ name: n, symbol: tabelle[n].symbol, farbe: tabelle[n].farbe, taste: String(i + 1), gross: tabelle[n].art === 'gross' })),
+    plaetze: namen.map((n, i) => ({ name: n, symbol: tabelle[n].symbol, farbe: tabelle[n].farbe, taste: String(i + 1), gross: tabelle[n].art === 'gross' })),
     onDruck: (n) => wirke(n, { halten: true }), onLos: () => buch.lasseLos(),
   });
+  let leiste = baueLeiste(leisteNamen);
+  /** Leiste neu setzen (Klassen-Freischaltung); leer = Zauberleiste ausblenden. */
+  function setzeLeiste(namen) {
+    const neu = (namen || []).filter((n) => tabelle[n]).slice(0, 8);
+    leiste.dispose(); leisteNamen.length = 0; leisteNamen.push(...neu);
+    leiste = baueLeiste(neu);
+    if (!neu.length && leiste.element) leiste.element.style.display = 'none';
+  }
   const abm = ctx.ereignisse.an?.('ent:tod', (d) => { elemente.vergiss(d?.id); zielObj.delete(d?.id); });
 
   // ---- Test: ?zauber=a,b  wirkt nacheinander, ?puppen=n stellt Übungsziele auf ----
@@ -248,7 +256,7 @@ function starte(ctx) {
 
   return {
     buch, elemente, fx, anzeige, gross, tabelle, leiste: leisteNamen, ziele,
-    wirke, loslassen: () => buch.lasseLos(), abbrechen: () => { const a = buch.brichAb(); if (a) figur()?.stoppe?.(); return a; },
+    wirke, setzeLeiste, loslassen: () => buch.lasseLos(), abbrechen: () => { const a = buch.brichAb(); if (a) figur()?.stoppe?.(); return a; },
     get weltAdapter() { return gross.weltAdapter; },
     get ladung() { return buch.ladung; },
     /** Lauf-Faktor beim Aufladen (das Spieler-Modul kann ihn lesen). */

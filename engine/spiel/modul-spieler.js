@@ -7,12 +7,13 @@
  *   const spiel = await createSpiel({ canvas, module: [WELT_MODUL, SPIELER_MODUL], optionen: { spieler: { fov: 66 } } });
  *   spiel.api('spieler').teleport(10, 20, Math.PI);
  * @tags     spiel, modul, spieler, figur, kamera, lock-on, ausdauer, klettern, sprint
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    ja
  *
  * Modul-API: { figur, position, kamera, eingabe, id, teleport(x,z,yaw?), blickYaw, ziel, ausdauer, klettern, tot }; setzt Dienst fokus;
  *   sendet spieler:aktion {name: springen|rollen|sprint|klettern|ziel|tod|wiederbelebt}.
+ * Optionen 1.1: name (Figur + Entität), aktionen (zusätzliche move-input-Aktionen, Standard ⚔ aktion1 + 💬 interagieren).
  * Steuerung: WASD/Stick laufen · Shift/🏃 Sprint (halten) · Leertaste/⤒ springen (an der Wand: abspringen) · Q/🌀 Rolle/Dash ·
  *   C ducken (an der Wand: loslassen) · T/Tab/🎯 Ziel erfassen/wechseln · Maus ziehen/Mausrad bzw. rechte Bildschirmhälfte: Kamera.
  *   Klettern: gegen steilen Fels (> 55°) oder hohe Stämme laufen – kostet Ausdauer, leer = abrutschen.
@@ -29,7 +30,9 @@ import { randomLook } from '../models/character/character-look.js';
 const STANDARD = {
   // Kamera: tief und weit (Shadow of the Colossus) – Blick leicht nach oben, Riesenbäume füllen das Bild
   distanz: 6.5, pitch: 0.1, hoehe: 1.55, fov: 64, sprintFov: 72, minPitch: -0.65, maxDistanz: 16,
-  zielReichweite: 25, wiederbeleben: 3, leben: 100, look: null,
+  zielReichweite: 25, wiederbeleben: 3, leben: 100, look: null, name: 'Du',
+  // 1.1: weitere Knöpfe (Erlenwacht: ⚔ Angriff = aktion1, 💬 Sprechen = interagieren); Modul kampf/tutorial lesen sie über eingabe.gedrueckt()
+  aktionen: [{ name: 'aktion1', knopf: '⚔', titel: 'Angriff (F)' }, 'interagieren'],
 };
 
 let laufend = null;   // innere Takt-Funktionen der laufenden Instanz (Kern ruft dispose/zustand ohne ctx)
@@ -50,7 +53,7 @@ export const SPIELER_MODUL = {
     const hoeheBei = (x, z) => welt.bodenHoehe(x, z);
 
     const seed = (ctx.seed >>> 0) || 1;
-    const figur = createCharacter({ look: o.look || randomLook(seed), seed, welt: boden, name: 'Du',
+    const figur = createCharacter({ look: o.look || randomLook(seed), seed, welt: boden, name: o.name || 'Du',
       pos: { x: start.x, y: hoeheBei(start.x, start.z), z: start.z }, yaw: start.yaw });
     szene.add(figur.root);
     const motor = figur.motor;
@@ -58,7 +61,7 @@ export const SPIELER_MODUL = {
 
     const eingabe = createMoveInput({
       element: render.canvas, vibration: true,
-      aktionen: [{ name: 'sprint', knopf: '🏃', titel: 'Sprint (halten)' }, 'rollen', 'ziel'],
+      aktionen: [{ name: 'sprint', knopf: '🏃', titel: 'Sprint (halten)' }, 'rollen', 'ziel', ...(o.aktionen || [])],
     });
     const cam = createFollowCamera({
       kamera: render.kamera, erstePerson: true,
@@ -101,7 +104,7 @@ export const SPIELER_MODUL = {
     const neueEntitaet = () => {
       if (!entDa) return null;
       const p = figur.zustand.pos;
-      return ent.neu({ art: 'spieler', team: 'spieler', pos: { x: p.x, y: p.y, z: p.z }, radius: motor.radius, leben: o.leben, name: 'Du', daten: { figur } });
+      return ent.neu({ art: 'spieler', team: 'spieler', pos: { x: p.x, y: p.y, z: p.z }, radius: motor.radius, leben: o.leben, name: o.name || 'Du', daten: { figur } });
     };
     id = neueEntitaet();
     const ab = [];

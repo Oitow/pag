@@ -10,15 +10,15 @@
  *     if (e.typ === 'biss') spielerSchaden(e.schaden);
  *   for (const t of einschlag.treffer) horde.schade(t.ziel, t.schaden, t);   // horde.ziele passt direkt in zauberbuch.update(dt, ziele)
  * @tags     gegner, horde, schwarm, monster, ratte, ki, kampf, verfolgen, rückstoß, gameplay
- * @version  1.1.0
+ * @version  1.2.0
  * @status   entwurf
  * @three    nein
  *
  * Wesen (lebendes Objekt, vom Renderer gelesen – engine/render/horde-mesh.js): { id, art, def, x, y, z, vx, vy, vz, yaw, skala,
  *   radius, hoehe, leben, lebenMax, tot, zustand ('lauf' | 'sprung' | 'flug' | 'benommen' | 'tot'), t (s im Zustand), phase (Lauf-Takt),
  *   hub (m Hüpfer beim Anspringen), dreh (rad Überschlag im Flug), blitz (1 → 0 Treffer-Aufleuchten), langsam (s Rest), verfall (0 → 1
- *   Leiche verschwindet), ton (Farbfaktor) }
- * Ereignisse von update() (Array wird wiederverwendet): { typ: 'biss', wesen, schaden } · { typ: 'weg', wesen } (Leiche entfernt)
+ *   Leiche verschwindet), ton (Farbfaktor), fremd (true = gameplay/boss steuert, keine Horden-KI) }
+ * Ereignisse von update() (Array wird wiederverwendet): { typ: 'biss', wesen, schaden, wucht (m/s Stoß, 0 = keiner), element|null } · { typ: 'weg', wesen } (Leiche entfernt)
  */
 import { clamp, damp, dampAngle } from '../core/math.js';
 import { rng, hashSeed } from '../core/rng.js';
@@ -29,6 +29,12 @@ export const HORDEN_ARTEN = Object.freeze({
   ratte: { name: 'Ratte', modell: 'ratte', leben: 12, tempo: 4.4, radius: 0.24, hoehe: 0.34, skala: [0.85, 1.2], schaden: 2, biss: 1.2, reichweite: 0.3, masse: 1 },
   riesenratte: { name: 'Riesenratte', modell: 'ratte', leben: 60, tempo: 3.7, radius: 0.24, hoehe: 0.34, skala: [2, 2.4], schaden: 8, biss: 1.3, reichweite: 0.22, masse: 4 },
   rattenkoenig: { name: 'Rattenkönig', modell: 'ratte', leben: 450, tempo: 3.1, radius: 0.24, hoehe: 0.34, skala: [4, 4.3], schaden: 18, biss: 1.6, reichweite: 0.18, masse: 16 },
+  // Sonderfelder: quer (Umkreisen-Stärke, Standard 1) · sturm {periode,dauer,faktor,von,bis} (Anstürmen) · wucht (Stoß-m/s beim Biss) · schwebe (m über Boden) · element · xp (Faktor)
+  wolf: { name: 'Wolf', modell: 'wolf', leben: 45, tempo: 6.6, radius: 0.36, hoehe: 0.85, skala: [0.95, 1.08], schaden: 7, biss: 1.0, reichweite: 0.55, masse: 2, quer: 2.2, xp: 2 },
+  keiler: { name: 'Keiler', modell: 'keiler', leben: 90, tempo: 3.6, radius: 0.5, hoehe: 0.95, skala: [0.95, 1.1], schaden: 11, biss: 1.6, reichweite: 0.45, masse: 8, quer: 0.15,
+    sturm: { periode: 4.5, dauer: 0.9, faktor: 2.6, von: 3, bis: 11 }, wucht: 7, xp: 3 },
+  irrlicht: { name: 'Irrlicht', modell: 'irrlicht', leben: 30, tempo: 3.0, radius: 0.3, hoehe: 1.0, skala: [0.9, 1.1], schaden: 6, biss: 1.8, reichweite: 2.0, masse: 0.8, quer: 1.6, schwebe: 0.55, element: 'blitz', xp: 2.5 },
+  alpha: { name: 'Grauzahn', modell: 'wolf', leben: 900, tempo: 5.2, radius: 0.36, hoehe: 0.85, skala: [2.2, 2.2], schaden: 18, biss: 1.4, reichweite: 0.55, masse: 40, xp: 40 },
 });
 
 const FALL = 20, SPRUNG = 0.3;
@@ -67,7 +73,7 @@ export function createHorde({ seed = 1, welt = null, arten = HORDEN_ARTEN, max =
     const w = { id: 'h' + naechsteId++, art, def, x, y: boden(x, z), z, vx: 0, vy: 0, vz: 0, yaw: zuf(-Math.PI, Math.PI), skala: s,
       radius: def.radius * s, hoehe: def.hoehe * s, leben: def.leben, lebenMax: def.leben, tot: false, zustand: 'lauf', t: 0, phase: zuf(0, 1),
       hub: 0, dreh: 0, drehTempo: 0, blitz: 0, langsam: 0, verfall: 0, ton: zuf(0.75, 1.15), keim: zuf(0, 6.283), seite: zuf(-1, 1),
-      tempoF: zuf(0.85, 1.15), bissRest: zuf(0, def.biss), uhr: zuf(0, 10), zx: 0, zz: 0, gebissen: false, geprallt: false, benommen: 0, entfernt: false };
+      tempoF: zuf(0.85, 1.15), bissRest: zuf(0, def.biss), uhr: zuf(0, 10), zx: 0, zz: 0, gebissen: false, geprallt: false, benommen: 0, entfernt: false, fremd: false };
     wesen.push(w); lebend++;
     return w;
   }
@@ -130,7 +136,7 @@ export function createHorde({ seed = 1, welt = null, arten = HORDEN_ARTEN, max =
     if (ziel) {
       nx = ziel.x - w.x; nz = ziel.z - w.z; d = Math.hypot(nx, nz) || 1e-4; nx /= d; nz /= d;
       kontakt = (ziel.radius ?? 0.35) + w.radius;
-      const nah = clamp(1 - (d - kontakt) / 3, 0, 1), quer = w.seite * (0.2 + 0.7 * nah) + Math.sin(w.uhr * 2.3 + w.keim) * 0.3;
+      const nah = clamp(1 - (d - kontakt) / 3, 0, 1), quer = (w.seite * (0.2 + 0.7 * nah) + Math.sin(w.uhr * 2.3 + w.keim) * 0.3) * (def.quer ?? 1);
       wx = nx - nz * quer; wz = nz + nx * quer;                                  // drauf zu, nah am Ziel seitlich umkreisen
     } else { wx = Math.cos(w.keim + w.uhr * 0.35) * 0.3; wz = Math.sin(w.keim * 1.7 + w.uhr * 0.27) * 0.3; }   // streunen
     sx = sz = 0; selbst = w;
@@ -141,6 +147,7 @@ export function createHorde({ seed = 1, welt = null, arten = HORDEN_ARTEN, max =
     const b0 = boden(w.x, w.z), nass = wasser(w.x, w.z) > b0 + w.hoehe * 0.5;
     let tempo = def.tempo * w.tempoF * (w.langsam > 0 ? 0.4 : 1) * (nass ? 0.6 : 1);
     if (w.zustand === 'benommen') tempo = 0;
+    else if (def.sturm && ziel && d > def.sturm.von && d < def.sturm.bis && (w.uhr + w.keim) % def.sturm.periode < def.sturm.dauer) { tempo *= def.sturm.faktor; wx = nx; wz = nz; }   // Anstürmen: gerade drauf
     else if (w.zustand === 'sprung') { tempo *= 1.4; wx = nx; wz = nz; }
     w.vx = damp(w.vx, wx * tempo, w.zustand === 'benommen' ? 5 : 9, dt); w.vz = damp(w.vz, wz * tempo, w.zustand === 'benommen' ? 5 : 9, dt);
     w.x += (w.vx + w.zx) * dt + sx * 0.8; w.z += (w.vz + w.zz) * dt + sz * 0.8;
@@ -153,6 +160,7 @@ export function createHorde({ seed = 1, welt = null, arten = HORDEN_ARTEN, max =
     const h = welt?.hindernisse?.(w.x, w.z, w.radius);
     if (h) { w.x += h.x; w.z += h.z; }
     w.y = Math.max(boden(w.x, w.z), wasser(w.x, w.z) - w.hoehe * 0.5);
+    if (def.schwebe) w.y = Math.max(boden(w.x, w.z), wasser(w.x, w.z)) + def.schwebe + Math.sin(w.uhr * 2.1 + w.keim) * 0.14;
     const v = Math.hypot(w.vx, w.vz);
     if (ziel && (w.zustand === 'sprung' || d < kontakt + 1)) w.yaw = dampAngle(w.yaw, Math.atan2(nx, nz), 14, dt);
     else if (v > 0.3) w.yaw = dampAngle(w.yaw, Math.atan2(w.vx, w.vz), 10, dt);
@@ -165,7 +173,7 @@ export function createHorde({ seed = 1, welt = null, arten = HORDEN_ARTEN, max =
       w.hub = Math.sin(Math.PI * clamp(w.t / SPRUNG, 0, 1)) * 0.32 * w.skala;
       if (!w.gebissen && w.t >= SPRUNG * 0.5) {
         w.gebissen = true;
-        if (ziel && d < reich + 0.35 && Math.abs((ziel.y || 0) - w.y) < 1.2 + w.hoehe) ereignisse.push({ typ: 'biss', wesen: w, schaden: def.schaden });
+        if (ziel && d < reich + 0.35 && Math.abs((ziel.y || 0) - w.y) < 1.2 + w.hoehe) ereignisse.push({ typ: 'biss', wesen: w, schaden: def.schaden, wucht: def.wucht || 0, element: def.element || null });
       }
       if (w.t >= SPRUNG) { w.zustand = 'lauf'; w.t = 0; w.hub = 0; w.bissRest = def.biss * zuf(0.8, 1.3); }
     } else if (ziel && d < reich && w.bissRest <= 0 && Math.abs((ziel.y || 0) - w.y) < 1.2 + w.hoehe) {
@@ -194,7 +202,9 @@ export function createHorde({ seed = 1, welt = null, arten = HORDEN_ARTEN, max =
           if (w.t >= leichenZeit) { ereignisse.push({ typ: 'weg', wesen: w }); entferne(i); }
           continue;
         }
-        if (w.zustand === 'flug') flug(w, dt); else laufen(w, dt, ziel);
+        if (w.zustand === 'flug') flug(w, dt);
+        else if (w.fremd) gitter.setze(w.id, w.x, w.z, w.radius, w);       // fremdgesteuert (gameplay/boss): keine eigene KI
+        else laufen(w, dt, ziel);
       }
       for (let i = 0; i < wesen.length; i++) if (!wesen[i].tot) ziele.push(wesen[i]);
       return ereignisse;

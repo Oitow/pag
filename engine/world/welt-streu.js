@@ -6,7 +6,7 @@
  *   import { streuKachel } from '../../engine/world/welt-streu.js';
  *   const objs = streuKachel(karte, { x0: 0, z0: 0, groesse: 64, cx: 0, cz: 0 }, { art: 'gross', seed: 7 });
  * @tags     welt, streu, vegetation, baeume, felsen, kachel, deterministisch, erlenwacht
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
@@ -37,10 +37,10 @@ export function streuKachel(karte, k, { art = 'gross', seed = 1, dichte = 1, reg
   const gx0 = Math.round(k.x0 / schritt), gz0 = Math.round(k.z0 / schritt);
   for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
     const gx = gx0 + i, gz = gz0 + j;
-    const x = (gx + 0.15 + hash2(gx, gz, s0 + 1) * 0.7) * schritt, z = (gz + 0.15 + hash2(gx, gz, s0 + 2) * 0.7) * schritt;
+    const x = (gx + 0.05 + hash2(gx, gz, s0 + 1) * 0.9) * schritt, z = (gz + 0.05 + hash2(gx, gz, s0 + 2) * 0.9) * schritt;   // volle Zelle: keine gleichen Abstände
     const h = karte.hoehe(x, z), b = karte.biom(x, z, h), r = regeln[b]?.[art];
     if (!r) continue;
-    const maske = Math.min(1, Math.max(0, 0.55 + 0.75 * rausch(x / 45, z / 45)));
+    const maske = Math.min(1, Math.max(0, 0.65 + 0.8 * rausch(x / 45, z / 45) + 0.2 * rausch(x / 13 + 9, z / 13)));
     if (hash2(gx, gz, s0 + 3) >= r[0] * maske * dichte) continue;
     const typ = waehle(r[1], hash2(gx, gz, s0 + 4));
     const wh = karte.wasserHoehe(x, z, h);
@@ -53,7 +53,7 @@ export function streuKachel(karte, k, { art = 'gross', seed = 1, dichte = 1, reg
     const w = karte.wegInfo(x, z);
     if (w.d < w.breite + (baum ? 3 : 1.2)) continue;
     let s;
-    if (baum) s = (b === 'urwald' ? 1.1 : 0.85) + hash2(gx, gz, s0 + 5) * (b === 'urwald' ? 0.5 : 0.4);
+    if (baum) { const u = hash2(gx, gz, s0 + 5); s = (b === 'urwald' ? 1.0 : 0.7) + u * u * 0.9 + hash2(gx, gz, s0 + 8) * 0.25; }   // Größenvarianz: viele mittlere, wenige große
     else if (fels) s = 0.6 + hash2(gx, gz, s0 + 5) ** 2 * (typ === 'findling' ? 2.2 : 1.4);
     else s = 0.75 + hash2(gx, gz, s0 + 5) * 0.5;
     const a = info?.(typ);

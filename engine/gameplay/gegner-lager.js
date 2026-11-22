@@ -1,27 +1,28 @@
 /**
  * @modul    gegner-lager
  * @zweck    Ein Gegnerlager ohne THREE: Horde (gameplay/horde) an einem Ort, je Tier eine Entität (core/entitaeten, Team 'feind'), Wache → Jagd auf nahe Spieler → Verlieren → Heimkehr + Heilung, Bisse als Befehle (gameplay/befehle), Tod → Entität weg, Respawn nach Spielzeit, Nacht = mehr und aggressiver
- * @api      createGegnerLager({id,x,z,radius,ents,befehle,welt,seed,besatzung,nachtExtra,aggro,leine,respawn,werte,frei,schadenFaktor}) -> { id, x, z, radius, horde, modus, zielId, lebend, wesen(entId), ids, fest(dt,{aktiv,nacht}), treffer(d), tod(id), weg(id), stoss(id,x,z,kraft), betaeube(id,s), sog(x,z,r,kraft)->n, zustand(), dispose() }
+ * @api      createGegnerLager({id,x,z,radius,ents,befehle,welt,seed,besatzung,nachtExtra,aggro,leine,respawn,werte,frei,schadenFaktor,stufe}) -> { id, x, z, radius, stufe, horde, modus, zielId, lebend, wesen(entId), ids, fest(dt,{aktiv,nacht}), treffer(d), tod(id), weg(id), stoss(id,x,z,kraft), betaeube(id,s), sog(x,z,r,kraft)->n, ruf(art,anzahl,x,z,radius)->anzahl, zustand(), dispose() }
  * @beispiel
  *   import { createGegnerLager } from '../../engine/gameplay/gegner-lager.js';
  *   const lager = createGegnerLager({ id: 'lager-moor', x: -900, z: 100, ents, befehle, welt, seed: 3, besatzung: { ratte: 8, riesenratte: 1 } });
  *   lager.fest(1 / 60, { aktiv: true, nacht: false });   // jedes feste Bild; Treffer kommen über lager.treffer(ent:treffer-Daten)
  * @tags     gegner, lager, horde, respawn, aggro, entitaet, mmo, ratte, gameplay
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  *
+ * stufe (Standard 1): Leben und Schaden × (1 + 0.18 × (stufe − 1)). Entität.daten: { stufe, xp, beute: art, art, wesen: art, hoehe, lager, werte } (xp = 5 × stufe × def.xp).
  * ents: core/entitaeten (oder die API des Moduls 'entitaeten'), befehle: gameplay/befehle. Ziele = lebende Entitäten mit team 'spieler'.
  * stoss(id, x, z, kraft): x,z = RICHTUNG (normiert), kraft in m/s. sog: x,z = Mitte. Inaktive Lager (fern vom Fokus) zählen nur die Uhr.
  */
 import { createHorde } from './horde.js';
 import { rng, hashSeed } from '../core/rng.js';
 
-const WERTE = { ratte: { ruestung: 0 }, riesenratte: { ruestung: 30 }, rattenkoenig: { ruestung: 60 } };
+const WERTE = { ratte: { ruestung: 0 }, riesenratte: { ruestung: 30 }, rattenkoenig: { ruestung: 60 }, wolf: { ruestung: 10 }, keiler: { ruestung: 40 }, irrlicht: { ruestung: 0 }, alpha: { ruestung: 80 } };
 
 export function createGegnerLager({
   id = 'lager', x = 0, z = 0, radius = 12, ents, befehle, welt = null, seed = 1, besatzung = { ratte: 8 }, nachtExtra = {},
-  aggro = 13, leine = 40, respawn = 30, werte = WERTE, frei = null, schadenFaktor = 0.5,
+  aggro = 13, leine = 40, respawn = 30, werte = WERTE, frei = null, schadenFaktor = 0.5, stufe = 1,
 } = {}) {
   const r = rng(hashSeed('lager', id, seed));
   const horde = createHorde({ seed: hashSeed(id, seed), welt, max: 48, leichenZeit: 5 });
@@ -29,6 +30,7 @@ export function createGegnerLager({
   const warte = [];                  // [{ art, zeit }]
   const st = { modus: 'ruhe', zielId: null, t: 0, tZurueck: 0, erstes: true };
   const heim = { x, y: 0, z, radius: radius * 0.45 };
+  const sf = 1 + 0.18 * (Math.max(1, +stufe || 1) - 1);       // Stufen-Faktor für Leben und Schaden
   const boden = (px, pz) => (welt?.bodenHoehe ? +welt.bodenHoehe(px, pz) || 0 : 0);
 
   function platz() {
@@ -39,12 +41,13 @@ export function createGegnerLager({
     }
     return [x, z];
   }
-  function spawne(art) {
-    const [px, pz] = platz();
+  function spawne(art, px, pz) {
+    if (px == null) [px, pz] = platz();
     const w = horde.spawne(art, px, pz);
     if (!w) return null;
+    w.leben = w.lebenMax = Math.round(w.lebenMax * sf);
     const eid = ents.neu({ art: 'gegner', team: 'feind', pos: { x: w.x, y: w.y, z: w.z }, radius: w.radius, leben: w.lebenMax,
-      name: w.def.name, daten: { hoehe: w.hoehe + 0.25, lager: id, wesen: art, werte: werte[art] || {} } });
+      name: w.def.name, daten: { hoehe: w.hoehe + 0.25, lager: id, wesen: art, art, beute: art, stufe, xp: Math.round(5 * stufe * (w.def.xp ?? 1)), werte: werte[art] || {} } });
     w.entId = eid; ids.set(eid, w);
     return eid;
   }
@@ -83,6 +86,13 @@ export function createGegnerLager({
     return null;
   }
 
+  function stossVon(w, kraft) {                               // Richtung Wesen → Ziel
+    const e = ents.hole(st.zielId);
+    if (!e) return undefined;
+    const dx = e.pos.x - w.x, dz = e.pos.z - w.z, l = Math.hypot(dx, dz) || 1;
+    return { x: dx / l, z: dz / l, kraft };
+  }
+
   function fest(dt, { aktiv = true, nacht = false } = {}) {
     st.t += dt;
     for (const [eid] of ids) { const e = ents.hole(eid); if (!e || !e.lebt) loese(eid, !!e); }
@@ -105,7 +115,8 @@ export function createGegnerLager({
     }
     for (const ev of horde.update(dt, hz)) {
       if (ev.typ === 'biss' && st.zielId && ev.wesen.entId) {
-        befehle.sende({ von: ev.wesen.entId, art: 'schaden', daten: { ziel: st.zielId, menge: ev.schaden * schadenFaktor * (nacht ? 1.5 : 1), reichweite: 1.5 } });
+        befehle.sende({ von: ev.wesen.entId, art: 'schaden', daten: { ziel: st.zielId, menge: ev.schaden * sf * schadenFaktor * (nacht ? 1.5 : 1), reichweite: 1.5 + ev.wesen.skala * 0.5,
+          element: ev.element || undefined, stoss: ev.wucht ? stossVon(ev.wesen, ev.wucht) : undefined } });
       }
     }
     for (const [eid, w] of ids) {
@@ -119,7 +130,7 @@ export function createGegnerLager({
   }
 
   return {
-    id, x, z, radius, horde, ids,
+    id, x, z, radius, stufe, horde, ids,
     get modus() { return st.modus; },
     get zielId() { return st.zielId; },
     get lebend() { return horde.anzahl; },
@@ -160,6 +171,15 @@ export function createGegnerLager({
         if (d > sr || d < 1e-3) continue;
         const f = kraft * Math.min(1, d / 1.5) / w.def.masse;
         w.zx = (dx / d) * f; w.zz = (dz / d) * f; n++;
+      }
+      return n;
+    },
+    /** Verstärkung rufen (z. B. Boss-Heulen): anzahl Wesen der art im Ring um (x,z) mit Entität. */
+    ruf(art, anzahl, px = x, pz = z, ring = 3) {
+      let n = 0;
+      for (let i = 0; i < anzahl; i++) {
+        const a = (i / anzahl) * Math.PI * 2 + r() * 0.5;
+        if (spawne(art, px + Math.sin(a) * ring, pz + Math.cos(a) * ring)) n++;
       }
       return n;
     },
