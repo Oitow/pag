@@ -29,7 +29,7 @@ for (const ort of orte) {
   try {
     const res = await esbuild.build({
       entryPoints: [path.join(dir, eintrag)],
-      bundle: true, format: 'esm', write: false, target: 'es2020', charset: 'utf8',
+      bundle: true, format: 'esm', write: false, target: 'es2022', charset: 'utf8',
       minify: !!cfg.minify, legalComments: 'none',
       external: OFFLINE ? [] : ['three', 'three/*'],
       logLevel: 'silent',
