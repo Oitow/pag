@@ -1,6 +1,6 @@
 ---
 name: pruefer
-description: Prüft den aktuellen Diff vor einem PR auf Fehler, Regelverstöße gegen CLAUDE.md und Handy-Probleme. Nur bei größeren Änderungen (Engine-API, neues Spiel, >150 geänderte Zeilen) nutzen.
+description: Prüft den aktuellen Diff vor einem PR auf Fehler, Regelverstöße gegen AGENTS.md und Handy-Probleme. Nur bei größeren Änderungen (Engine-API, neues Spiel, >150 geänderte Zeilen) nutzen.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---

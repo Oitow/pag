@@ -1,7 +1,7 @@
 /**
  * @modul    modul-welt
  * @zweck    Erlenwacht-Welt (≈4×4 km): Karte/Regionen/Orte/Wege aus world/welt-regionen, Gelände als gestreamte Kacheln mit Detailstufen (world/chunk-strom), Streu-Bäume/Felsen/Büsche je Kachel als Instanzen samt Kollision, Meer und Moortümpel, Fluss (Band), Fernwald (Impostor, 1 Draw-Call) – rund um den Dienst `fokus`
- * @api      WELT_MODUL -> api wie im Vertrag (docs/ERLENWACHT-MODULE.md) + karte, statistik
+ * @api      WELT_MODUL -> api wie im Vertrag (docs/plaene/ERLENWACHT-MODULE.md) + karte, statistik
  * @beispiel
  *   import { WELT_MODUL } from '../../engine/spiel/modul-welt.js';
  *   const welt = spiel.api('welt'); welt.bodenHoehe(0, 600); welt.region(-1200, 400).id; // 'moor'

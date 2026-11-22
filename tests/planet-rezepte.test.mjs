@@ -1,4 +1,4 @@
-// Prüft die Spiel-Daten von games/planet (js/spiel-daten.js):
+// Prüft die Spiel-Daten von spiele/planet (js/spiel-daten.js):
 //  - jede Fangkugel aus DATA.KUGELN hat ein Rezept, alle Item-IDs existieren in DATA.ITEMS
 //  - alle Zutaten sind beschaffbar (Erz, Grundstoff, Beute oder selbst craftbar)
 //  - Kugel-Rohstoffe stammen aus Biomen mit kleinerer Stufe als die Kugel (Fortschritt)
@@ -9,8 +9,8 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const DATA = await import(pathToFileURL(path.join(root, 'games/planet/js/data.js')));
-const SD = await import(pathToFileURL(path.join(root, 'games/planet/js/spiel-daten.js')));
+const DATA = await import(pathToFileURL(path.join(root, 'spiele/planet/js/data.js')));
+const SD = await import(pathToFileURL(path.join(root, 'spiele/planet/js/spiel-daten.js')));
 
 let fehler = 0;
 const fail = m => { fehler++; console.error('✗ ' + m); };

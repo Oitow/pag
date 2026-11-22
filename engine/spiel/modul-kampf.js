@@ -4,7 +4,7 @@
  * @api      KAMPF_MODUL -> api { klasse, angriff() -> bool, nutze(name) -> bool, leiste (gameplay/faehigkeiten), ressource {name,wert,max}, faehigkeiten (freigeschaltete Namen), stufe, waffe, pfeile (Zahl lebender Pfeile) }
  * @beispiel
  *   import { KAMPF_MODUL } from '../../engine/spiel/modul-kampf.js';
- *   // in module-liste.js anstecken (braucht spieler + entitaeten); Taste F / Knopf ⚔ = Grundangriff, 1–5 = Fähigkeiten; ?stufe=12 schaltet im Test alles frei
+ *   // in engine/spiel/module.js + module-register.js anmelden (braucht spieler + entitaeten); Taste F / Knopf ⚔ = Grundangriff, 1–5 = Fähigkeiten; ?stufe=12 schaltet im Test alles frei
  *   kern.api('kampf').nutze('wuchtschlag');
  * @tags     spiel, modul, kampf, nahkampf, bogen, klasse, fähigkeit, wut, energie, leiste, handy, erlenwacht
  * @version  1.0.0

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PFAD_PUNKTE, PFAD_ENDE, WELT, ORTE, MARKEN, HELDEN, RIESEN_VARIANTEN, BOGEN_VARIANTE, LICHTUNG, STAMM,
-  pfadX, pfadSteigung, pfadAbstand, nebenPfad, stammRadiusVon, stammAbstand, riesenListe } from '../games/daemmerwald/js/plan-daten.js';
+  pfadX, pfadSteigung, pfadAbstand, nebenPfad, stammRadiusVon, stammAbstand, riesenListe } from '../labore/daemmerwald/js/plan-daten.js';
 
 test('Pfad: Stützpunkte wachsen in z, Verlauf ist stetig und ohne Knicke', () => {
   for (let i = 1; i < PFAD_PUNKTE.length; i++) assert.ok(PFAD_PUNKTE[i][0] > PFAD_PUNKTE[i - 1][0]);
@@ -79,7 +79,7 @@ test('Determinismus: gleiche Liste bei gleichem Seed, andere bei anderem', () =>
   assert.notDeepEqual(riesenListe({ seed: 5 }), riesenListe({ seed: 6 }));
 });
 
-import { tageslicht, START_STUNDE, PALETTE } from '../games/daemmerwald/js/tageslicht.js';
+import { tageslicht, START_STUNDE, PALETTE } from '../labore/daemmerwald/js/tageslicht.js';
 test('tageslicht: Standard = bisheriger Look, Tag/Nacht plausibel', () => {
   const s = tageslicht(START_STUNDE);
   const r = s.richtung, n = Math.hypot(0.52, 0.34, -0.78);

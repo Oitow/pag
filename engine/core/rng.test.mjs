@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { rng, hashSeed, hash2, pick, int, shuffle, weighted } from './rng.js';
-import { mulberry32 as alt } from '../../games/planet/js/noise.js';
+import { mulberry32 as alt } from '../../spiele/planet/js/noise.js';
 
 test('rng ist deterministisch und gleich wie planet/noise.js', () => {
   const a = rng(42), b = alt(42);

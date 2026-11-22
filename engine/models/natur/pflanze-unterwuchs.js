@@ -168,7 +168,7 @@ function laubstreu(s, r, o) {
   }
 }
 
-/** Unterwuchs erzeugen (Vertrag: docs/NATUR-ASSETS.md). */
+/** Unterwuchs erzeugen (Vertrag: docs/plaene/NATUR-ASSETS.md). */
 export function erzeuge(typ, seed = 1, opts = {}) {
   if (!TYPEN.includes(typ)) throw new Error(`pflanze-unterwuchs: unbekannter Typ '${typ}'`);
   const o = { detail: 1, jahreszeit: 'sommer', groesse: 1, ...opts };

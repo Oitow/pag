@@ -1,5 +1,5 @@
-// Smoke-Test: startet jedes Spiel mit games/<spiel>/spiel.json headless in Chromium.
-//  1. games/<spiel>/index.html über lokalen Server (Entwicklungsversion)
+// Smoke-Test: startet jeden Ort mit spiel.json (tools/orte.mjs) headless in Chromium.
+//  1. <ort>/index.html über lokalen Server (Entwicklungsversion)
 //  2. dist/<spiel>.html per file:// (Doppelklick-Version), falls gebaut
 // Fehlschlag bei Seitenfehlern oder Konsolen-Fehlern. Screenshot nur bei Fehler → test-results/.
 // Aufruf: node tests/smoke.mjs [spiel …]
@@ -9,6 +9,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { spielOrte } from '../tools/orte.mjs';
 
 const { chromium } = createRequire(import.meta.url)('playwright');
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -16,9 +17,7 @@ const nur = process.argv.slice(2);
 const THREE_LOKAL = path.join(ROOT, 'node_modules', 'three');
 const THREE_VERSION = fs.existsSync(THREE_LOKAL) ? JSON.parse(fs.readFileSync(path.join(THREE_LOKAL, 'package.json'), 'utf8')).version : null;
 
-const spiele = fs.readdirSync(path.join(ROOT, 'games'))
-  .filter(s => fs.existsSync(path.join(ROOT, 'games', s, 'spiel.json')))
-  .filter(s => !nur.length || nur.includes(s));
+const orte = spielOrte(nur);
 
 const port = 8100 + Math.floor(Math.random() * 800);
 const srv = spawn('python3', ['-m', 'http.server', String(port), '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
@@ -61,16 +60,16 @@ async function pruefe(name, url, cfg) {
   await page.close();
 }
 
-for (const spiel of spiele) {
-  const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'games', spiel, 'spiel.json'), 'utf8'));
+for (const ort of orte) {
+  const spiel = ort.name, cfg = ort.cfg;
   const s = cfg.smoke || {};
   const q = s.query || '';
-  await pruefe(`${spiel} (Server)`, `http://127.0.0.1:${port}/games/${spiel}/${cfg.html || 'index.html'}${q}`, s);
+  await pruefe(`${spiel} (Server)`, `http://127.0.0.1:${port}/${ort.dir}${cfg.html || 'index.html'}${q}`, s);
   const dist = path.join(ROOT, 'dist', `${spiel}.html`);
   if (cfg.eintrag !== false && fs.existsSync(dist)) await pruefe(`${spiel} (Einzeldatei)`, pathToFileURL(dist).href + q, s);
 }
 
 await browser.close();
 srv.kill();
-console.log(fehlgeschlagen ? `\n${fehlgeschlagen} Smoke-Test(s) fehlgeschlagen` : `\nAlle Smoke-Tests ok (${spiele.length} Spiele)`);
+console.log(fehlgeschlagen ? `\n${fehlgeschlagen} Smoke-Test(s) fehlgeschlagen` : `\nAlle Smoke-Tests ok (${orte.length} Orte)`);
 process.exit(fehlgeschlagen ? 1 : 0);

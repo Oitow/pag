@@ -1,4 +1,4 @@
-// Baut jedes Spiel mit games/<spiel>/spiel.json zu einer Einzeldatei dist/<spiel>.html (Doppelklick-Start).
+// Baut jeden Ort mit spiel.json (erlenwacht/, testfeld/, labore/<x>/, spiele/<x>/ – siehe tools/orte.mjs) zu einer Einzeldatei dist/<spiel>.html (Doppelklick-Start).
 // Aufruf: node tools/build.mjs [spiel …] [--offline]
 //   --offline  packt Three.js mit ein (+~650 KB), sonst kommt Three per Import-Map vom CDN.
 // spiel.json: { "eintrag": "js/main.js", "html": "index.html", "skript": "<script type=\"module\" src=\"js/main.js\"></script>" }
@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
+import { spielOrte } from './orte.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -14,16 +15,14 @@ const nur = args.filter(a => !a.startsWith('--'));
 const DIST = path.join(ROOT, 'dist');
 fs.mkdirSync(DIST, { recursive: true });
 
-const spiele = fs.readdirSync(path.join(ROOT, 'games'))
-  .filter(s => fs.existsSync(path.join(ROOT, 'games', s, 'spiel.json')))
-  .filter(s => !nur.length || nur.includes(s));
+const orte = spielOrte(nur);
 
-if (!spiele.length) { console.log('Keine Spiele mit spiel.json gefunden.'); process.exit(0); }
+if (!orte.length) { console.log('Keine Spiele mit spiel.json gefunden.'); process.exit(0); }
 
 let fehler = 0;
-for (const spiel of spiele) {
-  const dir = path.join(ROOT, 'games', spiel);
-  const cfg = JSON.parse(fs.readFileSync(path.join(dir, 'spiel.json'), 'utf8'));
+for (const ort of orte) {
+  const spiel = ort.name, cfg = ort.cfg;
+  const dir = path.join(ROOT, ort.dir);
   if (cfg.eintrag === false) { console.log(`– ${spiel}: kein Build (eintrag: false)`); continue; }
   const eintrag = cfg.eintrag || 'js/main.js';
   const skriptTag = cfg.skript || `<script type="module" src="${eintrag}"></script>`;

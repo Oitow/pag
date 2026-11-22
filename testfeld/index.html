@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Testfeld – alle Module</title>
+<meta name="description" content="Gemeinsames Testfeld: alle Erlenwacht-Module zusammen, auch unfertige. ?nur=kampf testet ein Modul einzeln.">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<style>
+  :root { --panel: rgba(14,18,22,.8); --text: #eef1f4; --dim: #a6b0ba; --akzent: #e0b56a; --rand: rgba(255,255,255,.12); }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1b2226; color: var(--text); font: 14px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .panel { background: var(--panel); border: 1px solid var(--rand); border-radius: 10px; backdrop-filter: blur(4px); }
+  #info { position: fixed; left: 164px; right: 60px; top: calc(max(8px, env(safe-area-inset-top)) + 2px); font-size: 11px; color: var(--dim); pointer-events: none; z-index: 4; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px #000; }
+  #info b { color: var(--text); }
+  #lade[hidden], #fehler[hidden] { display: none; }
+  #lade { position: fixed; inset: 0; display: grid; place-items: center; background: #11161a; font-size: 1.1rem; z-index: 8; text-align: center; }
+  #lade small { display: block; color: var(--dim); margin-top: 6px; }
+  #fehler { position: fixed; left: 8px; right: 8px; bottom: 120px; padding: 10px; background: #5a1f1f; border-radius: 8px; white-space: pre-wrap; font: 12px monospace; z-index: 9; max-height: 40vh; overflow: auto; pointer-events: auto; }
+  #testfeld { position: fixed; left: 50%; transform: translateX(-50%); top: calc(max(8px, env(safe-area-inset-top)) + 20px); max-width: 70vw; padding: 3px 8px; font-size: 11px; color: var(--dim); z-index: 5; pointer-events: auto; text-align: center; }
+  #testfeld[data-offen] { text-align: left; padding: 8px; }
+  #testfeld label { display: block; margin-top: 4px; }
+  #testfeld b { color: var(--akzent); }
+  #testfeld select { font-size: 12px; margin-top: 4px; max-width: 100%; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="info">…</div>
+<div id="testfeld" class="panel"></div>
+<div id="lade"><div>Testfeld wird gebaut …<small id="ladeText">Module starten</small></div></div>
+<pre id="fehler" hidden></pre>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
