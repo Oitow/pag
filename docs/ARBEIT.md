@@ -6,7 +6,7 @@
 
 | Bereich / Modul | KI | Branch | Seit | Ziel |
 |---|---|---|---|---|
-| – | – | – | – | – |
+| Figurenlabor | Codex | character-lab-parcours | 23.11.2026 | Bewegung, Parcours und Übungsgegner |
 
 ## Geteilte Dateien (nur beim Zusammenführen ändern)
 Diese Dateien fasst nur der **Zusammenführ-Schritt** an (ein eigener Branch/PR, nachdem die Modul-PRs drin sind),
