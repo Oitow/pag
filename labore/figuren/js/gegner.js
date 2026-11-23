@@ -22,7 +22,8 @@ export function createGegner({ kampf, szene, welt, schilder, seed = 1, spieler, 
 
   const vorn = (m) => { const p = spieler.zustand.pos, y = spieler.zustand.yaw; return { x: p.x + Math.sin(y) * m, y: p.y, z: p.z + Math.cos(y) * m, yaw: y }; };
   function figur(name, look, pos, yaw) {
-    const fig = createCharacter({ look: { ...look, name }, seed: hashSeed(name, seed), welt, pos: { x: pos.x, y: pos.y, z: pos.z }, yaw, schilder, name });
+    const aussehen = spieler.model.koerper;          // wie der Spieler: organisch oder Blöcke
+    const fig = createCharacter({ look: { ...look, name }, seed: hashSeed(name, seed), welt, pos: { x: pos.x, y: pos.y, z: pos.z }, yaw, schilder, name, aussehen, zelle: 0.017 });
     szene.add(fig.root);
     return fig;
   }

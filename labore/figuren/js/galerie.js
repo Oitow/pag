@@ -38,7 +38,7 @@ function aufbauen() {
   looks.forEach((look, i) => {
     const r = Math.floor(i / proReihe), s = i % proReihe;
     const pos = { x: (s - (proReihe - 1) / 2) * ab, y: 0, z: -r * ab * 1.6 };
-    const fig = createCharacter({ look, seed: 3 + i, welt, pos, yaw: dreh, aussehen: art, zelle: url.get('nah') ? 0.009 : 0.012 });
+    const fig = createCharacter({ look, seed: 3 + i, welt, pos, yaw: dreh, aussehen: art, zelle: url.get('nah') ? 0.01 : 0.014 });
     szene.add(fig.root);
     if (url.get('clip')) fig.spiele(url.get('clip'), { schleife: true });
     figuren.push(fig);
@@ -52,7 +52,7 @@ const reihen = Math.ceil(looks.length / proReihe);
 const kamera = new THREE.PerspectiveCamera(url.get('nah') ? 30 : 40, innerWidth / innerHeight, 0.1, 100);
 function kameraSetzen() {
   kamera.aspect = innerWidth / innerHeight;
-  if (url.get('nah')) { kamera.position.set(0, 1.3, 3.4); kamera.lookAt(0, 1.0, 0); }
+  if (url.get('nah')) { kamera.position.set(0, 1.25, 4.6); kamera.lookAt(0, 0.92, 0); }
   else {
     const breite = proReihe * ab, d = Math.max(breite / kamera.aspect, reihen * 1.6) * 1.15 + 2;
     kamera.position.set(0, 1.6 + reihen * 0.8, d); kamera.lookAt(0, 0.9, -(reihen - 1) * ab * 0.8);

@@ -71,10 +71,10 @@ function verdeckung(form, x, y, z, nx, ny, nz) {
 const cache = new Map();        // gleicher Look + Zelle → dieselbe Geometrie (NPCs, Editor-Zurück)
 
 /**
- * opts: { look (fertig, createLook), masse, rig, material?, zelle = 0.012 m (kleiner = feiner, teurer), mimik = true, schatten = true }
+ * opts: { look (fertig, createLook), masse, rig, material?, zelle = 0.013 m (kleiner = feiner, teurer), mimik = true, schatten = true }
  * → { mesh: THREE.SkinnedMesh (Kind von rig.root), kontext, dreiecke, ms (Bauzeit), dispose() }
  */
-export function createFigurHaut({ look, masse, rig, material = null, zelle = 0.012, mimik = true, schatten = true }) {
+export function createFigurHaut({ look, masse, rig, material = null, zelle = 0.013, mimik = true, schatten = true }) {
   const t0 = performance.now();
   const root = rig.root, rootMatrix = root.matrix.clone(), eltern = root.parent;
   eltern?.remove(root);
@@ -94,8 +94,18 @@ export function createFigurHaut({ look, masse, rig, material = null, zelle = 0.0
     const n = netz.position.length / 3, P = netz.position, N = netz.normal;
     const farbe = new Float32Array(n * 3), haut = new Float32Array(n), si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
     const idx = Object.fromEntries(KNOCHEN.map((k, i) => [k, i]));
-    for (let i = 0; i < n; i++) {
+    // Eckpunkte nach 8-cm-Zellen sortieren und je Zelle nur die nahen Körper auswerten (eingrenzen) – spart ~2/3 der Zeit
+    const Z = 0.08, reihe = Array.from({ length: n }, (_, i) => i), zid = (i) => `${Math.floor(P[i * 3] / Z)},${Math.floor(P[i * 3 + 1] / Z)},${Math.floor(P[i * 3 + 2] / Z)}`;
+    const schl = reihe.map(zid);
+    reihe.sort((a, b) => (schl[a] < schl[b] ? -1 : schl[a] > schl[b] ? 1 : 0));
+    let zelleJetzt = null;
+    for (const i of reihe) {
       const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2];
+      if (schl[i] !== zelleJetzt) {
+        zelleJetzt = schl[i];
+        const x0 = Math.floor(x / Z) * Z, y0 = Math.floor(y / Z) * Z, z0 = Math.floor(z / Z) * Z;
+        form.eingrenzen([x0 - 0.07, y0 - 0.07, z0 - 0.07], [x0 + Z + 0.07, y0 + Z + 0.07, z0 + Z + 0.07], 0.03);
+      }
       const e = form.einfluss(x, y, z);
       const ao = verdeckung(form, x, y, z, N[i * 3], N[i * 3 + 1], N[i * 3 + 2]);
       // sRGB-Vertexfarben → linear (wie mesh-builder), dann Verdeckung
@@ -106,6 +116,7 @@ export function createFigurHaut({ look, masse, rig, material = null, zelle = 0.0
       liste.forEach(([k, w], j) => { si[i * 4 + j] = idx[k]; sw[i * 4 + j] = w / summe; });
       if (!liste.length) { si[i * 4] = idx.torso; sw[i * 4] = 1; }
     }
+    form.eingrenzen(null);
     geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(P, 3));
     geo.setAttribute('normal', new THREE.BufferAttribute(N, 3));
@@ -123,7 +134,7 @@ export function createFigurHaut({ look, masse, rig, material = null, zelle = 0.0
   // Je Rig-Knochen ein THREE.Bone als Kind (Identität) → Skelett folgt den Gruppen ohne Umbau des Rigs
   const bones = KNOCHEN.map((n) => { const b = new THREE.Bone(); b.name = 'haut_' + n; rig.knochen[n].add(b); return b; });
   root.updateMatrixWorld(true);
-  const mesh = new THREE.SkinnedMesh(geo, material || figurMaterial({ material: { flatShading: false, roughness: 0.75 } }));
+  const mesh = new THREE.SkinnedMesh(geo, material || figurMaterial({ glatt: true }));
   mesh.name = 'koerper';
   mesh.castShadow = schatten; mesh.receiveShadow = schatten;
   root.add(mesh);

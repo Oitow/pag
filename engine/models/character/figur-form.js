@@ -44,6 +44,7 @@ export function createFigurForm({ glatt = 0.025, seed = 1 } = {}) {
   const K = [];                                // Körper: { typ, k, abzug, …Geometrie, min, max, o }
   let aktiv = null, kMax = 0, spiel = 0;
   const rausch = createNoise3D(seed);
+  let dBuf = new Float64Array(64);
 
   function plus(typ, geo, o = {}, min, max) {
     const k = Math.max(1e-4, o.glatt ?? glatt);
@@ -81,15 +82,18 @@ export function createFigurForm({ glatt = 0.025, seed = 1 } = {}) {
       d = (Math.sqrt(dx * dx + dy * dy + dz * dz) - (c.ra + (c.rb - c.ra) * t)) * (c.tief < 1 ? (1 + c.tief) / 2 : 1);
     } else if (c.typ === ELLIPSOID) {
       lokal(c, x, y, z, q);
-      const k0 = Math.hypot(q[0] / c.r[0], q[1] / c.r[1], q[2] / c.r[2]), k1 = Math.hypot(q[0] / (c.r[0] * c.r[0]), q[1] / (c.r[1] * c.r[1]), q[2] / (c.r[2] * c.r[2]));
+      const a0 = q[0] / c.r[0], a1 = q[1] / c.r[1], a2 = q[2] / c.r[2], b0 = a0 / c.r[0], b1 = a1 / c.r[1], b2 = a2 / c.r[2];
+      const k0 = Math.sqrt(a0 * a0 + a1 * a1 + a2 * a2), k1 = Math.sqrt(b0 * b0 + b1 * b1 + b2 * b2);
       d = k1 > 1e-9 ? (k0 * (k0 - 1)) / k1 : -Math.min(c.r[0], c.r[1], c.r[2]);
     } else if (c.typ === RUNDBOX) {
       lokal(c, x, y, z, q);
       const ax = Math.abs(q[0]) - c.h[0] + c.rund, ay = Math.abs(q[1]) - c.h[1] + c.rund, az = Math.abs(q[2]) - c.h[2] + c.rund;
-      d = Math.hypot(Math.max(ax, 0), Math.max(ay, 0), Math.max(az, 0)) + Math.min(Math.max(ax, ay, az), 0) - c.rund;
+      const ex = ax > 0 ? ax : 0, ey = ay > 0 ? ay : 0, ez = az > 0 ? az : 0;
+      d = Math.sqrt(ex * ex + ey * ey + ez * ez) + Math.min(Math.max(ax, ay, az), 0) - c.rund;
     } else {
       lokal(c, x, y, z, q);
-      d = Math.hypot(Math.hypot(q[0], q[2]) - c.R, q[1]) - c.r;
+      const rr = Math.sqrt(q[0] * q[0] + q[2] * q[2]) - c.R;
+      d = Math.sqrt(rr * rr + q[1] * q[1]) - c.r;
     }
     if (c.rauh) d += c.rauh * rausch(x * c.rs, y * c.rs, z * c.rs);
     return d;
@@ -138,8 +142,10 @@ export function createFigurForm({ glatt = 0.025, seed = 1 } = {}) {
       return plus(RING, { m: [...m], R, r }, o, m.map((v) => v - e), m.map((v) => v + e));
     },
     abstand,
+    /** Normale per Tetraeder-Differenz (4 statt 6 Auswertungen). */
     normale(x, y, z, out = [0, 0, 0], eps = 0.002) {
-      const nx = abstand(x + eps, y, z) - abstand(x - eps, y, z), ny = abstand(x, y + eps, z) - abstand(x, y - eps, z), nz = abstand(x, y, z + eps) - abstand(x, y, z - eps);
+      const a = abstand(x + eps, y - eps, z - eps), b = abstand(x - eps, y - eps, z + eps), c = abstand(x - eps, y + eps, z - eps), d = abstand(x + eps, y + eps, z + eps);
+      const nx = a - b - c + d, ny = -a - b + c + d, nz = -a + b - c + d;
       const l = Math.hypot(nx, ny, nz) || 1;
       out[0] = nx / l; out[1] = ny / l; out[2] = nz / l;
       return out;
@@ -166,14 +172,16 @@ export function createFigurForm({ glatt = 0.025, seed = 1 } = {}) {
     /**
      * Wer bildet die Oberfläche bei (x,y,z)? Gewichte = exp(−(d − dmin)/Schärfe).
      * farbSchaerfe (m, Std. 0.003) = wie hart Farbgrenzen sind; knochenWeich (m, Std. 0.03) = wie weich Gelenke überblenden.
-     * → { farbe: [r,g,b] 0…1, knochen: { name: w } (Summe 1), haut: 0…1 }
+     * → { farbe: [r,g,b] 0…1, knochen: { name: w } (Summe 1), haut: 0…1 }. Respektiert eingrenzen (vorher um den Punkt eingrenzen = schnell).
      */
     einfluss(x, y, z, { farbSchaerfe = 0.003, knochenWeich = 0.03 } = {}) {
-      const d = new Float64Array(K.length);
+      const nA = aktiv ? aktiv.n : K.length;
+      if (dBuf.length < K.length) dBuf = new Float64Array(K.length);
+      const d = dBuf;
       let dmin = Infinity;
-      for (let i = 0; i < K.length; i++) {
-        const c = K[i];
-        if (ausserhalb(c, x, y, z, 0.25)) { d[i] = Infinity; continue; }
+      for (let j = 0; j < nA; j++) {
+        const i = aktiv ? aktiv.l[j] : j, c = K[i];
+        if (ausserhalb(c, x, y, z, 0.08)) { d[i] = Infinity; continue; }
         let v = einzel(c, x, y, z);
         if (c.abzug) v = Math.abs(v) + 0.002;   // Höhlungs-Farbe nur direkt an der Höhlung
         d[i] = v;
@@ -181,7 +189,8 @@ export function createFigurForm({ glatt = 0.025, seed = 1 } = {}) {
       }
       const farbe = [0, 0, 0], kn = {};
       let sf = 0, sk = 0, haut = 0;
-      for (let i = 0; i < K.length; i++) {
+      for (let j = 0; j < nA; j++) {
+        const i = aktiv ? aktiv.l[j] : j;
         if (d[i] === Infinity) continue;
         const c = K[i], rel = Math.max(0, d[i] - dmin);
         const wf = Math.exp(-rel / farbSchaerfe);

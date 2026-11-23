@@ -31,7 +31,7 @@ const MOTOR_AKTIONEN = { springen: 'springeJetzt', rollen: 'rolleJetzt' };
 
 /**
  * opts: { look, mimik = true (false: festes Gesicht, 3 Draw-Calls weniger – für NPC-Gruppen), seed = 1, welt (Adapter: bodenHoehe …), pos {x,y,z}, yaw = 0, tuning (Motor), animation (Animator-Optionen),
- *         koerper = true (meldet sich in einer Kollisions-Welt als weicher Zylinder an, falls welt.fuege existiert), koerperWeich = 0.5, aussehen = 'bloecke' | 'organisch' (seit 1.6: glatter, gehäuteter SDF-Körper, siehe models/character/figur-haut), zelle = 0.012 (Feinheit organisch, m),
+ *         koerper = true (meldet sich in einer Kollisions-Welt als weicher Zylinder an, falls welt.fuege existiert), koerperWeich = 0.5, aussehen = 'bloecke' | 'organisch' (seit 1.6: glatter, gehäuteter SDF-Körper, siehe models/character/figur-haut), zelle = 0.013 (Feinheit organisch, m),
  *         schatten = true, onSchritt(fuss, staerke, figur), name, schilder (engine/ui/figur-schild), schild: { leben, versatz, farbe },
  *         brain: fertiges Brain (character-brain) oder Optionen dafür (welt/heimat/seed werden ergänzt) }
  * update(dt, absicht): absicht = null/undefined und Brain vorhanden → Brain entscheidet (3. Argument = Kontext

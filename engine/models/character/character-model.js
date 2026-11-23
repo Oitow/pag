@@ -89,7 +89,7 @@ function mischen(a, b) {
  * → { root, rig, look, masse, meshes, gesicht, ausdruck, setLook(teil), befestigen(sockel, obj), loesen(sockel|obj), setSichtbar(b),
  *     setAusdruck(name), setLider(zu), blinzeln(dauer), setBlick(x, y), updateGesicht(dt), dispose() }
  */
-export function createCharacterModel({ look = {}, seed = 1, material = null, schatten = true, mimik = true, koerper = 'bloecke', zelle = 0.012 } = {}) {
+export function createCharacterModel({ look = {}, seed = 1, material = null, schatten = true, mimik = true, koerper = 'bloecke', zelle = 0.013 } = {}) {
   const mat = material || figurMaterial();
   const modell = { look: createLook(look), meshes: [], gesicht: null, koerper: koerper === 'organisch' ? 'organisch' : 'bloecke', haut: null };   // Umhang hängt an rig.sockel.umhang (Saum nach −Y)
   let zustand = { ausdruck: modell.look.ausdruck, zu: 0, blick: [0, 0], auto: true };   // Gesichtszustand überlebt setLook

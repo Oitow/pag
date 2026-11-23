@@ -24,6 +24,10 @@ Testgelände für das Figuren-System der Engine (`docs/plaene/FIGUREN-SYSTEM.md`
   - **🎯 Trainingspuppe** (viel Leben, heilt nach 5 s, DPS am Namensschild und im Ziel-Rahmen) und **🤺 Rivale** (Ritter: Kombos, angekündigter schwerer Schlag mit ‼, blockt/weicht aus; Parade → taumelt; leere Haltung → Schaden ×1,5; steht nach 4 s wieder auf); `?kampf=1` stellt beide sofort auf
   - Spieler-Rahmen (Leben, Schild, Haltung, Ressource, Zustände) oben links, Ziel-Rahmen für Lock-On bzw. zuletzt getroffenes Ziel
 - 🔊 Synthetische Klänge (`engine/audio/klang`), im Menü abschaltbar
+- 🫧 **Organischer Körper** (Standard, ☰ → ⚙️ Mehr umschaltbar, `?koerper=bloecke` = alt): die Figur ist EIN glattes Netz aus weich verschmolzenen SDF-Formen
+  (`figur-form` → Anatomie `figur-koerper`, Kleidung `figur-kleidung-*`, Haar `figur-haar`), einmal vernetzt, Umgebungsverdeckung gebacken und per Skinning
+  (`figur-haut`) ans Rig gebunden – Gelenke biegen weich. Hüte, Umhang, Rucksack, Augen, Brille bleiben starre Teile. Haut scheint warm durch (`figur-material` 1.1)
+- 🧍 **Galerie** (`galerie.html`): alle Vorlagen nebeneinander, `?nur=magier&nah=1`, `&seite=1`, `&dreh=3.14`, `&clip=hacken`, `&koerper=bloecke`
 - Standard-Figur: Magier mit Zauberstab
 - Figuren mit Randlicht und weicherer Schattenseite (`engine/render/figur-material`)
 - 🕹 PS1-Look aus Viniland (`engine/render/psx`): grobe Pixel (300 Zeilen), wackelnde Eckpunkte, 5 Bit Farbe mit Dithering –

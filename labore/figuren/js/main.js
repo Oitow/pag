@@ -75,7 +75,7 @@ try { gespeichert = JSON.parse(localStorage.getItem(SPEICHER) || 'null'); } catc
 const schritte = { n: 0 };
 const spieler = createCharacter({
   look: gespeichert || VORLAGEN.magier, seed: SEED, welt: welt.adapter, pos: { x: 0, y: 0, z: 4 }, yaw: Math.PI,
-  onSchritt: () => { schritte.n++; }, schilder, name: (gespeichert || VORLAGEN.magier).name, aussehen: koerperArt, zelle: 0.011,
+  onSchritt: () => { schritte.n++; }, schilder, name: (gespeichert || VORLAGEN.magier).name, aussehen: koerperArt, zelle: 0.013,
 });
 // Ausrüstung (character-ausruestung): je Hand ein Gegenstand (Schild/Buch links, der Rest rechts); nochmal wählen = ablegen
 const haende = { handR: null, handL: null };
@@ -121,7 +121,7 @@ function npcsErzeugen() {
     const a = (i / 8) * Math.PI * 2, d = parcours ? 7 : range(r, 7, 16);
     const pos = { x: Math.cos(a) * d, y: 0, z: Math.sin(a) * d };
     const look = randomLook(hashSeed('npc', SEED, i), { kind: i % 4 === 3 });
-    const fig = createCharacter({ look, seed: hashSeed('npcseed', i), welt: welt.adapter, pos, yaw: a, schilder, name: look.name, aussehen: koerperArt, zelle: 0.016 });
+    const fig = createCharacter({ look, seed: hashSeed('npcseed', i), welt: welt.adapter, pos, yaw: a, schilder, name: look.name, aussehen: koerperArt, zelle: 0.017 });
     // NPC 0 folgt, NPC 1 läuft einen Pfad (character-steering); alle anderen leben mit character-brain
     // (wandern, arbeiten, plaudern, idle-Clips)
     let hirn = null;
@@ -274,9 +274,19 @@ function plageUmschalten() {
 }
 $('bPlage').onclick = (e) => { plageUmschalten(); e.currentTarget.blur(); };
 ui.setAusruestung(['zauberstab']);
+// Organischer Körper braucht ~0,2–0,8 s zum Neubauen → beim Regler-Ziehen höchstens alle 250 ms bauen, am Ende genau einmal
+const lookBau = { timer: 0, offen: null, zuletzt: 0 };
+function lookAnwenden(l) { spieler.setLook(l); spieler.setName(l.name); lookBau.zuletzt = performance.now(); lookBau.offen = null; }
 const editor = createEditor({
   wurzel: ui.seite('aussehen'), look: spieler.look,
-  onAenderung: (l) => { spieler.setLook(l); spieler.setName(l.name); try { localStorage.setItem(SPEICHER, JSON.stringify(l)); } catch { /* voll/privat */ } },
+  onAenderung: (l) => {
+    try { localStorage.setItem(SPEICHER, JSON.stringify(l)); } catch { /* voll/privat */ }
+    clearTimeout(lookBau.timer);
+    const seit = performance.now() - lookBau.zuletzt;
+    if (koerperArt !== 'organisch' || seit > 250) return lookAnwenden(l);
+    lookBau.offen = l;
+    lookBau.timer = setTimeout(() => lookBau.offen && lookAnwenden(lookBau.offen), 250 - seit);
+  },
 });
 // Beim Tippen (Name) keine Spiel-Eingabe; Zifferntasten 1–0 wählen und wirken sofort
 addEventListener('focusin', (e) => { if (e.target.matches?.('input[type=text], .ed-name')) eingabe.setAktiv(false); });
