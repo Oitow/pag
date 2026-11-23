@@ -53,6 +53,7 @@ canvas{display:block}
   <label>Flug-Tempo <span id="spV"></span></label><input id="sSp" type="range" min="10" max="800" value="80">
   <label><input id="cAuto" type="checkbox" checked> Auto-Auflösung</label>
   <label><input id="cPol" type="checkbox" checked> Pollen-Partikel</label>
+  <div class="b" id="bNew" style="margin-top:8px;text-align:center">Neu (Bauten löschen)</div>
 </div>
 <div id="joy"><div id="knob"></div></div>
 <div id="updown"><div class="b" id="bUp">▲</div><div class="b" id="bDn">▼</div></div>
@@ -574,6 +575,7 @@ function applyEdits(list) {
   }
   for (const ch of touched) remesh(ch);
   grassL.ptr = bushL.ptr = 0; grassL.dirty = bushL.dirty = true;
+  scheduleSave();
 }
 
 /* ================= ASSET-GEOMETRIEN (prozedural) ================= */
@@ -1090,6 +1092,22 @@ function doAction(c) {
   if (bMode === 1 && !fly) { const dx = c.x - pos.x, dz = c.z - pos.z, dy = c.y - (pos.y - .8); if (Math.hypot(dx, dy * .6, dz) < bSize + .6) return; }
   applyEdits([{ t: bMode, x: c.x, y: c.y, z: c.z, r: bSize, mat: bMat, shape: bMode === 2 ? 0 : bShape }]);
 }
+/* Speichern/Laden (localStorage) */
+const SAVE_KEY = 'gigantwelt-labor-v1';
+let saveT = 0;
+const rd = v => Math.round(v * 100) / 100;
+function scheduleSave() { if (!saveT) saveT = setTimeout(saveWorld, 1500); }
+function saveWorld() {
+  saveT = 0;
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ ops: OPS.map(o => ({ t: o.t, x: rd(o.x), y: rd(o.y), z: rd(o.z), r: rd(o.r), mat: o.mat, shape: o.shape })) })); } catch (e) { }
+}
+function loadWorld() {
+  try {
+    const d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (!d) return;
+    if (Array.isArray(d.ops) && d.ops.length) applyEdits(d.ops.filter(o => o && isFinite(o.x + o.y + o.z + o.r)));
+  } catch (e) { }
+}
+$('bNew').onclick = () => { try { localStorage.removeItem(SAVE_KEY); } catch (e) { } location.reload(); };
 $('bDemo').onclick = () => {
   const fx = -Math.sin(yaw), fz = -Math.cos(yaw), cx = pos.x + fx * 20, cz = pos.z + fz * 20, gy = heightAt(cx, cz), ops = [];
   ops.push({ t: 1, x: cx, y: gy - 4, z: cz, r: 10, mat: 7, shape: 0 });
@@ -1188,6 +1206,7 @@ addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; cam
   $('spV').textContent = flySpeed + ' m/s';
   applyQuality(qKey);
   camera.position.copy(pos);
+  loadWorld();
   // Nahbereich vorab erzeugen
   const nearR = Q.R1;
   const origR2 = treeL.radiusFn; treeL.radiusFn = () => nearR; treeL.reset();
