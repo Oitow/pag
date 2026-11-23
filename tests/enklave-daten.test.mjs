@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { createAufgaben, pruefeDaten } from '../engine/gameplay/aufgaben.js';
-import { TUTORIAL } from '../games/enklave/js/tutorial-daten.js';
+import { TUTORIAL } from '../labore/enklave/js/tutorial-daten.js';
 
-const planPfad = new URL('../games/enklave/js/plan-daten.js', import.meta.url);
+const planPfad = new URL('../labore/enklave/js/plan-daten.js', import.meta.url);
 const existiert = existsSync(planPfad);
 
 test('Tutorial-Daten sind gültig', () => {

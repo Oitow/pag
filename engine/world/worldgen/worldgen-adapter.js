@@ -1,6 +1,6 @@
 /**
  * @modul    worldgen-adapter
- * @zweck    Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/FIGUREN-SYSTEM.md
+ * @zweck    Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/plaene/FIGUREN-SYSTEM.md
  * @api      createWeltAdapter(welt, opts) -> {bodenHoehe,wasserHoehe,hindernisse,hindernisNah(x,z,reichweite,filter?),setHindernis(objektIndex,aktiv),alleHindernisse(fn),normale,biomBei,zuGitter,zuWelt,startPunkt,groesse,hoehenSkala,meterProZelle,dispose} ; HINDERNIS_RADIEN
  * @beispiel
  *   import { createWeltAdapter } from '../../engine/world/worldgen/worldgen-adapter.js';

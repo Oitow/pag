@@ -1,0 +1,4 @@
+{
+  "eintrag": false,
+  "smoke": { "query": "?seed=42", "warte": 8000 }
+}

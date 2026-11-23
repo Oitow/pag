@@ -105,7 +105,7 @@ function agave(s, r, o) {
   return { stammRadius: L0 * 0.25 };
 }
 
-/** Wüstenpflanze erzeugen (Vertrag: docs/NATUR-ASSETS.md). Kakteen sind starr (wind = 0). */
+/** Wüstenpflanze erzeugen (Vertrag: docs/plaene/NATUR-ASSETS.md). Kakteen sind starr (wind = 0). */
 export function erzeuge(typ, seed = 1, opts = {}) {
   if (!TYPEN.includes(typ)) throw new Error(`pflanze-wueste: unbekannter Typ '${typ}'`);
   const o = { detail: 1, jahreszeit: 'sommer', groesse: 1, ...opts };

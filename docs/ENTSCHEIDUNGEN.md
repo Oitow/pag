@@ -2,6 +2,10 @@
 
 > Dauerhafte Festlegungen, neueste oben, je eine Zeile: **was** – warum. `/ende` hängt hier an. Überholtes durchstreichen, nicht löschen.
 
+## Aufbau & Zusammenarbeit
+- Repo-Ordner: engine/ (Module) → labore/ → testfeld/ (alles zusammen) → erlenwacht/ (echtes Spiel, nur fertige Module); andere Spiele in spiele/ – Goi will, dass mehrere KIs sauber getrennt an Modulen arbeiten und man sieht, was was ist (23.11.2026)
+- Stufe eines Moduls steht nur in engine/spiel/module-register.js; Regeln für alle KIs in AGENTS.md, Zuständigkeit in docs/ARBEIT.md – damit zwei KIs nicht dieselben Dateien ändern (23.11.2026)
+
 ## Darstellung
 - Neue Welten folgen `docs/ART-DIRECTION.md`: düster, groß, weich, echt; Mensch = 1.8 m, alles in Metern – Goi will Größe wie Shadow of the Colossus, kein Playmobil (16.11.2026)
 - Meshes sind die Spiel-Wahrheit, SDF formt sie, Gauß-Splats sind nur Aussehen und abschaltbar – Handy-Rückfall, Kollision bleibt einfach (16.11.2026)
@@ -20,7 +24,7 @@
 - Ferne Figuren als ein InstancedMesh (`character-lod`), nah höchstens 3 volle Figuren
 - Lose Dinge stoßen nicht untereinander zusammen (billig, reicht); Figuren-Kollision ist weich (0.5)
 - Werkzeug ist in der Testwelt nie Pflicht (nur schneller); Ausnahme Schaufel
-- Mehrspieler: noch kein Netzwerk; Regeln dafür in `docs/ENGINE-FAHRPLAN.md` („Fundament für Mehrspieler“)
+- Mehrspieler: noch kein Netzwerk; Regeln dafür in `docs/plaene/ENGINE-FAHRPLAN.md` („Fundament für Mehrspieler“)
 - UI-Module: alle Stile inline, keine Timer – alles über `update(dt)`
 
 ## Arbeitsweise

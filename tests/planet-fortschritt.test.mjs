@@ -1,4 +1,4 @@
-// Prüft die Fortschrittslogik des Planet-Spiels (games/planet):
+// Prüft die Fortschrittslogik des Planet-Spiels (spiele/planet):
 //  - jedes Voxel-Tier hat gültige Kreatur-Daten (Biome, Verhalten, Fähigkeiten, Beute …)
 //  - jede Biom-Gefahr der Stufe n ist durch ein Tier aus einem Biom mit KLEINERER Stufe lösbar
 //  - jedes Erz ist mit Abbau-Fähigkeit eines Tieres aus einem früheren Biom erreichbar
@@ -11,11 +11,11 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const DATA = await import(pathToFileURL(path.join(root, 'games/planet/js/data.js')));
+const DATA = await import(pathToFileURL(path.join(root, 'spiele/planet/js/data.js')));
 const { baueKreaturen, TIER_DATEN, GLUT_VARIANTEN, VERHALTEN, AKTIVZEIT } =
-  await import(pathToFileURL(path.join(root, 'games/planet/js/kreaturen-daten.js')));
+  await import(pathToFileURL(path.join(root, 'spiele/planet/js/kreaturen-daten.js')));
 const sandbox = { window: {} };
-vm.runInNewContext(fs.readFileSync(path.join(root, 'games/autobattler/tiere-daten.js'), 'utf8'), sandbox);
+vm.runInNewContext(fs.readFileSync(path.join(root, 'spiele/autobattler/tiere-daten.js'), 'utf8'), sandbox);
 const TIERE = sandbox.window.TIERE;
 
 let fehler = 0;
@@ -78,7 +78,7 @@ for (const [eid, e] of Object.entries(DATA.ERZE)) {
 
 // --- 4. Simulation vom Start aus ---
 let REZEPTE = null;
-try { REZEPTE = (await import(pathToFileURL(path.join(root, 'games/planet/js/spiel-daten.js')))).REZEPTE; } catch (e) { /* optional */ }
+try { REZEPTE = (await import(pathToFileURL(path.join(root, 'spiele/planet/js/spiel-daten.js')))).REZEPTE; } catch (e) { /* optional */ }
 const KUGEL_ROH = { kugel_holz: ['holz'], kugel_stein: ['stein'], kugel_kupfer: ['kupfer'], kugel_eisen: ['eisen'],
   kugel_silber: ['silber'], kugel_gold: ['gold'], kugel_obsidian: ['obsidian'] };
 const zutaten = id => {

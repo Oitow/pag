@@ -4,7 +4,7 @@ import { STANDARD_OBJEKTE, VEGETATION_TYPEN, typenVon } from './worldgen-vegetat
 import { createWorld } from './worldgen.js';
 import { FLAG, WASSER } from './worldgen-grid.js';
 
-// Typnamen aus docs/NATUR-ASSETS.md (gemeinsam mit den Asset-Generatoren)
+// Typnamen aus docs/plaene/NATUR-ASSETS.md (gemeinsam mit den Asset-Generatoren)
 const VERTRAG = ['eiche', 'buche', 'birke', 'ahorn', 'weide', 'tanne', 'fichte', 'kiefer', 'pinie', 'tropenbaum', 'palme', 'akazie', 'olive',
   'toterBaum', 'fels', 'felsbrocken', 'findling', 'geroell', 'felsplatte', 'felsnadel', 'baumstumpf', 'liegenderStamm', 'ast',
   'busch', 'beerenbusch', 'ginster', 'zwergstrauch', 'farn', 'grasbueschel', 'blume', 'pilz', 'schilf', 'seerose', 'kaktus', 'saeulenkaktus', 'agave'];

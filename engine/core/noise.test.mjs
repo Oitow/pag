@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createNoise2D, createNoise3D, fbm, fbm2, ridged, ridged2, warp2 } from './noise.js';
-import * as alt from '../../games/planet/js/noise.js';
+import * as alt from '../../spiele/planet/js/noise.js';
 
 test('3D-Noise gleich wie planet/noise.js', () => {
   const a = createNoise3D(5), b = alt.createNoise3D(5);

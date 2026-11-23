@@ -112,7 +112,7 @@ function seerose(s, r, o) {
   s.rohr([c, [c[0], c[1] + g * 0.3, c[2]]], [g * 0.2, 0], farbe('#f2c21c'), () => 0.2, { seiten: 5 });
 }
 
-/** Bodendecker erzeugen (Vertrag: docs/NATUR-ASSETS.md). */
+/** Bodendecker erzeugen (Vertrag: docs/plaene/NATUR-ASSETS.md). */
 export function erzeuge(typ, seed = 1, opts = {}) {
   if (!TYPEN.includes(typ)) throw new Error(`pflanze-boden: unbekannter Typ '${typ}'`);
   const o = { detail: 1, jahreszeit: 'sommer', groesse: 1, ...opts };

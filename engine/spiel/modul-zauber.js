@@ -4,7 +4,7 @@
  * @api      ZAUBER_MODUL -> api { buch, elemente, setzeLeiste(namen) (leer = Leiste aus), wirke(name,{halten}) -> bool, loslassen(), abbrechen(), leiste (Namen), tabelle, grosszauber, weltAdapter, tempoFaktor, ladung }
  * @beispiel
  *   import { ZAUBER_MODUL } from '../../engine/spiel/modul-zauber.js';
- *   // in module-liste.js anstecken; ?zauber=wasserguss,blitz wirkt in ?test=1 nacheinander, ?puppen=5 stellt Übungsziele auf
+ *   // in engine/spiel/module.js + module-register.js anmelden; ?zauber=wasserguss,blitz wirkt in ?test=1 nacheinander, ?puppen=5 stellt Übungsziele auf
  *   kern.api('zauber').wirke('feuerball');
  * @tags     spiel, modul, zauber, magie, element, reaktion, großzauber, kampf, leiste, handy
  * @version  1.1.0

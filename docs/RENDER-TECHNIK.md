@@ -1,6 +1,6 @@
 # 🧪 Render-Technik – SDF + Gauß-Splats (Stand der Entscheidung)
 
-> Warum so und nicht anders. Bauplan der ersten Szene: `docs/WELT-DAEMMERWALD.md`.
+> Warum so und nicht anders. Bauplan der ersten Szene: `docs/plaene/WELT-DAEMMERWALD.md`.
 
 ## Grundsatz
 | Schicht | Technik | Aufgabe |

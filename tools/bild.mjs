@@ -8,6 +8,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { findeOrt } from './orte.mjs';
 
 const { chromium } = createRequire(import.meta.url)('playwright');
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -15,7 +16,9 @@ const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf('--' + n); return i < 0 ? d : args[i + 1]; };
 const ziel = args.find(a => !a.startsWith('--') && args[args.indexOf(a) - 1]?.startsWith('--') !== true) || args[0];
 if (!ziel) { console.log('Aufruf: node tools/bild.mjs <spiel|pfad.html> [--query "?…"] [--warte ms] [--hoch] [--name x] [--fps]'); process.exit(2); }
-const pfad = ziel.endsWith('.html') ? ziel : `games/${ziel}/index.html`;
+const ort = ziel.endsWith('.html') ? null : findeOrt(ziel);
+if (!ziel.endsWith('.html') && !ort) { console.log(`Unbekannter Ort „${ziel}“ – siehe tools/orte.mjs`); process.exit(2); }
+const pfad = ort ? `${ort.dir}index.html` : ziel;
 const name = opt('name', path.basename(path.dirname(pfad)) + (args.includes('--hoch') ? '-hoch' : ''));
 const THREE_LOKAL = path.join(ROOT, 'node_modules', 'three');
 

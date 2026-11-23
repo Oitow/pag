@@ -1,0 +1,5 @@
+{
+  "eintrag": false,
+  "html": "welt.html",
+  "smoke": { "warte": 5000 }
+}

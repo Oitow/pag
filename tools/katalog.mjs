@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { alleOrte } from './orte.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ENGINE = path.join(ROOT, 'engine');
@@ -52,11 +53,9 @@ function apiNamen(api) {
   return api.split(/\s*;\s*/).map(s => s.trim().match(/^([A-Za-z_$][\w$]*)/)?.[1]).filter(Boolean);
 }
 
-// Wer nutzt das Modul? (Suche nach dem Pfad in games/)
+// Wer nutzt das Modul? (Suche nach dem Pfad in allen Orten, siehe tools/orte.mjs)
 function nutzerListe() {
   const map = {};
-  const games = path.join(ROOT, 'games');
-  if (!fs.existsSync(games)) return map;
   const durchsuche = (dir, spiel) => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name);
@@ -68,7 +67,7 @@ function nutzerListe() {
       }
     }
   };
-  for (const e of fs.readdirSync(games, { withFileTypes: true })) if (e.isDirectory()) durchsuche(path.join(games, e.name), e.name);
+  for (const o of alleOrte()) durchsuche(path.join(ROOT, o.dir), o.name);
   return map;
 }
 

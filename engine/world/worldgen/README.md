@@ -95,7 +95,7 @@ const { daten, puffer } = transferierbar(createWorld(opts)); postMessage(daten, 
 const welt = mitAbfragen(e.data);
 ```
 
-Eine Vorschau mit allen Reglern liegt unter `games/weltlabor/`. Die Tests startest du mit `node --test 'engine/world/**/*.test.mjs'`.
+Eine Vorschau mit allen Reglern liegt unter `labore/welt/`. Die Tests startest du mit `node --test 'engine/world/**/*.test.mjs'`.
 
 ## Schnappschüsse
 
