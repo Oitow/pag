@@ -3772,7 +3772,7 @@ const bogen = astBogen({ a: { x: -9, y: 0, z: 0, r: 6 }, b: { x: 9, y: 0, z: 0, 
 
 Genutzt von: – · Tags: spiel, riesenwald, impostor, lod, ast, bogen, schatten, maske · THREE: ja
 
-### spiel · `engine/spiel/spiel.js` · v1.0.0 · entwurf
+### spiel · `engine/spiel/spiel.js` · v1.0.1 · entwurf
 Spiel-Host: die ganze Engine in einem Aufruf – Renderer, Szene, Kamera, Schleife (fester Schritt + Bild), Handy-Qualität, URL-Schalter und Modul-Kern; Module (Welt, Figur, Zauber, Gegner …) werden nur noch angesteckt
 
 - `createSpiel({canvas,module,optionen,seed,url,qualitaet,fest,fehler,hintergrund}) -> Promise<{kern,api(name),renderer,szene,kamera,ui,url,test,stufe,schleife,pause(bool),dispose()}>`
