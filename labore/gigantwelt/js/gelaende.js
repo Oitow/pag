@@ -10,9 +10,9 @@ export function hoeheAt(x, z) {
   const px = x + fbm(x + 4100, z - 900, 2, 1 / 3200) * 450;
   const pz = z + fbm(x - 2300, z + 7700, 2, 1 / 3200) * 450;
   let h = fbm(px + 1000, pz - 300, 3, 1 / 9000) * 130 + 30;
-  const mm = ss(.02, .38, fbm(px - 5000, pz + 2000, 2, 1 / 7500));
+  const mm = ss(-.04, .22, fbm(px - 5000, pz + 2000, 2, 1 / 7500));
   h += fbm(x + 300, z + 700, 3, 1 / 800) * 36 * (1 - .5 * mm);
-  if (mm > 0) { const r = ridged(px, pz, 5, 1 / 2300); h += mm * (150 + r * r * r * 2600); }
+  if (mm > 0) { const r = ridged(px, pz, 5, 1 / 2300); h += mm * (150 + r * r * 2300); }
   const pm = ss(.15, .45, fbm(x + 9000, z + 9000, 2, 1 / 5000)) * (1 - mm);
   if (pm > 0) {
     const q = (fbm(px + 500, pz + 500, 2, 1 / 1400) + .7) * 3, f = q - Math.floor(q);
@@ -24,12 +24,12 @@ export function hoeheAt(x, z) {
   h += ((-5) - h) * (1 - ss(0, .03, rv)) * talM;
   const b = ss(.25, .42, fbm(px + 7000, pz + 1500, 2, 1 / 1700));
   h += ((-10) - h) * b * talM;
-  const dm = ss(.1, .4, fbm(x - 9000, z + 4000, 2, 1 / 6000)) * talM * (1 - b);
+  const dm = ss(.4, .7, fbm(x - 9000, z + 4000, 2, 1 / 6000)) * talM * (1 - b);
   if (dm > 0) h += (14 + ridged(x, z, 2, 1 / 160) * 16 - h) * dm;
   return h + fbm(x - 77, z + 33, 2, 1 / 70) * 2.5;
 }
 
-export const duneRaw = (x, z) => ss(.1, .4, fbm(x - 9000, z + 4000, 2, 1 / 6000));
+export const duneRaw = (x, z) => ss(.4, .7, fbm(x - 9000, z + 4000, 2, 1 / 6000));
 export const waldRoh = (x, z) => ss(-.05, .25, fbm(x + 2222, z - 1111, 3, 1 / 1300));
 // Wald-Dichte 0..1 ohne Hangneigung (GPU: forestG): nicht über ~1400 m, nicht in Dünen, nicht im Wasser.
 export function waldAt(x, z, h) { return waldRoh(x, z) * (1 - ss(1000, 1400, h)) * (1 - duneRaw(x, z)) * (h > 1.5 ? 1 : 0); }
@@ -39,10 +39,10 @@ export function biomAt(x, z) {
   const h = hoeheAt(x, z), e = 6;
   const gx = (hoeheAt(x + e, z) - h) / e, gz = (hoeheAt(x, z + e) - h) / e;
   const slope = 1 - 1 / Math.sqrt(1 + gx * gx + gz * gz);
-  const schnee = ss(950, 1250, h) * (1 - ss(.3, .55, slope));
-  const fe = Math.max(ss(.25, .45, slope), ss(700, 1000, h));
+  const schnee = ss(800, 1050, h) * (1 - ss(.4, .65, slope));
+  const fe = Math.max(ss(.3, .5, slope), ss(1000, 1350, h));
   const fels = (1 - schnee) * fe;
-  const sa = Math.max(1 - ss(1, 5, h), duneRaw(x, z) * (1 - ss(300, 600, h)));
+  const sa = Math.max((1 - ss(1, 5, h)) * ss(-8, -3, h), duneRaw(x, z) * (1 - ss(300, 600, h)));
   const sand = (1 - schnee - fels) * sa;
   const wald = (1 - schnee - fels - sand) * waldAt(x, z, h) * (1 - ss(.15, .3, slope));
   return { wald, wiese: 1 - schnee - fels - sand - wald, fels, sand, schnee };
@@ -54,7 +54,8 @@ export function findeStart(maxR = 4000) {
     const n = Math.max(1, Math.round(r / 100) * 6);
     for (let i = 0; i < n; i++) {
       const a = i / n * Math.PI * 2, x = Math.cos(a) * r, z = Math.sin(a) * r;
-      if (hoeheAt(x, z) < 3 || hoeheAt(x, z) > 300) continue;
+      const h0 = hoeheAt(x, z); if (h0 < 3 || h0 > 150) continue;
+      if (Math.hypot(hoeheAt(x + 4, z) - h0, hoeheAt(x, z + 4) - h0) / 4 > .12) continue;
       const w = biomAt(x, z); if (w.wiese < .6) continue;
       for (let k = 0; k < 8; k++) { const b = k * Math.PI / 4; if (biomAt(x + Math.cos(b) * 120, z + Math.sin(b) * 120).wald > .3) return { x, z, h: hoeheAt(x, z) }; }
     }
@@ -70,9 +71,9 @@ float terrH(vec2 p,float sp){
  vec2 w=p+vec2(fbmG(p+vec2(4100.,-900.),2,1./3200.,sp)*450.,fbmG(p+vec2(-2300.,7700.),2,1./3200.,sp)*450.);
  float px=w.x,pz=w.y;
  float h=fbmG(vec2(px+1000.,pz-300.),3,1./9000.,sp)*130.+30.;
- float mm=smoothstep(.02,.38,fbmG(vec2(px-5000.,pz+2000.),2,1./7500.,sp));
+ float mm=smoothstep(-.04,.22,fbmG(vec2(px-5000.,pz+2000.),2,1./7500.,sp));
  h+=fbmG(p+vec2(300.,700.),3,1./800.,sp)*36.*(1.-.5*mm);
- if(mm>0.){float r=rdgG(vec2(px,pz),5,1./2300.,sp);h+=mm*(150.+r*r*r*2600.);}
+ if(mm>0.){float r=rdgG(vec2(px,pz),5,1./2300.,sp);h+=mm*(150.+r*r*2300.);}
  float pm=smoothstep(.15,.45,fbmG(p+vec2(9000.,9000.),2,1./5000.,sp))*(1.-mm);
  if(pm>0.){float q=(fbmG(vec2(px+500.,pz+500.),2,1./1400.,sp)+.7)*3.;float f=q-floor(q);
   h+=pm*(25.+(floor(q)+smoothstep(.85,.95,f))*30.);}
@@ -82,11 +83,11 @@ float terrH(vec2 p,float sp){
  h+=(-5.-h)*(1.-smoothstep(0.,.03,rv))*talM;
  float b=smoothstep(.25,.42,fbmG(vec2(px+7000.,pz+1500.),2,1./1700.,sp));
  h+=(-10.-h)*b*talM;
- float dm=smoothstep(.1,.4,fbmG(p+vec2(-9000.,4000.),2,1./6000.,sp))*talM*(1.-b);
+ float dm=smoothstep(.4,.7,fbmG(p+vec2(-9000.,4000.),2,1./6000.,sp))*talM*(1.-b);
  if(dm>0.)h+=(14.+rdgG(p,2,1./160.,sp)*16.-h)*dm;
  return h+fbmG(p+vec2(-77.,33.),2,1./70.,sp)*2.5;}
 float forestG(vec2 p,float h,float sp){
  return smoothstep(-.05,.25,fbmG(p+vec2(2222.,-1111.),3,1./1300.,sp))*(1.-smoothstep(1000.,1400.,h))
-  *(1.-smoothstep(.1,.4,fbmG(p+vec2(-9000.,4000.),2,1./6000.,sp)))*step(1.5,h);}
+  *(1.-smoothstep(.4,.7,fbmG(p+vec2(-9000.,4000.),2,1./6000.,sp)))*step(1.5,h);}
 `;
 export const GLSL_GELAENDE_VOLL = GLSL_NOISE_BASIS + GLSL_GELAENDE;

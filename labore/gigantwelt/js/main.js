@@ -44,7 +44,6 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(68, innerWidth / innerHeight, 0.4, 60000);
 camera.rotation.order = 'YXZ';
 camera.layers.set(0);
-scene.fog = new THREE.FogExp2(0x9fb8c8, 0.00009);
 
 const U = { uCam: { value: new THREE.Vector3() }, uTime: { value: 0 }, uTreeR: { value: Q.R2 }, uGR: { value: Q.GR } };
 
@@ -77,7 +76,7 @@ function frame(now) {
   camera.position.copy(pos); camera.rotation.set(K.pitch, K.yaw, 0);
   U.uCam.value.copy(pos);
   terrain.update(pos.x, pos.z);
-  himmel.follow(pos);
+  himmel.follow(pos, dt);
   if (K.shadowsOn) himmel.placeShadowCam();
 
   vox.pump(isTouch ? 5 : 9, pos);
@@ -109,7 +108,7 @@ addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; cam
 (async () => {
   const sp = spieler.findSpawn();
   pos.set(sp.x, heightAt(sp.x, sp.z) + 1.7, sp.z); K.yaw = sp.yaw;
-  himmel.setSun(24, 210);
+  himmel.setZeit(10, 0);
   $('spV').textContent = K.flySpeed + ' m/s';
   hud.applyQuality(K.qKey);
   camera.position.copy(pos);

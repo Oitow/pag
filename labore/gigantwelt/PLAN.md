@@ -50,3 +50,9 @@ Jedes Modul hängt sich als `K.<name>` ein; Querzugriffe (`K.veg…`, `K.vox…`
 | `hud.js` `createHud` | `update(now), applyQuality(key), setShadows(on), HINT` | renderer, sun, U, PRESETS, Q, Zustand, terrain, veg, vox, himmel |
 Einbau-Hinweise: Himmel ersetzen = `himmel.js` austauschen (gleiche 6 Exporte). Baum-Geometrien (B) ersetzen die Funktionen `treeA/treeB/bushGeo/rockGeo/grassGeo` in `vegetation.js`. Gelände (D): `rauschen.js`-Import in terrain/voxel/vegetation/spieler/hud/main.
 Hinweis: `vegetation.js` hat ~390 Zeilen (Geometrien + Zellen + Aufbau); beim Einbau von B natürlich teilbar.
+
+## Einbau (Runde 2, Branch claude/gigantwelt-einbau)
+- Himmel: `himmel.js` ist jetzt dünne Hülle um `atmosphaere.js` (setZeit(stunde, azVersatz), Pollen, Schatten-Kamera). Uhrzeit-Schieber statt Sonnenstand.
+- Gelände: Gebirge massiger, Dünen seltener (Sand ~6 %), Schnee ab ~800–1050 m (~3 %). Start über `findeStart` (nur flach, <150 m).
+- WICHTIG für voxel.js: `terrain.js` ersetzt in `FRAG_COMMON` die Schneegrenze (`smoothstep(640.,740.,…)` -> `800.,1050.` und Hangterm `.38,.62` -> `.4,.65`). voxel.js braucht dieselbe `.replace`-Kette, sonst weichen Voxel- und Clipmap-Farbe ab.
+- Bäume: 5 Arten x 3 LOD = 15 InstancedMeshes + 5 Schatten-Proxies; Kollision `t.rs` (= BAUM_ARTEN.stamm). Bodenpflanzen: 5 InstancedMeshes in den 32-m-Zellen.
