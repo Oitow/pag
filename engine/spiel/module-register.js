@@ -27,6 +27,8 @@ export const MODUL_REGISTER = Object.freeze([
     bausteine: ['engine/world/himmel.js', 'engine/world/himmel-stand.js', 'engine/world/wetter.js', 'engine/render/niederschlag.js', 'engine/core/zeit.js', 'engine/spiel/modul-himmel.js'] },
   { name: 'riesenwald', titel: '🌲 Dämmerwald-Riesen', stufe: 'spiel', labor: 'labore/daemmerwald',
     bausteine: ['engine/models/natur/', 'engine/render/laub-karten.js', 'engine/render/natur-material.js', 'engine/world/riesenwald-plan.js', 'engine/spiel/modul-riesenwald.js', 'engine/spiel/riesenwald-teile.js'] },
+  { name: 'dorf', titel: '🏘 Startdorf Erlenwacht (Häuser, Licht, Treffpunkt)', stufe: 'spiel', labor: null,
+    bausteine: ['engine/world/dorf-plan*.js', 'engine/models/bau/dorf-teile.js', 'engine/render/bau-instanzen.js', 'engine/render/licht-pool.js', 'engine/spiel/modul-dorf.js'] },
   { name: 'entitaeten', titel: '🆔 Entitäten (IDs, Leben, Befehle)', stufe: 'spiel', labor: null,
     bausteine: ['engine/core/entitaeten.js', 'engine/gameplay/befehle.js', 'engine/spiel/modul-entitaeten.js'] },
   { name: 'spieler', titel: '🧍 Spielfigur', stufe: 'spiel', labor: 'labore/figuren',

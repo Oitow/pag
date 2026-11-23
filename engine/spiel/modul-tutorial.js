@@ -7,10 +7,12 @@
  *   const spiel = await createSpiel({ canvas, module: [WELT_MODUL, SPIELER_MODUL, TUTORIAL_MODUL] });
  *   spiel.api('tutorial').sprich('alwe');
  * @tags     spiel, modul, tutorial, aufgaben, quest, npc, dialog, wegpunkt
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    ja
  *
+ * Dorf (optional, Modul 'dorf'): NPCs mit punkt, gehe-zu mit punkt und Aufgaben-Art 'ereignis' nutzen dorf.punkt/ziele; ohne Dorf gelten ort + versatz, Ereignis-Schritte sind automatisch erfüllt.
+ * Hört zusätzlich: dorf:benutzt {art}, dorf:gebunden.
  * Modul-API: { aufgaben /* gameplay/aufgaben *\/, npcs {id: {figur,name,id,ent}}, sprich(npcId) }. Hört: ent:tod, fort:beute|ausgeruestet|stufe|talent, spieler:aktion.
  * Sendet: aufgabe:neu|schritt|fertig, chat:sende {kanal:'aufgabe'|'sagen'}. Belohnung über fortschritt.gibXp/gibGegenstand. ?test=1: kein Auto-Dialog.
  */
@@ -41,7 +43,7 @@ const DIALOG_CSS = `
 let laufend = null;
 
 export const TUTORIAL_MODUL = {
-  name: 'tutorial', braucht: ['welt', 'spieler'], optional: ['entitaeten', 'fortschritt', 'kampf', 'render', 'himmel'], standard: STANDARD,
+  name: 'tutorial', braucht: ['welt', 'spieler'], optional: ['entitaeten', 'fortschritt', 'kampf', 'render', 'himmel', 'dorf'], standard: STANDARD,
   start(ctx) {
     const o = { ...STANDARD, ...ctx.optionen };
     const welt = ctx.braucht('welt'), sp = ctx.braucht('spieler');
@@ -54,6 +56,8 @@ export const TUTORIAL_MODUL = {
     const fort = () => { const f = ctx.optional('fortschritt'); return f && typeof f.gibXp === 'function' ? f : null; };
     const chat = (kanal, text, von) => bus.sende('chat:sende', { kanal, text, ...(von ? { von } : {}) });
     const ortVon = (n) => { const q = welt.ort?.(n) || welt.orte?.find((x) => x.art === n); return q ? { x: q.x, z: q.z } : null; };
+    const dorf = (() => { const d = ctx.optional('dorf'); return d && typeof d.punkt === 'function' ? d : null; })();
+    const punktVon = (id) => { const q = dorf?.punkt(id); return q && Number.isFinite(q.x) && Number.isFinite(q.z) ? { x: q.x, z: q.z } : null; };
     const ab = [];
 
     // --- Aufgaben: übersetzt die Kern-Ereignisse in die Namen des Plans ---
@@ -80,7 +84,7 @@ export const TUTORIAL_MODUL = {
       if (b.xp) { if (f) f.gibXp(b.xp, 'aufgabe'); else chat('aufgabe', `+${b.xp} Erfahrung`); }
       for (const g of b.gegenstaende ?? []) { if (f) f.gibGegenstand(g, 1); else chat('beute', `Erhalten: ${g}`); }
     }
-    const aufgaben = createAufgaben({ daten: AUFGABEN_DATEN, ereignisse: proxy, ortVon });
+    const aufgaben = createAufgaben({ daten: AUFGABEN_DATEN, ereignisse: proxy, ortVon, punktVon });
 
     // --- NPCs ---
     const schilder = createFigurSchilder({ wurzel: ui });
@@ -88,11 +92,12 @@ export const TUTORIAL_MODUL = {
     const spPos = () => spFigur()?.zustand?.pos || sp.position || welt.startPunkt;
     const npcs = {};
     for (const d of Object.values(NPC_DATEN)) {
+      const dp = d.punkt ? dorf?.punkt(d.punkt) : null;
       const ort = welt.ort?.(d.ort) || { x: welt.startPunkt?.x ?? 0, z: welt.startPunkt?.z ?? 0 };
-      const x = ort.x + d.versatz.x, z = ort.z + d.versatz.z, y = welt.bodenHoehe(x, z);
+      const x = dp ? dp.x : ort.x + d.versatz.x, z = dp ? dp.z : ort.z + d.versatz.z, y = Number.isFinite(dp?.y) ? dp.y : welt.bodenHoehe(x, z);
       const p0 = spPos();
-      const yaw = p0 ? Math.atan2(p0.x - x, p0.z - z) : 0;
-      const figur = createCharacter({ look: createLook(LOOKS[d.id] || VORLAGEN.wanderer), seed: 7 + d.id.length, welt: boden, name: d.name, schilder, mimik: false,
+      const yaw = p0 ? Math.atan2(p0.x - x, p0.z - z) : (dp?.winkel ?? 0);
+      const figur = createCharacter({ look: createLook(LOOKS[d.id] || VORLAGEN[d.vorlage] || VORLAGEN.wanderer), seed: 7 + d.id.length, welt: boden, name: d.name, schilder, mimik: false,
         pos: { x, y, z }, yaw, schild: { farbe: GOLD } });
       figur.root.visible = true;
       render?.szene?.add(figur.root);
@@ -148,6 +153,12 @@ export const TUTORIAL_MODUL = {
     const ia = createInteraktion({ reichweite: o.reichweite });
     for (const n of Object.values(npcs)) ia.melde('npc-' + n.id, { pos: () => n.figur.zustand.pos, radius: 0.5, reichweite: o.reichweite, art: 'npc', text: n.name + ' ansprechen', prio: 1, daten: n.id,
       aktion: () => sprich(n.id) });
+    // Dorf-Stationen (Brunnen, Schrein, Anschlagbrett, Amboss, Feuer): Auslösen ruft dorf.benutze, das Ereignis kommt über den Bus zurück
+    for (const zl of dorf?.ziele ?? []) {
+      if (!zl?.id || !zl.pos) continue;
+      ia.melde('dorf-' + zl.id, { pos: () => zl.pos, radius: zl.radius ?? 1, reichweite: Math.max(o.reichweite, zl.radius ?? 0), art: zl.art ?? 'dorf', text: zl.text ?? zl.id, prio: 0, daten: null,
+        aktion: () => { const e = dorf.benutze(zl.id, spFigur()); if (e?.text) chat('sagen', e.text); } });
+    }
     const wer = { x: 0, y: 0, z: 0, yaw: NaN };   // Blickrichtung egal: 2.5 m Reichweite rundum
 
     // --- Verfolger + Wegpunkt ---
@@ -193,6 +204,8 @@ export const TUTORIAL_MODUL = {
       aufgaben.melde('besiegt', { art: art(e) });
       aufgaben.melde('besiegt', { art: '*' });
     }));
+    ab.push(bus.an('dorf:benutzt', (d) => { if (d?.art) aufgaben.melde('ereignis', { was: d.art }); }));
+    ab.push(bus.an('dorf:gebunden', () => aufgaben.melde('ereignis', { was: 'gebunden' })));
     ab.push(bus.an('fort:beute', () => aufgaben.melde('benutzt', { was: 'beute' })));
     ab.push(bus.an('fort:ausgeruestet', (d) => { if (d?.gegenstand != null) aufgaben.melde('benutzt', { was: 'ausruesten' }); }));
     ab.push(bus.an('fort:stufe', (d) => { if ((d?.stufe ?? 0) >= 4) aufgaben.melde('benutzt', { was: 'stufe-4' }); }));
@@ -226,6 +239,7 @@ export const TUTORIAL_MODUL = {
           const f = fort();
           if (!f || (w === 'stufe-4' && f.stufe >= 4)) aufgaben.melde('benutzt', { was: w });
         }
+        if (!dorf && k?.schritt.art === 'ereignis') aufgaben.melde('ereignis', { was: k.schritt.was });   // ohne Dorf: Schritt entfällt
         aufgaben.update(dt, p);
         for (const n of Object.values(npcs)) {
           const q = n.figur.zustand.pos, d = Math.hypot(q.x - p.x, q.z - p.z);

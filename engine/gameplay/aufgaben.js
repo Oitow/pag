@@ -1,7 +1,7 @@
 /**
  * @modul    aufgaben
  * @zweck    Aufgaben-/Tutorial-Logik: Schritte (gehe-zu, sprich-mit, sammle, besiege, benutze, warte), Fortschritt, Signale, Speicherstand; reine Daten, serialisierbar
- * @api      createAufgaben({daten, ereignisse, zaehle, ortVon}) -> { starte(id)->bool, status(id), aktiv(), fertig(id), melde(art, info)->n, update(dt, wer)->ereignisse[], aktuell(id?), springe(id, schritt), brichAb(id), zustand(), laden(z), onAenderung(fn)->abmelden, dispose() } ; pruefeDaten(daten) -> [fehlerText]
+ * @api      createAufgaben({daten, ereignisse, zaehle, ortVon, punktVon}) -> { starte(id)->bool, status(id), aktiv(), fertig(id), melde(art, info)->n, update(dt, wer)->ereignisse[], aktuell(id?), springe(id, schritt), brichAb(id), zustand(), laden(z), onAenderung(fn)->abmelden, dispose() } ; pruefeDaten(daten) -> [fehlerText]
  * @beispiel
  *   import { createAufgaben } from '../../engine/gameplay/aufgaben.js';
  *   const a = createAufgaben({ daten: TUTORIAL, ereignisse, zaehle: (id) => inventar.anzahl(id), ortVon: (n) => plan.platz(n) });
@@ -10,12 +10,12 @@
  *   a.update(dt, { x: spieler.x, z: spieler.z }); // gehe-zu, warte, sammle (über zaehle)
  *   anzeige.setze(a.aktuell());
  * @tags     aufgabe, tutorial, quest, schritt, fortschritt, gameplay
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
 
-export const ARTEN = Object.freeze(['gehe-zu', 'sprich-mit', 'sammle', 'besiege', 'benutze', 'warte']);
+export const ARTEN = Object.freeze(['gehe-zu', 'sprich-mit', 'sammle', 'besiege', 'benutze', 'warte', 'ereignis']);
 
 /** Prüft Aufgaben-Daten, liefert Fehlertexte (leer = gültig). */
 export function pruefeDaten(daten) {
@@ -46,7 +46,7 @@ export function pruefeDaten(daten) {
       if (s.art === 'warte' && !(s.dauer > 0)) f.push(`${sn}: warte braucht dauer`);
       if ((s.art === 'sprich-mit' || s.art === 'besiege') && !s.ziel) f.push(`${sn}: ziel fehlt`);
       if (s.art === 'sammle' && !s.ding) f.push(`${sn}: ding fehlt`);
-      if (s.art === 'benutze' && !s.was) f.push(`${sn}: was fehlt`);
+      if ((s.art === 'benutze' || s.art === 'ereignis') && !s.was) f.push(`${sn}: was fehlt`);
       if (s.sagt != null && !(Array.isArray(s.sagt) && s.sagt.every((t) => typeof t === 'string'))) f.push(`${sn}: sagt muss Text-Liste sein`);
     }
   }
@@ -57,8 +57,8 @@ export function pruefeDaten(daten) {
 
 const passt = (muster, was) => typeof muster === 'string' && muster.endsWith('*') ? String(was).startsWith(muster.slice(0, -1)) : muster === was;
 
-/** opts: daten = [], ereignisse = null (createEreignisse), zaehle = null ((dingId) => Anzahl), ortVon = null ((name) => {x,z}|null) */
-export function createAufgaben({ daten = [], ereignisse = null, zaehle = null, ortVon = null } = {}) {
+/** opts: daten = [], ereignisse = null (createEreignisse), zaehle = null ((dingId) => Anzahl), ortVon = null ((name) => {x,z}|null), punktVon = null ((punktId) => {x,z}|null, für Schritte mit punkt) */
+export function createAufgaben({ daten = [], ereignisse = null, zaehle = null, ortVon = null, punktVon = null } = {}) {
   const fehler = pruefeDaten(daten);
   if (fehler.length) throw new Error('Aufgaben-Daten ungültig: ' + fehler[0]);
   const byId = new Map(daten.map((a) => [a.id, a]));
@@ -71,7 +71,7 @@ export function createAufgaben({ daten = [], ereignisse = null, zaehle = null, o
   const geaendert = () => { for (const fn of [...hoerer]) fn(); };
   const schritt = (id) => byId.get(id).schritte[aktiv.get(id).schritt];
   const ziel = (s) => (s.art === 'warte' ? s.dauer : (s.anzahl ?? 1));
-  const ortVonSchritt = (s) => (s.ort == null ? null : typeof s.ort === 'string' ? (ortVon?.(s.ort) ?? null) : s.ort);
+  const ortVonSchritt = (s) => (s.punkt && punktVon?.(s.punkt)) || (s.ort == null ? null : typeof s.ort === 'string' ? (ortVon?.(s.ort) ?? null) : s.ort);
 
   function betrete(id) {
     const a = byId.get(id), z = aktiv.get(id), s = a.schritte[z.schritt];
@@ -112,6 +112,7 @@ export function createAufgaben({ daten = [], ereignisse = null, zaehle = null, o
       if (art === 'gesprochen') ok = s.art === 'sprich-mit' && s.ziel === info.mit;
       else if (art === 'gesammelt') ok = s.art === 'sammle' && s.ding === info.id;
       else if (art === 'besiegt') ok = s.art === 'besiege' && s.ziel === info.art;
+      else if (art === 'ereignis') ok = s.art === 'ereignis' && s.was === info.was;
       else if (art === 'benutzt') ok = s.art === 'benutze' && passt(s.was, info.was);
       if (!ok) continue;
       treffer++;
