@@ -1,22 +1,11 @@
-// Gigant-Welt: Himmel, Sonne, Höhennebel, Licht, Pollen.
-// createHimmel(K) -> { setSun(elGrad, azGrad), placeShadowCam(), follow(pos), updatePollen(now, dt), pollen, sunDir }
+// Gigant-Welt: dünne Hülle um atmosphaere.js (Himmel, Nebel) + Sonnenlicht, Schatten-Kamera, Pollen.
+// createHimmel(K) -> { setZeit(stunde, azVersatz), setSonne(el, az), placeShadowCam(), follow(pos, dt), updatePollen(now, dt), pollen, sunDir }
 // Setzt K.hemi, K.sun, K.SH. Nutzt K: scene, camera, $, Q, shadowsOn, pos.
 import * as THREE from 'three';
-import { ss } from './welt.js';
+import { createAtmosphaere } from './atmosphaere.js';
 
 export function createHimmel(K) {
   const { scene, camera, $, pos } = K;
-  // Höhennebel + Luftperspektive: Fog-Chunks global ersetzen (Welt-Höhe aus View-Matrix, auch für Instanzen)
-  THREE.ShaderChunk.fog_pars_vertex = '#ifdef USE_FOG\nvarying float vFogDepth;varying float vFogH;\n#endif';
-  THREE.ShaderChunk.fog_vertex = '#ifdef USE_FOG\nvFogDepth=-mvPosition.z;vFogH=cameraPosition.y+dot(vec3(viewMatrix[0][1],viewMatrix[1][1],viewMatrix[2][1]),mvPosition.xyz);\n#endif';
-  THREE.ShaderChunk.fog_pars_fragment = '#ifdef USE_FOG\nuniform vec3 fogColor;varying float vFogDepth;varying float vFogH;uniform float fogDensity;\n#endif';
-  THREE.ShaderChunk.fog_fragment = `#ifdef USE_FOG
-  float fdn=fogDensity*(.55+.9*exp(-max(vFogH,0.)/320.));
-  float fogFactor=1.-exp(-fdn*fdn*vFogDepth*vFogDepth);
-  vec3 fogC=mix(fogColor,fogColor*vec3(.78,.9,1.15)+vec3(0.,.01,.04),fogFactor*.65);
-  gl_FragColor.rgb=mix(gl_FragColor.rgb,fogC,fogFactor);
-  #endif`;
-
   const hemi = new THREE.HemisphereLight(0xbcd8ff, 0x46553a, 1.0);
   scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff0d8, 3.0);
@@ -29,43 +18,16 @@ export function createHimmel(K) {
   scene.add(sun, sun.target);
   K.hemi = hemi; K.sun = sun; K.SH = SH;
 
-  /* ================= HIMMEL ================= */
-  const skyU = { uSun: { value: new THREE.Vector3(0, 1, 0) }, uZen: { value: new THREE.Color() }, uHor: { value: new THREE.Color() }, uSunCol: { value: new THREE.Color() } };
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(2000, 32, 16), new THREE.ShaderMaterial({
-    uniforms: skyU, side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false,
-    vertexShader: `varying vec3 vD;void main(){vD=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-    fragmentShader: `uniform vec3 uSun,uZen,uHor,uSunCol;varying vec3 vD;
-    void main(){vec3 d=normalize(vD);float y=max(d.y,0.);vec3 c=mix(uHor,uZen,pow(y,.45));
-    if(d.y<0.)c=uHor*mix(1.,.8,min(1.,-d.y*3.));
-    float s=max(dot(d,uSun),0.);c+=uSunCol*(pow(s,6.)*.18+pow(s,80.)*.7)+uSunCol*smoothstep(.9995,.9998,s)*12.;
-    gl_FragColor=vec4(c,1.);
-    #include <tonemapping_fragment>
-    #include <colorspace_fragment>
-    }`
-  }));
-  sky.renderOrder = -10; sky.frustumCulled = false;
-  scene.add(sky);
-
-  const sunDir = new THREE.Vector3();
-  function setSun(elDeg, azDeg) {
-    const el = elDeg * Math.PI / 180, az = azDeg * Math.PI / 180;
-    sunDir.set(Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az)).normalize();
-    skyU.uSun.value.copy(sunDir);
-    const t = ss(2, 40, elDeg);
-    const lerp3 = (a, b) => a.map((v, i) => v + (b[i] - v) * t);
-    const sc = lerp3([1.0, .55, .32], [1.0, .95, .86]);
-    sun.color.setRGB(sc[0], sc[1], sc[2], THREE.SRGBColorSpace);
-    sun.intensity = 3.2 * ss(-1, 8, elDeg);
-    skyU.uSunCol.value.copy(sun.color);
-    const hor = lerp3([.86, .64, .50], [.66, .77, .87]);
-    const zen = lerp3([.28, .36, .58], [.24, .44, .78]);
-    skyU.uHor.value.setRGB(hor[0], hor[1], hor[2], THREE.SRGBColorSpace);
-    skyU.uZen.value.setRGB(zen[0], zen[1], zen[2], THREE.SRGBColorSpace);
-    scene.fog.color.copy(skyU.uHor.value);
-    const hs = lerp3([.75, .62, .58], [.74, .85, 1.0]);
-    hemi.color.setRGB(hs[0], hs[1], hs[2], THREE.SRGBColorSpace);
-    hemi.intensity = .55 + .55 * t;
-    $('sunV').textContent = elDeg + '°';
+  /* Himmel, Wolken, Tag/Nacht, Nebel: atmosphaere.js (setzt scene.fog selbst, vor dem ersten Kompilieren) */
+  const atm = createAtmosphaere({ scene, renderer: K.renderer, sonne: sun, hemi });
+  const sunDir = atm.sonnenRichtung;
+  let azOff = 0;
+  const hhmm = h => { const m = Math.round(((h % 24) + 24) % 24 * 60); return String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+  // Uhrzeit (0..24 h) + Sonnenrichtung-Versatz (Grad)
+  function setZeit(h, az = azOff) {
+    atm.setZeit(h); azOff = az;
+    if (az) { const el = Math.asin(sunDir.y) * 180 / Math.PI, a = Math.atan2(sunDir.x, sunDir.z) * 180 / Math.PI + az; atm.setSonne(el, a); }
+    $('sunV').textContent = hhmm(h);
   }
 
   function placeShadowCam() {
@@ -87,7 +49,7 @@ export function createHimmel(K) {
   const pollen = new THREE.Points(pg, new THREE.PointsMaterial({ size: .12, map: new THREE.CanvasTexture(pcv), color: 0xfff0c0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: true }));
   pollen.frustumCulled = false; scene.add(pollen);
 
-  function follow(p) { sky.position.copy(p); }
+  function follow(p, dt = 0.016) { atm.update(dt, p); }
   function updatePollen(now, dt) {
     if (!pollen.visible) return;
     for (let i = 0; i < PN; i++) {
@@ -100,5 +62,5 @@ export function createHimmel(K) {
     }
     pg.attributes.position.needsUpdate = true;
   }
-  return { setSun, placeShadowCam, follow, updatePollen, pollen, sunDir };
+  return { setZeit, setSonne: atm.setSonne, placeShadowCam, follow, updatePollen, pollen, sunDir, atm };
 }

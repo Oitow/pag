@@ -42,7 +42,7 @@ export function createBauen(K) {
     for (let d = .5; d < lim; d += .4) {
       const px = o.x + dir.x * d, py = o.y + dir.y * d, pz = o.z + dir.z * d;
       for (const t of cand) {
-        const rr = t.H * (t.sp ? .028 : .032) * t.wf * 1.1 + .6;
+        const rr = t.H * t.rs * t.wf * 1.1 + .6;
         if (py > t.y - 1 && py < t.y + t.H && Math.hypot(px - t.x, pz - t.z) < rr) return { x: t.x, y: Math.max(py, t.y), z: t.z, tree: t };
       }
     }

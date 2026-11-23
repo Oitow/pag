@@ -1,10 +1,12 @@
-// Gigant-Welt: Bäume, Büsche, Steine, Gras – Geometrien, Instanz-Meshes, Zellen-Cache, Sichtkegel-Aufbau, Fällen.
+// Gigant-Welt: Bäume (5 Arten aus baeume.js), Büsche, Steine, Bodenpflanzen (bodenpflanzen.js), Gras – Geometrien, Instanz-Meshes, Zellen-Cache, Sichtkegel-Aufbau, Fällen.
 // createVegetation(K) -> { treeL, bushL, grassL, layers, felled, materials, stats, pump, pending, evict, updView,
 //   rebuildTrees, rebuildBushes, rebuildGrass, editOp(op), afterEdits(), resetLayers(), fellTree(t) }
 // Nutzt K: scene, camera, U, Q, yaw, pitch, SH, forceRebuild, vox.scheduleSave (lazy).
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { gn, ss, heightAt, forestRaw, rngFrom, cellSeed } from './welt.js';
+import { BAUM_ARTEN, baumGeometrie } from './baeume.js';
+import { PFLANZEN_ARTEN, pflanzenGeometrie } from './bodenpflanzen.js';
 
 export function offsets(rc) { const o = []; for (let z = -rc; z <= rc; z++) for (let x = -rc; x <= rc; x++) if (x * x + z * z <= rc * rc) o.push([x, z, Math.hypot(x, z)]); o.sort((a, b) => a[2] - b[2]); return o; }
 export const key = (x, z) => (x + 60000) * 120000 + (z + 60000);
@@ -20,26 +22,6 @@ export function createVegetation(K) {
     for (let i = 0; i < p.count; i++) { const col = fn(p.getX(i), p.getY(i), p.getZ(i), n.getX(i), n.getY(i), n.getZ(i)); c[i * 3] = col[0]; c[i * 3 + 1] = col[1]; c[i * 3 + 2] = col[2]; }
     g.setAttribute('color', new THREE.BufferAttribute(c, 3)); return g;
   }
-  function trunk(radial, hseg, h1, r0, r1, flare, butt, bark) {
-    let g = new THREE.CylinderGeometry(1, 1, 1, radial, hseg, true); g.translate(0, .5, 0);
-    const p = g.attributes.position;
-    for (let i = 0; i < p.count; i++) {
-      const x = p.getX(i), t = p.getY(i), z = p.getZ(i), a = Math.atan2(z, x), y = t * h1;
-      let r = r0 + (r1 - r0) * Math.pow(t, .8);
-      r *= 1 + flare * Math.exp(-y * 22) + butt * Math.exp(-y * 16) * Math.pow(Math.max(0, Math.cos(a * 5 + 0.4)), 4);
-      r *= 1 + 0.035 * Math.sin(a * 11 + y * 60);
-      p.setXYZ(i, Math.cos(a) * r, y - 0.004, Math.sin(a) * r);
-    }
-    g = keep(g); g.computeVertexNormals();
-    return paint(g, (x, y) => { const ao = .45 + .55 * Math.min(1, y * 14); return bark.map(v => v * ao); });
-  }
-  function limb(A, B, rA, rB, radial, bark) {
-    const d = B.clone().sub(A), len = d.length();
-    let g = new THREE.CylinderGeometry(rB, rA, len, radial, 1, true); g.translate(0, len / 2, 0);
-    g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()));
-    g.translate(A.x, A.y, A.z); g = keep(g); g.computeVertexNormals();
-    return paint(g, () => bark);
-  }
   function blob(cx, cy, cz, rx, ry, rz, detail, rng, base, under = .42) {
     let g = new THREE.IcosahedronGeometry(1, detail); g = keep(g);
     const p = g.attributes.position, sd = rng() * 100;
@@ -52,40 +34,6 @@ export function createVegetation(K) {
     g.computeVertexNormals();
     const tint = .88 + .24 * rng();
     return paint(g, (x, y, z, nx, ny) => { const ao = under + (1 - under) * Math.min(1, Math.max(0, ny * .5 + .6)); return base.map(v => v * ao * tint); });
-  }
-  const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
-
-  // Art 0: Riesen-Mammutbaum (säulenartig, Kronenbüschel)
-  function treeA(lod) {
-    const rng = rngFrom(11), bark = lin(.45, .24, .15), leaf = lin(.17, .31, .14), parts = [];
-    const rad = [18, 8, 4][lod], hs = [12, 4, 1][lod];
-    parts.push(trunk(rad, hs, 1.0, .032, .005, 1.4, .55 * (lod < 2 ? 1 : 0), bark));
-    const n = [10, 5, 2][lod];
-    if (lod === 2) { parts.push(blob(0, .72, 0, .09, .3, .09, 0, rng, leaf, .6)); }
-    else for (let i = 0; i < n; i++) {
-      const t = i / (n - 1), y = .42 + t * .55, r = .115 * (1 - t) + .04, a = i * 2.4, o = .025 + .035 * (1 - t);
-      const cx = Math.cos(a) * o, cz = Math.sin(a) * o;
-      parts.push(blob(cx, y, cz, r, r * .62, r, lod === 0 ? 1 : 0, rng, leaf));
-      if (lod === 0) parts.push(limb(V3(0, y - .03, 0), V3(cx * 1.6, y, cz * 1.6), .006, .002, 4, bark));
-    }
-    return mergeGeometries(parts);
-  }
-  // Art 1: Urwald-Riese (Brettwurzeln, Schirmkrone)
-  function treeB(lod) {
-    const rng = rngFrom(23), bark = lin(.40, .33, .25), leaf = lin(.23, .38, .12), parts = [];
-    const rad = [20, 8, 4][lod], hs = [10, 3, 1][lod];
-    parts.push(trunk(rad, hs, .74, .028, .013, 1.6, lod < 2 ? 1.6 : .4, bark));
-    if (lod === 2) { parts.push(blob(0, .84, 0, .3, .11, .3, 0, rng, leaf, .6)); return mergeGeometries(parts); }
-    const n = lod === 0 ? 6 : 4;
-    for (let i = 0; i < n; i++) {
-      const a = i / n * Math.PI * 2 + .3, d = .17 + .08 * rng(), y = .8 + .07 * rng();
-      const end = V3(Math.cos(a) * d, y, Math.sin(a) * d);
-      parts.push(limb(V3(0, .62 + .06 * rng(), 0), end, .009, .004, lod === 0 ? 6 : 4, bark));
-      const r = .12 + .05 * rng();
-      parts.push(blob(end.x, end.y + .02, end.z, r, r * .5, r, lod === 0 ? 1 : 0, rng, leaf));
-    }
-    parts.push(blob(0, .9, 0, .15, .08, .15, lod === 0 ? 1 : 0, rng, leaf));
-    return mergeGeometries(parts);
   }
   function bushGeo() {
     const rng = rngFrom(5), leaf = lin(.16, .29, .09), parts = [];
@@ -170,11 +118,15 @@ export function createVegetation(K) {
     m.count = 0; m.frustumCulled = false; m.layers.set(layer); m.cap = cap;
     scene.add(m); return m;
   }
-  const CAP = [5000, 20000, 50000];
-  const trees = [0, 1].map(sp => [0, 1, 2].map(l => { const m = mkInst((sp ? treeB : treeA)(l), treeMat, CAP[l]); m.receiveShadow = l === 0; return m; }));
-  const proxies = [0, 1].map(sp => { const m = mkInst(trees[sp][0].geometry, treeMat, 1500, 1); m.castShadow = true; return m; });
+  const ARTEN = Object.keys(BAUM_ARTEN), NA = ARTEN.length, ART = Object.fromEntries(ARTEN.map((k, i) => [k, i]));
+  const CAP = [3000, 10000, 25000]; // je Art und LOD -> 5 x 3 = 15 Draw Calls + 5 Schatten-Proxies
+  const trees = ARTEN.map(a => [0, 1, 2].map(l => { const m = mkInst(baumGeometrie(a, l), treeMat, CAP[l]); m.receiveShadow = l === 0; return m; }));
+  const proxies = ARTEN.map((a, i) => { const m = mkInst(trees[i][0].geometry, treeMat, 800, 1); m.castShadow = true; return m; });
   const bushes = mkInst(bushGeo(), bushMat, 14000); bushes.receiveShadow = true;
   const rocks = mkInst(rockGeo(), rockMat, 6000); rocks.receiveShadow = true;
+  const PARTEN = ['farn', 'blumen', 'pilze', 'totholz', 'findling'], PCAP = [6000, 6000, 3000, 1500, 1500];
+  const plantMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+  const plants = PARTEN.map((a, i) => { const m = mkInst(pflanzenGeometrie(a), plantMat, PCAP[i]); m.receiveShadow = true; return m; });
   const grass = mkInst(grassGeo(), grassMat, 26000); grass.receiveShadow = true;
   const TRI = m => (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3;
 
@@ -214,22 +166,27 @@ export function createVegetation(K) {
       const dens = forestRaw(x, z);
       if (r > dens * .5 + .004) continue;
       const h = heightAt(x, z); if (h < 2) continue;
-      const fd = dens * (1 - ss(380, 520, h)); if (r > fd * .5 + .004) continue;
+      const fd = dens * (1 - ss(900, 1300, h)); if (r > fd * .5 + .004) continue;
       const sl = Math.hypot(heightAt(x + 2, z) - h, heightAt(x, z + 2) - h) / 2; if (sl > .55) continue;
-      const sp = (gn(x / 700, z / 700) + (rng() - .5) * .7 + (h > 250 ? -.6 : 0)) > 0 ? 1 : 0;
-      const lone = dens < .05;
-      let H = sp ? 34 + 42 * rng() : 44 + 58 * Math.pow(rng(), 1.3);
-      if (lone) H *= 1.35; if (rng() < .03) H *= 1.6;
-      const tint = .82 + .3 * rng();
       if (felled.has(fkey(x, z))) continue;
-      list.push({ x, y: h - .6, z, H, wf: .85 + .3 * rng(), rot: rng() * 6.283, sp, cr: tint * (.94 + .12 * rng()), cg: tint, cb: tint * (.9 + .15 * rng()), rnd: rng() });
+      // Art nach Höhe/Kälte, Waldrand (Wiesen-Nähe) und Tal
+      const cold = ss(150, 450, h), edge = 1 - ss(.15, .5, dens), q = rng(), n = gn(x / 700, z / 700);
+      let art;
+      if (q < cold * .85) art = rng() < .6 ? 'kiefer' : 'mammut';
+      else if (q < cold * .85 + edge * .8) art = rng() < .5 ? 'eiche' : 'birke';
+      else { const u = rng() + (h < 80 ? .25 : 0) + n * .2; art = u > .75 ? 'urwald' : u > .45 ? 'mammut' : u > .2 ? 'eiche' : 'birke'; }
+      const A = BAUM_ARTEN[art], lone = dens < .05;
+      let H = A.hoehe[0] + (A.hoehe[1] - A.hoehe[0]) * Math.pow(rng(), 1.3);
+      if (lone) H *= 1.2; if (rng() < .03) H *= 1.4;
+      const tint = .82 + .3 * rng();
+      list.push({ x, y: h - .6, z, H, wf: .85 + .3 * rng(), rot: rng() * 6.283, sp: ART[art], rs: A.stamm, cr: tint * (.94 + .12 * rng()), cg: tint, cb: tint * (.9 + .15 * rng()), rnd: rng() });
     }
     return { trees: list };
   });
   // Büsche + Steine: 32 m Zellen
   const bushL = makeLayer(32, () => K.Q.BR, (cx, cz) => {
     const rng = rngFrom(cellSeed(cx, cz, 2)), x0 = cx * 32, z0 = cz * 32, g = heightGrid(x0, z0, 32, 4);
-    const dens = forestRaw(x0 + 16, z0 + 16), b = [], r = [], eds = vegEdits32.get(key(cx, cz));
+    const dens = forestRaw(x0 + 16, z0 + 16), b = [], r = [], pl = PARTEN.map(() => []), eds = vegEdits32.get(key(cx, cz));
     const nb = Math.floor(dens * 7 + .8 + rng() * 1.5);
     for (let k = 0; k < nb; k++) {
       const lx = rng() * 32, lz = rng() * 32, [h, dx, dz] = sampleGrid(g, 4, 8, lx, lz);
@@ -244,7 +201,18 @@ export function createVegetation(K) {
       const s = .7 + Math.pow(rng(), 3) * 7, t = .85 + .3 * rng();
       r.push(x0 + lx, h - .3 * s, z0 + lz, rng() * 6.28, s * (.8 + .5 * rng()), s, s * (.8 + .5 * rng()), t, t, t);
     }
-    return { b: new Float32Array(b), r: new Float32Array(r) };
+    // Bodenpflanzen (echte Meter): Farn/Pilze/Totholz im Wald, Blumen auf Wiesen, Findlinge an Hängen/Höhe
+    const wald = dens > .25, wiese = dens < .3;
+    const cnt = [wald ? Math.floor(dens * 5 + rng() * 2) : 0, wiese ? Math.floor((1 - dens) * 4 * rng() + .5) : 0, wald ? Math.floor(dens * 2 + rng()) : 0, wald && rng() < dens * .5 ? 1 : 0, Math.floor(rng() * 1.3 + (g[12] > 200 ? .6 : 0))];
+    for (let a = 0; a < 5; a++) for (let k = 0; k < cnt[a]; k++) {
+      const lx = rng() * 32, lz = rng() * 32, [h, dx, dz] = sampleGrid(g, 4, 8, lx, lz), sl = Math.hypot(dx, dz);
+      if (h < 2 || h > 900 || vegHit(eds, x0 + lx, z0 + lz)) continue;
+      if (a !== 4 && (sl > .6 || h > 500)) continue;
+      if (a === 1 && h > 400) continue;
+      const sc = (a === 4 ? .7 + rng() * 1.6 : .8 + rng() * .5), t = .85 + .3 * rng();
+      pl[a].push(x0 + lx, h, z0 + lz, rng() * 6.28, sc, sc * (.85 + .3 * rng()), sc, t, t, t);
+    }
+    return { b: new Float32Array(b), r: new Float32Array(r), p: pl.map(a => new Float32Array(a)) };
   });
   // Gras: 16 m Zellen, Matrizen vorberechnet
   const grassL = makeLayer(16, () => K.Q.GR, (cx, cz) => {
@@ -321,9 +289,9 @@ export function createVegetation(K) {
     const cosA = (dx * view.fx + dz * view.fz) / d;
     return Math.acos(Math.max(-1, Math.min(1, cosA))) < view.half + Math.asin(Math.min(1, rad / d));
   }
-  const stats = { t: [0, 0, 0], b: 0, r: 0, g: 0 };
+  const stats = { t: [0, 0, 0], b: 0, r: 0, g: 0, p: 0 };
   function rebuildTrees() {
-    const cnt = [[0, 0, 0], [0, 0, 0]], pc = [0, 0], { R0, R1, R2 } = K.Q, L = treeL;
+    const cnt = ARTEN.map(() => [0, 0, 0]), pc = ARTEN.map(() => 0), { R0, R1, R2 } = K.Q, L = treeL;
     for (const [ox, oz] of L.offs) {
       const cx = L.ccx + ox, cz = L.ccz + oz, cell = L.cache.get(key(cx, cz)); if (!cell) continue;
       const ccX = (cx + .5) * 128, ccZ = (cz + .5) * 128, vis = cellVis(ccX, ccZ, 128);
@@ -331,7 +299,7 @@ export function createVegetation(K) {
       if (!vis && !near) continue;
       for (const t of cell.trees) {
         const d = Math.hypot(t.x - view.x, t.z - view.z), de = d / Math.max(.7, t.H / 60);
-        if (near && d < K.SH + 40 && pc[t.sp] < 1500) {
+        if (near && d < K.SH + 40 && pc[t.sp] < 800) {
           const pm = proxies[t.sp], o = pc[t.sp]++;
           writeM(pm.instanceMatrix.array, o * 16, t.x, t.y, t.z, t.rot, t.H * t.wf, t.H, t.H * t.wf);
         }
@@ -345,11 +313,11 @@ export function createVegetation(K) {
         cnt[t.sp][lod] = n + 1;
       }
     }
-    for (let s = 0; s < 2; s++) { for (let l = 0; l < 3; l++) commit(trees[s][l], cnt[s][l]); commit(proxies[s], pc[s]); }
-    stats.t = [0, 1, 2].map(l => cnt[0][l] + cnt[1][l]);
+    for (let s = 0; s < NA; s++) { for (let l = 0; l < 3; l++) commit(trees[s][l], cnt[s][l]); commit(proxies[s], pc[s]); }
+    stats.t = [0, 1, 2].map(l => cnt.reduce((a, c) => a + c[l], 0));
   }
   function rebuildBushes() {
-    let nb = 0, nr = 0; const L = bushL, R = K.Q.BR;
+    let nb = 0, nr = 0; const np = [0, 0, 0, 0, 0], L = bushL, R = K.Q.BR;
     const fill = (src, m, n) => {
       for (let i = 0; i < src.length; i += 10) {
         if (n >= m.cap) break;
@@ -363,8 +331,9 @@ export function createVegetation(K) {
       const cx = L.ccx + ox, cz = L.ccz + oz, cell = L.cache.get(key(cx, cz)); if (!cell) continue;
       if (!cellVis((cx + .5) * 32, (cz + .5) * 32, 32)) continue;
       nb = fill(cell.b, bushes, nb); nr = fill(cell.r, rocks, nr);
+      for (let a = 0; a < 5; a++) np[a] = fill(cell.p[a], plants[a], np[a]);
     }
-    commit(bushes, nb); commit(rocks, nr); stats.b = nb; stats.r = nr;
+    commit(bushes, nb); commit(rocks, nr); plants.forEach((m, a) => commit(m, np[a])); stats.b = nb; stats.r = nr; stats.p = np.reduce((x, y) => x + y, 0);
   }
   function rebuildGrass() {
     let n = 0; const L = grassL, R = K.Q.GR + 12, ma = grass.instanceMatrix.array, ca = grass.instanceColor.array;
@@ -380,7 +349,7 @@ export function createVegetation(K) {
   }
 
   return {
-    treeL, bushL, grassL, layers, felled, stats, materials: [treeMat, bushMat, rockMat, grassMat],
+    treeL, bushL, grassL, layers, felled, stats, materials: [treeMat, bushMat, rockMat, plantMat, grassMat],
     pump, pending, evict, updView, rebuildTrees, rebuildBushes, rebuildGrass, editOp, afterEdits, resetLayers, fellTree,
   };
 }

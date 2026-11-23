@@ -9,7 +9,7 @@ export function createHud(K) {
   let fpsAcc = 0, fpsN = 0, fps = 60, hudT = 0, resT = 0, msAvg = 16, prev = 0;
 
   $('bSet').onclick = () => { const p = $('panel'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; };
-  $('sSun').oninput = $('sAz').oninput = () => K.himmel.setSun(+$('sSun').value, +$('sAz').value);
+  $('sSun').oninput = $('sAz').oninput = () => K.himmel.setZeit(+$('sSun').value, +$('sAz').value);
   $('sSp').oninput = () => { K.flySpeed = +$('sSp').value; $('spV').textContent = K.flySpeed + ' m/s'; };
   $('cPol').onchange = () => { K.himmel.pollen.visible = $('cPol').checked; };
 
@@ -59,7 +59,7 @@ export function createHud(K) {
         `Draws ${inf.calls}  Dreiecke ${(inf.triangles / 1e6).toFixed(2)} M\n` +
         `Terrain ${LEVELS} Ringe · Sicht ~${(Q.N * Math.pow(2, LEVELS - 1) / 2000).toFixed(0)} km\n` +
         `Bäume L0 ${k(stats.t[0])} · L1 ${k(stats.t[1])} · L2 ${k(stats.t[2])}\n` +
-        `Büsche ${k(stats.b)} · Steine ${k(stats.r)} · Gras ${k(stats.g)}\n` +
+        `Büsche ${k(stats.b)} · Steine ${k(stats.r)} · Pflanzen ${k(stats.p)} · Gras ${k(stats.g)}\n` +
         `Zellen ${cells} (+${K.veg.pending()} offen)\n` +
         `Voxel ${vstat.chunks} Chunks · ${k(vstat.tris)} Dr. · Mesh ${vstat.ms.toFixed(1)} ms · Edits ${K.vox.OPS.length}\n` +
         `Pos ${pos.x.toFixed(0)} / ${pos.z.toFixed(0)}  Höhe ${pos.y.toFixed(0)} m (${(pos.y - Math.max(gh, 0)).toFixed(1)} ü.G.)\n` + HINT;

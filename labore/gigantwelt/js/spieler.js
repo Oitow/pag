@@ -1,7 +1,7 @@
 // Gigant-Welt: Steuerung (Joystick/Maus/Tasten), Flug, Physik, Kollision mit Voxeln und Bäumen.
 // createSpieler(K) -> { findSpawn(), move(dt), toggleFly() }. Setzt K.joy, K.look, K.keys.
 // Nutzt K: renderer, pos, yaw, pitch, vy, fly, grounded, flySpeed, upIn, $, isTouch, vox.dens + veg.treeL (lazy).
-import { heightAt, forestRaw } from './welt.js';
+import { heightAt, forestRaw, findeStart } from './welt.js';
 import { key } from './vegetation.js';
 
 export function createSpieler(K) {
@@ -9,21 +9,15 @@ export function createSpieler(K) {
   const keys = {};
   const joy = { id: null, ox: 0, oy: 0, x: 0, y: 0 }, look = { id: null, lx: 0, ly: 0 };
   K.keys = keys; K.joy = joy; K.look = look;
+  // Start über welt.js/findeStart (Wiese mit Wald in der Nähe); Blick zum dichtesten Wald im Umkreis.
   function findSpawn() {
-    for (let r = 0; r < 25000; r += 70) {
-      const steps = r === 0 ? 1 : Math.ceil(2 * Math.PI * r / 140);
-      for (let k = 0; k < steps; k++) {
-        const a = k / steps * Math.PI * 2, x = Math.cos(a) * r, z = Math.sin(a) * r;
-        if (forestRaw(x, z) > .05) continue;
-        const h = heightAt(x, z); if (h < 6 || h > 160) continue;
-        if (Math.hypot(heightAt(x + 4, z) - h, heightAt(x, z + 4) - h) / 4 > .12) continue;
-        for (let d = 0; d < 8; d++) {
-          const b = d / 8 * Math.PI * 2, tx = x + Math.cos(b) * 170, tz = z + Math.sin(b) * 170, th = heightAt(tx, tz);
-          if (forestRaw(tx, tz) > .7 && th > 3 && th < 260) return { x, z, yaw: Math.atan2(-Math.cos(b), -Math.sin(b)) };
-        }
-      }
+    const st = findeStart() || { x: 0, z: 0 };
+    let best = 0, bw = -1;
+    for (let d = 0; d < 8; d++) {
+      const b = d / 8 * Math.PI * 2, w = forestRaw(st.x + Math.cos(b) * 150, st.z + Math.sin(b) * 150);
+      if (w > bw) { bw = w; best = b; }
     }
-    return { x: 0, z: 0, yaw: 0 };
+    return { x: st.x, z: st.z, yaw: Math.atan2(-Math.cos(best), -Math.sin(best)) };
   }
   const el = renderer.domElement;
   el.addEventListener('pointerdown', e => {
@@ -60,7 +54,7 @@ export function createSpieler(K) {
     for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
       const c = K.veg.treeL.cache.get(key(cx + i, cz + j)); if (!c) continue;
       for (const t of c.trees) {
-        const dx = pos.x - t.x, dz = pos.z - t.z, d = Math.hypot(dx, dz), rr = t.H * (t.sp ? .028 : .032) * t.wf * 1.45 + .5;
+        const dx = pos.x - t.x, dz = pos.z - t.z, d = Math.hypot(dx, dz), rr = t.H * t.rs * t.wf * 1.45 + .5;
         if (d < rr && d > 1e-3) { pos.x = t.x + dx / d * rr; pos.z = t.z + dz / d * rr; }
       }
     }
