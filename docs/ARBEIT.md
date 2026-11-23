@@ -8,7 +8,6 @@
 |---|---|---|---|---|
 | Figurenlabor | Codex | character-lab-parcours | 23.11.2026 | Bewegung, Parcours und Übungsgegner |
 | welt, riesenwald-Boden, dorf (neu), tutorial | Claude (Weltgen + 5 Agents) | `claude/welt-startdorf` | 23.11. | Startdorf Erlenwacht, Bäche, Gras, Dorf-Assets, Licht, Dorf-Tutorial – Plan `docs/plaene/WELT-STARTDORF.md` |
-| Labor Gigant-Welt (`labore/gigantwelt/`) | Claude (+1 Agent) | `claude/gigantwelt-labor` | 23.11. | Riesige grab-/baubare Welt: verschönern, Speichern, Bäume fällen, Höhlen |
 
 ## Geteilte Dateien (nur beim Zusammenführen ändern)
 Diese Dateien fasst nur der **Zusammenführ-Schritt** an (ein eigener Branch/PR, nachdem die Modul-PRs drin sind),

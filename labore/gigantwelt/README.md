@@ -17,3 +17,8 @@ Ausprobieren: https://oitow.github.io/pag/labore/gigantwelt/
 ## Offen / Ideen
 Speichern (localStorage), Bäume fällen, echte Höhlen, Worker fürs Meshing, schöneres Licht/Nebel, Wasser.
 Wiederverwendbares später nach `engine/world/` (Clipmap, Voxel-Nahzone) – siehe AGENTS.md „Neues Wiederverwendbares → Engine“.
+
+## Speichern, Fällen, Optik
+- Bauten und gefällte Bäume werden automatisch in localStorage gespeichert; „Neu“ im Optionen-Panel löscht sie.
+- Bau-Modus „Fällen“ (R schaltet durch): entfernt den anvisierten Baum.
+- Höhennebel mit Luftperspektive (globale Fog-Chunks), Baumkronen mit Wind und warmem Durchscheinen, Wellen-Normalen auf dem Wasser.
