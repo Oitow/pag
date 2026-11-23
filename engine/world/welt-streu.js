@@ -1,12 +1,12 @@
 /**
  * @modul    welt-streu
  * @zweck    Streu-Objekte (Bäume, Felsen, Büsche, Bodendecker) für eine Kachel deterministisch aus Seed + Biom-Regeln setzen – mit Lücken an Wegen, Orten, Wasser, steilen Hängen und gesperrten Flächen (reine Logik)
- * @api      streuKachel(karte, kachel, {art,seed,dichte,regeln,frei(x,z,r)->bool,info(typ)->{radius,stammRadius}}) -> [{typ,v,x,y,z,rot,s,r}] ; STREU_ARTEN
+ * @api      streuKachel(karte, kachel, {art,seed,dichte,regeln,frei(x,z,r)->bool,info(typ)->{radius,stammRadius}}) -> [{typ,v,x,y,z,rot,s,r}] ; STREU_ARTEN ; UFER (v1.2: Ufer-Streu an Flüssen)
  * @beispiel
  *   import { streuKachel } from '../../engine/world/welt-streu.js';
  *   const objs = streuKachel(karte, { x0: 0, z0: 0, groesse: 64, cx: 0, cz: 0 }, { art: 'gross', seed: 7 });
  * @tags     welt, streu, vegetation, baeume, felsen, kachel, deterministisch, erlenwacht
- * @version  1.1.0
+ * @version  1.2.0
  * @status   entwurf
  * @three    nein
  */
@@ -20,6 +20,8 @@ const BAEUME = new Set(['eiche', 'buche', 'birke', 'ahorn', 'weide', 'tanne', 'f
 const FELSEN = new Set(['fels', 'felsbrocken', 'findling', 'felsplatte']);
 const NASS_OK = new Set(['schilf']);
 const rauschCache = new Map();
+/** Ufer von Fluss/Bach (bis 3.5 m über die Wasserkante): Schilf, Steine, Weiden – überstimmt das Biom. */
+export const UFER = { gross: [0.22, [['felsbrocken', 3], ['weide', 1.2], ['birke', 0.6]]], klein: [0.7, [['schilf', 4], ['grasbueschel', 1.5], ['farn', 1]]] };
 
 /** Wahl nach Gewicht mit u ∈ [0,1). */
 function waehle(liste, u) {
@@ -38,7 +40,8 @@ export function streuKachel(karte, k, { art = 'gross', seed = 1, dichte = 1, reg
   for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
     const gx = gx0 + i, gz = gz0 + j;
     const x = (gx + 0.05 + hash2(gx, gz, s0 + 1) * 0.9) * schritt, z = (gz + 0.05 + hash2(gx, gz, s0 + 2) * 0.9) * schritt;   // volle Zelle: keine gleichen Abstände
-    const h = karte.hoehe(x, z), b = karte.biom(x, z, h), r = regeln[b]?.[art];
+    const h = karte.hoehe(x, z), fl = karte.flussInfo?.(x, z), amUfer = fl && fl.d > fl.b * 0.55 && fl.d < fl.b + 3.5;
+    const b = karte.biom(x, z, h), r = (amUfer && b !== 'strand' ? UFER : regeln[b])?.[art];
     if (!r) continue;
     const maske = Math.min(1, Math.max(0, 0.65 + 0.8 * rausch(x / 45, z / 45) + 0.2 * rausch(x / 13 + 9, z / 13)));
     if (hash2(gx, gz, s0 + 3) >= r[0] * maske * dichte) continue;

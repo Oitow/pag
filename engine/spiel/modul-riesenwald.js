@@ -7,7 +7,7 @@
  *   const spiel = await createSpiel({ canvas, module: [WELT_MODUL, HIMMEL_MODUL, RIESENWALD_MODUL] });
  *   spiel.api('riesenwald').zahlen();
  * @tags     spiel, modul, wald, riesenbaum, urwald, laub, lod, kollision, daemmerwald
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    ja
  */
@@ -52,7 +52,13 @@ export const RIESENWALD_MODUL = {
       if (!wege.length) wege = [[{ x: tor.x, z: tor.z }, { x: l.x, z: l.z }, { x: l.x + (lx / ll) * 140, z: l.z + (lz / ll) * 140 }]];
       imGebiet = (x, z) => Math.hypot(x - l.x, z - l.z) < 260 && ((x - s.x) * lx + (z - s.z) * lz) / ll > 30;
     }
-    const frei = welt.wasserHoehe ? (x, z) => { const w = welt.wasserHoehe(x, z); return !(Number.isFinite(w) && w > boden(x, z) - 0.5); } : null;
+    const flussInfo = welt.karte?.flussInfo;   // Stamm + Wurzeln nicht in Bach/Fluss
+    const frei = welt.wasserHoehe ? (x, z, r = 0) => {
+      const w = welt.wasserHoehe(x, z);
+      if (Number.isFinite(w) && w > boden(x, z) - 0.5) return false;
+      const f = flussInfo?.(x, z);
+      return !f || f.d > f.b + r + 4;
+    } : null;
     const planOpts = { wege, imGebiet, varianten: VARIANTEN.map((v) => ({ radius: v.stammRadius, weite: v.wurzelWeite })), seed,
       wegBreite: o.wegBreite, tor, lichtung: lichtung ? { radius: 22, ...lichtung } : null, tiefe: niedrig ? o.tiefe * 0.75 : o.tiefe, max: niedrig ? Math.round(o.max * 0.7) : o.max, frei };
     const plan = planeRiesenwald(planOpts);

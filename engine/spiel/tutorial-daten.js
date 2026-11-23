@@ -6,11 +6,13 @@
  *   import { AUFGABEN_DATEN } from '../../engine/spiel/tutorial-daten.js';
  *   const a = createAufgaben({ daten: AUFGABEN_DATEN, ... }); a.starte('erwachen');
  * @tags     spiel, tutorial, aufgaben, quest, daten, dialog
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  *
  * Erweiterungen je Aufgabe: geber (NPC-Id), intro (Text-Liste im Chat). Je Schritt: sagt (Dialogzeilen bei sprich-mit), hinweis.
+ * NPC-Feld punkt: Dorf-Punkt-Id (Modul dorf); ohne Dorf gilt ort + versatz. Schritt-Feld punkt (gehe-zu) wie bei gameplay/aufgaben, Fallback ort.
+ * Art 'ereignis' (was = brunnen | gebunden | anschlagbrett | amboss | feuer) braucht das Dorf; ohne Dorf gilt sie als erfüllt.
  * Benutze-Schritte: was = 'springen' | 'sprint' | 'kamera' | 'beute' | 'ausruesten' | 'stufe-4' | 'talent'. Besiege: ziel = Gegner-Art (ent.daten.art, Boss = 'boss'), '*' = jeder Gegner.
  */
 
@@ -18,9 +20,21 @@ export const NPC_DATEN = Object.freeze({
   alwe: { id: 'alwe', name: 'Alwe', ort: 'start', versatz: { x: 1.5, z: -4 }, vorlage: 'jaegerin',
     begruessung: ['Hey, du bist wach! Das Meer hat dich ausgespuckt.', 'Ich bin Alwe. Komm, ich zeige dir, wie man hier überlebt.'],
     floskeln: ['Geh nach Norden zum Waldtor, ich halte hier die Stellung.', 'Pass auf dich auf da draußen.'] },
-  brandt: { id: 'brandt', name: 'Hauptmann Brandt', ort: 'siedlung', versatz: { x: 4, z: 6 }, vorlage: 'wache',
+  brandt: { id: 'brandt', name: 'Hauptmann Brandt', ort: 'siedlung', versatz: { x: 4, z: 6 }, punkt: 'npc-wache', vorlage: 'wache',
     begruessung: ['Wer da? Ah, ein Neuer. Willkommen in Erlenwacht.'],
     floskeln: ['Die Wache schläft nie. Halt die Augen offen.', 'Gut, dass du da bist.'] },
+  hedda: { id: 'hedda', name: 'Wirtin Hedda', ort: 'siedlung', versatz: { x: -6, z: 8 }, punkt: 'npc-wirt', vorlage: 'baeuerin',
+    begruessung: ['Setz dich, Wanderer, der Eintopf ist noch warm.'],
+    floskeln: ['Ein warmes Bett und ein voller Teller – mehr braucht keiner.', 'Wer müde ist, rastet bei mir. Das Feuer brennt immer.'] },
+  oskar: { id: 'oskar', name: 'Schmied Oskar', ort: 'siedlung', versatz: { x: 9, z: -3 }, punkt: 'npc-schmied', vorlage: 'schmied',
+    begruessung: ['Hmpf. Kundschaft.'],
+    floskeln: ['Scharfes Eisen, ruhige Hand. So gewinnt man Kämpfe.', 'Bring mir Erz aus dem Hochland, dann reden wir.'] },
+  mira: { id: 'mira', name: 'Händlerin Mira', ort: 'siedlung', versatz: { x: -3, z: -7 }, punkt: 'npc-haendler', vorlage: 'haendler',
+    begruessung: ['Na, was darf es sein?'],
+    floskeln: ['Heiltränke, Tand und Gerüchte – alles zu fairen Preisen.', 'Aus dem Nebelmoor bringe ich nur Geschichten mit. Die sind gratis.'] },
+  ilse: { id: 'ilse', name: 'Schwester Ilse', ort: 'siedlung', versatz: { x: -9, z: 2 }, punkt: 'npc-priester', vorlage: 'magierin',
+    begruessung: ['Friede mit dir, Wanderer.'],
+    floskeln: ['Der Schrein hält deine Seele fest, wenn die Welt dich fallen lässt.', 'Bind dich an den Schrein – dann findest du immer hierher zurück.'] },
 });
 
 /** Orte, die (noch) fehlen dürfen: der Schritt läuft dann ohne Wegpunkt. */
@@ -51,18 +65,31 @@ export const AUFGABEN_DATEN = [
     ],
   },
   {
-    id: 'waldweg', name: 'Durch den Dämmerwald', geber: 'alwe', danach: 'hochland', belohnung: { xp: 150, gegenstaende: ['manatrank'] },
+    id: 'waldweg', name: 'Durch den Dämmerwald', geber: 'alwe', danach: 'dorf', belohnung: { xp: 150, gegenstaende: ['manatrank'] },
     intro: ['Alwe: Folge dem Weg zwischen den Riesen. Hauptmann Brandt wartet in Erlenwacht.'],
     schritte: [
       { id: 'lichtung', art: 'gehe-zu', ort: 'lichtung', radius: 25, text: 'Folge dem Weg bis zur Lichtung.' },
       { id: 'siedlung', art: 'gehe-zu', ort: 'siedlung', radius: 30, text: 'Erreiche die Siedlung Erlenwacht.' },
+    ],
+  },
+  {
+    id: 'dorf', name: 'Willkommen in Erlenwacht', geber: 'brandt', danach: 'hochland', belohnung: { xp: 120, gegenstaende: ['heiltrank'] },
+    intro: ['Brandt: Komm rein, Wanderer. Ich zeige dir, wo hier was zu finden ist.'],
+    schritte: [
+      { id: 'brunnen', art: 'gehe-zu', punkt: 'brunnen', ort: 'siedlung', radius: 6, text: 'Geh zum Brunnen auf dem Dorfplatz.', hinweis: 'Am Brunnen treffen sich alle Spieler.' },
       { id: 'brandt', art: 'sprich-mit', ziel: 'brandt', text: 'Sprich mit Hauptmann Brandt.',
-        sagt: ['Willkommen in Erlenwacht, Wanderer. Alwe hat dich angekündigt.', 'Im Hochland sammeln sich Wölfe und Keiler. Wir kommen kaum noch zu den Feldern.', 'Räum das Lager dort aus, dann reden wir weiter.'] },
+        sagt: ['Willkommen in Erlenwacht, Wanderer. Alwe hat dich angekündigt.', 'Der Brunnen ist unser Treffpunkt. Wer Gesellschaft sucht, findet sie hier.', 'Der Schrein dort drüben ist wichtiger, als er aussieht. Geh hin und binde dich.'] },
+      { id: 'schrein', art: 'ereignis', was: 'gebunden', punkt: 'schrein', text: 'Binde dich am Schrein.', hinweis: 'Fällst du im Kampf, erwachst du hier wieder.' },
+      { id: 'brett', art: 'ereignis', was: 'anschlagbrett', punkt: 'anschlagbrett', text: 'Lies das Anschlagbrett.', hinweis: 'Dort hängen Aufträge für Abenteurer.' },
+      { id: 'oskar', art: 'sprich-mit', ziel: 'oskar', text: 'Sprich mit Schmied Oskar.',
+        sagt: ['Neu hier? Dann trägst du bestimmt Schrott.', 'Am Amboss schärfe ich Klingen und flicke Rüstungen. Fürs Anlegen brauchst du mich nicht, aber ich helfe gern.', 'Bring mir Erz aus dem Hochland, dann mache ich mehr daraus.'] },
+      { id: 'hedda', art: 'sprich-mit', ziel: 'hedda', text: 'Besuche Wirtin Hedda in der Taverne.',
+        sagt: ['Willkommen im Eichenkrug! Setz dich ans Feuer.', 'Hier rastest du und kommst wieder zu Kräften. Das Bett ist umsonst, der Eintopf nicht.', 'Brandt sucht Leute fürs Hochland. Die Wölfe werden dreist.'] },
     ],
   },
   {
     id: 'hochland', name: 'Das Hochland', geber: 'brandt', danach: 'moor', belohnung: { xp: 400, gegenstaende: ['heiltrank'] },
-    intro: ['Brandt: Das Hochlandlager liegt östlich der Siedlung.'],
+    intro: ['Brandt: Im Hochland sammeln sich Wölfe und Keiler, wir kommen kaum noch zu den Feldern. Das Lager liegt östlich der Siedlung.'],
     schritte: [
       { id: 'lager', art: 'besiege', ziel: '*', anzahl: 6, ort: 'lager-hochland', text: 'Besiege 6 Gegner im Hochlandlager.' },
       { id: 'stufe', art: 'benutze', was: 'stufe-4', text: 'Erreiche Stufe 4.' },

@@ -1,14 +1,14 @@
 /**
  * @modul    welt-regionen
- * @zweck    Erlenwacht-Weltkarte als reine Logik: Regionen (Küste, Dämmerwald, Talkessel, Moor, Hochland, Gebirge), Orte, Wege und eine punktweise, seedbare Höhe (entlang der Wege geglättet), Wasser, Biome, Bodenfarben und Streu-Regeln; v1.1: weicher Kartenrand (Meer Süd/Ost, Gebirgskette Nord/West), Fluss Gebirge→Hochland→Moor mit Furt, Hügelwellen, Felsnadeln, Moor-Tümpel, Wolfsfels-Terrasse
- * @api      createWeltRegionen({seed}) -> {hoehe(x,z),wasserHoehe(x,z,h?),region(x,z)->{id,name,biom},biom(x,z,h?),farbe(x,z,h,steil,aus),wegInfo(x,z)->{d,h},abstandZumWeg(x,z),regionen,orte,ort(id),wege,startPunkt,groesse,meerZ(x),moor,fluss:{proben:[{x,z,y,b}],furt:{x,z}},flussInfo(x,z)->{d,y,b}} ; STREU {biom: {gross:[p,[[typ,w]…]], klein:[p,[[typ,w]…]]}} ; MOOR_WASSER
+ * @zweck    Erlenwacht-Weltkarte als reine Logik: Regionen (Küste, Dämmerwald, Talkessel, Moor, Hochland, Gebirge), Orte, Wege und eine punktweise, seedbare Höhe (entlang der Wege geglättet), Wasser, Biome, Bodenfarben und Streu-Regeln; v1.1: weicher Kartenrand (Meer Süd/Ost, Gebirgskette Nord/West), Fluss Gebirge→Hochland→Moor mit Furt, Hügelwellen, Felsnadeln, Moor-Tümpel, Wolfsfels-Terrasse; v1.2: mehrere Flüsse (fluesse), Erlbach Hochland→Ostrand Erlenwacht→Klamm→Dämmerwald→Strand
+ * @api      createWeltRegionen({seed}) -> {hoehe(x,z),wasserHoehe(x,z,h?),region(x,z)->{id,name,biom},biom(x,z,h?),farbe(x,z,h,steil,aus),wegInfo(x,z)->{d,h},abstandZumWeg(x,z),regionen,orte,ort(id),wege,startPunkt,groesse,meerZ(x),moor,fluss:{proben:[{x,z,y,b}],furt:{x,z}},flussInfo(x,z)->{d,y,b,id},fluesse:[{id,name,proben}]} ; STREU {biom: {gross:[p,[[typ,w]…]], klein:[p,[[typ,w]…]]}} ; MOOR_WASSER
  * @beispiel
  *   import { createWeltRegionen } from '../../engine/world/welt-regionen.js';
  *   const k = createWeltRegionen({ seed: 7 });
  *   const y = k.hoehe(0, 600);                    // Talkessel der Siedlung
  *   const r = k.region(-1200, 400).id;            // 'moor'
  * @tags     welt, karte, regionen, orte, wege, hoehe, terrain, erlenwacht, mmo
- * @version  1.1.0
+ * @version  1.2.0
  * @status   entwurf
  * @three    nein
  */
@@ -23,6 +23,9 @@ const WOLFSFELS = { x: -150, z: -520, r: 22 };      // flache Felsterrasse im Ü
 const AUSSICHT_MOOR = { x: -1640, z: 180 };          // Bult am Fuß der Westkette
 const FURT = { x: 195, z: -190 };                    // Hauptweg quert den Fluss
 // Fluss: Gebirge (NO) → Hochland → Furt → Westen → Nebelmoor (Kontrollpunkte, als glatte Kurve gezogen)
+// Erlbach: Quelle im Hochland → Ostrand Erlenwacht → Klamm durch den Höhenrücken → Dämmerwald → Mündung neben dem Startstrand
+const ERLBACH_PUNKTE = [[262, 372], [205, 455], [150, 545], [124, 630], [150, 700], [205, 750], [262, 800], [296, 875], [292, 975], [250, 1110],
+  [196, 1290], [152, 1470], [104, 1650], [68, 1820], [56, 1990]];
 const FLUSS_PUNKTE = [[250, -1150], [300, -900], [345, -690], [330, -480], [275, -310], [FURT.x + 70, FURT.z - 46], [FURT.x, FURT.z], [FURT.x - 70, FURT.z + 46],
   [40, -30], [-140, 40], [-340, 140], [-520, 260], [-700, 370], [-840, 440]];
 
@@ -210,23 +213,29 @@ export function createWeltRegionen({ seed = 1 } = {}) {
     return info;
   }
 
-  // Fluss: glatte Kurve (Catmull-Rom, leichte Mäander) mit Dichte ~12 m; Wasserspiegel y fällt nur (laufender Mindestwert), Furt flach, Mündung im Moorwasser
-  const P = FLUSS_PUNKTE, dicht = [];
-  for (let i = 0; i < P.length - 1; i++) {
-    const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(P.length - 1, i + 2)];
-    const n = Math.max(2, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / 12));
-    for (let k = 0; k < n; k++) {
-      const t = k / n, t2 = t * t, t3 = t2 * t, f = (a, b, c, d) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
-      dicht.push({ x: f(p0[0], p1[0], p2[0], p3[0]), z: f(p0[1], p1[1], p2[1], p3[1]) });
+  // Flüsse: glatte Kurven (Catmull-Rom, leichte Mäander) mit Dichte ~12 m; Wasserspiegel y fällt nur (laufender Mindestwert).
+  // Hauptfluss: Furt flach, Mündung im Moorwasser. Erlbach: Quelle im Hochland, Ostrand des Dorfes, Klamm, Dämmerwald, Mündung am Strand.
+  function kurve(P, maeander, seedV) {
+    const dicht = [];
+    for (let i = 0; i < P.length - 1; i++) {
+      const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(P.length - 1, i + 2)];
+      const n = Math.max(2, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / 12));
+      for (let k = 0; k < n; k++) {
+        const t = k / n, t2 = t * t, t3 = t2 * t, f = (a, b, c, d) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+        dicht.push({ x: f(p0[0], p1[0], p2[0], p3[0]), z: f(p0[1], p1[1], p2[1], p3[1]) });
+      }
     }
+    dicht.push({ x: P[P.length - 1][0], z: P[P.length - 1][1] });
+    dicht.forEach((q, i) => {   // Mäander quer zur Fließrichtung
+      const a = dicht[Math.max(0, i - 1)], b = dicht[Math.min(dicht.length - 1, i + 1)], l = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+      const m = n4(i / 9, seedV) * maeander(q);
+      q.x += -(b.z - a.z) / l * m; q.z += (b.x - a.x) / l * m;
+    });
+    return dicht;
   }
-  dicht.push({ x: P[P.length - 1][0], z: P[P.length - 1][1] });
-  dicht.forEach((q, i) => {   // Mäander quer zur Fließrichtung, nicht an der Furt
-    const a = dicht[Math.max(0, i - 1)], b = dicht[Math.min(dicht.length - 1, i + 1)], l = Math.hypot(b.x - a.x, b.z - a.z) || 1;
-    const m = n4(i / 9, 4.4) * 14 * smoothstep(40, 120, Math.hypot(q.x - FURT.x, q.z - FURT.z));
-    q.x += -(b.z - a.z) / l * m; q.z += (b.x - a.x) / l * m;
-  });
-  {
+  const fluesse = [];
+  {   // Hauptfluss
+    const dicht = kurve(FLUSS_PUNKTE, (q) => 14 * smoothstep(40, 120, Math.hypot(q.x - FURT.x, q.z - FURT.z)), 4.4);
     const fHoehe = Math.max(0.6, wegInfo(FURT.x, FURT.z).h);
     let lauf = Infinity;
     const roh0 = dicht.map((q) => roh(q.x, q.z));
@@ -240,30 +249,55 @@ export function createWeltRegionen({ seed = 1 } = {}) {
       lauf = Math.min(lauf, y); q.y = lauf;
       const lauflaenge = i / (dicht.length - 1), furtNah = 1 - smoothstep(25, 80, df);
       q.b = lerp(3.2, 7.5, lauflaenge) * (1 + 0.35 * furtNah);
-      q.tiefe = lerp(1.4, 0.4, furtNah); q.hang = lerp(0.3, 0.1, furtNah);
+      q.tiefe = lerp(1.4, 0.4, furtNah); q.hang = lerp(0.3, 0.1, furtNah); q.rand = 14;
     });
+    fluesse.push({ id: 'fluss', name: 'Grauwasser', dicht });
   }
-  const fSeg = new Map(), FZ = 64, FM = 34;   // Raster: Zelle → Segmente, deren Kasten (+ Rand) sie berührt
-  for (let i = 0; i < dicht.length - 1; i++) {
-    const a = dicht[i], b = dicht[i + 1], r = Math.max(a.b, b.b) + FM;
-    for (let cz = Math.floor((Math.min(a.z, b.z) - r) / FZ); cz <= Math.floor((Math.max(a.z, b.z) + r) / FZ); cz++)
-      for (let cx = Math.floor((Math.min(a.x, b.x) - r) / FZ); cx <= Math.floor((Math.max(a.x, b.x) + r) / FZ); cx++) {
-        const key = cx * 4096 + cz; const l = fSeg.get(key); if (l) l.push(i); else fSeg.set(key, [i]);
-      }
+  {   // Erlbach: schmal, Bett folgt dem geglätteten Boden, nahe dem Meer auf 0 auslaufend
+    const dicht = kurve(ERLBACH_PUNKTE, (q) => 6 * smoothstep(1700, 1500, q.z), 7.9);
+    let lauf = Infinity;
+    const roh0 = dicht.map((q) => roh(q.x, q.z));
+    dicht.forEach((q, i) => {
+      let mn = Infinity;
+      for (let j = Math.max(0, i - 3); j <= Math.min(dicht.length - 1, i + 3); j++) mn = Math.min(mn, roh0[j]);
+      let y = mn - 0.35;
+      y = lerp(y, -0.2, smoothstep(1840, 1930, q.z));
+      lauf = Math.min(lauf, y); q.y = lauf;
+      const t = i / (dicht.length - 1);
+      q.b = lerp(1.1, 3.2, t); q.tiefe = lerp(0.5, 0.9, t); q.hang = 0.3;
+      q.rand = clamp((roh0[i] - q.y) * 2.4, 12, 32);   // tiefe Klamm → breitere Böschung
+    });
+    fluesse.push({ id: 'erlbach', name: 'Erlbach', dicht });
   }
-  const fi = { d: 1e9, y: 0, b: 0, tiefe: 1, hang: 0.3 };
-  /** Nächster Flusspunkt: Abstand d, Wasserspiegel y, halbe Breite b (d = 1e9 → kein Fluss in der Nähe). */
+  const dicht = fluesse[0].dicht;
+  const fSeg = new Map(), FZ = 64, FM = 38;   // Raster: Zelle → [Fluss, Segment], deren Kasten (+ Rand) sie berührt
+  fluesse.forEach((fl, fiNr) => {
+    const D = fl.dicht;
+    for (let i = 0; i < D.length - 1; i++) {
+      const a = D[i], b = D[i + 1], r = Math.max(a.b, b.b) + FM;
+      for (let cz = Math.floor((Math.min(a.z, b.z) - r) / FZ); cz <= Math.floor((Math.max(a.z, b.z) + r) / FZ); cz++)
+        for (let cx = Math.floor((Math.min(a.x, b.x) - r) / FZ); cx <= Math.floor((Math.max(a.x, b.x) + r) / FZ); cx++) {
+          const key = cx * 4096 + cz, l = fSeg.get(key), e = fiNr * 100000 + i;
+          if (l) l.push(e); else fSeg.set(key, [e]);
+        }
+    }
+  });
+  const fi = { d: 1e9, y: 0, b: 0, tiefe: 1, hang: 0.3, rand: 14, id: '' };
+  /** Nächster Flusspunkt (aller Flüsse): Abstand d, Wasserspiegel y, halbe Breite b, id (d = 1e9 → kein Fluss in der Nähe). */
   function flussInfo(x, z) {
     fi.d = 1e9;
     const l = fSeg.get(Math.floor(x / FZ) * 4096 + Math.floor(z / FZ));
     if (!l) return fi;
-    let best = Infinity, bi = 0, bt = 0;
-    for (const i of l) {
-      const a = dicht[i], b = dicht[i + 1], [d2, t] = strecke(x, z, a, b);
-      if (d2 < best) { best = d2; bi = i; bt = t; }
+    let best = Infinity, bD = null, bi = 0, bt = 0, bId = '';
+    for (const e of l) {
+      const fl = fluesse[Math.floor(e / 100000)], i = e % 100000, D = fl.dicht;
+      const [d2, t] = strecke(x, z, D[i], D[i + 1]);
+      // weichster Vergleich: Abstand relativ zur Breite (ein schmaler Bach neben dem breiten Fluss gewinnt nicht falsch)
+      const g = Math.sqrt(d2) - lerp(D[i].b, D[i + 1].b, t);
+      if (g < best) { best = g; bD = D; bi = i; bt = t; bId = fl.id; }
     }
-    const a = dicht[bi], b = dicht[bi + 1];
-    fi.d = Math.sqrt(best); fi.y = lerp(a.y, b.y, bt); fi.b = lerp(a.b, b.b, bt); fi.tiefe = lerp(a.tiefe, b.tiefe, bt); fi.hang = lerp(a.hang, b.hang, bt);
+    const a = bD[bi], b = bD[bi + 1], [d2] = strecke(x, z, a, b);
+    fi.d = Math.sqrt(d2); fi.y = lerp(a.y, b.y, bt); fi.b = lerp(a.b, b.b, bt); fi.tiefe = lerp(a.tiefe, b.tiefe, bt); fi.hang = lerp(a.hang, b.hang, bt); fi.rand = lerp(a.rand, b.rand, bt); fi.id = bId;
     return fi;
   }
   function hoehe(x, z) {
@@ -271,9 +305,9 @@ export function createWeltRegionen({ seed = 1 } = {}) {
     const w = wegInfo(x, z);
     if (w.d <= 18) h = lerp(w.h, h, smoothstep(w.breite, w.breite + 14, w.d));
     const f = flussInfo(x, z);
-    if (f.d < f.b + 14) {
+    if (f.d < f.b + f.rand) {
       const q = f.d / f.b, tgt = f.d < f.b ? f.y - f.tiefe * (1 - q * q) : f.y + (f.d - f.b) * f.hang;
-      h = lerp(h, tgt, 1 - smoothstep(f.b, f.b + 14, f.d));
+      h = lerp(h, tgt, 1 - smoothstep(f.b, f.b + f.rand, f.d));
     }
     return h;
   }
@@ -334,6 +368,7 @@ export function createWeltRegionen({ seed = 1 } = {}) {
   return {
     hoehe, wasserHoehe, region, biom, farbe, wegInfo, meerZ, roh, flussInfo,
     fluss: { proben: dicht.map((q) => ({ x: q.x, z: q.z, y: q.y, b: q.b })), furt: { ...FURT } },
+    fluesse: fluesse.map((f) => ({ id: f.id, name: f.name, proben: f.dicht.map((q) => ({ x: q.x, z: q.z, y: q.y, b: q.b })) })),
     abstandZumWeg: (x, z) => wegInfo(x, z).d,
     regionen: REGIONEN.map((r) => ({ ...r, mitte: { ...r.mitte } })),
     orte: ORTE.map((o) => ({ ...o })),

@@ -1,5 +1,15 @@
 # Engine-Changelog
 
+## 2026-11-23 – Startdorf Erlenwacht, Erlbach, Gras (Welt v3, Bauplan docs/plaene/WELT-STARTDORF.md)
+- spiel/modul-dorf 1.0.0 (neu, Stufe spiel): Dorf am Ort 'siedlung' – Plan, Gebäude/Kleinkram mit Kollision, Nachtlicht, Platz/Gassen/Felder, Brücke über den Erlbach, Stationen Brunnen/Schrein/Anschlagbrett/Amboss/Feuer (Ereignisse dorf:benutzt, dorf:gebunden), Schrein = Wiedererscheinen
+- world/dorf-plan 1.0.0 + dorf-plan-kern (neu, ohne THREE): handgesetzter Platz-Kern + prozedurale Häuser, Gärten, Zäune, Laternen, Palisade, Felder, NPC-Punkte, pruefe()
+- models/bau/dorf-teile 1.0.0 (neu): Brücke (begehbar), Holzstapel, Karren, Beet ×3, Anschlagbrett, Schrein, Palisade, Heuhaufen, Steg
+- render/bau-instanzen 1.0.0, render/licht-pool 1.0.0 (neu): Bau-Assets als Instanzen + Kollision + Anker; wenige PointLights wandern zu den nächsten Laternen/Fackeln/Feuern, flackern, nachts an
+- world/gras-feld 1.0.0 (neu): wogendes Gras um den Fokus, ein Draw-Call, Wind, weicher Rand; world/fluss-mesh 1.0.0 (neu): Wasserband aller Flüsse mit Strömung + Schaum
+- world/welt-regionen 1.2.0 (additiv): `fluesse` (mehrere Flüsse), Erlbach Hochland → Dorf → Klamm → Dämmerwald → Strand; flussInfo liefert id/rand. world/welt-streu 1.2.0 (additiv: Ufer-Streu UFER)
+- spiel/modul-welt 1.2.0 (additiv: Gras, neues Wasser, `fluesse`, sperreObjekte auch als Liste, `?gras=0`), modul-riesenwald 1.1.0 (Riesen nicht in Bächen)
+- gameplay/aufgaben 1.1.0 (additiv: Art 'ereignis', punktVon), spiel/modul-tutorial 1.1.0 + tutorial-daten 1.1.0: Dorf-Kette „Willkommen in Erlenwacht“, NPCs Hedda, Oskar, Mira, Ilse
+
 ## 2026-11-23 – Aufräumen: Modul-Register, Testfeld, neue Ordner
 - spiel/module-register 1.0.0 (neu): Stufen labor → testfeld → spiel je Modul, Zuständigkeit (bausteine), Auswahl mit Abhängigkeiten (`?nur=`), Prüfung
 - spiel/module 1.0.0 (neu): alle Modul-Objekte an einer Stelle, `moduleFuer({stufe, nur})` – ersetzt erlenwacht/js/module-liste.js

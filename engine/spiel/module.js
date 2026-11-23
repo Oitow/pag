@@ -25,10 +25,11 @@ import { FORTSCHRITT_MODUL } from './modul-fortschritt.js';
 import { KAMPF_MODUL } from './modul-kampf.js';
 import { TUTORIAL_MODUL } from './modul-tutorial.js';
 import { OBERFLAECHE_MODUL } from './modul-oberflaeche.js';
+import { DORF_MODUL } from './modul-dorf.js';
 import { MODUL_REGISTER, waehle } from './module-register.js';
 
 export const ALLE_MODULE = Object.freeze(Object.fromEntries([
-  WELT_MODUL, HIMMEL_MODUL, RIESENWALD_MODUL, ENTITAETEN_MODUL, SPIELER_MODUL, BEWOHNER_MODUL, GEGNER_MODUL, ZAUBER_MODUL,
+  WELT_MODUL, HIMMEL_MODUL, RIESENWALD_MODUL, DORF_MODUL, ENTITAETEN_MODUL, SPIELER_MODUL, BEWOHNER_MODUL, GEGNER_MODUL, ZAUBER_MODUL,
   FORTSCHRITT_MODUL, KAMPF_MODUL, TUTORIAL_MODUL, OBERFLAECHE_MODUL,
 ].map((m) => [m.name, m])));
 
