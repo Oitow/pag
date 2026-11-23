@@ -2,7 +2,7 @@
 // createHimmel(K) -> { setSun(elGrad, azGrad), placeShadowCam(), follow(pos), updatePollen(now, dt), pollen, sunDir }
 // Setzt K.hemi, K.sun, K.SH. Nutzt K: scene, camera, $, Q, shadowsOn, pos.
 import * as THREE from 'three';
-import { ss } from './rauschen.js';
+import { ss } from './welt.js';
 
 export function createHimmel(K) {
   const { scene, camera, $, pos } = K;

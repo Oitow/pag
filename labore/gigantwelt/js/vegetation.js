@@ -4,7 +4,7 @@
 // Nutzt K: scene, camera, U, Q, yaw, pitch, SH, forceRebuild, vox.scheduleSave (lazy).
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
-import { gn, ss, heightAt, forestRaw, rngFrom, cellSeed } from './rauschen.js';
+import { gn, ss, heightAt, forestRaw, rngFrom, cellSeed } from './welt.js';
 
 export function offsets(rc) { const o = []; for (let z = -rc; z <= rc; z++) for (let x = -rc; x <= rc; x++) if (x * x + z * z <= rc * rc) o.push([x, z, Math.hypot(x, z)]); o.sort((a, b) => a[2] - b[2]); return o; }
 export const key = (x, z) => (x + 60000) * 120000 + (z + 60000);

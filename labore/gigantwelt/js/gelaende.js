@@ -30,7 +30,7 @@ export function hoeheAt(x, z) {
 }
 
 export const duneRaw = (x, z) => ss(.1, .4, fbm(x - 9000, z + 4000, 2, 1 / 6000));
-const waldRoh = (x, z) => ss(-.05, .25, fbm(x + 2222, z - 1111, 3, 1 / 1300));
+export const waldRoh = (x, z) => ss(-.05, .25, fbm(x + 2222, z - 1111, 3, 1 / 1300));
 // Wald-Dichte 0..1 ohne Hangneigung (GPU: forestG): nicht über ~1400 m, nicht in Dünen, nicht im Wasser.
 export function waldAt(x, z, h) { return waldRoh(x, z) * (1 - ss(1000, 1400, h)) * (1 - duneRaw(x, z)) * (h > 1.5 ? 1 : 0); }
 

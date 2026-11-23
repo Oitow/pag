@@ -2,7 +2,7 @@
 // createBauen(K) -> { update(now) } (pro Frame: Ziel suchen, Vorschau setzen, bei gedrücktem Bauen ausführen).
 // Nutzt K: renderer, camera, scene, pos, $, fly, yaw, look, vox (raycast/applyEdits/PAL/VS), veg (treeL/fellTree).
 import * as THREE from 'three';
-import { heightAt } from './rauschen.js';
+import { heightAt } from './welt.js';
 import { key } from './vegetation.js';
 
 export function createBauen(K) {

@@ -1,7 +1,7 @@
 // Gigant-Welt: Steuerung (Joystick/Maus/Tasten), Flug, Physik, Kollision mit Voxeln und Bäumen.
 // createSpieler(K) -> { findSpawn(), move(dt), toggleFly() }. Setzt K.joy, K.look, K.keys.
 // Nutzt K: renderer, pos, yaw, pitch, vy, fly, grounded, flySpeed, upIn, $, isTouch, vox.dens + veg.treeL (lazy).
-import { heightAt, forestRaw } from './rauschen.js';
+import { heightAt, forestRaw } from './welt.js';
 import { key } from './vegetation.js';
 
 export function createSpieler(K) {

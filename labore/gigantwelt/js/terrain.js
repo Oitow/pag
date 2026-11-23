@@ -2,7 +2,7 @@
 // createTerrain(K) -> { LEVELS, water, build(N), update(x, z), levels (Getter), markMaterials() }
 // Nutzt K: scene, U (uCam, uTime, uMask …). Terrain-Shader blendet über U.uMask die Voxel-Zone aus.
 import * as THREE from 'three';
-import { GLSL_NOISE, FRAG_COMMON } from './rauschen.js';
+import { GLSL_NOISE, FRAG_COMMON } from './welt.js';
 
 export function createTerrain(K) {
   const { scene, U } = K;

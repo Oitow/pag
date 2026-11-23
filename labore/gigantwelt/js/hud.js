@@ -2,7 +2,7 @@
 // createHud(K) -> { update(now), applyQuality(key), setShadows(on), HINT }
 // Nutzt K: renderer, sun, U, $, isTouch, DPR, PRESETS, Q, qKey, maxPR, curPR, shadowsOn, forceRebuild, flySpeed,
 //   terrain, veg, vox, himmel (lazy; erst beim Aufruf gebraucht).
-import { heightAt } from './rauschen.js';
+import { heightAt } from './welt.js';
 
 export function createHud(K) {
   const { renderer, sun, U, $, isTouch, DPR, PRESETS, pos } = K;

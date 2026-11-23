@@ -1,7 +1,7 @@
 // Gigant-Welt: Einstieg – baut den gemeinsamen Kontext K, erzeugt die Module, Frame-Schleife und Start.
 // Modulreihenfolge: himmel, terrain, voxel, vegetation, spieler, bauen, hud (Querzugriffe über K.<modul> erst zur Laufzeit).
 import * as THREE from 'three';
-import { heightAt } from './rauschen.js';
+import { heightAt } from './welt.js';
 import { createHimmel } from './himmel.js';
 import { createTerrain } from './terrain.js';
 import { createVoxel } from './voxel.js';

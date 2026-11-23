@@ -3,7 +3,7 @@
 //   applyEdits(ops), scheduleSave(), loadWorld(), refreshStats(), vOffsLen (Getter), vPtr (Getter) }
 // Nutzt K: scene, U (setzt uMask/uMaskO), $, Q, veg (editOp/afterEdits/felled, lazy).
 import * as THREE from 'three';
-import { ss, heightAt, forestAt, FRAG_COMMON } from './rauschen.js';
+import { ss, heightAt, forestAt, FRAG_COMMON } from './welt.js';
 import { offsets } from './vegetation.js';
 
 export function createVoxel(K) {
