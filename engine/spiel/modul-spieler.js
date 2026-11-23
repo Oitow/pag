@@ -122,7 +122,6 @@ export const SPIELER_MODUL = {
       ab.push(bus.an('ent:tod', (d) => {
         if (d?.id !== id || tot) return;
         tot = true; totUhr = o.wiederbeleben; ziel = null; cam.lockOn(null); klettern.loslassen();
-        figur.stoppe('klettern'); kletterClip = false;
         figur.umfallen({ x: -Math.sin(motor.zustand.yaw), z: -Math.cos(motor.zustand.yaw) }, { welt: true });
         melde('tod');
       }));
@@ -156,7 +155,7 @@ export const SPIELER_MODUL = {
     ctx.dienst('fokus', () => figur.zustand.pos);
 
     const absicht = {};
-    let kletterClip = false, rollGesperrt = false, rollVorher = false, sprintete = false;
+    let rollGesperrt = false, rollVorher = false, sprintete = false;
     const api = {
       figur, kamera: cam, eingabe, ausdauer, klettern, teleport,
       get position() { return figur.zustand.pos; },
@@ -194,10 +193,8 @@ export const SPIELER_MODUL = {
           // Klettern zuerst (übernimmt Sprung/Ducken an der Wand)
           const kletterteVorher = klettern.klettert;
           klettern.update(dt, absicht);
-          if (klettern.klettert !== kletterClip) {
-            kletterClip = klettern.klettert;
-            if (kletterClip) { figur.spiele('klettern'); melde('klettern'); } else figur.stoppe('klettern');
-          }
+          // Die Figur leitet die Kletterpose aus dem Motor und der vertikalen Bewegung ab.
+          if (klettern.klettert && !kletterteVorher) melde('klettern');
           if (!klettern.klettert) {
             const bewegt = Math.hypot(absicht.x, absicht.z) > 0.3;
             // Sprint (gehalten) kostet; erschöpft → kein Sprint bis 30 %

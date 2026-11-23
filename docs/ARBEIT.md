@@ -6,6 +6,7 @@
 
 | Bereich / Modul | KI | Branch | Seit | Ziel |
 |---|---|---|---|---|
+| Figurenlabor | Codex | character-lab-parcours | 23.11.2026 | Bewegung, Parcours und Übungsgegner |
 | welt, riesenwald-Boden, dorf (neu), tutorial | Claude (Weltgen + 5 Agents) | `claude/welt-startdorf` | 23.11. | Startdorf Erlenwacht, Bäche, Gras, Dorf-Assets, Licht, Dorf-Tutorial – Plan `docs/plaene/WELT-STARTDORF.md` |
 
 ## Geteilte Dateien (nur beim Zusammenführen ändern)

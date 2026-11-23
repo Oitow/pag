@@ -1,13 +1,13 @@
 /**
  * @modul    character-anim-zustand
- * @zweck    Posen für Sonder-Zustände des Motors (rein): Rolle (rollAnteil), Luft-Dash, Salto beim Doppelsprung, Gleiten, Arme rudern an der Kante, Betäubt-Taumeln
+ * @zweck    Posen für Sonder-Zustände des Motors (rein): Rolle (rollAnteil), Luft-Dash, Salto beim Doppelsprung, Gleiten, Leiterklettern, Arme rudern an der Kante, Betäubt-Taumeln
  * @api      createZustandsSchicht() -> { update(dt,zustand,skal), anwenden(pose) -> pose, ausdruck, rolleW, saltoW, dispose() }
  * @beispiel
  *   import { createZustandsSchicht } from '../../engine/models/character/character-anim-zustand.js';
  *   const zs = createZustandsSchicht();
  *   zs.update(dt, motor.zustand, masse.hueftHoehe / 0.89); zs.anwenden(pose);   // nach allen anderen Schichten
  * @tags     figur, charakter, animation, rolle, dash, salto, gleiten, kante, betaeubt, motor
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    nein
  */
@@ -19,6 +19,9 @@ import { luftPose } from './character-gang.js';
 const TAU = Math.PI * 2;
 const GLEIT = { schulterL: [-0.2, 0, 1.45], schulterR: [-0.2, 0, -1.45], ellbogenL: [-0.1], ellbogenR: [-0.1], torso: [0.25], hals: [-0.2],
   huefteL: [0.15], huefteR: [0.25], knieL: [0.3], knieR: [0.4], fussL: [0.4], fussR: [0.4] };
+const GLEIT_MASKE = maskeVon('oben').concat(['huefteL', 'huefteR', 'knieL', 'knieR', 'fussL', 'fussR']);
+const KLETTERN = { schulterL: [-1.8, 0, 0.15], schulterR: [-1.8, 0, -0.15],
+  ellbogenL: [-0.65], ellbogenR: [-0.65], torso: [0.12], hals: [-0.18] };
 const DASH = { torso: [0.45], hals: [-0.35], kopf: [-0.15], schulterL: [0.6, 0, 0.35], schulterR: [0.6, 0, -0.35], ellbogenL: [-0.2], ellbogenR: [-0.2],
   huefteL: [0.35], huefteR: [0.1], knieL: [0.9], knieR: [0.5], fussL: [0.5], fussR: [0.5] };
 function pose(roh) {
@@ -29,8 +32,8 @@ function pose(roh) {
 
 /** Feldnamen wie character-motor 1.1.0: rollt, rollAnteil, dash, doppelSprung, gleitet, anKante, betaeubt (alle optional). */
 export function createZustandsSchicht() {
-  const P = { rolle: leerePose(), salto: leerePose(), gleit: pose(GLEIT), dash: pose(DASH) };
-  const st = { rolleW: 0, dashW: 0, gleitW: 0, salto: -1, saltoW: 0, kante: 0, betW: 0, zeit: 0, hc: 0.9 };
+  const P = { rolle: leerePose(), salto: leerePose(), gleit: pose(GLEIT), dash: pose(DASH), klettern: pose(KLETTERN) };
+  const st = { kletterW: 0, kletterPhase: 0, rolleW: 0, dashW: 0, gleitW: 0, salto: -1, saltoW: 0, kante: 0, betW: 0, zeit: 0, hc: 0.9 };
 
   function update(dt, z = {}, skal = 1) {
     dt = clamp(numOr(dt, 0), 0, 0.1);
@@ -43,6 +46,19 @@ export function createZustandsSchicht() {
     }
     st.dashW = damp(st.dashW, z.dash ? 1 : 0, 14, dt);
     st.gleitW = damp(st.gleitW, z.gleitet ? 1 : 0, 6, dt);
+    st.kletterW = damp(st.kletterW, z.klettert ? 1 : 0, 13, dt);
+    if (z.klettert) {
+      // Die Phase folgt der Höhe: Beim Halten bleiben Hände und Füße an der Sprosse.
+      st.kletterPhase = (st.kletterPhase + numOr(z.vel?.y, 0) * dt / Math.max(0.25, 0.92 * skal)) % 1;
+      const hub = Math.sin(TAU * st.kletterPhase);
+      const k = P.klettern;
+      k.schulterL.x = -1.8 - 0.52 * hub; k.schulterR.x = -1.8 + 0.52 * hub;
+      k.ellbogenL.x = -0.68 + 0.42 * hub; k.ellbogenR.x = -0.68 - 0.42 * hub;
+      k.huefteL.x = -0.67 + 0.42 * hub; k.huefteR.x = -0.67 - 0.42 * hub;
+      k.knieL.x = 0.88 - 0.52 * hub; k.knieR.x = 0.88 + 0.52 * hub;
+      k.fussL.x = -(k.huefteL.x + k.knieL.x); k.fussR.x = -(k.huefteR.x + k.knieR.x);
+      k.becken.z = 0.045 * hub; k.torso.z = -0.055 * hub;
+    }
     if (z.doppelSprung) st.salto = 0;
     if (z.amBoden !== false || z.imWasser) st.salto = -1;   // Landung bricht ab
     if (st.salto >= 0) {
@@ -63,7 +79,8 @@ export function createZustandsSchicht() {
   }
 
   function anwenden(p) {
-    if (st.gleitW > 1e-3) mischePose(p, P.gleit, st.gleitW, p, maskeVon('oben').concat(['huefteL', 'huefteR', 'knieL', 'knieR', 'fussL', 'fussR']));
+    if (st.gleitW > 1e-3) mischePose(p, P.gleit, st.gleitW, p, GLEIT_MASKE);
+    if (st.kletterW > 1e-3) mischePose(p, P.klettern, st.kletterW, p);
     if (st.dashW > 1e-3) mischePose(p, P.dash, st.dashW, p);
     if (st.saltoW) mischePose(p, P.salto, 1, p);
     if (st.rolleW > 1e-3) mischePose(p, P.rolle, st.rolleW, p);
@@ -82,14 +99,14 @@ export function createZustandsSchicht() {
     return p;
   }
 
-  const api = { update, anwenden, dispose() { st.salto = -1; st.rolleW = st.dashW = st.gleitW = st.betW = st.kante = 0; } };
+  const api = { update, anwenden, dispose() { st.salto = -1; st.kletterW = st.kletterPhase = st.rolleW = st.dashW = st.gleitW = st.betW = st.kante = 0; } };
   Object.defineProperties(api, {
     rolleW: { get: () => st.rolleW, enumerable: true },
     saltoW: { get: () => st.saltoW, enumerable: true },
     /** Vorschlag für die Mimik oder null. */
     ausdruck: { get: () => (st.betW > 0.5 ? 'benommen' : st.kante > 0 ? 'erschrocken' : null), enumerable: true },
     /** Gesamtgewicht der Ganzkörper-Übersteuerungen (Rolle/Dash/Salto) – Blick/Sekundär dämpfen. */
-    uebersteuert: { get: () => Math.max(st.rolleW, st.dashW, st.saltoW), enumerable: true },
+    uebersteuert: { get: () => Math.max(st.kletterW, st.rolleW, st.dashW, st.saltoW), enumerable: true },
   });
   return api;
 }

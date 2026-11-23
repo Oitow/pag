@@ -57,7 +57,7 @@ export function createAnimator(model, opts = {}) {
     ausZiel: null, yaw: 0, trefferUhr: 0,
   };
   const P = { gang: leerePose(), luft: leerePose(), schwimm: leerePose(), clip: leerePose(), fix: leerePose(),
-    final: leerePose(), letzte: leerePose(), von: leerePose(), tmp: leerePose() };
+    final: leerePose(), von: leerePose(), tmp: leerePose() };
   const ziele = {};
   let akt = null;                                   // { name, clip, t, zeit, tempo, mischung, aus, schleife, w }
   const fade = { t: 1, dauer: 0 };
@@ -65,7 +65,7 @@ export function createAnimator(model, opts = {}) {
   const api = { gewicht: 1, griff: false, ausdruck: null };
 
   function schnappschuss(dauer) {
-    kopierePose(P.letzte, P.von);
+    kopierePose(P.final, P.von);
     fade.t = 0; fade.dauer = Math.max(dauer, 1e-3);
   }
 
@@ -102,8 +102,13 @@ export function createAnimator(model, opts = {}) {
     // Landung: unterkritisch gedämpfte Feder (kurzes Nachfedern)
     const landung = numOr(z.landung, 0);
     if (landung > 0) { st.land = Math.max(st.land, clamp(landung / 10, 0.15, 1)); st.landV = Math.min(st.landV, 0); }
-    st.landV += (-160 * st.land - 16 * st.landV) * dt;
-    st.land += st.landV * dt;
+    if (st.land || st.landV) {
+      // Exakte Federlösung: auch bei seltenen NPC-Updates bleibt die Landung stabil.
+      const abfall = Math.exp(-8 * dt), c = Math.cos(Math.sqrt(96) * dt);
+      const s = Math.sin(Math.sqrt(96) * dt) / Math.sqrt(96), vorherLand = st.land;
+      st.land = abfall * (vorherLand * c + (st.landV + 8 * vorherLand) * s);
+      st.landV = abfall * (st.landV * c - (8 * st.landV + 160 * vorherLand) * s);
+    }
     if (Math.abs(st.land) < 1e-4 && Math.abs(st.landV) < 1e-3) st.land = st.landV = 0;
     idleLeben(st, r, dt);
 
@@ -213,7 +218,6 @@ export function createAnimator(model, opts = {}) {
     blick.anwenden(P.final, (1 - (akt && !teilMaske(akt.clip.maske) ? w : 0)) * (1 - fw) * (1 - ueb));
 
     if (api.gewicht < 1) mischePose(null, P.final, clamp(api.gewicht, 0, 1), P.final);
-    kopierePose(P.final, P.letzte);
     if (rig) {
       wendeAn(rig, P.final);
       const um = o.umhangSockel && sek && rig.sockel?.umhang;

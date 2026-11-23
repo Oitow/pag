@@ -32,3 +32,18 @@ test('Gleiten breitet die Arme, Kante rudert, betäubt taumelt (mit Ausdruck)', 
   assert.ok(zs.anwenden(leerePose()).hals.x > 0.2);
   zs.dispose(); assert.equal(zs.uebersteuert, 0);
 });
+
+test('Leiter: Höhe steuert Gegentakt, Stillstand hält den Griff, Abstieg kehrt die Bewegung um', () => {
+  const schicht = createZustandsSchicht();
+  const schritt = (y) => schicht.update(0.05, { klettert: true, amBoden: false, vel: { y } });
+  for (let i = 0; i < 30; i++) schritt(0);
+  schritt(4.6);
+  const oben = schicht.anwenden(leerePose());
+  assert.ok(oben.schulterL.x < oben.schulterR.x - 0.9);
+  assert.ok(oben.knieR.x > oben.knieL.x + 0.9);
+  schritt(0);
+  assert.ok(Math.abs(schicht.anwenden(leerePose()).schulterL.x - oben.schulterL.x) < 0.001);
+  schritt(-4.6);
+  const unten = schicht.anwenden(leerePose());
+  assert.ok(Math.abs(unten.schulterL.x - unten.schulterR.x) < 0.001);
+});

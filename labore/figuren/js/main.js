@@ -1,5 +1,7 @@
 // Figuren-Labor: Testgelände für das Figuren-System der Engine (Aussehen, Animation, Bewegung, Kamera, Eingabe, NPC-Steuerung).
 import * as THREE from 'three';
+import { createKlettern } from '../../../engine/gameplay/klettern.js';
+import { createParcours } from './parcours.js';
 import { createWelt } from './welt.js';
 import { createEditor } from './editor.js';
 import { createOberflaeche } from './oberflaeche.js';
@@ -55,7 +57,8 @@ sonne.shadow.mapSize.set(2048, 2048);   // Schatten-Kamera folgt dem Spieler (so
 Object.assign(sonne.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 80 });
 szene.add(sonne, sonne.target);
 
-const welt = createWelt(SEED);
+const parcours = !['gross', 'schlachtfeld'].includes(url.get('ort')) && !['plage','grossplage','schlachtfeld','schlacht'].some(k => url.get(k) === '1');
+const welt = parcours ? createParcours() : createWelt(SEED);
 szene.add(welt.gruppe);
 
 const schilder = createFigurSchilder();
@@ -82,6 +85,7 @@ function setAusruestung(name) {
   }
   return Object.values(haende).filter(Boolean).map(h => h.name);
 }
+const klettern = createKlettern({ welt: welt.kletterWelt ?? welt.adapter, motor: spieler.motor, anlauf: 0.08 });
 szene.add(spieler.root);
 setAusruestung('zauberstab');
 const klang = createKlang({ lautstaerke: 0.55, seed: SEED });
@@ -107,8 +111,8 @@ const npcs = [];
 let npcAn = true;
 function npcsErzeugen() {
   const r = rng(hashSeed('npcs', SEED));
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2, d = range(r, 7, 16);
+  for (let i = 0; i < (parcours ? 2 : 8); i++) {
+    const a = (i / 8) * Math.PI * 2, d = parcours ? 7 : range(r, 7, 16);
     const pos = { x: Math.cos(a) * d, y: 0, z: Math.sin(a) * d };
     const look = randomLook(hashSeed('npc', SEED, i), { kind: i % 4 === 3 });
     const fig = createCharacter({ look, seed: hashSeed('npcseed', i), welt: welt.adapter, pos, yaw: a, schilder, name: look.name });
@@ -167,6 +171,8 @@ const ui = createOberflaeche({
       if (id === 'puppe') { if (g.puppe) g.entfernePuppe(); else { g.stellePuppe(); ui.schliesse(); } } else if (g.rivale) g.entlasseRivale(); else { g.rufeRivale(); ui.schliesse(); }
       kampfKnoepfe();
     }
+    else if (id === 'trainingEnde' && !plage.an) { plage.stopp(); ui.melde('Training beendet'); }
+    else if (id === 'training') { plage.trainingsgruppe(); ui.schliesse(); }
     else if (id === 'plage') plageUmschalten();
     else if (id === 'schlachtfeld') { zumSchlachtfeld(); ui.schliesse(); }
     else if (id === 'grossplage') {
@@ -213,7 +219,13 @@ function kampfKnoepfe() {
   for (const [id, an] of [['puppe', ks.gegner.puppe], ['rivale', ks.gegner.rivale]]) document.querySelector(`[data-knopf="${id}"]`)?.classList.toggle('an', an);
 }
 // Zum Schlachtfeld (120+ m offene Ebene für Großzauber und die Große Plage)
-function zumSchlachtfeld() {
+function zumSchlachtfeld(schlacht = false) {
+  if (parcours) {
+    const ziel = new URL(location.href);
+    ziel.searchParams.set(schlacht ? 'schlacht' : 'schlachtfeld','1');
+    location.assign(ziel.href);
+    return;
+  }
   const f = welt.schlachtfeld, x = f.x, z = f.z - f.halb * 0.6;
   spieler.teleport({ x, y: welt.adapter.bodenHoehe(x, z) + 0.1, z }, 0);
   kamera.springeZu?.(spieler.zustand.pos);
@@ -241,7 +253,7 @@ function epikUpdate(echtDt) {   // Kamera: schnell hinaus, sanft zurück
 // Spielablauf „⚔ Schlacht“ (ablauf.js): Wellen, Macht-Leiste, Niederlage/Sieg
 const ablauf = createAblauf({
   plage, zauber: () => zauber, kamera, spieler, ui, feld: welt.schlachtfeld, klang, melde: (t) => ui.melde(t),
-  zumFeld: zumSchlachtfeld, heile: () => { zauber.alleHeilen(); ks.alleHeilen(); },
+  zumFeld: () => zumSchlachtfeld(true), heile: () => { zauber.alleHeilen(); ks.alleHeilen(); },
 });
 function plageUmschalten() {
   if (plage.an) plage.stopp(); else { plage.start(); ui.schliesse(); }
@@ -372,6 +384,10 @@ function bild(jetzt) {
   else if (schwer < 1) { absicht.x *= schwer; absicht.z *= schwer; absicht.sprint = false; absicht.springen = false; }
   ks.update(dt, absicht);   // F/Block/Q: Nahkampf, Tempo, Sperren (Betäubung, Frost)
   absicht.blickYaw = zauber.drehYaw ?? ks.drehYaw ?? (kamera.erstePerson ? kamera.yaw : zp ? Math.atan2(zp.x - spieler.zustand.pos.x, zp.z - spieler.zustand.pos.z) : undefined);
+  const fuss = spieler.zustand.pos;
+  if (parcours && !zauber.tot && (klettern.klettert || (Math.abs(fuss.x-4) < .72 && fuss.z > -4 && fuss.z < -2.9))) {
+    klettern.update(dt, absicht);
+  } else { klettern.loslassen(); delete absicht.klettern; }
   spieler.update(dt, absicht);
   // Dauer-Clips (tragen, sitzenBoden, schlafen …) laufen bis stoppe() → ⏹ in der Leiste, solange eine Aktion läuft
   const laeuft = !!spieler.animator.aktion && !spieler.animator.aktion.startsWith('zauber');   // Zauber-Gesten enden von selbst
@@ -421,7 +437,7 @@ function bild(jetzt) {
   if (infoAn) $('info').textContent =
     `${fps} fps · Qualität ${qual.nr + 1}/${qual.stufen.length} · ${spieler.look.name}\n` +
     `Tempo ${z.tempo.toFixed(1)} m/s ${z.sprintet ? 'Sprint' : ''}${z.duckt ? ' Ducken' : ''}\n` +
-    `${z.imWasser ? 'Schwimmen' : z.amBoden ? (z.rutscht ? 'Rutschen' : 'Boden') : 'Luft'} · y ${z.pos.y.toFixed(2)} · Schritte ${schritte.n}\n` +
+    `${z.klettert ? 'Klettern' : z.imWasser ? 'Schwimmen' : z.amBoden ? (z.rutscht ? 'Rutschen' : 'Boden') : 'Luft'} · y ${z.pos.y.toFixed(2)} · Schritte ${schritte.n}\n` +
     `Aktion ${spieler.animator.aktion || '–'} · Eingabe ${e.aktiv}\n` +
     `Kamera ${kamera.erstePerson ? 'Ich-Sicht' : kamera.preset}${ziel ? ' · Ziel ' + ziel.name : ''}${z.rollt ? ' · Rolle' : ''}${z.gleitet ? ' · Gleiten' : ''}`;
 
@@ -446,4 +462,5 @@ if (url.get('schlachtfeld') === '1') zumSchlachtfeld();
 if (url.get('grossplage') === '1') { plage.setGross(true); document.querySelector('[data-knopf="grossplage"]')?.classList.add('an'); }
 if (url.get('plage') === '1') plageUmschalten();
 if (url.get('schlacht') === '1') ablauf.start();
+if (parcours && url.get('gegner') === '3') plage.trainingsgruppe();
 if (url.get('kampf') === '1') { ks.gegner.stellePuppe(); ks.gegner.rufeRivale(); waffeWaehlen('schwert'); kampfKnoepfe(); }
