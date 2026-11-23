@@ -6,7 +6,7 @@
 
 | Bereich / Modul | KI | Branch | Seit | Ziel |
 |---|---|---|---|---|
-| – | – | – | – | – |
+| welt, riesenwald-Boden, dorf (neu), tutorial | Claude (Weltgen + 5 Agents) | `claude/welt-startdorf` | 23.11. | Startdorf Erlenwacht, Bäche, Gras, Dorf-Assets, Licht, Dorf-Tutorial – Plan `docs/plaene/WELT-STARTDORF.md` |
 
 ## Geteilte Dateien (nur beim Zusammenführen ändern)
 Diese Dateien fasst nur der **Zusammenführ-Schritt** an (ein eigener Branch/PR, nachdem die Modul-PRs drin sind),

@@ -1,13 +1,13 @@
 /**
  * @modul    modul-welt
- * @zweck    Erlenwacht-Welt (≈4×4 km): Karte/Regionen/Orte/Wege aus world/welt-regionen, Gelände als gestreamte Kacheln mit Detailstufen (world/chunk-strom), Streu-Bäume/Felsen/Büsche je Kachel als Instanzen samt Kollision, Meer und Moortümpel, Fluss (Band), Fernwald (Impostor, 1 Draw-Call) – rund um den Dienst `fokus`
+ * @zweck    Erlenwacht-Welt (≈4×4 km): Karte/Regionen/Orte/Wege aus world/welt-regionen, Gelände als gestreamte Kacheln mit Detailstufen (world/chunk-strom), Streu-Bäume/Felsen/Büsche je Kachel als Instanzen samt Kollision, Meer und Moortümpel, Flüsse/Bäche (fluss-mesh, Strömung + Schaum), Gras um den Fokus (gras-feld), Fernwald (Impostor, 1 Draw-Call) – rund um den Dienst `fokus`
  * @api      WELT_MODUL -> api wie im Vertrag (docs/plaene/ERLENWACHT-MODULE.md) + karte, statistik
  * @beispiel
  *   import { WELT_MODUL } from '../../engine/spiel/modul-welt.js';
  *   const welt = spiel.api('welt'); welt.bodenHoehe(0, 600); welt.region(-1200, 400).id; // 'moor'
  *   // Optionen: kachelSegmente, streuWeite, kleinWeite, teilung, budget, fernWald (false = aus), fernWeite · Debug-Kamera: ?weltblick=gipfel oder ?weltblick=x,z,hoehe,yaw,pitch
  * @tags     spiel, modul, welt, gelaende, streaming, lod, regionen, wege, wasser, erlenwacht, mmo
- * @version  1.1.0
+ * @version  1.2.0
  * @status   entwurf
  * @three    ja
  */
@@ -21,6 +21,8 @@ import { createAssetCache } from '../models/natur/natur-assets.js';
 import { createNaturMaterial } from '../render/natur-material.js';
 import { createWasserGlanz } from '../world/wasser-glanz.js';
 import { createFernWald } from '../world/fern-wald.js';
+import { createFlussMesh } from '../world/fluss-mesh.js';
+import { createGrasFeld } from '../world/gras-feld.js';
 
 let aktiv = null;   // laufende Instanz (der Modul-Kern ruft dispose ohne ctx)
 const SCHATTEN_TYPEN = new Set(['eiche', 'buche', 'birke', 'weide', 'tanne', 'fichte', 'kiefer', 'toterBaum', 'findling', 'felsbrocken']);
@@ -121,21 +123,20 @@ export const WELT_MODUL = {
     const mb = karte.moor;
     const moor = new THREE.Mesh(new THREE.PlaneGeometry(mb.x1 - mb.x0, mb.z1 - mb.z0).rotateX(-Math.PI / 2), moorMat);
     moor.position.set((mb.x0 + mb.x1) / 2, MOOR_WASSER, (mb.z0 + mb.z1) / 2); moor.name = 'moorwasser'; moor.renderOrder = 1; gruppe.add(moor);
-    // Fluss: Band über dem eingetieften Bett (Wasserspiegel y je Flusspunkt, halbe Breite 0.9·b)
-    const flussMat = new THREE.MeshStandardMaterial({ color: 0x4b6c73, roughness: 0.3, metalness: 0, transparent: true, opacity: 0.86, side: THREE.DoubleSide });
-    const fp = karte.fluss.proben, fPos = new Float32Array(fp.length * 6), fIdx = [];
-    fp.forEach((q, i) => {
-      const a = fp[Math.max(0, i - 1)], b = fp[Math.min(fp.length - 1, i + 1)], l = Math.hypot(b.x - a.x, b.z - a.z) || 1, nx = -(b.z - a.z) / l * q.b * 0.9, nz = (b.x - a.x) / l * q.b * 0.9;
-      fPos.set([q.x + nx, q.y, q.z + nz, q.x - nx, q.y, q.z - nz], i * 6);
-      if (i < fp.length - 1) fIdx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
-    });
-    const flussGeo = new THREE.BufferGeometry(); flussGeo.setAttribute('position', new THREE.BufferAttribute(fPos, 3)); flussGeo.setIndex(fIdx);
-    const fluss = new THREE.Mesh(flussGeo, flussMat); fluss.name = 'fluss'; fluss.renderOrder = 1; fluss.frustumCulled = false; gruppe.add(fluss);
+    // Flüsse + Bäche: ein Band-Mesh mit Strömung und Schaumsaum (world/fluss-mesh)
+    const fluesse = createFlussMesh(karte.fluesse || [{ id: 'fluss', proben: karte.fluss.proben }]);
+    const flussMat = fluesse.material; gruppe.add(fluesse.mesh);
     const glanz = createWasserGlanz([meerMat, moorMat, flussMat]);
 
     // --- Fernwald (Impostor-Kacheln jenseits der Streu-Reichweite) ---
     const fern = opt.fernWald === false ? null : createFernWald({ karte, seed: ctx.seed, niedrig, innen: streuWeite, aussen: Math.min(1500, opt.fernWeite || weite) });
     if (fern) gruppe.add(fern.mesh);
+
+    // --- Gras um den Fokus (world/gras-feld): ein Draw-Call, Wind, weicher Rand; aus mit ?gras=0 oder Option gras:false ---
+    const gras = opt.gras === false || url?.werte?.gras === '0' ? null
+      : createGrasFeld({ karte, seed: ctx.seed, weite: opt.grasWeite || (niedrig ? 28 : 45), dichte, sperren: () => sperren });
+    if (gras) gruppe.add(gras.mesh);
+    let grasNeu = false;
 
     // --- Streu ---
     const assets = createAssetCache({ varianten: 2, detail: niedrig ? 0 : 1, seed: ctx.seed });
@@ -226,7 +227,7 @@ export const WELT_MODUL = {
       bodenHoehe: (x, z, y) => kollision.bodenHoehe(x, z, y),
       wasserHoehe: (x, z) => karte.wasserHoehe(x, z),
       hindernisse: (x, z, r, f) => kollision.hindernisse(x, z, r, f),
-      kollision, karte, fluss: karte.fluss,
+      kollision, karte, fluss: karte.fluss, fluesse: karte.fluesse,
       startPunkt: { ...karte.startPunkt }, groesse: { ...karte.groesse }, regionen: karte.regionen,
       region: (x, z) => karte.region(x, z), orte: karte.orte, ort: (id) => karte.orte.find((o) => o.id === id) || null,
       wege: karte.wege, abstandZumWeg: (x, z) => karte.abstandZumWeg(x, z), normale,
@@ -236,14 +237,17 @@ export const WELT_MODUL = {
         for (const [dx, dz] of [[r, 0], [-r, 0], [0, r], [0, -r]]) if (Math.abs(karte.hoehe(x + dx, z + dz) - h) > r * 0.45 + 0.1) return false;
         return kollision.hindernisse(x, z, r) === null;
       },
+      get gras() { return gras; },
       onChunk(fn) { zuhoerer.add(fn); return () => zuhoerer.delete(fn); },
       /** Keine Streu-Objekte im Kreis (Riesenbäume, Siedlung): betroffene Kacheln werden neu gesetzt. */
+      /** Auch als Liste: sperreObjekte([{x,z,r}, …]) – betroffene Kacheln werden dann nur einmal neu gesetzt. */
       sperreObjekte(x, z, r) {
-        sperren.push({ x, z, r });
-        const trifft = (k) => x + r > k.x0 && x - r < k.x0 + k.groesse && z + r > k.z0 && z - r < k.z0 + k.groesse;
-        ringGross.neuLaden(trifft); ringKlein.neuLaden(trifft);
+        const neu = Array.isArray(x) ? x : [{ x, z, r }];
+        sperren.push(...neu);
+        const trifft = (k) => neu.some((q) => q.x + q.r > k.x0 && q.x - q.r < k.x0 + k.groesse && q.z + q.r > k.z0 && q.z - q.r < k.z0 + k.groesse);
+        ringGross.neuLaden(trifft); ringKlein.neuLaden(trifft); grasNeu = true;
       },
-      get statistik() { return { kacheln: strom.anzahl, streu: streuAnzahl, fern: fern ? fern.anzahl : 0, fernDreiecke: fern ? fern.dreiecke : 0, koerper: kollision.anzahl, startMs, aufbauMs }; },
+      get statistik() { return { kacheln: strom.anzahl, streu: streuAnzahl, fern: fern ? fern.anzahl : 0, fernDreiecke: fern ? fern.dreiecke : 0, gras: gras ? gras.anzahl : 0, koerper: kollision.anzahl, startMs, aufbauMs }; },
     };
 
     // Debug-Kamera (?weltblick=gipfel oder ?weltblick=x,z,hoehe,yaw,pitch) – yaw wie Figuren: 0 = Blick nach Süden (+z)
@@ -256,11 +260,12 @@ export const WELT_MODUL = {
       update(dt) {
         zeit += dt;
         stroemen(undefined);
-        matGross.update?.(zeit); matKlein.update?.(zeit); glanz.update(zeit);
+        matGross.update?.(zeit); matKlein.update?.(zeit); glanz.update(zeit); fluesse.update(zeit);
+        if (gras) { if (grasNeu) { grasNeu = false; gras.setzeDichte(dichte); } gras.update(dt, fokus(), zeit); }
       },
       dispose() {
         render.vorBild.delete(setzeBlick);
-        fern?.dispose(); fluss.geometry.dispose(); flussMat.dispose();
+        fern?.dispose(); fluesse.dispose(); gras?.dispose();
         strom.dispose(); ringGross.dispose(); ringKlein.dispose();
         for (const p of pools.values()) p.im.dispose();
         szene.remove(gruppe);
