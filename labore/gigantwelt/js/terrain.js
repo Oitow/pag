@@ -2,11 +2,10 @@
 // createTerrain(K) -> { LEVELS, water, build(N), update(x, z), levels (Getter), markMaterials() }
 // Nutzt K: scene, U (uCam, uTime, uMask …). Terrain-Shader blendet über U.uMask die Voxel-Zone aus.
 import * as THREE from 'three';
-import { GLSL_NOISE, FRAG_COMMON as FRAG_ALT } from './welt.js';
+import { GLSL_NOISE, FRAG_COMMON } from './welt.js';
 
 // Schneegrenze für die neue Weltform (Gebirge bis ~2200 m): Schnee ab ~800-1050 m. voxel.js braucht dieselbe Ersetzung.
-const FRAG_COMMON = FRAG_ALT.replace('smoothstep(640.,740.,hh+v1*70.)', 'smoothstep(800.,1050.,hh+v1*70.)')
-  .replace('(1.-smoothstep(.38,.62,slope))', '(1.-smoothstep(.4,.65,slope))');
+// Schneegrenze für das neue Gelände: angepasst zentral in welt.js (gilt auch für Voxel).
 
 export function createTerrain(K) {
   const { scene, U } = K;
