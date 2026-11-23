@@ -169,8 +169,8 @@ export function createAtmosphaere({ scene, renderer, sonne, hemi, nebel = 9e-5, 
     if (hemi) {
       const t = ss(2, 40, elGrad);
       tmp.setRGB(.75 + (.74 - .75) * t, .62 + (.85 - .62) * t, .58 + (1 - .58) * t, THREE.SRGBColorSpace);
-      hemi.color.copy(tmp).lerp(new THREE.Color().setRGB(.3,.42,.85, THREE.SRGBColorSpace), U.uNight.value);
-      hemi.intensity = (.55 + .55 * t) * (1 - U.uNight.value) + .5 * U.uNight.value;
+      hemi.color.copy(tmp).lerp(new THREE.Color().setRGB(.42,.55,1, THREE.SRGBColorSpace), U.uNight.value);
+      hemi.intensity = (.55 + .55 * t) * (1 - U.uNight.value) + 1.6 * U.uNight.value;
     }
   }
 

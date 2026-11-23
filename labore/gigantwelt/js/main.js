@@ -107,10 +107,16 @@ addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; cam
 /* ================= START ================= */
 (async () => {
   const sp = spieler.findSpawn();
-  pos.set(sp.x, heightAt(sp.x, sp.z) + 1.7, sp.z); K.yaw = sp.yaw;
-  himmel.setZeit(10, 0);
+  const Pq = new URLSearchParams(location.search), testModus = Pq.get('test') === '1';
+  const ortN = Pq.get('ort'), og = ortN && spieler.findeOrt(ortN) || sp;
+  pos.set(og.x, heightAt(og.x, og.z) + 1.7, og.z); K.yaw = og.yaw;
+  if (Pq.has('blick')) K.yaw = +Pq.get('blick') * Math.PI / 180;
+  if (Pq.get('flug') === '1') { spieler.toggleFly(); pos.y = Math.max(pos.y, heightAt(og.x, og.z) + (+Pq.get('hoehe') || 100)); K.pitch = -.2; }
+  const zeit = Pq.has('zeit') ? +Pq.get('zeit') : 10;
+  himmel.setZeit(zeit, 0); if ($('sSun')) $('sSun').value = zeit;
   $('spV').textContent = K.flySpeed + ' m/s';
   hud.applyQuality(K.qKey);
+  if (new URLSearchParams(location.search).get('schatten') === '0') hud.setShadows(false);
   camera.position.copy(pos);
   vox.loadWorld();
   // Nahbereich vorab erzeugen

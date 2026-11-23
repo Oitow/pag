@@ -1,7 +1,7 @@
 // Gigant-Welt: Steuerung (Joystick/Maus/Tasten), Flug, Physik, Kollision mit Voxeln und Bäumen.
 // createSpieler(K) -> { findSpawn(), move(dt), toggleFly() }. Setzt K.joy, K.look, K.keys.
 // Nutzt K: renderer, pos, yaw, pitch, vy, fly, grounded, flySpeed, upIn, $, isTouch, vox.dens + veg.treeL (lazy).
-import { heightAt, forestRaw, findeStart } from './welt.js';
+import { heightAt, forestRaw, findeStart, biomAt, gn, ss } from './welt.js';
 import { key } from './vegetation.js';
 
 export function createSpieler(K) {
@@ -18,6 +18,38 @@ export function createSpieler(K) {
       if (w > bw) { bw = w; best = b; }
     }
     return { x: st.x, z: st.z, yaw: Math.atan2(-Math.cos(best), -Math.sin(best)) };
+  }
+  // Sprungmarke ?ort=start|gebirge|schnee|see|wald|hoehle: Spiralsuche um den Start; liefert {x,z,yaw,hoch?} oder null.
+  function findeOrt(name) {
+    if (name === 'start') return findSpawn();
+    const hang = (x, z) => Math.hypot(heightAt(x + 4, z) - heightAt(x, z), heightAt(x, z + 4) - heightAt(x, z)) / 4;
+    const ok = {
+      gebirge: (x, z, h) => h > 700,
+      schnee: (x, z, h) => h > 800 && biomAt(x, z).schnee > .5 && hang(x, z) < .5,
+      see: (x, z, h) => h > .8 && h < 4 && hang(x, z) < .3 && [0, 1, 2, 3, 4, 5, 6, 7].some(k => heightAt(x + Math.cos(k * .785) * 60, z + Math.sin(k * .785) * 60) < -4),
+      wald: (x, z, h) => h > 3 && h < 300 && hang(x, z) < .25 && biomAt(x, z).wald > .7,
+      hoehle: (x, z, h) => h > 8 && h < 500 && hang(x, z) > .6 && ss(.236, .436, gn(x / 230 + 31, z / 230 - 17)) > .8,
+    }[name];
+    if (!ok) return null;
+    const st = findeStart() || { x: 0, z: 0 };
+    for (let r = 0; r <= 12000; r += name === 'hoehle' ? 24 : 80) {
+      const n = Math.max(1, Math.round(r / (name === 'hoehle' ? 24 : 80)) * 6);
+      for (let i = 0; i < n; i++) {
+        const a = i / n * Math.PI * 2, x = st.x + Math.cos(a) * r, z = st.z + Math.sin(a) * r, h = heightAt(x, z);
+        if (!ok(x, z, h)) continue;
+        // Blickrichtung: See -> zum Wasser, Höhle -> bergauf zur Wand (Stand 7 m hangabwärts), sonst Richtung Start
+        let yaw = Math.atan2(-(st.x - x), -(st.z - z)), px = x, pz = z;
+        if (name === 'hoehle') {
+          const gx = heightAt(x + 4, z) - heightAt(x - 4, z), gz = heightAt(x, z + 4) - heightAt(x, z - 4), l = Math.hypot(gx, gz) || 1;
+          px = x + gx / l * 7; pz = z + gz / l * 7; yaw = Math.atan2(gx / l, gz / l);
+        } else if (name === 'see') {
+          let bk = 0, bh = 1e9; for (let k = 0; k < 8; k++) { const w = heightAt(x + Math.cos(k * .785) * 60, z + Math.sin(k * .785) * 60); if (w < bh) { bh = w; bk = k; } }
+          yaw = Math.atan2(-Math.cos(bk * .785), -Math.sin(bk * .785));
+        }
+        return { x: px, z: pz, yaw };
+      }
+    }
+    return null;
   }
   const el = renderer.domElement;
   el.addEventListener('pointerdown', e => {
@@ -91,5 +123,5 @@ export function createSpieler(K) {
     }
   }
 
-  return { findSpawn, move, toggleFly };
+  return { findSpawn, findeOrt, move, toggleFly };
 }
