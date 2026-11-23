@@ -122,6 +122,19 @@ export function createVegetation(K) {
   const CAP = [3000, 10000, 25000]; // je Art und LOD -> 5 x 3 = 15 Draw Calls + 5 Schatten-Proxies
   const trees = ARTEN.map(a => [0, 1, 2].map(l => { const m = mkInst(baumGeometrie(a, l), treeMat, CAP[l]); m.receiveShadow = l === 0; return m; }));
   const proxies = ARTEN.map((a, i) => { const m = mkInst(trees[i][0].geometry, treeMat, 800, 1); m.castShadow = true; return m; });
+  // Baumstümpfe (gefällte Bäume): verjüngter Zylinder, helle Schnittfläche oben
+  const stumpGeo = (() => {
+    let g = new THREE.CylinderGeometry(.82, 1, 1, 14, 2, false); g.translate(0, .5, 0);
+    for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
+    const p = g.attributes.position, n = g.attributes.normal, c = new Float32Array(p.count * 3), col = new THREE.Color();
+    for (let i = 0; i < p.count; i++) {
+      const top = n.getY(i) > .9; col.setRGB(...(top ? [.78, .62, .40] : [.36, .26, .18]), THREE.SRGBColorSpace);
+      if (!top) { const a = Math.atan2(p.getZ(i), p.getX(i)); p.setX(i, p.getX(i) * (1 + .05 * Math.sin(a * 9))); p.setZ(i, p.getZ(i) * (1 + .05 * Math.sin(a * 9))); }
+      c.set([col.r, col.g, col.b], i * 3);
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(c, 3)); return g;
+  })();
+  const stumpM = mkInst(stumpGeo, bushMat, 600); stumpM.receiveShadow = true;
   const bushes = mkInst(bushGeo(), bushMat, 14000); bushes.receiveShadow = true;
   const rocks = mkInst(rockGeo(), rockMat, 6000); rocks.receiveShadow = true;
   const PARTEN = ['farn', 'blumen', 'pilze', 'totholz', 'findling'], PCAP = [6000, 6000, 3000, 1500, 1500];
@@ -160,7 +173,7 @@ export function createVegetation(K) {
   // Bäume: 128 m Zellen, 8x8 Kandidaten
   const felled = new Set(), fkey = (x, z) => x.toFixed(1) + ',' + z.toFixed(1);
   const treeL = makeLayer(128, () => K.Q.R2, (cx, cz) => {
-    const rng = rngFrom(cellSeed(cx, cz, 1)), list = [];
+    const rng = rngFrom(cellSeed(cx, cz, 1)), list = [], stumps = [];
     for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) {
       const x = cx * 128 + (i + .15 + .7 * rng()) * 16, z = cz * 128 + (j + .15 + .7 * rng()) * 16, r = rng();
       const dens = forestRaw(x, z);
@@ -168,7 +181,6 @@ export function createVegetation(K) {
       const h = heightAt(x, z); if (h < 2) continue;
       const fd = dens * (1 - ss(900, 1300, h)); if (r > fd * .5 + .004) continue;
       const sl = Math.hypot(heightAt(x + 2, z) - h, heightAt(x, z + 2) - h) / 2; if (sl > .55) continue;
-      if (felled.has(fkey(x, z))) continue;
       // Art nach Höhe/Kälte, Waldrand (Wiesen-Nähe) und Tal
       const cold = ss(150, 450, h), edge = 1 - ss(.15, .5, dens), q = rng(), n = gn(x / 700, z / 700);
       let art;
@@ -179,9 +191,10 @@ export function createVegetation(K) {
       let H = A.hoehe[0] + (A.hoehe[1] - A.hoehe[0]) * Math.pow(rng(), 1.3);
       if (lone) H *= 1.2; if (rng() < .03) H *= 1.4;
       const tint = .82 + .3 * rng();
-      list.push({ x, y: h - .6, z, H, wf: .85 + .3 * rng(), rot: rng() * 6.283, sp: ART[art], rs: A.stamm, cr: tint * (.94 + .12 * rng()), cg: tint, cb: tint * (.9 + .15 * rng()), rnd: rng() });
+      const tr = { x, y: h - .6, z, H, wf: .85 + .3 * rng(), rot: rng() * 6.283, sp: ART[art], rs: A.stamm, cr: tint * (.94 + .12 * rng()), cg: tint, cb: tint * (.9 + .15 * rng()), rnd: rng() };
+      if (felled.has(fkey(x, z))) stumps.push(tr); else list.push(tr);
     }
-    return { trees: list };
+    return { trees: list, stumps };
   });
   // Büsche + Steine: 32 m Zellen
   const bushL = makeLayer(32, () => K.Q.BR, (cx, cz) => {
@@ -270,8 +283,44 @@ export function createVegetation(K) {
   function resetLayers() { grassL.cache.clear(); for (const L of layers) L.reset(); }
   function fellTree(t) {
     const cell = treeL.cache.get(key(Math.floor(t.x / 128), Math.floor(t.z / 128)));
-    if (cell) { const i = cell.trees.indexOf(t); if (i >= 0) cell.trees.splice(i, 1); }
+    if (cell) { const i = cell.trees.indexOf(t); if (i >= 0) { cell.trees.splice(i, 1); (cell.stumps || (cell.stumps = [])).push(t); } }
     felled.add(fkey(t.x, t.z)); treeL.dirty = true; K.forceRebuild = true; K.vox.scheduleSave();
+    startFall(t);
+  }
+
+  // Umfallen: Baum kippt vom Spieler weg (starrer Stab um die Basis), schlägt auf, bleibt liegen, versinkt.
+  const falling = [], _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _ax = new THREE.Vector3(), _m = new THREE.Matrix4(), _s = new THREE.Vector3(), _p = new THREE.Vector3();
+  function startFall(t) {
+    if (falling.length > 6) endFall(falling[0]);
+    let dx = t.x - K.pos.x, dz = t.z - K.pos.z; const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
+    const m = mkInst(trees[t.sp][0].geometry, treeMat, 1); m.receiveShadow = true; m.castShadow = true;
+    m.instanceColor.array.set([t.cr, t.cg, t.cb], 0); m.instanceColor.needsUpdate = true; m.count = 1;
+    const f = { t, m, dx, dz, a: .06, w: .05, phase: 0, timer: 0, bounced: false };
+    falling.push(f); placeFall(f);
+  }
+  function placeFall(f) {
+    const { t } = f;
+    _ax.set(f.dz, 0, -f.dx).normalize(); _q.setFromAxisAngle(_ax, f.a); _q2.setFromAxisAngle(new THREE.Vector3(0, 1, 0), t.rot);
+    const sink = f.phase === 2 ? Math.min(1, f.timer / 3) * t.H * .08 : 0;
+    _m.compose(_p.set(t.x, t.y + .3 - sink, t.z), _q.multiply(_q2), _s.set(t.H * t.wf, t.H, t.H * t.wf));
+    _m.toArray(f.m.instanceMatrix.array, 0); f.m.instanceMatrix.needsUpdate = true;
+  }
+  function endFall(f) { scene.remove(f.m); f.m.dispose(); falling.splice(falling.indexOf(f), 1); }
+  function updateFalling(dt) {
+    for (let i = falling.length - 1; i >= 0; i--) {
+      const f = falling[i], { t } = f;
+      if (f.phase === 0) {
+        f.w += 1.5 * 9.81 / t.H * Math.sin(f.a) * dt * 2.2; f.a += f.w * dt;
+        // Boden unter der Krone (bei ~70 % Höhe) prüfen
+        const r = t.H * .7, gx = t.x + f.dx * r * Math.sin(f.a), gz = t.z + f.dz * r * Math.sin(f.a);
+        const gy = heightAt(gx, gz) - t.y, cy = r * Math.cos(f.a) - t.H * .06;
+        if (cy <= gy || f.a > 1.62) {
+          if (!f.bounced && f.w > .4) { f.w *= -.18; f.bounced = true; K.shake = Math.min(1.2, t.H / 60) * Math.max(0, 1 - Math.hypot(t.x - K.pos.x, t.z - K.pos.z) / 160); }
+          else { f.phase = 1; f.w = 0; f.timer = 0; }
+        }
+      } else { f.timer += dt; if (f.phase === 1 && f.timer > 45) { f.phase = 2; f.timer = 0; } else if (f.phase === 2 && f.timer > 3) { endFall(f); continue; } }
+      placeFall(f);
+    }
   }
 
   const view = { x: 0, z: 0, fx: 0, fz: -1, half: 1, all: false };
@@ -313,6 +362,17 @@ export function createVegetation(K) {
         cnt[t.sp][lod] = n + 1;
       }
     }
+    let ns = 0;
+    for (const [ox, oz] of L.offs) {
+      const cell = L.cache.get(key(L.ccx + ox, L.ccz + oz)); if (!cell || !cell.stumps) continue;
+      for (const t of cell.stumps) {
+        if (ns >= stumpM.cap || Math.hypot(t.x - view.x, t.z - view.z) > R0) continue;
+        const r = t.H * t.rs * t.wf * 1.15;
+        writeM(stumpM.instanceMatrix.array, ns * 16, t.x, t.y - .2, t.z, t.rot, r, 1.1 + r * .35, r);
+        stumpM.instanceColor.array.set([1, 1, 1], ns * 3); ns++;
+      }
+    }
+    commit(stumpM, ns);
     for (let s = 0; s < NA; s++) { for (let l = 0; l < 3; l++) commit(trees[s][l], cnt[s][l]); commit(proxies[s], pc[s]); }
     stats.t = [0, 1, 2].map(l => cnt.reduce((a, c) => a + c[l], 0));
   }
@@ -350,6 +410,6 @@ export function createVegetation(K) {
 
   return {
     treeL, bushL, grassL, layers, felled, stats, materials: [treeMat, bushMat, rockMat, plantMat, grassMat],
-    pump, pending, evict, updView, rebuildTrees, rebuildBushes, rebuildGrass, editOp, afterEdits, resetLayers, fellTree,
+    pump, pending, evict, updView, rebuildTrees, rebuildBushes, rebuildGrass, editOp, afterEdits, resetLayers, fellTree, updateFalling, falling,
   };
 }

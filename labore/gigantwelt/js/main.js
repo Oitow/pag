@@ -73,7 +73,9 @@ function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   U.uTime.value = now / 1000;
   spieler.move(dt);
+  veg.updateFalling(dt);
   camera.position.copy(pos); camera.rotation.set(K.pitch, K.yaw, 0);
+  if (K.shake > .01) { camera.position.x += (Math.random() - .5) * K.shake * .25; camera.position.y += (Math.random() - .5) * K.shake * .25; K.shake *= Math.pow(.02, dt); }
   U.uCam.value.copy(pos);
   terrain.update(pos.x, pos.z);
   himmel.follow(pos, dt);
@@ -119,6 +121,16 @@ addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; cam
   if (new URLSearchParams(location.search).get('schatten') === '0') hud.setShadows(false);
   camera.position.copy(pos);
   vox.loadWorld();
+  if (testModus) window.K = K; // für Prüfskripte
+  // Test: ?faellen=1 fällt kurz nach dem Start den nächsten Baum vor dem Spieler
+  if (Pq.get('faellen') === '1') { const iv = setInterval(() => { if ($('load').style.display !== 'none') return; clearInterval(iv);
+    let best = null, bd = 1e9; const fx = -Math.sin(K.yaw), fz = -Math.cos(K.yaw);
+    for (const c of veg.treeL.cache.values()) for (const t of c.trees) {
+      const dx = t.x - pos.x, dz = t.z - pos.z, d = Math.hypot(dx, dz);
+      if (d > 15 && d < 140 && (dx * fx + dz * fz) / d > .6 && d < bd) { bd = d; best = t; }
+    }
+    if (best) veg.fellTree(best); console.log('faellen', best ? best.H.toFixed(0) + 'm ' + bd.toFixed(0) + 'm weit' : 'kein Baum');
+  }, 500); }
   // Nahbereich vorab erzeugen
   const nearR = K.Q.R1;
   const origR2 = treeL.radiusFn; treeL.radiusFn = () => nearR; treeL.reset();
