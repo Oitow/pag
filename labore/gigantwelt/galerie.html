@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Gigant-Welt – Baum-Galerie</title>
+<style>
+/* VOICE: Messtisch, sachlich  IDEA: Herbarium im Gelände – jede Art in drei Detailstufen
+   PICTURE: Reihen von Bäumen auf einer Wiese, Maßstabssäule  COLOUR: Waldgrün, Papierweiß für Beschriftung
+   TYPE: Monospace für Dreiecke  LAYOUT: Vollbild, Labels am Objekt, Umschalter oben */
+html,body{margin:0;height:100%;overflow:hidden;background:#9fc3d8;font-family:system-ui,sans-serif}
+canvas{display:block}
+.l{position:fixed;font:11px/1.2 ui-monospace,Menlo,Consolas,monospace;color:#10200f;background:rgba(240,246,230,.78);padding:2px 5px;border-radius:5px;pointer-events:none;white-space:nowrap;transform:translate(-50%,0)}
+#bar{position:fixed;left:8px;top:8px;display:flex;gap:6px;z-index:5}
+#bar button{font:13px system-ui;padding:9px 12px;border-radius:10px;border:1px solid rgba(0,0,0,.25);background:rgba(240,246,230,.85);min-height:40px}
+</style>
+</head>
+<body>
+<div id="bar"><button id="b1">Bäume</button><button id="b2">Pflanzen</button></div>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { BAUM_ARTEN, baumGeometrie } from './js/baeume.js';
+import { PFLANZEN_ARTEN, pflanzenGeometrie } from './js/bodenpflanzen.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight); renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xa9cbe0); scene.fog = new THREE.Fog(0xa9cbe0, 400, 1200);
+const cam = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, .1, 3000);
+// Kleine Orbit-Steuerung (Ziehen = drehen, Rad/Zwei-Finger = zoomen), damit die Galerie ohne Addons läuft
+const ctl = { target: new THREE.Vector3(), update() {
+  const o = cam.position.clone().sub(this.target), s = new THREE.Spherical().setFromVector3(o);
+  s.theta -= this.dx; s.phi = Math.max(.05, Math.min(1.55, s.phi - this.dy)); s.radius *= this.zoom;
+  this.dx = this.dy = 0; this.zoom = 1; cam.position.copy(this.target).add(o.setFromSpherical(s)); cam.lookAt(this.target); }, dx: 0, dy: 0, zoom: 1 };
+{ const el = renderer.domElement, P = new Map(); el.style.touchAction = 'none';
+  el.addEventListener('pointerdown', e => { el.setPointerCapture(e.pointerId); P.set(e.pointerId, [e.clientX, e.clientY]); });
+  el.addEventListener('pointerup', e => P.delete(e.pointerId)); el.addEventListener('pointercancel', e => P.delete(e.pointerId));
+  el.addEventListener('pointermove', e => { const q = P.get(e.pointerId); if (!q) return;
+    if (P.size === 1) { ctl.dx += (e.clientX - q[0]) * .006; ctl.dy += (e.clientY - q[1]) * .006; }
+    else { const o = [...P.entries()].find(([k]) => k !== e.pointerId)[1], d0 = Math.hypot(q[0] - o[0], q[1] - o[1]), d1 = Math.hypot(e.clientX - o[0], e.clientY - o[1]); ctl.zoom *= d0 / Math.max(1, d1); }
+    P.set(e.pointerId, [e.clientX, e.clientY]); });
+  el.addEventListener('wheel', e => { e.preventDefault(); ctl.zoom *= Math.exp(e.deltaY * .001); }, { passive: false }); }
+scene.add(new THREE.HemisphereLight(0xcfe4ff, 0x3b4a28, 1.1));
+const sun = new THREE.DirectionalLight(0xfff0d0, 2.4); sun.position.set(-60, 120, 80); scene.add(sun);
+const boden = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), new THREE.MeshLambertMaterial({ color: 0x4d6b34 }));
+boden.rotation.x = -Math.PI / 2; scene.add(boden);
+const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+const labels = [];
+function label(pos, text) { const d = document.createElement('div'); d.className = 'l'; d.textContent = text; document.body.appendChild(d); labels.push({ d, pos }); }
+const tris = g => g.index.count / 3;
+const saeule = (x, z) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(.12, .12, 1.8, 10), new THREE.MeshLambertMaterial({ color: 0xd04020 })); m.position.set(x, .9, z); scene.add(m); return m; };
+
+// Bäume: Zeilen = Arten, Spalten = LOD0..2; alle auf dieselbe Darstellungshöhe, echte Spanne im Label
+const DH = 50, XS = 62, ZS = 60; let zi = 0;
+for (const [key, a] of Object.entries(BAUM_ARTEN)) {
+  for (let lod = 0; lod < 3; lod++) {
+    const g = baumGeometrie(key, lod), m = new THREE.Mesh(g, mat);
+    m.scale.setScalar(DH); m.position.set((zi - 2) * XS, 0, (lod - 1) * ZS); scene.add(m);
+    label(new THREE.Vector3(m.position.x, -2, m.position.z + 3), `L${lod} · ${tris(g)}△`);
+  }
+  label(new THREE.Vector3((zi - 2) * XS, DH + 3, -ZS), a.name + ` (${a.hoehe[0]}–${a.hoehe[1]} m)`);
+  zi++;
+}
+saeule(-2.6 * XS, ZS); label(new THREE.Vector3(-2.6 * XS, 4, ZS), '1,8 m');
+label(new THREE.Vector3(0, DH + 14, -ZS), `Darstellung ${DH} m hoch (echt 30–120 m, Instanz skaliert)`);
+
+// Pflanzen in echten Metern, hinter den Bäumen weit weg, eigene Ansicht
+const PX = 100000; let pi = 0;
+for (const [key, a] of Object.entries(PFLANZEN_ARTEN)) {
+  const g = pflanzenGeometrie(key), m = new THREE.Mesh(g, mat), x = PX + (pi - 2) * 3.4;
+  m.position.set(x, 0, 0); scene.add(m);
+  label(new THREE.Vector3(x, -.15, .9), `${a.name} · ${tris(g)} △`); pi++;
+}
+saeule(PX - 8, 1.2); label(new THREE.Vector3(PX - 8, 2.1, 1.2), '1,8 m');
+const flaeche = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshLambertMaterial({ color: 0x4d6b34 })); flaeche.rotation.x = -Math.PI / 2; flaeche.position.set(PX, .001, 0); scene.add(flaeche);
+
+function ansicht(p) {
+  if (p === 'pflanzen') { ctl.target.set(PX, .5, 0); cam.position.set(PX + 1, 3.2, 10.5); }
+  else if (p === 'nah') { ctl.target.set(0, 28, -ZS); cam.position.set(0, 95, 20); }
+  else { ctl.target.set(0, 24, 0); cam.position.set(0, 60, 250); }
+  ctl.update();
+}
+document.getElementById('b1').onclick = () => ansicht('baeume');
+document.getElementById('b2').onclick = () => ansicht('pflanzen');
+ansicht(new URLSearchParams(location.search).get('ansicht') || 'baeume');
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); });
+const v = new THREE.Vector3();
+function loop() {
+  ctl.update(); renderer.render(scene, cam);
+  for (const l of labels) { v.copy(l.pos).project(cam); const ok = v.z < 1 && Math.abs(v.x) < 1.1 && Math.abs(v.y) < 1.1; l.d.style.display = ok ? '' : 'none'; if (ok) { l.d.style.left = (v.x * .5 + .5) * innerWidth + 'px'; l.d.style.top = (-v.y * .5 + .5) * innerHeight + 'px'; } }
+  requestAnimationFrame(loop);
+}
+loop(); window.__fertig = true;
+</script>
+</body>
+</html>
