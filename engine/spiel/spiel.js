@@ -8,7 +8,7 @@
  *   const spiel = await createSpiel({ canvas: document.getElementById('c'), module: [WELT_MODUL, SPIELER_MODUL] });
  *   spiel.api('spieler').teleport(10, 20);
  * @tags     spiel, host, modul, renderer, schleife, baukasten, mmo
- * @version  1.0.0
+ * @version  1.0.1
  * @status   entwurf
  * @three    ja
  */
@@ -39,6 +39,23 @@ const STUFEN = {
   hoch: { name: 'hoch', pixel: 2, schatten: 2048, sicht: 1200, dichte: 1.3 },
 };
 
+/** WebGL starten; klappt es nicht (Handy-Browser mit verbrauchtem/abgestürztem WebGL), schonender nochmal, sonst klare Meldung. */
+function baueRenderer(canvas, antialias) {
+  const versuche = [
+    { antialias, powerPreference: 'high-performance' },
+    { antialias: false, powerPreference: 'default' },
+    { antialias: false, powerPreference: 'low-power', depth: true, stencil: false },
+  ];
+  let letzter = null;
+  for (const v of versuche) {
+    try { return new THREE.WebGLRenderer({ canvas, ...v }); } catch (e) { letzter = e; }
+  }
+  const f = new Error('WebGL lässt sich in diesem Browser gerade nicht starten. Browser ganz schließen (auch aus der App-Übersicht wischen) und neu öffnen – oder einen anderen Browser probieren (Chrome). '
+    + `Ursache: ${letzter?.message || letzter}`);
+  f.cause = letzter;
+  throw f;
+}
+
 export async function createSpiel({
   canvas, module = [], optionen = {}, seed = 1, url = globalThis.location?.search ?? '', fest = 1 / 60,
   fehler = null, hintergrund = 0x7d93a0, ui = null, nah = 0.1, fern = 3000,
@@ -48,7 +65,7 @@ export async function createSpiel({
   const stufe = STUFEN[schalter.q || (handy ? 'niedrig' : 'mittel')];
   const meldeFehler = fehler || ((e, wo) => console.error(`[${wo}]`, e));
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: stufe.name !== 'niedrig', powerPreference: 'high-performance' });
+  const renderer = baueRenderer(canvas, stufe.name !== 'niedrig');
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;

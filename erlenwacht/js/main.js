@@ -11,8 +11,12 @@ const MODULE = moduleFuer({ stufe: 'spiel' });
 
 const $ = (id) => document.getElementById(id);
 const fehlerListe = [];
+// Meldung + erste Stack-Zeilen (Firefox/Safari zeigen im Stack keine Meldung)
+const fehlerText = (e) => e?.message
+  ? [e.message, ...String(e.stack || '').split('\n').filter((z) => z && !z.includes(e.message)).slice(0, 3)].join('\n')
+  : String(e);
 const zeigeFehler = (e, wo = '') => {
-  const t = `${wo ? '[' + wo + '] ' : ''}${e?.stack || e?.message || e}`;
+  const t = `${wo ? '[' + wo + '] ' : ''}${fehlerText(e)}`;
   fehlerListe.push(t); console.error(t);
   const f = $('fehler'); f.hidden = false; f.textContent = 'Fehler:\n' + fehlerListe.slice(-4).join('\n\n');
 };
