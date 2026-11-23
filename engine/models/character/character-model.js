@@ -9,10 +9,13 @@
  *   figur.befestigen('handR', schwert);
  *   figur.setLook({ kopfbedeckung: { stil: 'krone' } });   // Rig-Gruppen & Befestigtes bleiben erhalten
  * @tags     figur, charakter, modell, mesh, spieler, npc, avatar, editor, ausrüstung, mimik, gesicht
- * @version  1.2.0
+ * @version  1.3.0
  * @status   entwurf
  * @three    ja
  *
+ * 1.3 (additiv): opts.koerper = 'organisch' → ein glatter, gehäuteter Körper aus SDF (figur-haut: Anatomie + Kleidung + Haar in einem Netz,
+ *      biegt weich an den Gelenken); Kopfbedeckung, Umhang, Rucksack, Zubehör, Augen, Brille, Ohrringe bleiben starre Teile. opts.zelle = Feinheit (m).
+ *      modell.koerper = 'organisch' | 'bloecke'; modell.setKoerper(art) schaltet live um.
  * Gesicht/Mimik (1.1, additiv; mit opts.mimik = false festes Gesicht wie 1.0, ohne die Funktionen zu brechen – sie tun dann nichts):
  *   setAusdruck(name)  name aus AUSDRUECKE (character-look), z. B. 'neutral' 'froh' 'freundlich' 'freude' 'wuetend' 'traurig'
  *                      'ueberrascht' 'erschrocken' 'schlafend' 'muede' 'gaehnen' 'schmerz' 'benommen' 'bewusstlos' 'tot' 'stolz'
@@ -38,6 +41,21 @@ import {
 import { baueKopf, baueKopfbedeckung } from './character-parts-kopf.js';
 import { baueZubehoer, hatZubehoer } from './character-parts-zubehoer.js';
 import { createGesicht } from './character-parts-gesicht.js';
+import { createFigurHaut } from './figur-haut.js';
+import { baueBrille, baueOhrringe } from './character-parts-zubehoer.js';
+import { AUGE } from './character-parts-kopf.js';
+
+/** Organisch: diese Teile stecken im Haut-Netz und werden nicht als Blöcke gebaut. */
+const IM_NETZ = new Set(['becken', 'torso', 'hals', 'kopf', ...['L', 'R'].flatMap((s) => ['oberarm', 'unterarm', 'hand', 'oberschenkel', 'unterschenkel', 'fuss'].map((t) => t + s))]);
+
+/** Starre Kopf-Teile für den organischen Körper: Augäpfel, Brille, Ohrringe. */
+function baueKopfStarr(b, K) {
+  const R = K.R;
+  if (K.mimik) for (const s of [-1, 1]) b.sphere(R * AUGE.r, 0xf4efe6, { x: s * R * AUGE.x, y: R * AUGE.y, z: R * AUGE.z, sz: AUGE.sz, jitter: 0 }, 9, 6);
+  baueBrille(b, K);
+  baueOhrringe(b, K);
+  return b;
+}
 
 /** Bauplan: Mesh-Name → { an: Knochen (k) oder Sockel (s), bau, nur?(ctx) }. Paare L/R teilen sich die Bau-Funktion. */
 const PLAN = [
@@ -71,9 +89,9 @@ function mischen(a, b) {
  * → { root, rig, look, masse, meshes, gesicht, ausdruck, setLook(teil), befestigen(sockel, obj), loesen(sockel|obj), setSichtbar(b),
  *     setAusdruck(name), setLider(zu), blinzeln(dauer), setBlick(x, y), updateGesicht(dt), dispose() }
  */
-export function createCharacterModel({ look = {}, seed = 1, material = null, schatten = true, mimik = true } = {}) {
+export function createCharacterModel({ look = {}, seed = 1, material = null, schatten = true, mimik = true, koerper = 'bloecke', zelle = 0.013 } = {}) {
   const mat = material || figurMaterial();
-  const modell = { look: createLook(look), meshes: [], gesicht: null };   // Umhang hängt an rig.sockel.umhang (Saum nach −Y)
+  const modell = { look: createLook(look), meshes: [], gesicht: null, koerper: koerper === 'organisch' ? 'organisch' : 'bloecke', haut: null };   // Umhang hängt an rig.sockel.umhang (Saum nach −Y)
   let zustand = { ausdruck: modell.look.ausdruck, zu: 0, blick: [0, 0], auto: true };   // Gesichtszustand überlebt setLook
   modell.masse = koerperMasse(modell.look);
   const rig = createRig(modell.masse);
@@ -83,7 +101,15 @@ export function createCharacterModel({ look = {}, seed = 1, material = null, sch
 
   function bauen() {
     const ctx = teilKontext(modell.look, modell.masse, { mimik });
+    const organisch = modell.koerper === 'organisch';
+    if (organisch) {
+      modell.haut = createFigurHaut({ look: modell.look, masse: modell.masse, rig, zelle, mimik, schatten });
+      modell.meshes.push(modell.haut.mesh);
+      const b = baueKopfStarr(createMeshBuilder({ seed: hashSeed(seed, 'kopfstarr') }), ctx);
+      if (!b.leer) { const mk = b.mesh(mat); mk.name = 'kopf'; mk.castShadow = false; rig.knochen.kopf.add(mk); modell.meshes.push(mk); }
+    }
     for (const [name, p] of PLAN) {
+      if (organisch && IM_NETZ.has(name)) continue;
       if (p.nur && !p.nur(ctx)) continue;
       const b = p.bau(createMeshBuilder({ seed: hashSeed(seed, name) }), ctx);
       if (!b || b.leer) continue;
@@ -104,8 +130,10 @@ export function createCharacterModel({ look = {}, seed = 1, material = null, sch
     }
   }
   function abbauen() {
-    for (const m of modell.meshes) { m.removeFromParent(); if (!m.userData.gesicht) m.geometry.dispose(); }
+    for (const m of modell.meshes) { if (m === modell.haut?.mesh) continue; m.removeFromParent(); if (!m.userData.gesicht) m.geometry.dispose(); }
     modell.meshes.length = 0;
+    modell.haut?.dispose();
+    modell.haut = null;
     modell.gesicht?.dispose();
     modell.gesicht = null;
   }
@@ -133,6 +161,12 @@ export function createCharacterModel({ look = {}, seed = 1, material = null, sch
     const weg = typeof wer === 'string' ? [...befestigt].filter(([, s]) => s === wer).map(([o]) => o) : befestigt.has(wer) ? [wer] : [];
     for (const o of weg) { o.removeFromParent(); befestigt.delete(o); }
     return weg;
+  };
+  /** 'organisch' | 'bloecke' → Körper neu bauen. */
+  modell.setKoerper = (art) => {
+    const neu = art === 'organisch' ? 'organisch' : 'bloecke';
+    if (neu !== modell.koerper) { modell.koerper = neu; abbauen(); bauen(); }
+    return modell;
   };
   modell.setSichtbar = (an) => { rig.root.visible = !!an; return modell; };
   // Gesicht (siehe Modulkopf). Ohne Mimik: Zustand wird nur gemerkt.

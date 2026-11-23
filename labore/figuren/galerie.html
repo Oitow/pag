@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Figuren-Galerie</title>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #8fb8d8; font-family: system-ui, sans-serif; }
+  canvas { display: block; position: fixed; inset: 0; touch-action: none; }
+  #leiste { position: fixed; top: 8px; left: 8px; right: 8px; display: flex; gap: 6px; flex-wrap: wrap; z-index: 2; }
+  #leiste a, #leiste button { background: rgba(16,20,30,.74); color: #f2f5fa; border: 1px solid rgba(255,255,255,.16); border-radius: 10px; padding: 8px 12px; font-size: 13px; text-decoration: none; }
+  #info { position: fixed; bottom: 8px; left: 8px; color: #10202e; font-size: 12px; z-index: 2; }
+</style>
+</head>
+<body>
+<div id="leiste"><a href="./">← Labor</a><button id="art">🫧 organisch</button><button id="dreh">⟳ drehen</button><button id="clip">🎬 Clip</button></div>
+<div id="info"></div>
+<script type="module" src="js/galerie.js"></script>
+</body>
+</html>

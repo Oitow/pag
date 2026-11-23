@@ -114,6 +114,15 @@
 | character-reaktion | `engine/models/character/character-reaktion.js` | Prozedurale Treffer-Reaktion (rein): Stoß aus Richtung + Stärke als abklingende additive Pose; Umfallen als Ragdoll-Ersatz ohne Physik-Engine (Kippen, Aufprall, schlaffe Glieder) | entwurf |
 | character-rig | `engine/models/character/character-rig.js` | Prozedurales Skelett einer Menschen-Figur aus Gruppen (keine Skinning-Knochen): feste Gelenknamen, Ruhepose, Sockel für Hut/Waffe/Rucksack | entwurf |
 | character-sekundaer | `engine/models/character/character-sekundaer.js` | Sekundäre Bewegung (rein): Feder-Dämpfer für Kopf-Nachschwingen, Gewichtsverlagerung beim Anhalten/Anfahren, Umhang- und Haar-Winkel – additiv auf eine Pose | entwurf |
+| figur-form | `engine/models/character/figur-form.js` | SDF-Baukasten für organische Figuren: weich verschmelzende Körper (Kapsel, Ellipsoid, Rundbox, Ring) mit Farbe und Knochen-Gewichten je Körper – Grundlage für den einteiligen, gehäuteten Figurenkörper | entwurf |
+| figur-haar | `engine/models/character/figur-haar.js` | Frisuren und Bärte der organischen Figur als weiche SDF-Körper (Haarkappe, Pony, Strähnen-Bündel, Zöpfe aus Kugelketten, Locken mit Rauschen) – Gesicht frei, Hut-tauglich | entwurf |
+| figur-haut | `engine/models/character/figur-haut.js` | Organischer Figurenkörper: Look → SDF-Form (Anatomie + Kleidung + Haar) → ein glattes Netz (Surface Nets) mit gebackener Umgebungsverdeckung → SkinnedMesh, das weich mit dem Rig mitbiegt | entwurf |
+| figur-kleidung-basis | `engine/models/character/figur-kleidung-basis.js` | Gemeinsame Helfer für Kleidung und Haar der organischen Figur: Farben, Stoffdicke, Haut vermessen (Strahlen ins Abstandsfeld), Knochen-Gewichte (Rumpf, Rock), Glocke mit Saum | entwurf |
+| figur-kleidung-oben | `engine/models/character/figur-kleidung-oben.js` | Oberteil der organischen Figur als SDF-Körper: Rumpf-Hülle, Schulterpartie, Kragen/Ausschnitt, Ärmel, Säume, Knöpfe, Rüstungsplatten – je Oberteil-Stil | entwurf |
+| figur-kleidung-unten | `engine/models/character/figur-kleidung-unten.js` | Unterteil der organischen Figur als SDF-Körper: Hose (lang, kurz, Pluder), Röcke/Roben/Mantelschöße mit Saum, Schürze, Gürtel mit Schnalle und Tasche, Schuhe je Stil | entwurf |
+| figur-kleidung | `engine/models/character/figur-kleidung.js` | Kleidung der organischen Figur als SDF-Körper über der Anatomie: Oberteil mit Ärmeln, Hose/Rock/Robe, Gürtel + Tasche, Schuhe – je Stil aus character-look | entwurf |
+| figur-koerper-kopf | `engine/models/character/figur-koerper-kopf.js` | Hals und Kopf der organischen Figur als SDF-Körper: Schädel, Kiefer/Kinn, Wangenknochen, Brauenbogen, Augenhöhlen (passend zu den starren Augäpfeln), Nase, Ohren (Mund = Mimik-Mesh) | entwurf |
+| figur-koerper | `engine/models/character/figur-koerper.js` | Anatomie der organischen Figur als SDF-Körper: Rumpf (Brustkorb, Taille, Bauch, Becken, Gesäß, Trapez, Schultermuskeln), Arme, Hände mit Daumen (Griff am Sockel umschlossen), Beine, Füße mit flacher Sohle; Hals + Kopf in figur-koerper-kopf | entwurf |
 | irrlicht | `engine/models/kreaturen/irrlicht.js` | Low-Poly-Irrlicht (Moorgeist): hell leuchtender Kern, Halo und wehende Schleier; zwei Schwebe-Bild-Geometrien (Vertexfarben) | entwurf |
 | keiler | `engine/models/kreaturen/keiler.js` | Low-Poly-Keiler (Wildschwein) als Horden-Gegner: massig, Borstenkamm, Hauer; zwei Lauf-Bild-Geometrien (Vertexfarben) | entwurf |
 | ratte | `engine/models/kreaturen/ratte.js` | Low-Poly-Riesenratte als Horden-Gegner: liefert zwei Lauf-Bild-Geometrien (Vertexfarben) für InstancedMesh | entwurf |
@@ -266,6 +275,7 @@
 | alpha | laub-karten |
 | amboss | stationen, bau-uebung |
 | amulett | character-parts-zubehoer |
+| anatomie | figur-koerper |
 | angriff | character-clips |
 | animation | character, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-pose, character-reaktion, character-rig, character-sekundaer, wasser-glanz |
 | anker | bau-instanzen |
@@ -303,7 +313,7 @@
 | balken | hud |
 | bank | bau-markt |
 | banner | bau-vorrat, aufgaben-anzeige |
-| bart | character-parts-haar, character-parts-kopf |
+| bart | character-parts-haar, character-parts-kopf, figur-haar |
 | bau | bau-basis, bau-pruefung, bau-teile, bau-dorf-teile, gebaeude-pruefen, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau, bau-instanzen |
 | bauen | welt-aenderung |
 | baukasten | modul-kern, spiel |
@@ -345,7 +355,7 @@
 | cache | natur-assets |
 | canvas | minikarte |
 | cape | character-parts-ruecken |
-| charakter | character, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-lod, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-material, oberflaeche-fenster, figur-editor |
+| charakter | character, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-lod, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-form, figur-haar, figur-haut, figur-kleidung-basis, figur-kleidung-oben, figur-kleidung-unten, figur-kleidung, figur-koerper-kopf, figur-koerper, figur-material, oberflaeche-fenster, figur-editor |
 | chat | modul-oberflaeche, chat |
 | chunks | chunk-strom, worldgen-chunkfluss, worldgen-chunks |
 | clip | character-animator, character-clips-mehr, character-clips-zauber, character-clips |
@@ -408,7 +418,7 @@
 | feuchte | worldgen-climate |
 | feuer | grosszauber-riss, grosszauber-riss-ansicht |
 | feuerstelle | stationen |
-| figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-lod, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-material, modul-spieler, figur-editor, figur-schild, wege-lage, worldgen-adapter |
+| figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-lod, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-form, figur-haar, figur-haut, figur-kleidung-basis, figur-kleidung-oben, figur-kleidung-unten, figur-kleidung, figur-koerper-kopf, figur-koerper, figur-material, modul-spieler, figur-editor, figur-schild, wege-lage, worldgen-adapter |
 | first-person | follow-camera |
 | flackern | licht-pool |
 | flechte | riesenbaum-krone |
@@ -417,12 +427,13 @@
 | flut | grosszauber-welle, grosszauber-welle-ansicht |
 | flächenschaden | grosszauber-riss, grosszauber-sturm, grosszauber-welle, grosszauber, zauber-daten, zauber |
 | folgen | follow-camera |
-| form | sdf, pflanze-formen, riesenbaum-form, worldgen-shape |
+| form | sdf, figur-form, pflanze-formen, riesenbaum-form, worldgen-shape |
 | fortschritt | aufgaben, progression, modul-fortschritt |
 | fps | schleife, qualitaet |
-| frisur | character-parts-haar, character-parts-kopf |
+| frisur | character-parts-haar, character-parts-kopf, figur-haar |
 | fuesse | character-anim-hang, character-gang |
 | funken | zauber-effekte |
+| fuss | figur-koerper |
 | fähigkeit | faehigkeiten-daten, faehigkeiten, klassen-daten, zauber, modul-kampf |
 | gamepad | move-input |
 | gameplay | entitaeten, ereignisse, aufgaben, ausdauer, befehle, behaelter, boss, character-brain, character-gruppe, character-motor-tuning, character-motor, character-sinne, character-steering-extra, character-steering, gegner-lager, hand, horde, interaktion, inventar, klettern, koerper, rezepte, rohstoffe, stationen, tueren, welt-dinge |
@@ -444,7 +455,7 @@
 | geometrie | fels-basis, fels-form, natur-basis, pflanze-basis, totholz-form, mesh-builder, welt-plan-formen |
 | geroell | fels |
 | geschoss | zauber |
-| gesicht | character-model, character-parts-gesicht, character-parts-kopf |
+| gesicht | character-model, character-parts-gesicht, character-parts-kopf, figur-koerper-kopf |
 | geste | character-clips-zauber |
 | gewicht | character-sekundaer |
 | gewitter | wetter |
@@ -459,17 +470,19 @@
 | gras | pflanze-boden, gras-feld |
 | groesse | riesenbaum |
 | großzauber | grosszauber-riss, grosszauber-sturm, grosszauber-wand, grosszauber-welle, grosszauber, grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht, modul-zauber, zauber-gross |
-| gürtel | character-parts-becken |
-| haar | character-parts-haar, character-parts-kopf, character-sekundaer |
+| gürtel | character-parts-becken, figur-kleidung-unten, figur-kleidung |
+| haar | character-parts-haar, character-parts-kopf, character-sekundaer, figur-haar |
 | halm | pflanze-formen |
+| hals | figur-koerper-kopf |
 | haltbarkeit | hand |
 | halten | zauber-leiste |
 | haltung | kampf-werte, ziel-rahmen |
-| hand | hand |
+| hand | hand, figur-koerper |
 | handy | touch-stick, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, qualitaet, modul-kampf, modul-oberflaeche, modul-zauber, chat, figur-editor, menue, minikarte, zauber-leiste |
 | hang | klettern, character-anim-hang |
 | hash | rng |
 | haus | haus |
+| haut | figur-haut |
 | heap | worldgen-grid |
 | heide | pflanze-busch |
 | helm | character-parts-hut, character-parts-kopf |
@@ -484,6 +497,7 @@
 | hoeren | character-sinne |
 | holz | wege-mesh |
 | horde | gegner-lager, horde, zauber-daten, zauber, irrlicht, keiler, ratte, wolf, horde-mesh, modul-gegner |
+| hose | figur-kleidung-unten, figur-kleidung |
 | host | spiel |
 | hot | zustaende |
 | hotbar | inventar-ansicht, kampf-leiste, zauber-leiste |
@@ -531,7 +545,7 @@
 | kiste | bau-vorrat |
 | klang | klang |
 | klasse | klassen-daten, progression, modul-kampf |
-| kleidung | character-parts-becken, character-parts-torso, character-parts |
+| kleidung | character-parts-becken, character-parts-torso, character-parts, figur-form, figur-kleidung-basis, figur-kleidung-oben, figur-kleidung-unten, figur-kleidung |
 | klettern | ausdauer, klettern, modul-spieler |
 | klima | wetter, worldgen-biomes, worldgen-climate |
 | knoepfe | touch-stick |
@@ -539,7 +553,7 @@
 | kollision | follow-camera, raum-gitter, sdf-netz, grosszauber, tueren, bau-basis, bau-instanzen, modul-riesenwald, zauber-gross, kollision, worldgen-adapter |
 | kombo | nahkampf-daten, nahkampf |
 | kommando | befehle |
-| kopf | character-anim-blick, character-parts-haar, character-parts-hut, character-parts-kopf |
+| kopf | character-anim-blick, character-parts-haar, character-parts-hut, character-parts-kopf, figur-koerper-kopf |
 | korb | character-ausruestung |
 | kreatur | irrlicht, keiler, ratte, wolf |
 | krieger | klassen-daten |
@@ -547,7 +561,7 @@
 | krit | kampf-werte |
 | krone | character-parts-hut, character-parts-kopf, laub-klumpen, riesenbaum-krone, laub-karten |
 | kronen | kronen-lichtkarte |
-| körper | character-parts |
+| körper | character-parts, figur-form, figur-haut, figur-koerper |
 | l-system | baum-skelett |
 | labor | module-register |
 | ladungen | faehigkeiten |
@@ -568,7 +582,7 @@
 | lichtstrahlen | kronen-lichtkarte |
 | localStorage | speicher |
 | lock-on | follow-camera, ziel-wahl, modul-spieler |
-| locken | character-parts-haar |
+| locken | character-parts-haar, figur-haar |
 | lod | character-lod, laub-klumpen, modul-bewohner, modul-riesenwald, modul-welt, riesenwald-teile, chunk-strom, fern-wald |
 | logik | pflanze-formen |
 | look | character-look, figur-material, psx, splat-look, figur-editor |
@@ -579,7 +593,7 @@
 | magier | klassen-daten |
 | maler | splat-look |
 | mana | zauber, zauber-leiste |
-| mantel | character-parts-becken, character-parts-torso |
+| mantel | character-parts-becken, character-parts-torso, figur-kleidung-oben |
 | marker | aufgaben-anzeige |
 | markt | bau-markt |
 | maske | character-pose, riesenwald-teile, worldgen-shape |
@@ -593,7 +607,7 @@
 | menge | character-lod |
 | menue | modul-oberflaeche, oberflaeche-fenster, menue |
 | merge | natur-basis, mesh-builder |
-| mesh | sdf-netz, character-model, character-parts-basis, character-parts, mesh-builder, scatter-mesh, terrain-mesh, wege-mesh |
+| mesh | sdf-netz, character-model, character-parts-basis, character-parts, figur-haut, mesh-builder, scatter-mesh, terrain-mesh, wege-mesh |
 | migration | speicher |
 | mimik | character-anim-blick, character-look, character-model, character-parts-gesicht |
 | minikarte | modul-oberflaeche, minikarte |
@@ -627,13 +641,13 @@
 | noise | noise |
 | normale | worldgen-query |
 | npc | character-brain, character-gruppe, character-sinne, character-steering-extra, character-steering, character, interaktion, character-anim-idle, character-animator, character-lod, character-look, character-model, modul-bewohner, modul-tutorial, figur-schild |
-| oberteil | character-parts-torso |
+| oberteil | character-parts-torso, figur-kleidung-oben, figur-kleidung |
 | objekte | scatter-mesh, welt-aenderung, worldgen-scatter, worldgen-vegetation |
 | oeffnen | tueren |
 | ohrringe | character-parts-zubehoer |
 | optionen | oberflaeche-fenster, menue, worldgen-presets |
 | orbit | follow-camera |
-| organisch | sdf |
+| organisch | sdf, figur-form, figur-haar, figur-haut, figur-kleidung-basis, figur-kleidung-oben, figur-kleidung-unten, figur-kleidung, figur-koerper-kopf, figur-koerper |
 | ort | stationen |
 | orte | minikarte, welt-regionen, worldgen-sites |
 | overlay | aufgaben-anzeige, figur-schild, hud, kampf-leiste, menue, treffer-zahlen, zauber-leiste, ziel-rahmen |
@@ -710,7 +724,8 @@
 | rinde | riesenbaum-netz |
 | ring | grosszauber-wand |
 | riss | grosszauber-riss, grosszauber-riss-ansicht, zauber-gross |
-| rock | character-parts-becken |
+| robe | figur-kleidung-oben, figur-kleidung-unten, figur-kleidung |
+| rock | character-parts-becken, figur-kleidung-basis, figur-kleidung-unten, figur-kleidung |
 | rohstoff | rohstoffe |
 | rolle | ausdauer, character-motor, character-anim-zustand |
 | rollen | koerper |
@@ -721,9 +736,10 @@
 | ruestung | gegenstaende-daten, kampf-werte |
 | ruhe | character-anim-idle |
 | rückstoß | horde |
-| rüstung | character-parts-torso |
+| rüstung | character-parts-torso, figur-kleidung-oben |
 | saat | gauss-saat |
 | salto | character-anim-zustand |
+| saum | figur-kleidung-basis |
 | schaden | kampf-werte, kampf, modul-entitaeten, treffer-zahlen |
 | schal | character-parts-zubehoer |
 | schatten | kronen-lichtkarte, qualitaet, modul-himmel, riesenwald-teile, himmel |
@@ -743,13 +759,13 @@
 | schrein | bau-dorf-teile |
 | schritt | aufgaben |
 | schuetteln | follow-camera |
-| schuhe | character-parts |
+| schuhe | character-parts, figur-kleidung-unten, figur-kleidung |
 | schwarm | character-gruppe, character-steering, horde, horde-mesh |
 | schwerkraft | koerper |
 | schwert | character-ausruestung |
 | schwimmen | ausdauer, character-motor, koerper, character-animator, character-gang |
 | schürze | character-parts-becken, character-parts-torso |
-| sdf | sdf-netz, sdf, riesenbaum-form, riesenbaum-netz, riesenbaum |
+| sdf | sdf-netz, sdf, figur-form, figur-haar, figur-haut, figur-kleidung-basis, figur-kleidung-oben, figur-kleidung-unten, figur-kleidung, figur-koerper-kopf, figur-koerper, riesenbaum-form, riesenbaum-netz, riesenbaum |
 | see | wasser-glanz, worldgen-chunkfluss |
 | seed | rng, beute, wetter |
 | seen | worldgen-hydrology |
@@ -761,6 +777,7 @@
 | sicht | character-sinne |
 | siedlung | modul-bewohner, modul-dorf, dorf-plan |
 | skelett | character-rig, baum-skelett |
+| skinning | figur-form, figur-haut, figur-kleidung-basis |
 | smooth-min | sdf |
 | sockel | character-ausruestung, character-rig |
 | sog | grosszauber-sturm |
@@ -794,6 +811,7 @@
 | steinkreis | bau-wegbau |
 | sterne | himmel-stand, himmel |
 | steuerung | move-input |
+| stiefel | figur-kleidung-unten |
 | stil | splat-look |
 | stimmung | psx |
 | strahl | kollision |
@@ -816,7 +834,7 @@
 | talent | progression, modul-fortschritt |
 | talente | modul-oberflaeche, oberflaeche-fenster |
 | tank | bedrohung |
-| tasche | character-parts-becken |
+| tasche | character-parts-becken, figur-kleidung-unten |
 | tastatur | move-input |
 | taverne | taverne |
 | team | entitaeten |
@@ -919,12 +937,13 @@
 | zinnen | bau-teile, mauer, wachturm |
 | zonen | welt-plan |
 | zoom | follow-camera, touch-stick |
-| zopf | character-parts-haar |
+| zopf | character-parts-haar, figur-haar |
 | zufall | rng |
 | zustaendigkeit | module-register |
 | zustand | element-reaktionen, zustaende |
 | zustandsautomat | character-brain |
 | zutaten | rezepte |
+| ärmel | figur-kleidung-oben |
 
 ## Module
 
@@ -1475,7 +1494,7 @@ Genutzt von: figuren · Tags: npc, ki, steering, bewegung, wandern, pfad, patrou
 Absicht: { x, z, sprint, springen (Puls beim Steckenbleiben), ducken, blickYaw (beim Umkreisen/Abstand/Wartepunkt) }.
 Steckenbleiben eskaliert: seitlich ausweichen → andere Seite + Hüpfer → Wanderziel/Wegpunkt überspringen bzw. `steckt = true`.
 
-### character · `engine/gameplay/character.js` · v1.5.0 · entwurf
+### character · `engine/gameplay/character.js` · v1.6.0 · entwurf
 Fertige Spielfigur in einem Objekt: Modell (Look) + Animator + Bewegungs-Motor, für Spieler und NPCs gleich
 
 - `createCharacter(opts) -> { root, model, animator, motor, zustand, look, name, schild, brain, update(dt,absicht?,brainKontext?), setBrain(brain|opts|null), spiele(name,opts), loese(opts), stoppe(name?), aktion(name,opts), sage(text,{dauer,geste,ausdruck}), setName(t), setLeben(anteil|null), ausruesten(sockel,obj), ablegen(sockel|obj), ausruestung, setAusdruck(name|null,opts), treffer(richtung,staerke,opts), umfallen(richtung,opts), aufstehen(dauer), blickZu(punkt|figur|fn|null), setSichtbar(bool), abstandZu(punkt|figur), setLook(teil), teleport(pos,yaw?), stoss(x,y,z,opts?), dispose() }`
@@ -2579,7 +2598,7 @@ Genutzt von: daemmerwald, enklave, erlenwacht, figuren, handwerk · Tags: figur,
    Körper schultern/muskeln, Feld ausdruck (Grund-Mimik), neue Vorlagen. Alte Spielstände bleiben gültig
    (fehlende Felder → Standard; erste Einträge in STILE und Körper-Standards unverändert).
 
-### character-model · `engine/models/character/character-model.js` · v1.2.0 · entwurf
+### character-model · `engine/models/character/character-model.js` · v1.3.0 · entwurf
 Look → fertige Figur: Rig (Gelenk-Gruppen) + Low-Poly-Meshes je Knochen; Look live wechseln, Gegenstände an Sockeln befestigen
 
 - `createCharacterModel({ look, seed, material, schatten, mimik }) -> { root, rig, look, masse, meshes, gesicht, ausdruck, setLook(teilOderLook), befestigen(sockel,obj), loesen(sockelOderObj), setSichtbar(bool), setAusdruck(name), setLider(zu), blinzeln(dauer), setBlick(x,y), setAugen(yaw,nick,lid), updateGesicht(dt), dispose() }`
@@ -2593,6 +2612,9 @@ figur.setLook({ kopfbedeckung: { stil: 'krone' } });   // Rig-Gruppen & Befestig
 ```
 
 Genutzt von: erlenwacht · Tags: figur, charakter, modell, mesh, spieler, npc, avatar, editor, ausrüstung, mimik, gesicht · THREE: ja
+1.3 (additiv): opts.koerper = 'organisch' → ein glatter, gehäuteter Körper aus SDF (figur-haut: Anatomie + Kleidung + Haar in einem Netz,
+   biegt weich an den Gelenken); Kopfbedeckung, Umhang, Rucksack, Zubehör, Augen, Brille, Ohrringe bleiben starre Teile. opts.zelle = Feinheit (m).
+   modell.koerper = 'organisch' | 'bloecke'; modell.setKoerper(art) schaltet live um.
 Gesicht/Mimik (1.1, additiv; mit opts.mimik = false festes Gesicht wie 1.0, ohne die Funktionen zu brechen – sie tun dann nichts):
 setAusdruck(name)  name aus AUSDRUECKE (character-look), z. B. 'neutral' 'froh' 'freundlich' 'freude' 'wuetend' 'traurig'
                    'ueberrascht' 'erschrocken' 'schlafend' 'muede' 'gaehnen' 'schmerz' 'benommen' 'bewusstlos' 'tot' 'stolz'
@@ -2847,6 +2869,169 @@ umhang.rotation.x = sek.werte.umhangX;      // Umhang/Haar-Teile selbst drehen
 ```
 
 Genutzt von: – · Tags: figur, charakter, animation, feder, sekundaer, nachschwingen, umhang, haar, gewicht · THREE: nein
+
+### figur-form · `engine/models/character/figur-form.js` · v1.0.0 · entwurf
+SDF-Baukasten für organische Figuren: weich verschmelzende Körper (Kapsel, Ellipsoid, Rundbox, Ring) mit Farbe und Knochen-Gewichten je Körper – Grundlage für den einteiligen, gehäuteten Figurenkörper
+
+- `createFigurForm({ glatt }) -> { kapsel(a,b,ra,rb,o), kugel(m,r,o), ellipsoid(m,radien,o), rundbox(m,halb,rund,o), ring(m,R,r,o), abstand(x,y,z), normale(x,y,z,out,eps), grenzen(), eingrenzen(min,max,rand), einfluss(x,y,z,{farbSchaerfe,knochenWeich}) -> {farbe:[r,g,b], knochen:{name:w}, rauh, haut}, anzahl, spiel }`
+
+```js
+import { createFigurForm } from '../../engine/models/character/figur-form.js';
+import { sdfNetz } from '../../engine/core/sdf-netz.js';
+const f = createFigurForm({ glatt: 0.03 });
+f.kapsel([0.2, 1.4, 0], [0.45, 1.1, 0], 0.05, 0.04, { knochen: 'schulterL', farbe: 0x4f7a5a });
+f.ellipsoid([0, 1.2, 0], [0.16, 0.25, 0.1], { knochen: 'torso', farbe: 0x4f7a5a, dreh: [0.1, 0, 0] });
+const netz = sdfNetz(f, { zelle: 0.012 });               // f erfüllt den Vertrag von sdf-netz
+const e = f.einfluss(0.3, 1.3, 0);                        // e.farbe, e.knochen → Skinning
+```
+
+Genutzt von: – · Tags: sdf, figur, charakter, organisch, skinning, form, körper, kleidung · THREE: nein
+Optionen o je Körper (alle optional):
+knochen  'torso' | { torso: 0.7, becken: 0.3 } | (x,y,z) => ({ name: w })   – wem die Haut hier folgt (Skinning)
+farbe    0xrrggbb (Vertexfarbe, wenn dieser Körper die Oberfläche bildet)
+glatt    Breite der Verschmelzung mit allem VORHER Hinzugefügten in m (Standard: opts.glatt). Klein = Naht/Kante, groß = weich
+abzug    true = weich abziehen statt vereinigen (Falten, Augenhöhlen, Mundspalt). farbe wird an der Höhlung genutzt
+dreh     [rx, ry, rz] Euler XYZ in rad (Ellipsoid, Rundbox, Ring)
+tief     Kapsel: Querschnitt in Blickrichtung (+Z) gestaucht (0.7 = flach von vorn nach hinten)
+rauh     Amplitude in m für Rauschen auf diesem Körper (Kettenhemd, Fell, Stoff-Knitter), rauhSkala = Frequenz (1/m, Std. 60)
+haut     true = Haut (Material/Shader kann das nutzen: Attribut „haut“ 0…1)
+Reihenfolge zählt: jeder Körper wird mit dem bisherigen Ergebnis weich vereinigt (bzw. abgezogen).
+Einheiten: Meter, Figur in Bindungs-Pose (A-Pose), Füße bei y = 0, Blick nach +Z, links = +X.
+
+### figur-haar · `engine/models/character/figur-haar.js` · v1.0.0 · entwurf
+Frisuren und Bärte der organischen Figur als weiche SDF-Körper (Haarkappe, Pony, Strähnen-Bündel, Zöpfe aus Kugelketten, Locken mit Rauschen) – Gesicht frei, Hut-tauglich
+
+- `baueHaarForm(form, ctx) -> form`
+
+```js
+import { baueHaarForm } from './figur-haar.js';
+baueHaarForm(form, formKontext(look, masse, rig));   // ruft figur-haut nach der Kleidung auf
+```
+
+Genutzt von: – · Tags: figur, charakter, organisch, sdf, haar, bart, frisur, zopf, locken · THREE: nein
+Knochen kopf: Kopfkugel-Mitte (0, R, 0), Gesicht +Z, links +X. Frei bleiben: Augen R·(±0.34, 1.02, 0.86),
+Brauen y ≈ 1.27R, Mund y ≈ 0.52R (z ≈ 0.9R). Hüte (starr) erwarten etwa eine Kugel R um (0, R, 0):
+Kappe bleibt darum flach (≤ 1.08R), unter deckenden Hüten nur Haar am Rand (Regel wie character-parts-haar).
+
+### figur-haut · `engine/models/character/figur-haut.js` · v1.0.0 · entwurf
+Organischer Figurenkörper: Look → SDF-Form (Anatomie + Kleidung + Haar) → ein glattes Netz (Surface Nets) mit gebackener Umgebungsverdeckung → SkinnedMesh, das weich mit dem Rig mitbiegt
+
+- `createFigurHaut({ look, masse, rig, material, zelle, mimik, schatten }) -> { mesh, kontext, dreiecke, ms, dispose() }`
+- `formKontext(look, masse, rig, opts) -> ctx`
+- `BINDE_POSE`
+
+```js
+import { createFigurHaut } from '../../engine/models/character/figur-haut.js';
+const haut = createFigurHaut({ look, masse, rig, zelle: 0.012 });   // hängt sich selbst an rig.root
+// character-model macht das mit createCharacterModel({ look, koerper: 'organisch' })
+```
+
+Genutzt von: – · Tags: figur, charakter, organisch, sdf, skinning, mesh, körper, haut · THREE: ja
+Form-Kontext (für figur-koerper / figur-kleidung / figur-haar, alle ohne THREE):
+alles aus teilKontext (character-parts): L, m, g, w, R, f (Farben als Zahlen), aermel, stil, taille, brust, tiefe, armR, beinR, rock, mimik
+P(knochen, [x,y,z]) -> [x,y,z]   Punkt im Knochen-Raum (wie die alten Mesh-Teile: Gliedmaßen hängen nach −Y, Kopfkugel bei y = R)
+                                 → Bindungs-Pose in Figur-Koordinaten (Füße y = 0, Blick +Z, links +X)
+dreh(knochen, [rx,ry,rz]) -> Euler XYZ in Figur-Koordinaten (für o.dreh von Ellipsoid/Rundbox/Ring)
+achse(knochen) -> [x,y,z]      Einheitsvektor entlang −Y des Knochens (Richtung der Gliedmaße)
+Gebunden wird in einer A-Pose (BINDE_POSE: Arme gespreizt, Beine leicht auseinander), damit Arme und Beine nicht mit dem Rumpf verschmelzen.
+
+### figur-kleidung-basis · `engine/models/character/figur-kleidung-basis.js` · v1.0.0 · entwurf
+Gemeinsame Helfer für Kleidung und Haar der organischen Figur: Farben, Stoffdicke, Haut vermessen (Strahlen ins Abstandsfeld), Knochen-Gewichte (Rumpf, Rock), Glocke mit Saum
+
+- `misch(a,b,t)`
+- `dunkler(c,t)`
+- `heller(c,t)`
+- `GOLD`
+- `LEDER`
+- `stufe(a,b,x)`
+- `masse(ctx) -> { e, L, rx(y), rz(y), T(y,x,z) }`
+- `strahl(form,p,d) -> m`
+- `messeHaut(form, ctx) -> haut`
+- `kegel(n0,nm,n1,tm) -> [ra,rb]`
+- `rumpfGewichte(ctx)`
+- `rockGewichte(ctx, staerke)`
+- `glocke(form, ctx, opts)`
+
+```js
+import { masse, glocke } from './figur-kleidung-basis.js';
+const M = masse(ctx);  glocke(form, ctx, { yOben, yUnten, rOben, rUnten, farbe, saum });
+```
+
+Genutzt von: – · Tags: figur, charakter, organisch, sdf, kleidung, rock, saum, skinning · THREE: nein
+
+### figur-kleidung-oben · `engine/models/character/figur-kleidung-oben.js` · v1.0.0 · entwurf
+Oberteil der organischen Figur als SDF-Körper: Rumpf-Hülle, Schulterpartie, Kragen/Ausschnitt, Ärmel, Säume, Knöpfe, Rüstungsplatten – je Oberteil-Stil
+
+- `baueOberteil(form, ctx, haut) -> form`
+- `baueAermel(form, ctx, haut) -> form`
+- `platte(form, a, b, breite, farbe, knochen)   (haut = messeHaut aus figur-kleidung-basis)`
+
+```js
+import { baueOberteil, baueAermel } from './figur-kleidung-oben.js';
+const haut = messeHaut(form, ctx);  baueAermel(baueOberteil(form, ctx, haut), ctx, haut);
+```
+
+Genutzt von: – · Tags: figur, charakter, organisch, sdf, kleidung, oberteil, ärmel, rüstung, robe, mantel · THREE: nein
+
+### figur-kleidung-unten · `engine/models/character/figur-kleidung-unten.js` · v1.0.0 · entwurf
+Unterteil der organischen Figur als SDF-Körper: Hose (lang, kurz, Pluder), Röcke/Roben/Mantelschöße mit Saum, Schürze, Gürtel mit Schnalle und Tasche, Schuhe je Stil
+
+- `baueUnterteil(form, ctx, haut) -> form`
+- `baueGuertel(form, ctx, haut) -> form`
+- `baueSchuhe(form, ctx, haut) -> form   (haut = messeHaut)`
+
+```js
+import { baueUnterteil, baueGuertel, baueSchuhe } from './figur-kleidung-unten.js';
+const haut = messeHaut(form, ctx);  baueUnterteil(form, ctx, haut); baueGuertel(form, ctx, haut); baueSchuhe(form, ctx, haut);
+```
+
+Genutzt von: – · Tags: figur, charakter, organisch, sdf, kleidung, hose, rock, robe, gürtel, tasche, schuhe, stiefel · THREE: nein
+
+### figur-kleidung · `engine/models/character/figur-kleidung.js` · v1.0.0 · entwurf
+Kleidung der organischen Figur als SDF-Körper über der Anatomie: Oberteil mit Ärmeln, Hose/Rock/Robe, Gürtel + Tasche, Schuhe – je Stil aus character-look
+
+- `baueKleidungForm(form, ctx) -> form`
+
+```js
+import { baueKleidungForm } from './figur-kleidung.js';
+baueKleidungForm(form, formKontext(look, masse, rig));   // ruft figur-haut nach baueKoerperForm auf
+```
+
+Genutzt von: – · Tags: figur, charakter, organisch, sdf, kleidung, oberteil, hose, rock, robe, gürtel, schuhe · THREE: nein
+Aufteilung: figur-kleidung-oben (Rumpf, Kragen, Ärmel, Rüstung), figur-kleidung-unten (Hose, Rock, Schürze, Gürtel, Schuhe),
+figur-kleidung-basis (Haut vermessen, Gewichte, Glocke mit Saum). Stoff liegt ≈ 9 mm über der GEMESSENEN Haut
+(Strahlen ins Abstandsfeld der fertigen Anatomie) – passt so zu jedem Körperbau.
+Reihenfolge: Hose/Rock vor dem Oberteil, damit Kittelsäume und Gürtel darüber liegen; Schuhe zuletzt.
+Nicht hier (bleiben starre Teile): Kopfbedeckung, Umhang, Rucksack, Schal/Halsschmuck, Brille, Ohrringe, Augen.
+
+### figur-koerper-kopf · `engine/models/character/figur-koerper-kopf.js` · v1.0.0 · entwurf
+Hals und Kopf der organischen Figur als SDF-Körper: Schädel, Kiefer/Kinn, Wangenknochen, Brauenbogen, Augenhöhlen (passend zu den starren Augäpfeln), Nase, Ohren (Mund = Mimik-Mesh)
+
+- `baueKopfForm(form, ctx, hilfe) -> form`
+
+```js
+import { baueKopfForm } from '../../engine/models/character/figur-koerper-kopf.js';
+baueKopfForm(form, ctx, hilfe);   // wird von baueKoerperForm (figur-koerper) aufgerufen
+```
+
+Genutzt von: – · Tags: figur, charakter, organisch, sdf, kopf, gesicht, hals · THREE: nein
+Kopf-Raum wie character-parts-kopf: Kopfkugel-Mitte bei (0, R, 0) im Knochen kopf, Gesicht +Z, links +X.
+Augäpfel (AUGE: ±0.34R, 1.02R, 0.86R, Radius 0.17R, z × 0.55) bleiben starre Meshes → hier nur Lider-Rahmen/Höhle.
+Mimik (Brauen z ≈ 0.88R, Mund y ≈ 0.52R) liegt auf der Gesichtsfläche bei z ≈ 0.86–0.9R.
+
+### figur-koerper · `engine/models/character/figur-koerper.js` · v1.0.0 · entwurf
+Anatomie der organischen Figur als SDF-Körper: Rumpf (Brustkorb, Taille, Bauch, Becken, Gesäß, Trapez, Schultermuskeln), Arme, Hände mit Daumen (Griff am Sockel umschlossen), Beine, Füße mit flacher Sohle; Hals + Kopf in figur-koerper-kopf
+
+- `baueKoerperForm(form, ctx) -> form`
+
+```js
+// figur-haut ruft das auf: baueKoerperForm(form, formKontext(look, masse, rig)) – danach Kleidung und Haar
+```
+
+Genutzt von: – · Tags: figur, charakter, organisch, sdf, anatomie, körper, hand, fuss · THREE: nein
+Alle Punkte im Knochen-Raum über ctx.P (Bindungs-Pose = A-Pose): Gliedmaßen hängen nach −Y vom Gelenk, vorn +Z, links +X.
+Reihenfolge: Rumpf → Kopf → Beine → Arme. Gliedmaßen verschmelzen nur an Hüfte/Schulter mit dem Rumpf (kleines glatt).
+Kinder (L.koerper.groesse < 1) werden rundlicher und weicher, Muskeln (L.koerper.muskeln) formen Brust, Schultern, Arme, Waden.
 
 ### irrlicht · `engine/models/kreaturen/irrlicht.js` · v1.0.0 · entwurf
 Low-Poly-Irrlicht (Moorgeist): hell leuchtender Kern, Halo und wehende Schleier; zwei Schwebe-Bild-Geometrien (Vertexfarben)
@@ -3279,7 +3464,7 @@ Teil: { id, typ, variante = 0, x, z, winkel (Drehung um Y; lokal +z zeigt nach (
 Welt = (x + lx·cos w + lz·sin w, z − lx·sin w + lz·cos w). Kasten-bx/bz der Assets sind HALBE Maße (wie in world/kollision).
 Anker-Eintrag: { teilId, typ, art (Anker-Name, bei station deren art), x, y, z, winkel, daten (Original-Anker) }.
 
-### figur-material · `engine/render/figur-material.js` · v1.0.0 · entwurf
+### figur-material · `engine/render/figur-material.js` · v1.1.0 · entwurf
 Weiches Figuren-Material: Standard-Material mit Randlicht (Fresnel), aufgehellter Schattenseite und kräftigeren Farben – Figuren heben sich vom Gelände ab
 
 - `figurMaterial(opts) -> THREE.MeshStandardMaterial (geteilt je Optionen)`
@@ -3292,6 +3477,8 @@ const geist = figurMaterial({ rand: 1, randFarbe: 0x80c0ff, material: { transpar
 ```
 
 Genutzt von: – · Tags: figur, charakter, material, shader, randlicht, rim, look · THREE: ja
+1.1 (additiv): glatt = true → weiche Normalen (für den organischen Körper aus figur-haut); hautWaerme = warmes Durchscheinen auf der
+   Schattenseite, wo das Vertex-Attribut „haut“ = 1 ist (Ohren, Hände, Gesicht wirken lebendig statt nach Plastik). Ohne Attribut: 0.
 
 ### gauss-saat · `engine/render/gauss-saat.js` · v1.0.0 · entwurf
 Prozedurale Gauß-Splats erzeugen: wachsender Daten-Sammler, Quaternion aus einer Normalen und flächengleiche Aussaat flacher Scheiben auf einem Dreiecksnetz (Moos, Flechten, Laub)

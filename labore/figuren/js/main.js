@@ -35,8 +35,14 @@ const SPEICHER = 'figuren-labor:look';
 // ---- Renderer & Szene ----
 // PS1-Look (engine/render/psx): grobe Pixel, wackelnde Eckpunkte, wenige Farben – im Menü unter „Mehr“ abschaltbar
 const PSX_SPEICHER = 'pag-figuren-labor-psx';
-let psxAn = true;
-try { psxAn = localStorage.getItem(PSX_SPEICHER) !== '0'; } catch { /* privat */ }
+let psxAn = false;                                    // aus: der organische Körper soll glatt wirken (gemerkte Wahl gilt weiter)
+try { psxAn = localStorage.getItem(PSX_SPEICHER) === '1'; } catch { /* privat */ }
+if (url.get('psx')) psxAn = url.get('psx') === '1';
+// Körper: 'organisch' (ein glattes, gehäutetes SDF-Netz, figur-haut) oder 'bloecke' (alte Teile); im Menü unter „Mehr“ umschaltbar
+const KOERPER_SPEICHER = 'pag-figuren-labor-koerper';
+let koerperArt = 'organisch';
+try { koerperArt = localStorage.getItem(KOERPER_SPEICHER) || 'organisch'; } catch { /* privat */ }
+if (url.get('koerper')) koerperArt = url.get('koerper');
 const psx = createPsx({ an: psxAn });
 const renderer = new THREE.WebGLRenderer({ antialias: !psxAn });   // Kantenglättung passt nicht zu groben Pixeln (gilt ab Neuladen)
 let pixelMax = 1.5;   // Qualitätsstufe (engine/render/qualitaet) senkt es bei langsamen Bildern
@@ -69,7 +75,7 @@ try { gespeichert = JSON.parse(localStorage.getItem(SPEICHER) || 'null'); } catc
 const schritte = { n: 0 };
 const spieler = createCharacter({
   look: gespeichert || VORLAGEN.magier, seed: SEED, welt: welt.adapter, pos: { x: 0, y: 0, z: 4 }, yaw: Math.PI,
-  onSchritt: () => { schritte.n++; }, schilder, name: (gespeichert || VORLAGEN.magier).name,
+  onSchritt: () => { schritte.n++; }, schilder, name: (gespeichert || VORLAGEN.magier).name, aussehen: koerperArt, zelle: 0.013,
 });
 // Ausrüstung (character-ausruestung): je Hand ein Gegenstand (Schild/Buch links, der Rest rechts); nochmal wählen = ablegen
 const haende = { handR: null, handL: null };
@@ -115,7 +121,7 @@ function npcsErzeugen() {
     const a = (i / 8) * Math.PI * 2, d = parcours ? 7 : range(r, 7, 16);
     const pos = { x: Math.cos(a) * d, y: 0, z: Math.sin(a) * d };
     const look = randomLook(hashSeed('npc', SEED, i), { kind: i % 4 === 3 });
-    const fig = createCharacter({ look, seed: hashSeed('npcseed', i), welt: welt.adapter, pos, yaw: a, schilder, name: look.name });
+    const fig = createCharacter({ look, seed: hashSeed('npcseed', i), welt: welt.adapter, pos, yaw: a, schilder, name: look.name, aussehen: koerperArt, zelle: 0.017 });
     // NPC 0 folgt, NPC 1 läuft einen Pfad (character-steering); alle anderen leben mit character-brain
     // (wandern, arbeiten, plaudern, idle-Clips)
     let hirn = null;
@@ -157,6 +163,11 @@ const ui = createOberflaeche({
     else if (id === 'ichsicht') kamera.setErstePerson(an);
     else if (id === 'freimana') { freiMana = an; zauber.buch.setFreiesMana(an); }
     else if (id === 'ton') klang.stumm = !an;
+    else if (id === 'organisch') {
+      koerperArt = an ? 'organisch' : 'bloecke';
+      for (const f of [spieler, ...npcs.map(n => n.fig)]) f.model.setKoerper(koerperArt);
+      try { localStorage.setItem(KOERPER_SPEICHER, koerperArt); } catch { /* voll/privat */ }
+    }
     else if (id === 'psx') {
       psx.setze({ an }); groesseSetzen();
       try { localStorage.setItem(PSX_SPEICHER, an ? '1' : '0'); } catch { /* voll/privat */ }
@@ -263,9 +274,19 @@ function plageUmschalten() {
 }
 $('bPlage').onclick = (e) => { plageUmschalten(); e.currentTarget.blur(); };
 ui.setAusruestung(['zauberstab']);
+// Organischer Körper braucht ~0,2–0,8 s zum Neubauen → beim Regler-Ziehen höchstens alle 250 ms bauen, am Ende genau einmal
+const lookBau = { timer: 0, offen: null, zuletzt: 0 };
+function lookAnwenden(l) { spieler.setLook(l); spieler.setName(l.name); lookBau.zuletzt = performance.now(); lookBau.offen = null; }
 const editor = createEditor({
   wurzel: ui.seite('aussehen'), look: spieler.look,
-  onAenderung: (l) => { spieler.setLook(l); spieler.setName(l.name); try { localStorage.setItem(SPEICHER, JSON.stringify(l)); } catch { /* voll/privat */ } },
+  onAenderung: (l) => {
+    try { localStorage.setItem(SPEICHER, JSON.stringify(l)); } catch { /* voll/privat */ }
+    clearTimeout(lookBau.timer);
+    const seit = performance.now() - lookBau.zuletzt;
+    if (koerperArt !== 'organisch' || seit > 250) return lookAnwenden(l);
+    lookBau.offen = l;
+    lookBau.timer = setTimeout(() => lookBau.offen && lookAnwenden(lookBau.offen), 250 - seit);
+  },
 });
 // Beim Tippen (Name) keine Spiel-Eingabe; Zifferntasten 1–0 wählen und wirken sofort
 addEventListener('focusin', (e) => { if (e.target.matches?.('input[type=text], .ed-name')) eingabe.setAktiv(false); });
@@ -454,6 +475,8 @@ function bild(jetzt) {
 }
 psx.wendeAn(szene);
 document.querySelector('[data-schalter="psx"]')?.classList.toggle('an', psxAn);
+document.querySelector('[data-schalter="organisch"]')?.classList.toggle('an', koerperArt === 'organisch');
+if (url.get('kamera')) kamera.setPreset(url.get('kamera'), { sofort: true });
 requestAnimationFrame(bild);
 
 // Für Tests/Debug
