@@ -1,0 +1,20 @@
+<!doctype html><meta charset="utf-8"><title>Gelände-Karte 40×40 km</title>
+<style>body{margin:0;background:#111;color:#ddd;font:14px sans-serif}canvas{width:100vmin;height:100vmin;display:block}</style>
+<canvas id="c" width="400" height="400"></canvas>
+<script type="module">
+// Karte: Biomfarbe, Höhe als Schattierung, Wasser blau. 100 m je Pixel. Rot = Startpunkt.
+import { hoeheAt, biomAt, findeStart } from './js/gelaende.js';
+const c = document.getElementById('c'), g = c.getContext('2d'), img = g.createImageData(400, 400);
+const F = { wald: [34, 90, 38], wiese: [120, 170, 60], fels: [120, 112, 104], sand: [222, 196, 130], schnee: [245, 247, 252] };
+for (let j = 0; j < 400; j++) for (let i = 0; i < 400; i++) {
+  const x = (i - 200) * 100, z = (j - 200) * 100, h = hoeheAt(x, z), o = (j * 400 + i) * 4;
+  let r, gg, b;
+  if (h < 0) { const t = Math.max(0, 1 + h / 40); r = 20 + 30 * t; gg = 60 + 70 * t; b = 120 + 100 * t; }
+  else { const w = biomAt(x, z), s = .55 + .45 * Math.min(1, h / 1500); r = gg = b = 0;
+    for (const k in F) { r += F[k][0] * w[k]; gg += F[k][1] * w[k]; b += F[k][2] * w[k]; } r *= s; gg *= s; b *= s; }
+  img.data.set([r, gg, b, 255], o);
+}
+g.putImageData(img, 0, 0);
+const s = findeStart(); if (s) { g.fillStyle = '#f00'; g.fillRect(200 + s.x / 100 - 3, 200 + s.z / 100 - 3, 6, 6); }
+document.title += ' – fertig';
+</script>
