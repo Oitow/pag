@@ -4,7 +4,7 @@
  * @api      BAUM_ARTEN ; baumGeometrie(art, lod) -> BufferGeometry (position, normal, color linear) ; Bausteine: Geo, tube, blob, rng32, lin
  * @tags     baum, lod, instancing, prozedural
  * @three    ja
- * Budgets: LOD0 <= 1200, LOD1 <= 220, LOD2 <= 40 Dreiecke. Basis y=0, Spitze y~1, deterministisch (eigene Seed-RNG).
+ * Budgets: LOD0 <= 2200, LOD1 <= 300, LOD2 <= 40 Dreiecke. Basis y=0, Spitze y~1, deterministisch (eigene Seed-RNG).
  */
 import * as THREE from 'three';
 
@@ -15,7 +15,7 @@ export const BAUM_ARTEN = {
   kiefer: { name: 'Kiefer', hoehe: [40, 70], stamm: 0.022, biome: ['wald', 'fels'] },
   birke: { name: 'Birke', hoehe: [30, 45], stamm: 0.016, biome: ['wald', 'wiese'] },
 };
-export const BUDGET = [1200, 220, 40];
+export const BUDGET = [2200, 300, 40];
 
 export function rng32(seed) {
   let a = seed >>> 0;
@@ -88,17 +88,18 @@ export function ikosaeder(detail) {
 }
 const sn = (x, y, z, s) => Math.sin(x * 1.7 + s) * Math.sin(y * 1.9 + s * 1.3 + 1) * Math.sin(z * 1.6 + s * .7 + 2);
 
-/** Verformter Ikosaeder-Cluster mit Vertexfarbe (unten dunkel = Fake-AO, Beulen heller). o: {under, tint, bump, lift, col2} */
+/** Weicher Laubcluster: Ikosaeder (Detail 1 = 80 Dreiecke), sanftes Rauschen, Kugelnormalen zur Mitte-nach-außen (weiches Licht),
+ *  Farbe innen/unten dunkel, außen/oben sonnenhell. o: {under, bump, lift, col2, up (Normal Richtung Himmel, 0..1)} */
 export function blob(g, cx, cy, cz, rx, ry, rz, detail, rand, base, o = {}) {
-  const { v, f } = ikosaeder(detail), sd = rand() * 50, under = o.under ?? .42, tint = .9 + .2 * rand(), bump = o.bump ?? .22;
-  const col2 = o.col2 || base, ids = [];
+  const { v, f } = ikosaeder(detail), sd = rand() * 50, under = o.under ?? .62, tint = .92 + .16 * rand(), bump = o.bump ?? .1;
+  const col2 = o.col2 || base, ids = [], up = o.up ?? .3;
   for (const u of v) {
-    let k = 1 + bump * sn(u[0] * 2.2, u[1] * 2.2, u[2] * 2.2, sd) + bump * .5 * sn(u[0] * 5, u[1] * 5, u[2] * 5, sd * 2);
-    let y = u[1]; if (y < 0) y *= .6;
-    const ao = under + (1 - under) * cl(u[1] * .5 + .55), br = (1 + (k - 1) * 1.3) * tint * (o.lift ?? 1);
-    const c = mix(base, col2, cl(u[1] * .8)).map(x => x * ao * br);
+    const k = 1 + bump * sn(u[0] * 1.6, u[1] * 1.6, u[2] * 1.6, sd) + bump * .5 * sn(u[0] * 3.4, u[1] * 3.4, u[2] * 3.4, sd * 2);
+    const y = u[1] < 0 ? u[1] * .72 : u[1];
+    const sun = cl(u[1] * .6 + u[0] * .25 + .5), ao = under + (1 - under) * sun, br = (1 + (k - 1) * .5) * tint * (o.lift ?? 1);
+    const c = mix(base, col2, cl(sun * 1.1 - .1)).map(x => x * ao * br);
     const id = g.vert(cx + u[0] * rx * k, cy + y * ry * k, cz + u[2] * rz * k, c);
-    if (!o.glatt) { const nl = Math.hypot(u[0] / rx, u[1] / ry, u[2] / rz); g.ov.set(id, [u[0] / rx / nl, u[1] / ry / nl, u[2] / rz / nl]); }
+    let nx = u[0], ny = u[1] + up, nz = u[2]; const nl = Math.hypot(nx, ny, nz); g.ov.set(id, [nx / nl, ny / nl, nz / nl]);
     ids.push(id);
   }
   for (const [a, b, c] of f) g.tri(ids[a], ids[b], ids[c]);
@@ -109,38 +110,38 @@ const SPEC = {
   mammut: {
     seed: 11, th: .88, r0: .042, r1: .006, taper: .75, flare: 1.0, kf: 20, butt: .4, nb: 7, kb: 16, ridge: .06, ridgeN: 9, sway: .008, wob: .004,
     bark: lin(.46, .21, .12), bark2: lin(.30, .13, .08), leaf: lin(.13, .29, .13), leaf2: lin(.26, .42, .17),
-    from: .5, to: .86, n: 9, len: .075, tipK: .55, elLow: .2, elHigh: .9, curl: .25, reach: -.1, sub: 2, subLen: .6, levels: 1, leafR: .07, flat: .7,
+    from: .5, to: .86, n: 9, len: .075, tipK: .55, elLow: .2, elHigh: .9, curl: .25, reach: -.1, sub: 2, subLen: .6, levels: 1, leafR: .09, flat: .9,
     top: [.92, .045, .07], roots: 4, rootL: .035, rootR: .014, trunkR: 10, crown: [.7, .1, .3],
   },
   urwald: {
     seed: 23, th: .66, r0: .03, r1: .014, taper: .6, flare: 1.2, kf: 18, butt: 1.5, nb: 6, kb: 9, ridge: .05, ridgeN: 7, sway: .012, wob: .006,
     bark: lin(.40, .33, .24), bark2: lin(.26, .22, .16), leaf: lin(.20, .37, .11), leaf2: lin(.34, .52, .17),
-    from: .56, to: .7, n: 6, len: .2, tipK: .8, elLow: .3, elHigh: .6, curl: .35, reach: .05, sub: 2, subLen: .55, levels: 1, leafR: .125, flat: .45,
+    from: .56, to: .7, n: 6, len: .2, tipK: .8, elLow: .3, elHigh: .6, curl: .35, reach: .05, sub: 2, subLen: .55, levels: 1, leafR: .15, flat: .55,
     top: [.84, .13, .06], roots: 6, rootL: .07, rootR: .014, trunkR: 10, crown: [.84, .27, .1],
   },
   eiche: {
     seed: 37, th: .36, r0: .036, r1: .024, taper: .6, flare: .9, kf: 16, butt: .5, nb: 5, kb: 14, ridge: .08, ridgeN: 8, sway: .025, wob: .012,
     bark: lin(.34, .27, .19), bark2: lin(.20, .16, .11), leaf: lin(.20, .36, .10), leaf2: lin(.38, .52, .14),
-    from: .26, to: .44, n: 5, len: .3, tipK: .8, elLow: .2, elHigh: .7, curl: .55, reach: .1, sub: 2, subLen: .55, levels: 2, leafR: .13, flat: .75,
+    from: .26, to: .44, n: 5, len: .3, tipK: .8, elLow: .2, elHigh: .7, curl: .55, reach: .1, sub: 2, subLen: .55, levels: 2, leafR: .16, flat: .92,
     top: [.82, .13, .12], roots: 5, rootL: .045, rootR: .016, trunkR: 9, crown: [.65, .33, .27],
   },
   kiefer: {
     seed: 41, th: .92, r0: .022, r1: .004, taper: .8, flare: .7, kf: 22, butt: .25, nb: 5, kb: 20, ridge: .09, ridgeN: 6, sway: .014, wob: .006,
     bark: lin(.42, .28, .17), bark2: lin(.26, .20, .15), leaf: lin(.13, .29, .17), leaf2: lin(.24, .42, .24), barkTop: lin(.62, .36, .18),
-    from: .6, to: .9, n: 7, len: .12, tipK: .6, elLow: -.05, elHigh: .45, curl: .3, reach: -.05, sub: 2, subLen: .5, levels: 1, leafR: .085, flat: .42,
+    from: .6, to: .9, n: 7, len: .12, tipK: .6, elLow: -.05, elHigh: .45, curl: .3, reach: -.05, sub: 2, subLen: .5, levels: 1, leafR: .1, flat: .52,
     top: [.94, .15, .05], roots: 3, rootL: .03, rootR: .008, trunkR: 8, crown: [.83, .17, .13],
   },
   birke: {
     seed: 53, th: .86, r0: .016, r1: .004, taper: .8, flare: .5, kf: 26, butt: .15, nb: 4, kb: 22, ridge: .02, ridgeN: 5, sway: .03, wob: .02,
     bark: lin(.88, .86, .80), bark2: lin(.12, .11, .10), leaf: lin(.36, .54, .16), leaf2: lin(.58, .70, .26), birch: true,
-    from: .35, to: .88, n: 9, len: .13, tipK: .5, elLow: .55, elHigh: 1.05, curl: .3, reach: -.15, sub: 2, subLen: .55, levels: 1, leafR: .07, flat: .85,
+    from: .35, to: .88, n: 9, len: .13, tipK: .5, elLow: .55, elHigh: 1.05, curl: .3, reach: -.15, sub: 2, subLen: .55, levels: 1, leafR: .085, flat: .95,
     top: [.93, .06, .07], roots: 0, rootL: 0, rootR: 0, trunkR: 8, crown: [.68, .12, .3],
   },
 };
 
 function bauen(S, lod, sk, detail0) {
   const r = rng32(S.seed), g = new Geo(), L = lod === 0
-    ? { tr: S.trunkR, ts: 9, br: 5, bs: 2, lv: S.levels, nm: 1, ls: 1, d: detail0 }
+    ? { tr: S.trunkR + 2, ts: 9, br: 5, bs: 2, lv: S.levels, nm: 1, ls: 1, d: detail0 }
     : lod === 1 ? { tr: 6, ts: 3, br: 3, bs: 1, lv: 0, nm: .7, ls: S.levels > 1 ? 1.7 : 1.4, d: 0 }
       : { tr: 4, ts: 1, br: 3, bs: 1, lv: 0, nm: 0, ls: 1, d: 0 };
   const V = (x, y, z) => new THREE.Vector3(x, y, z), ph = r() * 6.28, ph2 = r() * 6.28, ph3 = r() * 6.28;
@@ -150,11 +151,11 @@ function bauen(S, lod, sk, detail0) {
     let rr = S.r0 + (S.r1 - S.r0) * Math.pow(t, S.taper);
     const yy = Math.max(0, y);
     rr *= 1 + S.flare * Math.exp(-yy * S.kf) + S.butt * Math.exp(-yy * S.kb) * Math.pow(Math.max(0, Math.cos(a * S.nb + ph)), 3);
-    return rr * (1 + S.ridge * Math.sin(a * S.ridgeN + yy * 9 + ph2));
+    return rr * (1 + S.ridge * Math.sin(a * S.ridgeN + yy * 9 + ph2) + S.ridge * .6 * Math.sin(a * (S.ridgeN * 2 + 1) - yy * 21 + ph) * Math.min(1, yy * 12));
   };
   const barkCol = (t, a, y) => {
     const yy = Math.max(0, y); let c;
-    if (S.birch) { const band = Math.sin(yy * 70 + Math.sin(a * 3 + ph) * 2) * Math.sin(yy * 23 + a * 2); c = mix(S.bark, S.bark2, band > .55 ? .85 : (yy < .03 ? .6 * (1 - yy / .03) : 0)); }
+    if (S.birch) { const band = Math.sin(yy * 70 + Math.sin(a * 3 + ph) * 2) * Math.sin(yy * 23 + a * 2); c = mix(S.bark, S.bark2, band > .3 ? .85 : (yy < .03 ? .6 * (1 - yy / .03) : 0)); }
     else { c = mix(S.bark, S.bark2, .5 + .5 * Math.sin(a * S.ridgeN + yy * 9 + ph2)); if (S.barkTop) c = mix(c, S.barkTop, cl((yy - .45) * 3)); }
     const ao = .5 + .5 * Math.min(1, yy * 16);
     return c.map(x => x * ao);
@@ -175,7 +176,7 @@ function bauen(S, lod, sk, detail0) {
       dir.x += rn() * S.curl; dir.z += rn() * S.curl; dir.y += rn() * S.curl * .5 + S.reach / bs; dir.normalize();
       q.addScaledVector(dir, len / bs); bp.push(q.clone());
     }
-    tube(g, bp, lv === 0 ? L.br : 4, t => rad * (1 - .65 * t), (t) => S.bark.map(x => x * (.8 + .2 * t)), 1);
+    tube(g, bp, lv === 0 ? L.br : 4, t => rad * (1 - .6 * t), (t) => mix(S.bark2, S.bark, .4 + .6 * (1 - t)).map(x => x * (.85 + .25 * t)), 1);
     if (lv < L.lv) for (let c = 0; c < S.sub; c++) {
       const nd = dir.clone(); nd.x += rn() * 1.6; nd.z += rn() * 1.6; nd.y += .15 + .4 * r(); nd.normalize();
       branch(q, nd, len * S.subLen * (.8 + .4 * r()), rad * .5, lv + 1);
@@ -188,14 +189,14 @@ function bauen(S, lod, sk, detail0) {
       const el = S.elLow + (S.elHigh - S.elLow) * f, len = S.len * (1 - (1 - S.tipK) * f) * (.85 + .3 * r());
       const dir = V(Math.cos(a) * Math.cos(el), Math.sin(el), Math.sin(a) * Math.cos(el));
       const base = V(p[0], p[1], p[2]);
-      branch(base, dir, len, trR(t, 0, y) * .45 * (lod === 0 ? 1 : 1.3), 0);
+      branch(base, dir, len, trR(t, 0, y) * .62 * (lod === 0 ? 1 : 1.3), 0);
     }
     for (const lf of leaves) { const s = lf.s; blob(g, lf.p.x + lf.dir.x * s * .3, lf.p.y + lf.dir.y * s * .3, lf.p.z + lf.dir.z * s * .3, s, s * S.flat, s, L.d, r, S.leaf, { col2: S.leaf2 }); }
     const T = S.top, tp = tc(cl((T[0] - y0) / H));
-    blob(g, tp[0], T[0], tp[2], T[1], T[2], T[1], lod === 0 ? 1 : 0, r, S.leaf, { col2: S.leaf2, under: .55 });
+    blob(g, tp[0], T[0], tp[2], T[1], T[2], T[1], lod === 0 ? 1 : 0, r, S.leaf, { col2: S.leaf2, under: .66 });
   } else {
     const cc = S.crown, tp = tc(cl((cc[0] - y0) / H));
-    blob(g, tp[0], cc[0], tp[2], cc[1], cc[2], cc[1], 0, r, S.leaf, { col2: S.leaf2, under: .6 });
+    blob(g, tp[0], cc[0], tp[2], cc[1], cc[2], cc[1], 0, r, S.leaf, { col2: S.leaf2, under: .7 });
   }
   return g;
 }
@@ -206,7 +207,7 @@ export function baumGeometrie(art, lod = 0) {
   const key = art + lod; if (cache.has(key)) return cache.get(key);
   const S = SPEC[art]; if (!S) throw new Error('Unbekannte Baumart: ' + art);
   const B = BUDGET[lod]; let g;
-  const tries = [[1, 1], [1, 0], [.85, 0], [.7, 0], [.55, 0], [.4, 0]];
+  const tries = [[1, 1], [.9, 1], [.8, 1], [.7, 1], [.6, 1], [.5, 1], [.7, 0], [.5, 0], [.4, 0]];
   for (const [sk, d] of tries) { g = bauen(S, lod, sk, d); if (g.tris <= B) break; }
   if (g.tris > B) throw new Error(`Budget überschritten: ${art} LOD${lod} ${g.tris}`);
   const geo = g.geometry(); cache.set(key, geo); return geo;
