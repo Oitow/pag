@@ -89,7 +89,7 @@
 | character-anim-blick | `engine/models/character/character-anim-blick.js` | Blick einer Figur (rein): Richtung oder Weltpunkt → verteilt auf Torso/Hals/Kopf mit Grenzen, Augen eilen voraus; Blinzeln per Seed; Werte für einen Mimik-Hook | entwurf |
 | character-anim-hang | `engine/models/character/character-anim-hang.js` | Hang-Anpassung (rein): Steigung im Figur-Raum aus Motor-Zustand/Normale/bodenHoehe messen und Fußziele, Hüfthöhe, Fußneigung und Rumpf-Vorlage daran anpassen | entwurf |
 | character-anim-idle | `engine/models/character/character-anim-idle.js` | Idle-Variationen (rein): nach längerer Ruhe deterministisch (Seed) eine Idle-Variante (strecken, gähnen, umschauen, kratzen …) als eigene Schicht einblenden, bei Bewegung sofort weich abbrechen | entwurf |
-| character-anim-zustand | `engine/models/character/character-anim-zustand.js` | Posen für Sonder-Zustände des Motors (rein): Rolle (rollAnteil), Luft-Dash, Salto beim Doppelsprung, Gleiten, Arme rudern an der Kante, Betäubt-Taumeln | entwurf |
+| character-anim-zustand | `engine/models/character/character-anim-zustand.js` | Posen für Sonder-Zustände des Motors (rein): Rolle (rollAnteil), Luft-Dash, Salto beim Doppelsprung, Gleiten, Leiterklettern, Arme rudern an der Kante, Betäubt-Taumeln | entwurf |
 | character-animator | `engine/models/character/character-animator.js` | Prozedurale Figuren-Animation aus dem Motor-Zustand: idle/gehen/laufen/sprinten ohne Fußrutschen, Luft, Landung, Schwimmen, Ducken, Rutschen, Kurvenlage, Atmen, Hang, Idle-Varianten, sekundäre Bewegung, Treffer/Umfallen, Aktions-Clips mit Masken, Blick + Mimik-Hook | entwurf |
 | character-ausruestung | `engine/models/character/character-ausruestung.js` | Low-Poly-Gegenstände für Figuren-Sockel (Schwert, Dolch, Axt, Hammer, Hacke, Schaufel, Speer, Stab, Zauberstab, Schild, Bogen, Fackel, Laterne, Korb, Becher, Buch): je ein Mesh + optional Leucht-Mesh, passend ausgerichtet für model.befestigen(sockel, obj) | entwurf |
 | character-clips-mehr | `engine/models/character/character-clips-mehr.js` | Weitere Aktions-Clips als reine Keyframe-Daten (Emotes, Kampf, Arbeit, Ruhe, Idle-Varianten, Klettern); wird von character-clips registriert | entwurf |
@@ -1813,7 +1813,7 @@ klettern.update(dt, absicht);     // setzt absicht.klettern (Motor ≥ 1.3.0) od
 figur.update(dt, absicht);
 ```
 
-Genutzt von: – · Tags: klettern, wand, hang, fels, baum, ausdauer, motor, bewegung, gameplay · THREE: nein
+Genutzt von: figuren · Tags: klettern, wand, hang, fels, baum, ausdauer, motor, bewegung, gameplay · THREE: nein
 Wand: { art: 'gelaende'|'hindernis', nx, nz (waagerechte Normale, zeigt von der Wand weg), n:{x,y,z} (Gelände-Normale) }.
 Start: Stick ≥ 60 % in die Wand, anlauf Sekunden lang, Ausdauer nicht erschöpft. Hindernisse zählen nur, wenn sie
 auch auf Kopfhöhe + minHoehe noch da sind (keine Figuren/Kisten). Springen = Absprung von der Wand, Ducken = loslassen.
@@ -2370,8 +2370,8 @@ if (w > 0) mischePose(pose, idle.pose, w, pose, clipMaske(idle.clip));
 
 Genutzt von: – · Tags: figur, charakter, animation, idle, ruhe, variation, npc · THREE: nein
 
-### character-anim-zustand · `engine/models/character/character-anim-zustand.js` · v1.0.0 · entwurf
-Posen für Sonder-Zustände des Motors (rein): Rolle (rollAnteil), Luft-Dash, Salto beim Doppelsprung, Gleiten, Arme rudern an der Kante, Betäubt-Taumeln
+### character-anim-zustand · `engine/models/character/character-anim-zustand.js` · v1.1.0 · entwurf
+Posen für Sonder-Zustände des Motors (rein): Rolle (rollAnteil), Luft-Dash, Salto beim Doppelsprung, Gleiten, Leiterklettern, Arme rudern an der Kante, Betäubt-Taumeln
 
 - `createZustandsSchicht() -> { update(dt,zustand,skal), anwenden(pose) -> pose, ausdruck, rolleW, saltoW, dispose() }`
 
