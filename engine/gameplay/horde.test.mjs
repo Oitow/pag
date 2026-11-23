@@ -116,3 +116,19 @@ test('Zusammenspiel mit dem Zauberbuch: Feuerball räumt einen Haufen ab', () =>
   assert.ok(tote >= 10, `Tote: ${tote}`);
   assert.equal(horde.getoetet, tote);
 });
+
+test('Ratten kündigen den Biss an und verfehlen ein zurückweichendes Ziel', () => {
+  for (const ausweichen of [false, true]) {
+    const horde = createHorde({ seed: 3, welt: WELT });
+    const ratte = horde.spawne('ratte', 0, 0, { skala: 1 });
+    const ziel = { x: 0, z: 0.65 };
+    ratte.bissRest = 0;
+    horde.update(1 / 60, ziel);
+    assert.equal(ratte.zustand, 'sprung');
+    assert.equal(lauf(horde, ziel, 0.25).length, 0);
+    assert.ok(ratte.hub > 0);
+    if (ausweichen) ziel.z += 1.5;
+    const bisse = lauf(horde, ziel, 0.56).filter(e => e.typ === 'biss');
+    assert.equal(bisse.length, ausweichen ? 0 : 1);
+  }
+});

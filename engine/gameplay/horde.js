@@ -37,7 +37,7 @@ export const HORDEN_ARTEN = Object.freeze({
   alpha: { name: 'Grauzahn', modell: 'wolf', leben: 900, tempo: 5.2, radius: 0.36, hoehe: 0.85, skala: [2.2, 2.2], schaden: 18, biss: 1.4, reichweite: 0.55, masse: 40, xp: 40 },
 });
 
-const FALL = 20, SPRUNG = 0.3;
+const FALL = 20, SPRUNG = 0.3, RATTEN_SPRUNG = 0.8;
 
 /** opts: { seed = 1, welt ({ bodenHoehe, wasserHoehe?, hindernisse? }), arten = HORDEN_ARTEN, max = 140 (Wesen inkl. Leichen), leichenZeit = 5 (s) } */
 export function createHorde({ seed = 1, welt = null, arten = HORDEN_ARTEN, max = 140, leichenZeit = 5 } = {}) {
@@ -148,7 +148,10 @@ export function createHorde({ seed = 1, welt = null, arten = HORDEN_ARTEN, max =
     let tempo = def.tempo * w.tempoF * (w.langsam > 0 ? 0.4 : 1) * (nass ? 0.6 : 1);
     if (w.zustand === 'benommen') tempo = 0;
     else if (def.sturm && ziel && d > def.sturm.von && d < def.sturm.bis && (w.uhr + w.keim) % def.sturm.periode < def.sturm.dauer) { tempo *= def.sturm.faktor; wx = nx; wz = nz; }   // Anstürmen: gerade drauf
-    else if (w.zustand === 'sprung') { tempo *= 1.4; wx = nx; wz = nz; }
+    else if (w.zustand === 'sprung') {
+      if (w.art === 'ratte') tempo = 0; // Sichtbar aufrichten, ohne dem ausweichenden Spieler nachzulaufen.
+      else { tempo *= 1.4; wx = nx; wz = nz; }
+    }
     w.vx = damp(w.vx, wx * tempo, w.zustand === 'benommen' ? 5 : 9, dt); w.vz = damp(w.vz, wz * tempo, w.zustand === 'benommen' ? 5 : 9, dt);
     w.x += (w.vx + w.zx) * dt + sx * 0.8; w.z += (w.vz + w.zz) * dt + sz * 0.8;
     const ab = Math.exp(-5 * dt); w.zx *= ab; w.zz *= ab;
@@ -170,12 +173,13 @@ export function createHorde({ seed = 1, welt = null, arten = HORDEN_ARTEN, max =
     if (w.zustand === 'benommen') { if (w.t >= w.benommen) { w.zustand = 'lauf'; w.t = 0; } return; }
     const reich = kontakt + def.reichweite * w.skala;
     if (w.zustand === 'sprung') {
-      w.hub = Math.sin(Math.PI * clamp(w.t / SPRUNG, 0, 1)) * 0.32 * w.skala;
-      if (!w.gebissen && w.t >= SPRUNG * 0.5) {
+      const dauer = w.art === 'ratte' ? RATTEN_SPRUNG : SPRUNG;
+      w.hub = Math.sin(Math.PI * clamp(w.t / dauer, 0, 1)) * 0.32 * w.skala;
+      if (!w.gebissen && w.t >= dauer * 0.5) {
         w.gebissen = true;
-        if (ziel && d < reich + 0.35 && Math.abs((ziel.y || 0) - w.y) < 1.2 + w.hoehe) ereignisse.push({ typ: 'biss', wesen: w, schaden: def.schaden, wucht: def.wucht || 0, element: def.element || null });
+        if (ziel && Math.hypot(ziel.x - w.x, ziel.z - w.z) < reich + 0.35 && Math.abs((ziel.y || 0) - w.y) < 1.2 + w.hoehe) ereignisse.push({ typ: 'biss', wesen: w, schaden: def.schaden, wucht: def.wucht || 0, element: def.element || null });
       }
-      if (w.t >= SPRUNG) { w.zustand = 'lauf'; w.t = 0; w.hub = 0; w.bissRest = def.biss * zuf(0.8, 1.3); }
+      if (w.t >= dauer) { w.zustand = 'lauf'; w.t = 0; w.hub = 0; w.bissRest = def.biss * zuf(0.8, 1.3); }
     } else if (ziel && d < reich && w.bissRest <= 0 && Math.abs((ziel.y || 0) - w.y) < 1.2 + w.hoehe) {
       w.zustand = 'sprung'; w.t = 0; w.gebissen = false;
     }
