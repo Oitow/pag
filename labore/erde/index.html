@@ -11,8 +11,8 @@
 html,body{margin:0;height:100%;overflow:hidden;background:#01030a;touch-action:none;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#e8eef6}
 canvas{display:block}
 #hud{position:fixed;left:8px;top:8px;font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;background:rgba(6,10,20,.6);padding:7px 9px;border-radius:10px;pointer-events:none;white-space:pre;z-index:5;max-width:64vw;overflow:hidden}
-#rechts{position:fixed;right:8px;top:8px;display:flex;flex-direction:column;gap:6px;z-index:6}
-.b{background:rgba(6,10,20,.6);color:#eef3fa;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:8px 10px;font-size:13px;min-width:80px;min-height:36px;box-sizing:border-box;text-align:center;user-select:none;-webkit-user-select:none;cursor:pointer}
+#rechts{position:fixed;right:8px;top:8px;display:flex;flex-direction:column;gap:5px;z-index:6}
+.b{background:rgba(6,10,20,.6);color:#eef3fa;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:6px 10px;font-size:13px;min-width:80px;min-height:32px;box-sizing:border-box;text-align:center;user-select:none;-webkit-user-select:none;cursor:pointer}
 .b:active,.b.on{background:rgba(70,110,170,.8)}
 .b.gelb{background:rgba(200,150,50,.45)}
 #unten{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);width:min(70vw,360px);display:flex;gap:8px;align-items:center;background:rgba(6,10,20,.6);border-radius:14px;padding:7px 10px;z-index:6;box-sizing:border-box;font-size:12px}
@@ -25,6 +25,9 @@ canvas{display:block}
 #load{position:fixed;inset:0;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;background:#01030a;z-index:20}
 #load i{font-style:normal;font-size:12px;opacity:.7}
 a.b{text-decoration:none}
+#karteBox{position:fixed;left:8px;top:150px;width:min(62vw,420px);aspect-ratio:2/1;display:none;z-index:7;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.25)}
+#karte{width:100%;height:100%;display:block;cursor:crosshair}
+#kpunkt{position:absolute;width:10px;height:10px;margin:-5px;border-radius:50%;background:#ffd04a;border:2px solid #000;pointer-events:none}
 </style>
 </head>
 <body>
@@ -36,11 +39,16 @@ a.b{text-decoration:none}
   <div class="b" id="bBerg">Berg</div>
   <div class="b" id="bKueste">Küste</div>
   <div class="b" id="bBoden">Boden</div>
+  <div class="b" id="bFluss">Fluss</div>
+  <div class="b" id="bSee">See</div>
+  <div class="b" id="bVulkan">Vulkan</div>
+  <div class="b" id="bKarte">Karte</div>
   <div class="b" id="bLod">LOD-Farben</div>
   <div class="b" id="bSeed">Neuer Seed</div>
   <a class="b" href="kugel.html">Echte Erde</a>
 </div>
 <div id="hochrunter"><div class="b" id="hoch">▲</div><div class="b" id="runter">▼</div></div>
+<div id="karteBox"><canvas id="karte"></canvas><div id="kpunkt"></div></div>
 <div id="joy"><div id="knob"></div></div>
 <div id="hilfe">Links ziehen: fliegen · rechts ziehen: umsehen · PC: WASD, Maus, Leertaste/Shift</div>
 <div id="unten">Tempo<input id="tempo" type="range" min="-3" max="3" step="0.5" value="0"></div>

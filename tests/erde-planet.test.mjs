@@ -5,8 +5,12 @@ import { wuerfelZuKugel, waehleKacheln, schluessel } from '../labore/erde/js/pla
 import { baueKachel } from '../labore/erde/js/kachel-bau.js';
 import { createPlanetHoehe } from '../labore/erde/js/planet-hoehe.js';
 import { createKachelStrom } from '../labore/erde/js/kachel-strom.js';
+import { berechneGeologie } from '../labore/erde/js/geologie.js';
+import { createGeoGitter } from '../labore/erde/js/geo-gitter.js';
 
 const R = 100_000;
+const G = createGeoGitter(96);                       // kleineres Gitter: schneller Test
+const geo = berechneGeologie({ seed: 5, radius: R, G });
 
 test('Würfel-Kugel: Punkte liegen auf der Einheitskugel, Kanten benachbarter Seiten treffen sich', () => {
   for (let f = 0; f < 6; f++) for (const [u, v] of [[0, 0], [1, 1], [-1, 0.3], [0.5, -1]]) {
@@ -29,7 +33,7 @@ test('Quadtree: nah am Boden feine Kacheln, im All wenige grobe, die Kugel ist l
 });
 
 test('Kachelbau: Nachbarkacheln gleicher Stufe teilen ihre Randpunkte exakt (keine Risse)', () => {
-  const planet = createPlanetHoehe({ seed: 3, radius: R });
+  const planet = createPlanetHoehe({ seed: 5, radius: R, geo, G });
   const k1 = { f: 4, L: 6, ix: 20, iy: 30 }, k2 = { f: 4, L: 6, ix: 21, iy: 30 };
   const a = baueKachel({ ...k1, key: schluessel(k1) }, planet, 8), b = baueKachel({ ...k2, key: schluessel(k2) }, planet, 8);
   for (let j = 0; j <= 8; j++) {
@@ -41,11 +45,39 @@ test('Kachelbau: Nachbarkacheln gleicher Stufe teilen ihre Randpunkte exakt (kei
   }
 });
 
-test('Höhe: gleicher Seed → gleiche Welt, anderer Seed → andere Welt', () => {
-  const a = createPlanetHoehe({ seed: 5, radius: R }), b = createPlanetHoehe({ seed: 5, radius: R }), c = createPlanetHoehe({ seed: 6, radius: R });
-  const d = [0.3, 0.5, Math.sqrt(1 - 0.34)];
-  assert.equal(a.hoehe(...d), b.hoehe(...d));
-  assert.notEqual(a.hoehe(...d), c.hoehe(...d));
+test('Geologie: gleicher Seed → gleiche Welt; Land und Meer vorhanden; jeder Fluss läuft bergab bis ins Meer', () => {
+  const geo2 = berechneGeologie({ seed: 5, radius: R, G });
+  assert.deepEqual(geo2.hoehe, geo.hoehe);
+  assert.ok(geo.stat.land > 0.15 && geo.stat.land < 0.85, `Land ${geo.stat.land}`);
+  let geprueft = 0;
+  for (let c = 0; c < G.n && geprueft < 200; c += 37) {
+    if (geo.hoehe[c] < 0 || geo.flaeche[c] < geo.amin) continue;
+    geprueft++;
+    let x = c, schritte = 0;
+    while (geo.hoehe[x] >= 0) {
+      const d = geo.ab[x];
+      assert.ok(d >= 0, 'Landzelle ohne Abfluss');
+      assert.ok(geo.spiegel[d] <= geo.spiegel[x] + 1e-6, 'Wasser fließt bergauf');
+      x = d;
+      assert.ok(++schritte < G.n, 'Kreis im Flussnetz');
+    }
+  }
+  assert.ok(geprueft > 20);
+});
+
+test('Feine Höhe: im Flussbett steht Wasser über dem Boden, daneben ist trockenes Ufer', () => {
+  const planet = createPlanetHoehe({ seed: 5, radius: R, geo, G });
+  let c = -1;
+  for (let i = 0; i < G.n; i++) if (geo.hoehe[i] > 20 && geo.flaeche[i] > 40 && geo.spiegel[i] <= geo.hoehe[i] + 1) { c = i; break; }
+  assert.ok(c >= 0);
+  let nass = 0, trocken = 0;
+  const d = [G.dir[c * 3], G.dir[c * 3 + 1], G.dir[c * 3 + 2]];
+  for (let s = -600; s <= 600; s += 3) for (const ax of [0, 1, 2]) {
+    const q = [...d]; q[ax] += s / R; const l = Math.hypot(...q);
+    const p = planet.probe(q[0] / l, q[1] / l, q[2] / l, 1);
+    if (p.fluss) { nass++; assert.ok(p.wasser > p.h); } else trocken++;
+  }
+  assert.ok(nass > 0 && trocken > 0, `nass ${nass}, trocken ${trocken}`);
 });
 
 test('Kachel-Strom: beim Teilen bleibt die alte Kachel, bis alle Kinder fertig sind – nie Loch, nie doppelt', () => {
