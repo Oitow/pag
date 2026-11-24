@@ -10,6 +10,7 @@ import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spielOrte } from '../tools/orte.mjs';
+import { freierPort } from '../tools/freier-port.mjs';
 
 const { chromium } = createRequire(import.meta.url)('playwright');
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -19,7 +20,7 @@ const THREE_VERSION = fs.existsSync(THREE_LOKAL) ? JSON.parse(fs.readFileSync(pa
 
 const orte = spielOrte(nur);
 
-const port = 8100 + Math.floor(Math.random() * 800);
+const port = await freierPort();
 const srv = spawn('python3', ['-m', 'http.server', String(port), '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
 await new Promise(r => setTimeout(r, 700));
 // Chrome: PAG_CHROME=/pfad, sonst Playwright-Chromium, sonst System-Chrome (Cloud-Sitzung ohne Playwright-Browser, siehe docs/TESTEN.md)
