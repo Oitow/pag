@@ -1,3 +1,14 @@
+/**
+ * @modul    naturfundus
+ * @zweck    Kleiner Naturfundus: Fichte, Birke, Felsblöcke, Uferpflanzen, Steinpilz, Fische – je ein Mesh mit Vertexfarben, Fußpunkt im Ursprung, Meter
+ * @api      arten ; baueNaturAsset(art, seed=1) -> THREE.Mesh (Aufrufer gibt Geometrie + Material frei)
+ * @beispiel
+ *   import { baueNaturAsset } from '../../engine/models/natur/naturfundus.js'; const m = baueNaturAsset('fichte', 3);
+ * @tags     natur, baum, fels, pflanze, fisch, asset
+ * @version  1.0.0
+ * @status   entwurf
+ * @three    ja
+ */
 // Lokales +Y zeigt vom Boden weg. Fische schauen nach +X. Maße in Metern.
 import * as T from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';

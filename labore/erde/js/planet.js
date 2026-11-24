@@ -8,7 +8,7 @@ import { berechneGeologie, GESTEIN_NAME, GESTEIN_FARBE } from './geologie.js';
 import { biom, BIOM_NAME, tempAm, waldDichte, bodenFarbe } from './klima.js';
 import { streuKacheln, streueKachel, streuStufe, STREU_ARTEN, STRIDE } from './natur-streu.js';
 import { createNatur } from './natur.js';
-import { createMond } from '../../naturstimmungen/mond.js';
+import { createMond } from '../../../engine/render/mond.js';
 import { createEingriffe } from './eingriffe.js';
 import { createZeitWetter } from './zeit-wetter.js';
 import { createAktionen, gegenstandName, GRAB_RADIUS } from './aktionen.js';
@@ -364,8 +364,8 @@ function schattenZiel(s) {
   sonne.target.position.copy(sZiel);
   sonne.position.copy(sZiel).addScaledVector(s, 300);
 }
-// Mond (labore/naturstimmungen/mond.js): umkreist den Planeten in 29,5 Tagen, Phase aus dem Winkel zur Sonne
-const mond = createMond(scene, { abstand: 3000, schattenweite: 30 });
+// Mond (engine/render/mond.js): umkreist den Planeten in 29,5 Tagen, Phase aus dem Winkel zur Sonne
+const mond = createMond(scene, { abstand: 3000, schattenweite: 30, nachtseite: 'durchsichtig' });
 const mondDir = new THREE.Vector3();
 function mondRichtung(s, uhr) {
   const a = 2 * Math.PI * ((uhr.tag + uhr.stunde / 24) / 29.5 + 0.5);   // Tag 1 ≈ Vollmond
@@ -393,7 +393,7 @@ const ORTE = {
   wald:   { ziel: 'wald', h: 1.8, nei: 2, blick: 'berg', gehen: true },
 };
 const BIOM_ORTE = Object.keys(orte).filter((k) => k.startsWith('biom'));
-for (const k of Object.keys(orte).filter((k) => k.startsWith('gestein'))) ORTE[k] = { ziel: k, h: 1.8, nei: -12, blick: 'berg', gehen: true };
+for (const k of Object.keys(orte).filter((k) => k.startsWith('gestein'))) ORTE[k] = { ziel: k, h: 1.8, nei: -6, blick: 'berg', gehen: true, weg: 3 };
 for (const k of BIOM_ORTE) ORTE[k] = { ziel: k, h: 1.8, nei: 2, blick: 'berg', gehen: true };
 let biomWahl = -1;
 document.getElementById('bBiom').onclick = (e) => {

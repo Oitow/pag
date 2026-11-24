@@ -1,6 +1,5 @@
 // Natur am Boden: zeigt die gestreute Natur (natur-streu) als InstancedMesh – eine Gruppe je Art/Variante.
-// Quellen: Naturfundus (labore/erde/naturfundus), Landschaftsgruppen (labore/naturstimmungen/gruppen.js),
-// Fundstücke (labore/gigantwelt/js/fundmodelle.mjs)
+// Quellen: engine/models/natur – naturfundus, landschaftsgruppen, fundmodelle, natur-assets
 // und engine/models/natur (natur-assets, echte Größen, Wind-Attribut). Bäume/Felsen/Büsche werfen Schatten.
 // Nah: volles Asset. Fern (nur Bäume): schlanke Form aus Maßen und Farben des Assets (~30 Dreiecke).
 // Wind wie engine/render/natur-material, aber für die Kugel: Windrichtung je Instanz in die Tangentialebene gelegt,
@@ -8,15 +7,15 @@
 // Floating Origin: Instanzen relativ zu einem Anker; der Anker springt bei jedem Neuaufbau zur Kamera.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { baueNaturAsset } from '../naturfundus/naturfundus.mjs';
-import { baueGruppe } from '../../naturstimmungen/gruppen.js';
-import { baueFundmodell } from '../../gigantwelt/js/fundmodelle.mjs';
+import { baueNaturAsset } from '../../../engine/models/natur/naturfundus.js';
+import { baueGruppe } from '../../../engine/models/natur/landschaftsgruppen.js';
+import { baueFundmodell } from '../../../engine/models/natur/fundmodelle.js';
 import { createAssetCache } from '../../../engine/models/natur/natur-assets.js';
 import { STREU_ARTEN, STRIDE } from './natur-streu.js';
 
 const FUNDUS = new Set(['fichte', 'birke', 'granitblock', 'schiefer', 'rohrkolben', 'seerose', 'steinpilz', 'forelle', 'barsch']);
-const GRUPPEN = new Set(['wollgras', 'pilzholz', 'flechtenbank']);   // aus labore/naturstimmungen/gruppen.js
-const FUNDE = new Set(['erzbrocken', 'ammonit', 'quarzdruse']);       // aus labore/gigantwelt/js/fundmodelle.mjs
+const GRUPPEN = new Set(['wollgras', 'pilzholz', 'flechtenbank']);   // engine/models/natur/landschaftsgruppen.js
+const FUNDE = new Set(['erzbrocken', 'ammonit', 'quarzdruse']);       // engine/models/natur/fundmodelle.js
 // Werfen Schatten (Gras, Moos, Blumen u. ä. nicht – kostet viel, sieht man kaum)
 const WIRFT = (art) => BAUM.has(art) || MITTEL.has(art) || ['granitblock', 'schiefer', 'felsnadel', 'pilzholz', 'flechtenbank', 'rohrkolben', 'erzbrocken', 'quarzdruse'].includes(art);
 const BAUM = new Set(['fichte', 'birke', 'kiefer', 'tanne', 'eiche', 'buche', 'ahorn', 'weide', 'tropenbaum', 'palme', 'akazie', 'olive', 'pinie', 'toterBaum']);

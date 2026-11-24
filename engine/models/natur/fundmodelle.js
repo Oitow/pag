@@ -1,4 +1,15 @@
-import { rng } from '../../../engine/core/rng.js';
+/**
+ * @modul    fundmodelle
+ * @zweck    Fundstücke als reine Dreieckslisten: Erzbrocken, Ammonit, Quarzdruse (lineare RGB-Vertexfarben, Meter)
+ * @api      baueFundmodell(art, seed=1) -> { positions:number[], colors:number[] }
+ * @beispiel
+ *   import { baueFundmodell } from '../../engine/models/natur/fundmodelle.js'; const { positions, colors } = baueFundmodell('ammonit', 3);
+ * @tags     fund, erz, fossil, kristall, graben, asset
+ * @version  1.0.0
+ * @status   entwurf
+ * @three    nein
+ */
+import { rng } from '../../core/rng.js';
 
 // Fundmodelle mit linearen RGB-Farben pro Eckpunkt.
 export function baueFundmodell(art, seed = 1) {

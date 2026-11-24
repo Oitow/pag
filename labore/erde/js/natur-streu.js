@@ -3,7 +3,7 @@
 // ein festes Raster von Kandidaten (4 m), fragt dort den Planeten (Höhe, Wasser, Klima, Gestein) und entscheidet, was wächst.
 // Bäume und Pflanzen je Biom; Gras-Büschel dazwischen (Höhe aus den Nachbarn gemittelt, spart Abfragen).
 // Gleicher Seed + gleiche Kachel → gleiche Natur (wichtig für später: Mehrspieler, Speichern, Abholzen).
-// Quellen: Naturfundus (labore/erde/naturfundus) für fichte, birke, granitblock, schiefer, rohrkolben, seerose, steinpilz, Fische;
+// Quellen: Naturfundus (engine/models/natur/naturfundus.js) für fichte, birke, granitblock, schiefer, rohrkolben, seerose, steinpilz, Fische;
 // alles andere aus engine/models/natur (natur-assets). Welche Quelle → natur.js.
 import { kachelUV, kachelMitte, wuerfelZuKugel } from './planet-baum.js';
 import { rng, hashSeed } from '../../../engine/core/rng.js';
