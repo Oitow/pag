@@ -15,15 +15,18 @@ export function baueKachel(k, planet, N = ZELLEN) {
   // Gitter mit 1 Punkt Rand (für Normalen über die Kachelkante hinweg)
   const M = N + 3, G = M * M;
   const P = new Float64Array(G * 3), D = new Float64Array(G * 3), H = new Float64Array(G);
+  const IW = new Float64Array(G), IU = new Float32Array(G), IG = new Float32Array(G), IM = new Uint8Array(G), IH = new Float64Array(G);
   const dir = [0, 0, 0];
   let minH = Infinity, maxH = -Infinity;
   for (let j = -1; j <= N + 1; j++) for (let i = -1; i <= N + 1; i++) {
     wuerfelZuKugel(k.f, u0 + (s * i) / N, v0 + (s * j) / N, dir);
     const l = Math.hypot(dir[0], dir[1], dir[2]);
     const dx = dir[0] / l, dy = dir[1] / l, dz = dir[2] / l;
-    const h = planet.hoehe(dx, dy, dz, feinste);
-    const r = R + Math.max(0, h); // Meer bleibt glatt auf Höhe 0
+    const p = planet.probe(dx, dy, dz, feinste);
+    const h = Math.max(p.h, p.wasser);  // sichtbar: Boden oder Wasserspiegel
+    const r = R + h;
     const g = (j + 1) * M + (i + 1);
+    IH[g] = p.h; IW[g] = p.wasser; IU[g] = p.ufer; IG[g] = p.gebirge; IM[g] = p.meer;
     P[g * 3] = dx * r; P[g * 3 + 1] = dy * r; P[g * 3 + 2] = dz * r;
     D[g * 3] = dx; D[g * 3 + 1] = dy; D[g * 3 + 2] = dz;
     H[g] = h;
@@ -33,7 +36,7 @@ export function baueKachel(k, planet, N = ZELLEN) {
   const innen = (N + 1) * (N + 1), rand = 4 * N;
   const nv = innen + rand;
   const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Uint8Array(nv * 3);
-  const farbe = [0, 0, 0];
+  const farbe = [0, 0, 0], info = {};
   let v = 0;
   for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++, v++) {
     const g = (j + 1) * M + (i + 1);
@@ -47,7 +50,8 @@ export function baueKachel(k, planet, N = ZELLEN) {
     const flach = nx * dx + ny * dy + nz * dz;
     pos[v * 3] = P[g * 3] - cx; pos[v * 3 + 1] = P[g * 3 + 1] - cy; pos[v * 3 + 2] = P[g * 3 + 2] - cz;
     nor[v * 3] = nx; nor[v * 3 + 1] = ny; nor[v * 3 + 2] = nz;
-    planet.farbe(dx, dy, dz, H[g], flach, farbe);
+    info.h = IH[g]; info.wasser = IW[g]; info.ufer = IU[g]; info.gebirge = IG[g]; info.meer = IM[g];
+    planet.farbe(dx, dy, dz, info, flach, farbe);
     col[v * 3] = Math.min(255, farbe[0] * 255); col[v * 3 + 1] = Math.min(255, farbe[1] * 255); col[v * 3 + 2] = Math.min(255, farbe[2] * 255);
   }
 

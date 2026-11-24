@@ -3,6 +3,8 @@
 // Kachelbau im Worker (kachel-worker, Rückfall: Hauptthread), Kamera bleibt im Ursprung (Floating Origin).
 import * as THREE from 'three';
 import { createPlanetHoehe } from './planet-hoehe.js';
+import { berechneGeologie } from './geologie.js';
+import { createGeoGitter } from './geo-gitter.js';
 import { waehleKacheln, maxStufeFuer } from './planet-baum.js';
 import { baueKachel, ZELLEN } from './kachel-bau.js';
 import { createKachelStrom } from './kachel-strom.js';
@@ -11,10 +13,19 @@ import { laenge } from './mass.js';
 const P = new URLSearchParams(location.search);
 const SEED = +(P.get('seed') || 7);
 const R = (+(P.get('r') || 100)) * 1000;          // Radius in m (Standard 100 km)
-const ATMO = R * 0.08;                             // Dicke der Lufthülle
+const ATMO = R * 0.25;                             // Dicke der Lufthülle (Himmel wird ab ~6 km dunkler)
 const SONNE = new THREE.Vector3(0.75, 0.45, 0.48).normalize();
 const MAX_STUFE = maxStufeFuer(R, ZELLEN, 1.0);    // feinste Kacheln: ~1 m Punktabstand
-const planet = createPlanetHoehe({ seed: SEED, radius: R });
+// Geologie einmal beim Start (Platten, Erosion, Flüsse, Seen), danach Feinheiten je Kachel
+const ladeText = document.querySelector('#load div');
+ladeText.textContent = 'Berechne Geologie…';
+await new Promise((r) => setTimeout(r, 30));
+const tGeo = performance.now();
+const GITTER = createGeoGitter(192);
+const geo = berechneGeologie({ seed: SEED, radius: R, G: GITTER });
+const geoMs = performance.now() - tGeo;
+ladeText.textContent = 'Erschaffe Planet…';
+const planet = createPlanetHoehe({ seed: SEED, radius: R, geo, G: GITTER });
 
 // ---------- Renderer ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
@@ -69,7 +80,7 @@ function starteWorker() {
         for (const k of w.offen.values()) hauptQueue.push(k);
         w.terminate();
       };
-      w.postMessage({ art: 'planet', opts: { seed: SEED, radius: R } });
+      w.postMessage({ art: 'planet', opts: { seed: SEED, radius: R, geo } });
       worker.push(w);
     }
   } catch { worker = []; }
@@ -126,47 +137,65 @@ const sterne = (() => {
 })();
 scene.add(sterne);
 
-// ---------- Besondere Orte finden (Berg, Küste) ----------
+// ---------- Besondere Orte aus der Geologie (Berg, Küste, Fluss, See, Vulkan) ----------
 const orte = (() => {
-  let berg = null, bergH = -1e9;
-  const kand = [];
-  const N = 6000, gold = Math.PI * (3 - Math.sqrt(5));
-  for (let i = 0; i < N; i++) {
-    const y = 1 - (2 * (i + 0.5)) / N, r = Math.sqrt(1 - y * y), t = gold * i;
-    const d = [Math.cos(t) * r, y, Math.sin(t) * r];
-    const h = planet.hoehe(d[0], d[1], d[2], 300);
-    if (h > bergH) { bergH = h; berg = d; }
-    if (h > 3 && h < 15) kand.push(d);
+  const { hoehe: H, spiegel: F, flaeche: A, ab } = geo, { n, dir, nb } = GITTER;
+  const D = (c) => new THREE.Vector3(dir[c * 3], dir[c * 3 + 1], dir[c * 3 + 2]);
+  let berg = 0, fluss = -1, see = -1, seeT = 0;
+  for (let c = 0; c < n; c++) {
+    if (H[c] > H[berg]) berg = c;
+    if (H[c] > 40 && F[c] <= H[c] + 1 && A[c] > geo.amin && (fluss < 0 || A[c] > A[fluss])) fluss = c;
+    if (F[c] > 0 && F[c] - H[c] > seeT) { seeT = F[c] - H[c]; see = c; }
   }
-  let kueste = kand[0] || berg, best = -2;
-  for (const d of kand) { const c = d[0] * berg[0] + d[1] * berg[1] + d[2] * berg[2]; if (c > best && c < Math.cos(4000 / R)) { best = c; kueste = d; } }
-  return { berg: new THREE.Vector3(...berg), kueste: new THREE.Vector3(...kueste) };
+  let kueste = berg, kBest = -2;
+  for (let c = 0; c < n; c++) {
+    if (H[c] < 3 || H[c] > 40) continue;
+    let amMeer = false;
+    for (let k = 0; k < 8; k++) { const q = nb[c * 8 + k]; if (q >= 0 && H[q] < 0) amMeer = true; }
+    if (!amMeer) continue;
+    const s = D(c).dot(D(berg));
+    if (s > kBest) { kBest = s; kueste = c; }
+  }
+  const v = geo.vulkane.reduce((a, b) => (b.hoch > a.hoch ? b : a));
+  return {
+    berg: D(berg), kueste: D(kueste), fluss: D(fluss >= 0 ? fluss : kueste),
+    flussAb: D(fluss >= 0 ? ab[ab[ab[fluss]] >= 0 ? ab[fluss] : fluss] : kueste),
+    see: D(see >= 0 ? see : kueste), vulkan: new THREE.Vector3(...v.d),
+  };
 })();
-// Sonne so stellen, dass am Startort Vormittag ist
-SONNE.copy(orte.kueste).multiplyScalar(0.8).add(new THREE.Vector3(0.35, 0.45, 0.2)).normalize();
-sonne.position.copy(SONNE);
+// Sonne so stellen, dass am Ort Vormittag ist (später: echte Tageszeit)
+function sonneZu(d) { SONNE.copy(d).normalize().multiplyScalar(0.8).add(new THREE.Vector3(0.35, 0.45, 0.2)).normalize(); sonne.position.copy(SONNE); }
 
 // ---------- Kamera: Lage (m, Planetenmitte = 0), Blick nach vorn (tangential) + Neigung ----------
 const cam = new THREE.Vector3();
 const vorn = new THREE.Vector3();
 let neigung = 0;
 const oben = new THREE.Vector3(), blick = new THREE.Vector3(), rechts = new THREE.Vector3(), tmp = new THREE.Vector3();
-const boden = (v) => { tmp.copy(v).normalize(); return Math.max(0, planet.hoehe(tmp.x, tmp.y, tmp.z, 0.5)); };
+const boden = (v) => { tmp.copy(v).normalize(); return Math.max(0, planet.oberflaeche(tmp.x, tmp.y, tmp.z, 0.5)); };
 
+const ORTE = {
+  orbit:  { ziel: 'kueste', h: 900_000, nei: -89, blick: 'berg' },
+  berg:   { ziel: 'berg', h: 7000, nei: -18, blick: 'berg', weg: 12000 },
+  kueste: { ziel: 'kueste', h: 400, nei: -12, blick: 'berg' },
+  boden:  { ziel: 'kueste', h: 1.8, nei: -3, blick: 'berg' },
+  fluss:  { ziel: 'fluss', h: 60, nei: -14, blick: 'flussAb', weg: 150 },
+  see:    { ziel: 'see', h: 250, nei: -10, blick: 'see', weg: 2500 },
+  vulkan: { ziel: 'vulkan', h: 2500, nei: -8, blick: 'vulkan', weg: 9000 },
+};
 function setzeOrt(name) {
-  const ziel = name === 'berg' ? orte.berg : orte.kueste;
-  const hoehen = { orbit: 900_000, berg: 7000, kueste: 400, boden: 1.8 };
-  const nei = { orbit: -89, berg: -18, kueste: -12, boden: -3 };
-  const h = hoehen[name] ?? hoehen.orbit;
-  const d = ziel.clone().normalize();
-  if (name === 'berg') d.applyAxisAngle(new THREE.Vector3(0, 1, 0), 12000 / R); // etwas abseits, Gipfel im Blick
-  cam.copy(d).multiplyScalar(R + boden(d) + h);
-  // nach vorn: Richtung Berg (bzw. Norden)
+  const o = ORTE[name] || ORTE.orbit;
+  const d = orte[o.ziel].clone().normalize();
+  if (o.weg) { // ein Stück abseits stehen, damit das Ziel im Blick ist
+    const quer = new THREE.Vector3(0.3, 1, 0.2).cross(d).normalize();
+    d.applyAxisAngle(quer, o.weg / R);
+  }
+  cam.copy(d).multiplyScalar(R + boden(d) + o.h);
+  sonneZu(d);
   oben.copy(d);
-  vorn.copy(orte.berg).sub(cam).projectOnPlane(oben);
+  vorn.copy(orte[o.blick]).multiplyScalar(R).sub(cam).projectOnPlane(oben);
   if (vorn.lengthSq() < 1e-6) vorn.set(0, 1, 0).projectOnPlane(oben);
   vorn.normalize();
-  neigung = THREE.MathUtils.degToRad(nei[name] ?? -89);
+  neigung = THREE.MathUtils.degToRad(o.nei);
   auto = null;
 }
 
@@ -227,7 +256,7 @@ document.getElementById('bOrbit').onclick = () => {
   cam.copy(d).multiplyScalar(R + boden(d) + AUTO_STUFEN[0]);
   auto = { stufen: [...AUTO_STUFEN, ...AUTO_STUFEN.slice(0, -1).reverse()], pause: 0, punkt: d };
 };
-for (const [id, ort] of [['bAll', 'orbit'], ['bBerg', 'berg'], ['bKueste', 'kueste'], ['bBoden', 'boden']])
+for (const [id, ort] of [['bAll', 'orbit'], ['bBerg', 'berg'], ['bKueste', 'kueste'], ['bBoden', 'boden'], ['bFluss', 'fluss'], ['bSee', 'see'], ['bVulkan', 'vulkan']])
   document.getElementById(id).onclick = () => setzeOrt(ort);
 document.getElementById('bLod').onclick = (e) => {
   stufenFarben = !stufenFarben;
@@ -238,6 +267,46 @@ document.getElementById('bSeed').onclick = () => {
   const p = new URLSearchParams(location.search); p.set('seed', String(1 + Math.floor(Math.random() * 99999)));
   location.search = p.toString();
 };
+
+// ---------- Karte: Geologie von oben (Höhen, Flüsse, Seen), Tippen = hinfliegen ----------
+const karteBox = document.getElementById('karteBox'), karteEl = document.getElementById('karte'), punktEl = document.getElementById('kpunkt');
+const KW = 360, KH = 180;
+function zeichneKarte() {
+  karteEl.width = KW; karteEl.height = KH;
+  const ctx = karteEl.getContext('2d'), bildDaten = ctx.createImageData(KW, KH), px = bildDaten.data;
+  const g = GITTER.neueGewichte();
+  for (let y = 0; y < KH; y++) for (let x = 0; x < KW; x++) {
+    const lat = (0.5 - (y + 0.5) / KH) * Math.PI, lon = ((x + 0.5) / KW) * 2 * Math.PI;
+    GITTER.gewichte(Math.cos(lat) * Math.cos(lon), Math.sin(lat), Math.cos(lat) * Math.sin(lon), g);
+    const h = GITTER.lese(geo.hoehe, g), f = GITTER.lese(geo.spiegel, g), c = g.naechste;
+    let r, gg, b;
+    if (h < 0) { const t = Math.min(1, -h / 4000); r = 20 * (1 - t) + 6; gg = 95 * (1 - t) + 22; b = 150 * (1 - t) + 62; }
+    else { const t = Math.min(1, h / 3200); r = 80 + 140 * t; gg = 130 + 50 * t - 50 * t * t; b = 60 + 130 * t * t; }
+    if (f > h + 1 && f > 0) { r = 50; gg = 120; b = 210; }
+    if (geo.hoehe[c] >= 0 && geo.flaeche[c] >= geo.amin) { const s2 = Math.min(1, Math.log10(geo.flaeche[c] / geo.amin) / 2.3); r += (40 - r) * s2; gg += (110 - gg) * s2; b += (235 - b) * s2; }
+    const i = (y * KW + x) * 4; px[i] = r; px[i + 1] = gg; px[i + 2] = b; px[i + 3] = 255;
+  }
+  ctx.putImageData(bildDaten, 0, 0);
+}
+document.getElementById('bKarte').onclick = (e) => {
+  const an = karteBox.style.display !== 'block';
+  if (an && !karteEl.dataset.fertig) { zeichneKarte(); karteEl.dataset.fertig = '1'; }
+  karteBox.style.display = an ? 'block' : 'none';
+  e.currentTarget.classList.toggle('on', an);
+};
+karteEl.addEventListener('pointerdown', (e) => {
+  const r = karteEl.getBoundingClientRect();
+  const lat = (0.5 - (e.clientY - r.top) / r.height) * Math.PI, lon = ((e.clientX - r.left) / r.width) * 2 * Math.PI;
+  const d = new THREE.Vector3(Math.cos(lat) * Math.cos(lon), Math.sin(lat), Math.cos(lat) * Math.sin(lon));
+  cam.copy(d).multiplyScalar(R + boden(d) + 3000);
+  neigung = THREE.MathUtils.degToRad(-35); auto = null;
+});
+function karteMarker() {
+  if (karteBox.style.display !== 'block') return;
+  const d = tmp.copy(cam).normalize();
+  const lat = Math.asin(d.y), lon = (Math.atan2(d.z, d.x) + 2 * Math.PI) % (2 * Math.PI);
+  punktEl.style.left = (lon / (2 * Math.PI)) * 100 + '%'; punktEl.style.top = (0.5 - lat / Math.PI) * 100 + '%';
+}
 
 // ---------- Schleife ----------
 const hud = document.getElementById('hud');
@@ -323,6 +392,7 @@ function bild() {
   himmelLicht.intensity = 0.25 + 0.55 * tag * (1 - raum);
 
   renderer.render(scene, camera);
+  karteMarker();
 
   if (!geladen && (info.angezeigt > 0 && info.offen < 8 || jetzt > 8000)) { geladen = true; ladeEl.remove(); }
   else if (!geladen) ladeEl.querySelector('i').textContent = `${info.angezeigt} Kacheln`;
@@ -335,6 +405,7 @@ function bild() {
     `Kacheln     ${info.angezeigt} sichtbar · ${info.gebaut} gebaut · ${info.offen} offen\n` +
     `Bau         ${worker.length ? worker.length + ' Worker' : 'Hauptthread'} · ${(bauMs / Math.max(1, bauN)).toFixed(1)} ms/Kachel\n` +
     `Planet      R ${laenge(R)} · Seed ${SEED} · Stufen 0–${MAX_STUFE}\n` +
+    `Geologie    ${geo.platten.length} Platten · Land ${(geo.stat.land * 100).toFixed(0)} % · ${geo.stat.flussZellen} Fluss- · ${geo.stat.seeZellen} See-Zellen · ${(geoMs / 1000).toFixed(1)} s\n` +
     `Dreiecke    ${r.triangles.toLocaleString('de-DE')} · ${r.calls} Draw-Calls · ${fps.toFixed(0)} fps`;
   requestAnimationFrame(bild);
 }

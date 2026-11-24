@@ -1,4 +1,5 @@
 // Worker: baut Planeten-Kacheln im Hintergrund, damit das Bild nicht ruckelt.
+// Bekommt einmal die fertige Geologie (Typed Arrays) vom Hauptthread.
 import { createPlanetHoehe } from './planet-hoehe.js';
 import { baueKachel } from './kachel-bau.js';
 
