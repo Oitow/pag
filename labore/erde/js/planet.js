@@ -455,6 +455,7 @@ const erwWelt = {
     return out.multiplyScalar(R + Math.max(pr.h, pr.wasser));
   },
   spieler: () => ({ gehen, schwimmt, amBoden, fallV }),
+  setzeFall: (v) => { fallV = v; },
   melde: (t, gut = true) => melde(t, gut),
   speichern: () => speichern(),
   // nach dem Tod: zurück zum Startplatz (Ort beim Start bzw. letzter Sprung), zu Fuß
@@ -766,7 +767,9 @@ function bild() {
   if (tasten.has('ShiftLeft') || tasten.has('KeyQ')) hoch -= 1;
   if (vor || seit || hoch) auto = null;
   const altPos = cam.clone();
-  if (gehen) {
+  if (gehen && erw.bewegung(dt, { vor, seit, hoch, tempo: 2 ** (+tempoEl.value) })) {
+    // ein Modul (z. B. Gleiter) bewegt den Spieler selbst; Boden-Grenze unten gilt weiter
+  } else if (gehen) {
     // waagerecht laufen (Blick hoch/runter ändert die Richtung nicht), Sprung mit ▲/Leertaste
     const l = Math.hypot(vor, seit);
     const schritt = tmp.set(0, 0, 0).addScaledVector(vorn, vor).addScaledVector(rechts, seit);
