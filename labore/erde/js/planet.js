@@ -393,6 +393,7 @@ const ORTE = {
   kueste: { ziel: 'kueste', h: 400, nei: -12, blick: 'berg' },
   boden:  { ziel: 'kueste', h: 1.8, nei: -3, blick: 'berg' },
   fluss:  { ziel: 'fluss', h: 60, nei: -14, blick: 'flussAb', weg: 150 },
+  ufer:   { ziel: 'fluss', h: 1.8, nei: -8, blick: 'fluss', weg: 35, gehen: true },
   see:    { ziel: 'see', h: 250, nei: -10, blick: 'see', weg: 2500 },
   vulkan: { ziel: 'vulkan', h: 2500, nei: -8, blick: 'vulkan', weg: 9000 },
   krater: { ziel: 'vulkan', h: 1500, nei: -55, blick: 'vulkan', weg: orte.kraterWeg },
