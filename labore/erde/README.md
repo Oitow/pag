@@ -2,7 +2,7 @@
 
 Erfundener Planet (Standard R = 100 km) vom Orbit bis zum Boden, zu Fuß begehbar, mit Geologie, Klima, Wetter, Natur und Graben.
 Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Sprungmarken `?ort=orbit|berg|kueste|boden|fluss|see|vulkan|wald|biom0…9`
-· Testschalter `?test=1` (kein Spielstand), `?wetter=regen|schnee|gewitter|nebel|sturm|klar`, `?uhr=19` (Ortszeit), `?seed=`, `?r=` (km), `?neu=1`.
+· Testschalter `?test=1` (kein Spielstand), `?h=` (Höhe über Boden, m) und `?nei=` (Blickneigung °) zur Sprungmarke, `?wetter=regen|schnee|gewitter|nebel|sturm|klar`, `?uhr=19` (Ortszeit), `?seed=`, `?r=` (km), `?neu=1`.
 
 ## Module (`js/`, reine Logik ohne THREE wo möglich → Tests in `tests/erde-*.test.mjs`)
 | Datei | Aufgabe |

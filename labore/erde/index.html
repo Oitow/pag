@@ -10,10 +10,10 @@
    TYPE: System-UI + Monospace für Messwerte  LAYOUT: Messwerte oben links, Orte rechts, Tempo unten, Daumen-Steuerung */
 html,body{margin:0;height:100%;overflow:hidden;background:#01030a;touch-action:none;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#e8eef6}
 canvas{display:block}
-#hud{position:fixed;left:8px;top:8px;font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;background:rgba(6,10,20,.6);padding:7px 9px;border-radius:10px;pointer-events:none;white-space:pre;z-index:5;max-width:calc(100vw - 120px);overflow:hidden}
+#hud{position:fixed;left:8px;top:8px;font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;background:rgba(6,10,20,.6);padding:7px 9px;border-radius:10px;pointer-events:none;white-space:pre;z-index:5;max-width:calc(100vw - 128px);overflow:hidden}
 @media (max-width:640px){#hud{white-space:pre-wrap;font-size:10.5px}}
 #rechts{position:fixed;right:8px;top:8px;display:flex;flex-direction:column;align-items:flex-end;gap:6px;z-index:6;max-height:calc(100vh - 200px)}
-#rechts .kopf{display:flex;gap:6px}
+#rechts .kopf{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 #bMenue{min-width:44px;font-size:18px;padding:4px 10px}
 #menue{display:none;background:rgba(6,10,20,.72);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:6px 8px 8px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 #menue.auf{display:block}
@@ -54,7 +54,7 @@ a.b{text-decoration:none}
 <div id="load"><div>Erschaffe Planet…</div><i></i></div>
 <div id="hud" class="ui"></div>
 <div id="rechts" class="ui">
-  <div class="kopf"><div class="b" id="bMenue" title="Menü auf/zu">☰</div><div class="b gelb" id="bGehen">🚶 Gehen</div></div>
+  <div class="kopf"><div class="b gelb" id="bGehen">🚶 Gehen</div><div class="b" id="bMenue" title="Menü auf/zu">☰</div></div>
   <div id="menue">
     <div class="titel">Orte</div>
     <div class="raster">
