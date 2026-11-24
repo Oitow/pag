@@ -23,6 +23,7 @@ import { createKachelStrom } from './kachel-strom.js';
 import { laenge } from './mass.js';
 import { createErweiterungen } from './erweiterungen.js';
 import { createVulkanRauch } from './vulkan-rauch.js';
+import { createWolken } from './wolken.js';
 
 const P = new URLSearchParams(location.search);
 const SEED = +(P.get('seed') || 7);
@@ -393,6 +394,7 @@ const ORTE = {
   berg:   { ziel: 'berg', h: 7000, nei: -18, blick: 'berg', weg: 12000 },
   kueste: { ziel: 'kueste', h: 400, nei: -12, blick: 'berg' },
   boden:  { ziel: 'kueste', h: 1.8, nei: -3, blick: 'berg' },
+  himmel: { ziel: 'kueste', h: 1.8, nei: 40, blick: 'berg' },
   fluss:  { ziel: 'fluss', h: 60, nei: -14, blick: 'flussAb', weg: 150 },
   ufer:   { ziel: 'fluss', h: 1.8, nei: -8, blick: 'fluss', weg: 35, gehen: true },
   see:    { ziel: 'see', h: 250, nei: -10, blick: 'see', weg: 2500 },
@@ -446,6 +448,7 @@ bGehen.onclick = () => { setzeGehen(!gehen); if (gehen) { const d = cam.clone().
 const anker = new THREE.Group();
 scene.add(anker);
 const rauch = createVulkanRauch(anker, { vulkane: geo.vulkane, planet, R });
+const wolkenDecke = P.get('wolken') === 'aus' ? null : createWolken(scene, { R });
 const erwWelt = {
   THREE, scene, R, seed: SEED, anker, cam, oben, vorn, blick, planet, inventar, zw, natur, eingriffe, dienste: {},
   bodenHoehe: (d) => boden(d),
@@ -878,6 +881,7 @@ function bild() {
   wasserU.wasserCam.value.copy(cam);
   wasserU.wHimmel.value.copy(himmel).lerp(blau, 0.3);
   rauch.update(dt, zw.windWelt, fernU.uPixel.value, fernU.uLicht.value);
+  wolkenDecke?.update(dt, { cam, wetter: W, windWelt: zw.windWelt, sonne: SONNE, tag, licht: fernU.uLicht.value, himmel, raum });
   renderer.info.reset();
   renderer.render(scene, camera);
   zw.zeichne(renderer, camera);
