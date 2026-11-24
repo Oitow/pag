@@ -30,9 +30,11 @@ import { createBauen } from './bauen.js';
 import { createTiere } from './tiere.js';
 import { createHerstellen } from './herstellen.js';
 import { createGleiter } from './gleiter.js';
+import { createFelder } from './felder.js';
+import { createTagebuch } from './tagebuch.js';
 
 // Reihenfolge = Reihenfolge bei aktion(): wer zuerst kommt, darf zuerst übernehmen
-const LISTE = [createTiere, createBauen, createHerstellen, createUeberleben, createGleiter];
+const LISTE = [createTiere, createBauen, createFelder, createHerstellen, createUeberleben, createGleiter, createTagebuch];
 
 export function createErweiterungen(welt, stand = {}) {
   const module = [];
