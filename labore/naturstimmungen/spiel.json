@@ -1,0 +1,5 @@
+{
+  "eintrag": "./szene.js", "minify": true,
+  "html": "index.html",
+  "smoke": { "query": "?test=1", "warte": 5000 }
+}
