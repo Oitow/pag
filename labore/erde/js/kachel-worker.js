@@ -3,11 +3,13 @@
 import { createPlanetHoehe } from './planet-hoehe.js';
 import { baueKachel } from './kachel-bau.js';
 import { streueKachel } from './natur-streu.js';
+import { createEingriffe } from './eingriffe.js';
 
 let planet = null;
 self.onmessage = (e) => {
   const m = e.data;
-  if (m.art === 'planet') { planet = createPlanetHoehe(m.opts); return; }
+  if (m.art === 'planet') { planet = createPlanetHoehe({ ...m.opts, eingriffe: createEingriffe({ radius: m.opts.radius, zustand: m.eingriffe }) }); return; }
+  if (m.art === 'eingriff') { planet.eingriffe.uebernimm(m.e); return; } // Graben/Aufschütten vom Hauptthread
   if (m.art === 'bau') {
     const t0 = performance.now();
     const k = baueKachel(m.k, planet);

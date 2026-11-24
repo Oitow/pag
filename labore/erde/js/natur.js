@@ -16,9 +16,18 @@ const NADEL = new Set(['fichte', 'tanne']);
 const KLEIN = new Set(['farn', 'wedelfarn', 'zwergstrauch', 'moospolster', 'laubstreu', 'blume', 'pilz', 'steinpilz', 'seerose', 'rohrkolben']);
 const MITTEL = new Set(['busch', 'beerenbusch', 'ginster', 'busch_unterholz', 'kaktus', 'saeulenkaktus', 'agave', 'baumstumpf', 'liegenderStamm', 'geroell']);
 const FISCH = new Set(['forelle', 'barsch']);
+// Zielhöhe (m) je Art: jedes Asset wird beim Laden darauf gebracht – egal, wie groß es gebaut ist
+// (Naturfundus und Engine dürfen ihre Modelle frei ändern). Ohne Eintrag: Größe des Assets bleibt.
+export const ZIEL_HOEHE = {
+  fichte: 22, tanne: 24, kiefer: 18, birke: 15, buche: 20, eiche: 16, ahorn: 16, weide: 9, olive: 6, pinie: 13,
+  akazie: 9, palme: 14, tropenbaum: 28, toterBaum: 8, rohrkolben: 1.8, kaktus: 3, saeulenkaktus: 4,
+};
 // Sichtweiten (m): nah = volles Asset, fern = Fern-Form (nur Bäume)
 function sicht(art) {
-  if (BAUM.has(art)) return { nah: art === 'fichte' || art === 'tanne' ? 55 : 42, fern: 320, varianten: 3 };
+  // Bäume: nah volles Asset, mittel (nur Engine) Detailstufe 0, fern schlanke Form
+  if (art === 'fichte') return { nah: 70, mittel: 0, fern: 320, varianten: 3 };
+  if (art === 'birke') return { nah: 30, mittel: 0, fern: 320, varianten: 3 };
+  if (BAUM.has(art)) return { nah: 28, mittel: 85, fern: 320, varianten: 3 };
   if (art === 'grasbueschel') return { nah: 30, fern: 0, varianten: 3 };
   if (KLEIN.has(art)) return { nah: 45, fern: 0, varianten: 2 };
   if (MITTEL.has(art)) return { nah: 95, fern: 0, varianten: 2 };
@@ -101,7 +110,8 @@ const KOERPER = `
 }
 `;
 
-export function createNatur(scene) {
+/** istWeg(kachelKey, index) → true: Stück wurde entfernt (gefällt, abgebaut, ausgegraben). */
+export function createNatur(scene, { istWeg = () => false } = {}) {
   const gruppe = new THREE.Group();
   scene.add(gruppe);
   const wind = { kwZeit: { value: 0 }, kwStaerke: { value: 1 }, kwRicht: { value: new THREE.Vector3(1, 0.3, 0.6).normalize() }, kwCam: { value: new THREE.Vector3() } };
@@ -121,6 +131,14 @@ export function createNatur(scene) {
   };
 
   const engine = createAssetCache({ varianten: 3, detail: 1, seed: 17 });
+  const engineGrob = createAssetCache({ varianten: 1, detail: 0, seed: 17 });
+  const aufZiel = (art, geo) => { // auf Zielhöhe bringen (einmal, an der Geometrie) → Faktor
+    geo.computeBoundingBox();
+    const h = geo.boundingBox.max.y, s0 = ZIEL_HOEHE[art] && h > 0.01 ? ZIEL_HOEHE[art] / h : 1;
+    if (s0 !== 1) { geo.scale(s0, s0, s0); geo.computeBoundingBox(); }
+    return s0;
+  };
+  const MITTEL_T = {};
   const toepfe = []; // { art, geo, mat, mesh, n, kap }
   const NAH = {}, FERN = {}, CFG = {};
   for (const art of STREU_ARTEN) {
@@ -135,14 +153,24 @@ export function createNatur(scene) {
         geo = a.geometrie;
         if (v === 0) cfg.stamm = a.stammRadius;
       }
+      const s0 = aufZiel(art, geo);
+      if (v === 0) cfg.s0 = s0;
       erste ??= geo;
       const weite = BAUM.has(art) && cfg.fern ? 0 : cfg.nah;
       NAH[art].push({ art, geo, mat: material(weite), mesh: null, n: 0, kap: 0 });
     }
     toepfe.push(...NAH[art]);
+    if (cfg.mittel) {
+      const g = engineGrob.holen(art, 0).geometrie;
+      aufZiel(art, g);
+      MITTEL_T[art] = { art, geo: g, mat: material(0), mesh: null, n: 0, kap: 0 };
+      toepfe.push(MITTEL_T[art]);
+    }
     if (cfg.fern) { FERN[art] = { art, geo: fernForm(art, erste), mat: material(cfg.fern), mesh: null, n: 0, kap: 0 }; toepfe.push(FERN[art]); }
     // Kollisionsradius bei Skala 1 (Geh-Modus): Fundus von Hand, Engine aus dem Asset
-    cfg.kolli = { fichte: 0.22, birke: 0.16, granitblock: 0.85, schiefer: 0.8 }[art] ?? (FUNDUS.has(art) ? 0 : cfg.stamm || 0);
+    cfg.kolli = ({ fichte: 0.22, birke: 0.16, granitblock: 0.85, schiefer: 0.8 }[art] ?? (FUNDUS.has(art) ? 0 : cfg.stamm || 0)) * cfg.s0;
+    cfg.hoehe = erste.boundingBox ? erste.boundingBox.max.y : 1;
+    cfg.groesse = erste.boundingBox ? Math.max(0.3, (erste.boundingBox.max.x - erste.boundingBox.min.x) * 0.25) : 0.5; // fürs Antippen
     CFG[art] = cfg;
   }
   const kapazitaet = (t, n) => {
@@ -157,7 +185,7 @@ export function createNatur(scene) {
   };
 
   const anker = new THREE.Vector3(), letzteKamera = new THREE.Vector3(1e12, 0, 0);
-  let schmutzig = true, fische = [], hindernisse = [], dreiecke = 0, anzahl = 0;
+  let schmutzig = true, fische = [], hindernisse = [], nahe = [], dreiecke = 0, anzahl = 0;
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), qd = new THREE.Quaternion(), oben = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
   const pos = new THREE.Vector3(), skal = new THREE.Vector3(), farbe = new THREE.Color();
   const tan = new THREE.Vector3(), tan2 = new THREE.Vector3(), vor = new THREE.Vector3(), lokX = new THREE.Vector3(), kreuz = new THREE.Vector3();
@@ -184,16 +212,24 @@ export function createNatur(scene) {
       anker.copy(cam);
       for (const t of toepfe) t.n = 0;
       const wahl = [];
-      fische = []; hindernisse = [];
+      fische = []; hindernisse = []; nahe = [];
       let idx = 0;
       for (const k of kacheln) {
         const d = k.daten, [mx, my, mz] = k.mitte;
         for (let i = 0; i < k.anzahl; i++, idx++) {
+          if (istWeg(k.key, i)) continue;
           const o = i * STRIDE, art = STREU_ARTEN[d[o]], cfg = CFG[art];
           const ax = mx + d[o + 1], ay = my + d[o + 2], az = mz + d[o + 3];
           const ab = Math.hypot(ax - cam.x, ay - cam.y, az - cam.z);
+          if (ab < 60) {
+            const id = k.key + '#' + i;
+            const sk = d[o + 4];
+            nahe.push({ id, art, x: ax, y: ay, z: az, s: sk, fest: cfg.kolli > 0, h: cfg.hoehe * sk,
+              r: BAUM.has(art) ? Math.max(0.45, cfg.kolli * sk * 1.6) : Math.max(0.25, cfg.groesse * sk) });
+          }
           let t = null;
           if (ab < cfg.nah) t = NAH[art][idx % cfg.varianten];
+          else if (ab < cfg.mittel) t = MITTEL_T[art];
           else if (ab < cfg.fern && (ab < 180 || idx % 2 === 0)) t = FERN[art]; // weit weg: jeder zweite reicht
           if (!t) continue;
           t.n++;
@@ -239,13 +275,28 @@ export function createNatur(scene) {
 
   /** Stämme/Felsen in der Nähe (Weltkoordinaten) – für Kollision im Geh-Modus. */
   const naheHindernisse = () => hindernisse;
+  /** Nächstes Natur-Stück an Punkt p (Weltkoordinaten): stehender Zylinder (Radius r, Höhe h) um jedes Stück,
+   *  p höchstens `weite` m vom Mantel entfernt. → { id, art, s, fest, r, h, x, y, z } | null */
+  function finde(p, weite = 1) {
+    let best = null, bd = Infinity;
+    for (const o of nahe) {
+      const dx = p.x - o.x, dy = p.y - o.y, dz = p.z - o.z;
+      const l = Math.hypot(o.x, o.y, o.z), hoch = (dx * o.x + dy * o.y + dz * o.z) / l;
+      if (hoch < -0.6 || hoch > o.h + 0.4) continue;
+      const quer = Math.sqrt(Math.max(0, dx * dx + dy * dy + dz * dz - hoch * hoch)) - o.r;
+      if (quer < weite && quer < bd) { bd = quer; best = o; }
+    }
+    return best;
+  }
+  /** Wind: staerke 0 (still) … 2 (Sturm), richtung = Weltvektor (wird je Pflanze in den Boden gelegt). */
+  function setzeWind(staerke, richtung) { wind.kwStaerke.value = staerke; wind.kwRicht.value.copy(richtung); }
 
   function dispose() {
     for (const t of toepfe) { if (t.mesh) { gruppe.remove(t.mesh); t.mesh.dispose(); } if (FUNDUS.has(t.art) || t === FERN[t.art]) t.geo.dispose(); }
-    engine.dispose();
+    engine.dispose(); engineGrob.dispose();
     for (const m of materialien.values()) m.dispose();
     scene.remove(gruppe);
   }
 
-  return { update, naheHindernisse, neu: () => { schmutzig = true; }, dispose, get info() { return { anzahl, dreiecke: Math.round(dreiecke) }; } };
+  return { update, naheHindernisse, finde, setzeWind, neu: () => { schmutzig = true; }, dispose, get info() { return { anzahl, dreiecke: Math.round(dreiecke) }; } };
 }

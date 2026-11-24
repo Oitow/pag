@@ -9,6 +9,7 @@ import { kachelUV, kachelMitte, wuerfelZuKugel } from './planet-baum.js';
 import { rng, hashSeed } from '../../../engine/core/rng.js';
 import { waldDichte, biom, BIOM } from './klima.js';
 import { GESTEIN, GESTEIN_FARBE } from './geologie.js';
+import { waehleBaum } from './wachstum.js';
 
 // Reihenfolge = Index im Ergebnis.
 export const STREU_ARTEN = [
@@ -25,17 +26,8 @@ export const STRIDE = 10; // art, px, py, pz (m, relativ zur Kachelmitte auf Mee
 const RASTER = 20;        // 20×20 Kandidaten je Kachel
 const GRANIT_BASIS = [0.57, 0.545, 0.51];
 
-// Bäume je Biom: [art, gewicht, skala] – Naturfundus-Bäume sind klein gebaut (≈ 6 m) und werden hochskaliert
-const BAEUME = {
-  [BIOM.TUNDRA]: [['birke', 1, 0.9]],
-  [BIOM.NADELWALD]: [['fichte', 6, 2.4], ['tanne', 2, 1], ['kiefer', 2, 1], ['birke', 1, 2.2]],
-  [BIOM.MISCHWALD]: [['fichte', 3, 2.4], ['birke', 3, 2.3], ['buche', 2, 1], ['eiche', 2, 1], ['ahorn', 1, 1], ['kiefer', 1, 1]],
-  [BIOM.LAUBWALD]: [['buche', 4, 1.1], ['eiche', 3, 1.1], ['ahorn', 2, 1], ['birke', 2, 2.4]],
-  [BIOM.GRASLAND]: [['eiche', 3, 1.1], ['birke', 1, 2.2], ['ahorn', 1, 1]],
-  [BIOM.STEPPE]: [['olive', 2, 1], ['pinie', 1, 1], ['kiefer', 1, 0.9]],
-  [BIOM.SAVANNE]: [['akazie', 1, 1]],
-  [BIOM.REGENWALD]: [['tropenbaum', 5, 1.2], ['palme', 2, 1.1]],
-};
+// Bäume: welche Art hier wächst, entscheiden die Klimaansprüche in wachstum.js (nicht feste Biom-Listen).
+// Größen in Metern macht natur.js (Zielhöhe je Art); hier nur Streuung ±25 %.
 // Boden je Biom: [art, wahrscheinlichkeit je Kandidat, skala]
 const BODEN = {
   [BIOM.EIS]: [['geroell', 0.03, 1]],
@@ -54,11 +46,6 @@ const GRAS = { [BIOM.TUNDRA]: 1, [BIOM.NADELWALD]: 0.5, [BIOM.MISCHWALD]: 1.5, [
 const GRAS_MAX = 4;
 
 const glatt = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-const wahl = (liste, w) => { // gewichtete Wahl, w ∈ [0,1)
-  let s = 0; for (const e of liste) s += e[1];
-  let x = w * s; for (const e of liste) { x -= e[1]; if (x < 0) return e; }
-  return liste[liste.length - 1];
-};
 
 /** Quadtree-Stufe der Streu-Kacheln (Kante ~80 m). */
 export const streuStufe = (R) => Math.max(0, Math.round(Math.log2((R * Math.PI / 2) / 80)));
@@ -134,7 +121,7 @@ export function streueKachel(k, planet) {
     // Ufer: Schilf, ab und zu eine Weide
     if ((p.ufer > 0.35 || amSee) && p.temp > 2) {
       if (w < 0.4) { setze(c, A.rohrkolben, 0.8 + z() * 0.6); continue; }
-      if (w > 0.96 && p.temp > 5) { setze(c, A.weide, 0.9 + 0.3 * z(), 1, 1, 1, 0.2); continue; }
+      if (w > 0.96 && p.temp > 5) { setze(c, A.weide, 0.8 + 0.4 * z(), 1, 1, 1, 0.2); continue; }
     }
     // Fels: Steilhang, Gebirge, über der Baumgrenze – sonst vereinzelte Findlinge
     const fels = Math.max(glatt(0.5, 1.1, steil), glatt(1, -4, p.temp) * 0.6, p.gebirge * 0.4);
@@ -151,13 +138,15 @@ export function streueKachel(k, planet) {
     const wald = waldDichte(p.temp, p.feuchte, p.v) * (1 - glatt(0.45, 0.8, steil));
     const einzeln = bi === BIOM.SAVANNE ? 0.025 : bi === BIOM.GRASLAND ? 0.006 : bi === BIOM.STEPPE ? 0.004 : 0.002;
     const w2 = z();
-    const liste = BAEUME[bi];
-    if (liste && w2 < wald * 0.24 + einzeln * (1 - glatt(0.6, 1, steil))) {
-      const [art, , sk] = wahl(liste, z());
-      const g = 0.85 + 0.3 * z();
-      const tot = art !== 'fichte' && art !== 'birke' && z() < 0.02;   // ab und zu ein toter Baum
-      setze(c, tot ? A.toterBaum : A[art], sk * (0.75 + 0.5 * z()), g, g, g, 0.3);
-      continue;
+    if (w2 < wald * 0.24 + einzeln * (1 - glatt(0.6, 1, steil))) {
+      // Klimaansprüche nach Jahresmittel am Ort (p.temp ist schon höhenkorrigiert); Ufer zählt als feucht
+      const art = waehleBaum(p.temp, Math.min(1, p.feuchte + (amSee ? 0.3 : 0)), z());
+      if (art) {
+        const g = 0.85 + 0.3 * z();
+        const tot = z() < 0.015;                         // ab und zu ein toter Baum
+        setze(c, tot ? A.toterBaum : A[art], 0.75 + 0.5 * z(), g, g, g, 0.3);
+        continue;
+      }
     }
     // Boden: Büsche, Farne, Blumen, Pilze, Totholz …
     const im = wald > 0.4 ? bi : (bi === BIOM.MISCHWALD || bi === BIOM.LAUBWALD || bi === BIOM.NADELWALD ? BIOM.GRASLAND : bi);

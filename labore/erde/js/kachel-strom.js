@@ -2,19 +2,32 @@
 // - baut fehlende Kacheln (nächste zuerst), höchstens `parallel` gleichzeitig
 // - alte Kacheln bleiben sichtbar, bis ihr Bereich von fertigen neuen Kacheln bedeckt ist (keine Löcher, kein Doppel)
 // - fertige, gerade nicht gebrauchte Kacheln bleiben im Zwischenspeicher (schneller zurück)
+// - erneuere(): Kacheln nach einem Eingriff (Graben) neu bauen – die alte bleibt sichtbar, bis die neue da ist
 import { enthaelt } from './planet-baum.js';
 
 export function createKachelStrom({ bauen, erzeuge, zeige, entsorge, parallel = 2, speicher = 500 }) {
   const fertig = new Map();     // key → { k, obj, zuletzt }
   const laufend = new Map();    // key → k
   let angezeigt = new Map();    // key → k
+  const nochmal = new Set();    // während des Baus veraltet → danach gleich noch einmal
   let zeit = 0;
 
   function fertigGebaut(key, daten) {
     const k = laufend.get(key);
     laufend.delete(key);
     if (!k) return;
-    fertig.set(key, { k, obj: erzeuge(daten), zuletzt: zeit });
+    const alt = fertig.get(key), obj = erzeuge(daten);
+    if (alt) { // Ersatz für eine veraltete Kachel: nahtlos tauschen
+      if (angezeigt.has(key)) { zeige(alt.obj, false); zeige(obj, true); }
+      entsorge(alt.obj);
+    }
+    fertig.set(key, { k, obj, zuletzt: zeit, veraltet: nochmal.delete(key) });
+  }
+
+  /** Kacheln, für die betroffen(k) wahr ist, neu bauen (fertige und gerade laufende). */
+  function erneuere(betroffen) {
+    for (const [key, e] of fertig) if (betroffen(e.k)) e.veraltet = true;
+    for (const [key, k] of laufend) if (betroffen(k)) nochmal.add(key);
   }
 
   function update(wunsch) {
@@ -22,7 +35,7 @@ export function createKachelStrom({ bauen, erzeuge, zeige, entsorge, parallel = 
     const wKeys = new Map(wunsch.map((k) => [k.key, k]));
 
     // 1) Bauaufträge: nächste zuerst
-    const fehlt = wunsch.filter((k) => !fertig.has(k.key) && !laufend.has(k.key)).sort((a, b) => a.dist - b.dist);
+    const fehlt = wunsch.filter((k) => (!fertig.has(k.key) || fertig.get(k.key).veraltet) && !laufend.has(k.key)).sort((a, b) => a.dist - b.dist);
     for (const k of fehlt) {
       if (laufend.size >= parallel) break;
       laufend.set(k.key, k);
@@ -54,7 +67,9 @@ export function createKachelStrom({ bauen, erzeuge, zeige, entsorge, parallel = 
     for (const [key] of neu) { const e = fertig.get(key); e.zuletzt = zeit; if (!angezeigt.has(key)) zeige(e.obj, true); }
     angezeigt = neu;
 
-    // 4) Speicher aufräumen: älteste unbenutzte zuerst
+    // 4) veraltete, die gerade keiner braucht, weg (sonst kämen sie alt zurück)
+    for (const [key, e] of fertig) if (e.veraltet && !angezeigt.has(key) && !wKeys.has(key)) { entsorge(e.obj); fertig.delete(key); }
+    // 5) Speicher aufräumen: älteste unbenutzte zuerst
     if (fertig.size > speicher) {
       const frei = [...fertig].filter(([key]) => !angezeigt.has(key) && !wKeys.has(key)).sort((a, b) => a[1].zuletzt - b[1].zuletzt);
       for (let i = 0; i < frei.length && fertig.size > speicher; i++) { entsorge(frei[i][1].obj); fertig.delete(frei[i][0]); }
@@ -66,5 +81,5 @@ export function createKachelStrom({ bauen, erzeuge, zeige, entsorge, parallel = 
 
   function dispose() { for (const [, e] of fertig) entsorge(e.obj); fertig.clear(); laufend.clear(); angezeigt.clear(); }
 
-  return { update, fertigGebaut, sichtbar, dispose, get anzahl() { return angezeigt.size; } };
+  return { update, fertigGebaut, erneuere, sichtbar, dispose, get anzahl() { return angezeigt.size; } };
 }

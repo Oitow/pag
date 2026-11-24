@@ -28,6 +28,13 @@ canvas{display:block}
 a.b{text-decoration:none}
 #karteBox{position:fixed;left:8px;top:190px;width:min(62vw,420px);aspect-ratio:2/1;display:none;z-index:7;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.25)}
 #karte{width:100%;height:100%;display:block;cursor:crosshair}
+#aktionen{position:fixed;left:50%;bottom:58px;transform:translateX(-50%);display:none;gap:8px;z-index:6}
+#aktionen .b{min-width:92px;min-height:44px;font-size:14px;display:flex;align-items:center;justify-content:center}
+#meldung{position:fixed;left:50%;top:38%;transform:translateX(-50%);background:rgba(6,10,20,.7);padding:6px 12px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .4s;pointer-events:none;z-index:8;white-space:nowrap}
+#meldung.schlecht{color:#ffb4a0}
+#ziel{position:fixed;left:50%;top:50%;width:10px;height:10px;margin:-5px;border:2px solid rgba(255,255,255,.55);border-radius:50%;pointer-events:none;z-index:5;display:none}
+#ziel.treffer{border-color:#ffd04a}
+#ziel.treffer::after{content:attr(data-text);position:absolute;left:16px;top:-4px;font-size:11px;color:#ffd04a;white-space:nowrap}
 #legende{position:absolute;left:0;right:0;bottom:0;font-size:10px;background:rgba(6,10,20,.7);padding:2px 5px;pointer-events:none}
 #legende b{display:inline-block;width:8px;height:8px;margin:0 3px 0 6px;border-radius:2px}
 #kpunkt{position:absolute;width:10px;height:10px;margin:-5px;border-radius:50%;background:#ffd04a;border:2px solid #000;pointer-events:none}
@@ -48,15 +55,20 @@ a.b{text-decoration:none}
   <div class="b" id="bWald">Wald</div>
   <div class="b" id="bBiom">Biom ▸</div>
   <div class="b gelb" id="bGehen">🚶 Gehen</div>
+  <div class="b" id="bZeit">⏩ Zeit 1×</div>
   <div class="b" id="bKarte">Karte</div>
   <div class="b" id="bLod">LOD-Farben</div>
   <div class="b" id="bSeed">Neuer Seed</div>
   <a class="b" href="kugel.html">Echte Erde</a>
+  <div class="b" id="bReset">↺ Spielstand</div>
 </div>
 <div id="hochrunter"><div class="b" id="hoch">▲</div><div class="b" id="runter">▼</div></div>
 <div id="karteBox"><canvas id="karte"></canvas><div id="kpunkt"></div><div id="legende"></div></div>
+<div id="aktionen"><div class="b" id="aNehmen">✋ Nehmen</div><div class="b" id="aGraben">⛏ Graben</div><div class="b" id="aBauen">⛰ Aufschütten</div></div>
+<div id="meldung"></div>
+<div id="ziel"></div>
 <div id="joy"><div id="knob"></div></div>
-<div id="hilfe">Links ziehen: bewegen · rechts ziehen: umsehen · ▲ springt beim Gehen · PC: WASD, Maus, Leertaste/Shift</div>
+<div id="hilfe">Links ziehen: bewegen · rechts ziehen: umsehen · ▲ springt · PC: WASD, Leertaste, F nehmen, G graben, B aufschütten</div>
 <div id="unten">Tempo<input id="tempo" type="range" min="-3" max="3" step="0.5" value="0"></div>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}

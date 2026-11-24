@@ -8,6 +8,13 @@ import { berechneGeologie, GESTEIN_NAME, GESTEIN_FARBE } from './geologie.js';
 import { biom, BIOM_NAME, tempAm, waldDichte, bodenFarbe } from './klima.js';
 import { streuKacheln, streueKachel, streuStufe } from './natur-streu.js';
 import { createNatur } from './natur.js';
+import { createEingriffe } from './eingriffe.js';
+import { createZeitWetter } from './zeit-wetter.js';
+import { createAktionen, gegenstandName, GRAB_RADIUS } from './aktionen.js';
+import { waechstHier } from './wachstum.js';
+import { STOFFE } from './boden.js';
+import { kachelMitte } from './planet-baum.js';
+import { createInventar } from '../../../engine/gameplay/inventar.js';
 import { createGeoGitter } from './geo-gitter.js';
 import { waehleKacheln, maxStufeFuer } from './planet-baum.js';
 import { baueKachel, ZELLEN } from './kachel-bau.js';
@@ -29,11 +36,17 @@ const GITTER = createGeoGitter(192);
 const geo = berechneGeologie({ seed: SEED, radius: R, G: GITTER });
 const geoMs = performance.now() - tGeo;
 ladeText.textContent = 'Erschaffe Planet…';
-const planet = createPlanetHoehe({ seed: SEED, radius: R, geo, G: GITTER });
+// Spielstand (Graben, Gefälltes, Inventar, Uhr) je Seed im Browser – ?neu=1 fängt frisch an
+const SPEICHER = `erde-${SEED}-${R}`;
+let stand = null;
+try { if (!P.has('neu') && !P.has('test')) stand = JSON.parse(localStorage.getItem(SPEICHER) || 'null'); } catch { stand = null; }
+const eingriffe = createEingriffe({ radius: R, zustand: stand?.eingriffe });
+const planet = createPlanetHoehe({ seed: SEED, radius: R, geo, G: GITTER, eingriffe });
 
 // ---------- Renderer ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.info.autoReset = false; // Zählung über Hauptszene + Niederschlag (Reset je Bild in der Schleife)
 renderer.setSize(innerWidth, innerHeight);
 document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
@@ -115,7 +128,7 @@ function starteWorker() {
         for (const [key, k] of w.offen) (key.startsWith('s:') ? streuQueue : hauptQueue).push(k);
         w.terminate();
       };
-      w.postMessage({ art: 'planet', opts: { seed: SEED, radius: R, geo } });
+      w.postMessage({ art: 'planet', opts: { seed: SEED, radius: R, geo }, eingriffe: eingriffe.zustand() });
       worker.push(w);
     }
   } catch { worker = []; }
@@ -158,7 +171,31 @@ function streuen(wunsch) {
     for (const key of streuDa.keys()) if (!nah.has(key) && streuDa.size > 300) streuDa.delete(key);
   }
 }
-const natur = createNatur(scene);
+const natur = createNatur(scene, { istWeg: eingriffe.istWeg });
+
+// ---------- Zeit, Wetter, Inventar, Aktionen ----------
+const zw = createZeitWetter({ seed: SEED, zustand: stand?.zeit });
+const inventar = createInventar({ plaetze: 30, stapel: 999 });
+if (stand?.inventar) inventar.lade(stand.inventar);
+else for (const w of ['axt', 'schaufel', 'spitzhacke']) inventar.gib(w, 1);
+let speicherT = null;
+function speichern() {
+  clearTimeout(speicherT);
+  speicherT = setTimeout(() => {
+    try { localStorage.setItem(SPEICHER, JSON.stringify({ eingriffe: eingriffe.zustand(), inventar: inventar.zustand(), zeit: zw.zustand() })); } catch { /* voll/privat */ }
+  }, 800);
+}
+/** Kachel vom Eingriff e betroffen? (Mitte näher als halbe Diagonale + Radius) */
+function betroffen(k, e) {
+  const { d, kante } = kachelMitte(k, R);
+  const cos = d[0] * e.d[0] + d[1] * e.d[1] + d[2] * e.d[2];
+  return Math.acos(Math.min(1, cos)) * R < kante * 0.8 + e.r + 1;
+}
+const aktionen = createAktionen({
+  planet, eingriffe, natur, inventar, seed: SEED,
+  beiEingriff: (e) => { for (const w of worker) w.postMessage({ art: 'eingriff', e }); strom.erneuere((k) => betroffen(k, e)); speichern(); },
+  beiEntfernen: () => { natur.neu(); speichern(); },
+});
 
 starteWorker();
 const strom = createKachelStrom({ bauen, erzeuge, zeige, entsorge, parallel: Math.max(2, worker.length * 2) });
@@ -241,7 +278,8 @@ const orte = (() => {
   };
 })();
 // Sonne so stellen, dass am Ort Vormittag ist (später: echte Tageszeit)
-function sonneZu(d) { SONNE.copy(d).normalize().multiplyScalar(0.8).add(new THREE.Vector3(0.35, 0.45, 0.2)).normalize(); sonne.position.copy(SONNE); }
+// Beim Springen an einen Ort: dort Vormittag (die Uhr läuft danach weiter, Sonne wandert)
+function sonneZu(d) { zw.stelleOrtszeit([d.x, d.y, d.z], 9.5); }
 
 // ---------- Kamera: Lage (m, Planetenmitte = 0), Blick nach vorn (tangential) + Neigung ----------
 const cam = new THREE.Vector3();
@@ -292,11 +330,79 @@ const AUGE = 1.7, GEH_TEMPO = 4.2, SPRUNG = 5.2, G_ERDE = 9.81;
 const bGehen = document.getElementById('bGehen');
 function setzeGehen(an) {
   gehen = an; fallV = 0;
+  document.getElementById('aktionen').style.display = an ? 'flex' : 'none';
   bGehen.textContent = an ? '🕊 Fliegen' : '🚶 Gehen';
   bGehen.classList.toggle('on', an);
   if (an) { auto = null; neigung = THREE.MathUtils.clamp(neigung, -0.6, 0.6); }
 }
 bGehen.onclick = () => { setzeGehen(!gehen); if (gehen) { const d = cam.clone().normalize(); cam.copy(d).multiplyScalar(R + boden(d) + AUGE); } };
+
+// ---------- Aktionen zu Fuß: Blickstrahl findet Natur-Stück oder Boden ----------
+const WERKZEUGE = new Set(['axt', 'schaufel', 'spitzhacke', 'eisenhacke']);
+let invText = '';
+function inventarText() {
+  const z = new Map();
+  for (const p of inventar.plaetze) if (p && !WERKZEUGE.has(p.id)) z.set(p.id, (z.get(p.id) || 0) + p.anzahl);
+  return z.size ? [...z].map(([id, n]) => `${gegenstandName(id)} ${n}`).join(' · ') : 'leer (graben, fällen, pflücken …)';
+}
+const zielP = new THREE.Vector3();
+/** Was liegt im Blick (bis 7 m)? → { art: 'natur', o } | { art: 'boden', p } | null */
+function zielSuchen() {
+  for (let t = 0.4; t <= 7; t += 0.15) {
+    zielP.copy(cam).addScaledVector(blick, t);
+    const o = natur.finde(zielP, 0.05);
+    if (o) return { art: 'natur', o, p: zielP.clone() };
+    tmp.copy(zielP).normalize();
+    const pr = planet.probe(tmp.x, tmp.y, tmp.z, 0.5);
+    if (zielP.length() - R <= Math.max(pr.h, pr.wasser)) return { art: 'boden', p: tmp.clone().multiplyScalar(R + pr.h) };
+  }
+  return null;
+}
+const meldungEl = document.getElementById('meldung'), zielEl = document.getElementById('ziel');
+let meldungT = null;
+function melde(text, gut = true) {
+  meldungEl.textContent = text; meldungEl.style.opacity = 1; meldungEl.classList.toggle('schlecht', !gut);
+  clearTimeout(meldungT); meldungT = setTimeout(() => { meldungEl.style.opacity = 0; }, 2200);
+}
+function handle(was) {
+  if (!gehen) { melde('Erst „Gehen“ – dann graben, fällen, bauen', false); return; }
+  const z = zielSuchen();
+  if (!z) { melde('Nichts in Reichweite', false); return; }
+  let r;
+  if (was === 'nehmen') r = z.art === 'natur' ? aktionen.nehmen(z.o) : { ok: false, text: 'Hier ist nichts zum Nehmen – graben?' };
+  else if (was === 'graben') r = z.art === 'natur' ? aktionen.nehmen(z.o) : aktionen.graben(z.p);
+  else r = aktionen.bauen(z.art === 'boden' ? z.p : z.p);
+  melde(r.text, r.ok);
+  invText = inventarText();
+}
+let zielT = 0;
+function zielAnzeigen() {
+  zielEl.style.display = gehen ? 'block' : 'none';
+  if (!gehen || (zielT += 1) % 6) return; // nicht jedes Bild
+  const z = zielSuchen();
+  zielEl.classList.toggle('treffer', !!z);
+  zielEl.dataset.text = z ? (z.art === 'natur' ? z.o.art : 'Boden') : '';
+}
+document.getElementById('aNehmen').onclick = () => handle('nehmen');
+document.getElementById('aGraben').onclick = () => handle('graben');
+document.getElementById('aBauen').onclick = () => handle('bauen');
+addEventListener('keydown', (e) => {
+  if (e.repeat) return;
+  if (e.code === 'KeyF') handle('nehmen');
+  if (e.code === 'KeyG') handle('graben');
+  if (e.code === 'KeyB') handle('bauen');
+});
+const ZEITRAFFER = [1, 20, 200];
+document.getElementById('bZeit').onclick = (e) => {
+  zw.tempo = ZEITRAFFER[(ZEITRAFFER.indexOf(zw.tempo) + 1) % ZEITRAFFER.length];
+  e.currentTarget.textContent = `⏩ Zeit ${zw.tempo}×`;
+};
+document.getElementById('bReset').onclick = () => {
+  if (!confirm('Gegrabenes, Gefälltes und Tasche zurücksetzen?')) return;
+  try { localStorage.removeItem(SPEICHER); } catch { /* egal */ }
+  location.reload();
+};
+setInterval(speichern, 15000); // Uhr/Wetter ab und zu sichern
 
 // ---------- Steuerung ----------
 const tasten = new Set();
@@ -427,12 +533,23 @@ function karteMarker() {
 
 // ---------- Schleife ----------
 const hud = document.getElementById('hud');
+const grau = new THREE.Color(), abend = new THREE.Color(1, 0.55, 0.3);
 const blau = new THREE.Color(0x8fbfea), nacht = new THREE.Color(0x0a1020), schwarz = new THREE.Color(0x01030a), himmel = new THREE.Color();
 let alt = performance.now(), fpsT = 0, fpsN = 0, fps = 0, wahlT = 1, info = { angezeigt: 0, gebaut: 0, laufend: 0, offen: 0 };
 let geladen = false, tempoAnzeige = 0, ortT = 1, ortText = '';
 /** Was ist hier? Gestein, Biom/Gewässer, Temperatur, Feuchte – direkt aus der Geologie. */
+const klimaHier = { tMittel: 10, feuchte: 0.5 };
+let bodenText = '', waechstText = '';
 function ortsInfo(d) {
   const p = planet.probe(d.x, d.y, d.z, 2);
+  klimaHier.tMittel = p.temp; klimaHier.feuchte = p.feuchte;
+  if (gehen) {
+    const u = aktionen.untergrund(d.clone().multiplyScalar(R + p.h));
+    let t = 0;
+    bodenText = u.schichten.map((x) => { const s = `${STOFFE[x.stoff].name}${x.dicke < 1e9 ? ' ' + x.dicke.toFixed(1) + ' m' : ''}`; t += x.dicke; return s; }).join(' · ') + (u.tiefe > 0.05 ? ` (gegraben ${u.tiefe.toFixed(1)} m)` : '');
+    const w = waechstHier(p.temp, p.feuchte);
+    waechstText = w.length ? w.slice(0, 6).join(', ') : 'kaum etwas';
+  }
   let was;
   if (p.wasser > p.h + 0.05) was = p.meer ? 'Meer' : p.fluss ? 'Fluss' : 'See';
   else was = BIOM_NAME[biom(p.temp, p.feuchte)];
@@ -514,7 +631,7 @@ function bild() {
   wahlT += dt;
   if (wahlT > 0.1) {
     wahlT = 0;
-    const wunsch = waehleKacheln([cam.x, cam.y, cam.z], { R, maxStufe: MAX_STUFE }).filter((k) => !k.verdeckt);
+    const wunsch = waehleKacheln([cam.x, cam.y, cam.z], { R, maxStufe: MAX_STUFE, hBoden: Math.max(0, g2) }).filter((k) => !k.verdeckt);
     info = strom.update(wunsch);
   }
   // Natur nur nah am Boden
@@ -533,37 +650,53 @@ function bild() {
   camera.up.copy(oben);
   camera.lookAt(blick);
 
+  // Zeit & Wetter (Klima vom Ort, alle 0,3 s erneuert)
+  zw.update(dt, oben, klimaHier);
+  SONNE.copy(zw.sonne); sonne.position.copy(SONNE);
+  natur.setzeWind(0.25 + 1.6 * zw.wetter.wind, zw.windWelt);
   // Himmel, Nebel, Licht nach Höhe und Tageszeit
   const ueberMeer = cam.length() - R;
   const raum = THREE.MathUtils.smoothstep(ueberMeer, ATMO * 0.25, ATMO * 1.3);
-  const tag = THREE.MathUtils.smoothstep(oben.dot(SONNE), -0.2, 0.25);
-  himmel.copy(nacht).lerp(blau, tag).lerp(schwarz, raum);
+  const W = zw.wetter, hs = oben.dot(SONNE);
+  const tag = THREE.MathUtils.smoothstep(hs, -0.2, 0.25);
+  const wolken = W.wolken * (1 - raum), blitz = W.blitz * (1 - raum);
+  himmel.copy(nacht).lerp(blau, tag).lerp(grau.setRGB(0.55, 0.6, 0.65).multiplyScalar(0.25 + 0.75 * tag), wolken * 0.85).lerp(schwarz, raum);
+  himmel.r += blitz * 0.5; himmel.g += blitz * 0.5; himmel.b += blitz * 0.55;
   scene.background = himmel;
   scene.fog.color.copy(himmel);
-  scene.fog.density = (1 - raum) * (2.6 / (R * 0.35));
+  scene.fog.density = (1 - raum) * (2.6 / (R * 0.35) + W.nebel * 0.006 + (W.regen + W.schnee) * 0.0012);
+  // Sonne: Stand aus der Uhr, abends rötlich, Wolken dämpfen
+  sonne.intensity = 2.4 * THREE.MathUtils.smoothstep(hs, -0.03, 0.12) * (1 - 0.7 * wolken) + blitz * 2;
+  sonne.color.setRGB(1, 0.95, 0.86).lerp(abend, (1 - THREE.MathUtils.smoothstep(hs, 0.02, 0.3)) * 0.8);
   atmo.visible = ueberMeer > ATMO * 0.6;
   sterne.visible = raum > 0.5 || tag < 0.3;
   himmelLicht.position.copy(oben);
-  himmelLicht.intensity = 0.25 + 0.55 * tag * (1 - raum);
+  himmelLicht.intensity = 0.12 + (0.5 * tag * (1 - 0.3 * wolken) + blitz) * (1 - raum);
 
   wasserU.wZeit.value = jetzt / 1000;
   wasserU.wasserCam.value.copy(cam);
   wasserU.wHimmel.value.copy(himmel).lerp(blau, 0.3);
+  renderer.info.reset();
   renderer.render(scene, camera);
+  zw.zeichne(renderer, camera);
   karteMarker();
+  zielAnzeigen();
 
   if (!geladen && (info.angezeigt > 0 && info.offen < 8 || jetzt > 8000)) { geladen = true; ladeEl.remove(); }
   else if (!geladen) ladeEl.querySelector('i').textContent = `${info.angezeigt} Kacheln`;
 
   const r = renderer.info.render;
   ortT += dt;
-  if (ortT > 0.3) { ortT = 0; ortText = ortsInfo(oben); }
+  if (ortT > 0.3) { ortT = 0; ortText = ortsInfo(oben); invText = inventarText(); }
+  const zeitText = zw.text(oben);
   const kompakt = innerWidth < 640; // Handy hochkant: nur das Wichtigste
   hud.textContent = kompakt ?
-    `${ortText}\n` +
+    `${ortText}\n${zeitText}\n` + (gehen ? `${invText}\n` : '') +
     `Höhe ${laenge(Math.max(0, hoeheBoden))} · Boden ${laenge(Math.max(0, g2))} · ${Math.round(tempoAnzeige * 3.6)} km/h\n` +
     `${fps.toFixed(0)} fps · ${r.triangles.toLocaleString('de-DE')} Dreiecke · Natur ${natur.info.anzahl}` :
     `Hier        ${ortText}\n` +
+    `Zeit        ${zeitText} · Tempo ${zw.tempo}×\n` +
+    (gehen ? `Boden       ${bodenText}\nWächst      ${waechstText}\nTasche      ${invText}\n` : '') +
     `Höhe        ${laenge(Math.max(0, hoeheBoden))} über Boden\n` +
     `Meereshöhe  ${laenge(Math.max(0, g2))} Boden · ${laenge(Math.max(0, ueberMeer))} Kamera\n` +
     `Tempo       ${Math.round(tempoAnzeige * 3.6).toLocaleString('de-DE')} km/h\n` +
@@ -581,4 +714,7 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 setzeOrt(P.get('ort') || 'orbit');
+// Testschalter: ?wetter=regen|schnee|gewitter|nebel|sturm|klar … und ?uhr=19 (Ortszeit)
+if (P.get('wetter')) zw.wetter.setze(P.get('wetter'), true);
+if (P.get('uhr')) zw.stelleOrtszeit([cam.x / cam.length(), cam.y / cam.length(), cam.z / cam.length()], +P.get('uhr'));
 requestAnimationFrame(bild);
