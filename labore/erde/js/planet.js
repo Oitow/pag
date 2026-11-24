@@ -21,6 +21,7 @@ import { waehleKacheln, maxStufeFuer } from './planet-baum.js';
 import { baueKachel, ZELLEN } from './kachel-bau.js';
 import { createKachelStrom } from './kachel-strom.js';
 import { laenge } from './mass.js';
+import { createErweiterungen } from './erweiterungen.js';
 
 const P = new URLSearchParams(location.search);
 const SEED = +(P.get('seed') || 7);
@@ -245,11 +246,11 @@ const zw = createZeitWetter({ seed: SEED, zustand: stand?.zeit });
 const inventar = createInventar({ plaetze: 30, stapel: 999 });
 if (stand?.inventar) inventar.lade(stand.inventar);
 else for (const w of ['axt', 'schaufel', 'spitzhacke']) inventar.gib(w, 1);
-let speicherT = null;
+let speicherT = null, erw = null;
 function speichern() {
   clearTimeout(speicherT);
   speicherT = setTimeout(() => {
-    try { localStorage.setItem(SPEICHER, JSON.stringify({ eingriffe: eingriffe.zustand(), inventar: inventar.zustand(), zeit: zw.zustand() })); } catch { /* voll/privat */ }
+    try { localStorage.setItem(SPEICHER, JSON.stringify({ eingriffe: eingriffe.zustand(), inventar: inventar.zustand(), zeit: zw.zustand(), erw: erw?.zustand() })); } catch { /* voll/privat */ }
   }, 800);
 }
 /** Kachel vom Eingriff e betroffen? (Mitte näher als halbe Diagonale + Radius) */
@@ -432,6 +433,30 @@ function setzeGehen(an) {
 }
 bGehen.onclick = () => { setzeGehen(!gehen); if (gehen) { const d = cam.clone().normalize(); cam.copy(d).multiplyScalar(R + boden(d) + AUGE); } };
 
+// ---------- Erweiterungen (Überleben, Bauen, Tiere, Herstellen): Vertrag in erweiterungen.js ----------
+const anker = new THREE.Group();
+scene.add(anker);
+const erwWelt = {
+  THREE, scene, R, seed: SEED, anker, cam, oben, vorn, blick, planet, inventar, zw, natur, eingriffe, dienste: {},
+  bodenHoehe: (d) => boden(d),
+  bodenPunkt(d, out = new THREE.Vector3()) {
+    out.copy(d).normalize();
+    const pr = planet.probe(out.x, out.y, out.z, 0.5);
+    return out.multiplyScalar(R + Math.max(pr.h, pr.wasser));
+  },
+  spieler: () => ({ gehen, schwimmt, amBoden, fallV }),
+  melde: (t, gut = true) => melde(t, gut),
+  speichern: () => speichern(),
+  knopf(id, text, onklick) {
+    const el = document.createElement('div');
+    el.className = 'b'; el.id = id; el.textContent = text;
+    el.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); onklick(); });
+    document.getElementById('aktionen').appendChild(el);
+    return el;
+  },
+};
+erw = createErweiterungen(erwWelt, stand?.erw);
+
 // ---------- Aktionen zu Fuß: Blickstrahl findet Natur-Stück oder Boden ----------
 const WERKZEUGE = new Set(['axt', 'schaufel', 'spitzhacke', 'eisenhacke']);
 let invText = '';
@@ -462,6 +487,8 @@ function melde(text, gut = true) {
 function handle(was) {
   if (!gehen) { melde('Erst „Gehen“ – dann graben, fällen, bauen', false); return; }
   const z = zielSuchen();
+  const re = erw.aktion(was, z);
+  if (re) { melde(re.text, re.ok); invText = inventarText(); speichern(); return; }
   if (!z) { melde('Nichts in Reichweite', false); return; }
   let r;
   if (was === 'nehmen') r = z.art === 'natur' ? aktionen.nehmen(z.o) : { ok: false, text: 'Hier ist nichts zum Nehmen – graben?' };
@@ -786,6 +813,8 @@ function bild() {
     m.position.set(c[0] - cam.x, c[1] - cam.y, c[2] - cam.z);
   }
   atmo.position.set(-cam.x, -cam.y, -cam.z);
+  anker.position.set(-cam.x, -cam.y, -cam.z);
+  erw.update(dt);
   camera.position.set(0, 0, 0);
   camera.up.copy(oben);
   camera.lookAt(blick);
@@ -844,12 +873,12 @@ function bild() {
   const zeitText = zw.text(oben);
   const kompakt = MENUE.info === 'kurz';
   hud.textContent = kompakt ?
-    `${ortText}\n${zeitText}\n` + (gehen ? `${invText}\n` : '') +
+    `${ortText}\n${zeitText}\n` + (gehen ? `${invText}\n` + erw.hud().map((z) => z + '\n').join('') : '') +
     `Höhe ${laenge(Math.max(0, hoeheBoden))} · Boden ${laenge(Math.max(0, g2))} · ${Math.round(tempoAnzeige * 3.6)} km/h\n` +
     `${fps.toFixed(0)} fps · ${r.triangles.toLocaleString('de-DE')} Dreiecke · Natur ${natur.info.anzahl}` :
     `Hier        ${ortText}\n` +
     `Zeit        ${zeitText} · Tempo ${zw.tempo}×\n` +
-    (gehen ? `Boden       ${bodenText}\nWächst      ${waechstText}\nTasche      ${invText}\n` : '') +
+    (gehen ? `Boden       ${bodenText}\nWächst      ${waechstText}\nTasche      ${invText}\n` + erw.hud().map((z) => z + '\n').join('') : '') +
     `Höhe        ${laenge(Math.max(0, hoeheBoden))} über Boden\n` +
     `Meereshöhe  ${laenge(Math.max(0, g2))} Boden · ${laenge(Math.max(0, ueberMeer))} Kamera\n` +
     `Tempo       ${Math.round(tempoAnzeige * 3.6).toLocaleString('de-DE')} km/h\n` +
