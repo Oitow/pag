@@ -123,9 +123,11 @@
 | figur-kleidung | `engine/models/character/figur-kleidung.js` | Kleidung der organischen Figur als SDF-Körper über der Anatomie: Oberteil mit Ärmeln, Hose/Rock/Robe, Gürtel + Tasche, Schuhe – je Stil aus character-look | entwurf |
 | figur-koerper-kopf | `engine/models/character/figur-koerper-kopf.js` | Hals und Kopf der organischen Figur als SDF-Körper: Schädel, Kiefer/Kinn, Wangenknochen, Brauenbogen, Augenhöhlen (passend zu den starren Augäpfeln), Nase, Ohren (Mund = Mimik-Mesh) | entwurf |
 | figur-koerper | `engine/models/character/figur-koerper.js` | Anatomie der organischen Figur als SDF-Körper: Rumpf (Brustkorb, Taille, Bauch, Becken, Gesäß, Trapez, Schultermuskeln), Arme, Hände mit Daumen (Griff am Sockel umschlossen), Beine, Füße mit flacher Sohle; Hals + Kopf in figur-koerper-kopf | entwurf |
+| hase | `engine/models/kreaturen/hase.js` | Low-Poly-Feldhase (kleines Wild): runder Rumpf, kräftige Hinterläufe, lange Ohren mit schwarzen Spitzen, weiße Blume; zwei Sprung-Bild-Geometrien (Vertexfarben) für InstancedMesh | entwurf |
 | irrlicht | `engine/models/kreaturen/irrlicht.js` | Low-Poly-Irrlicht (Moorgeist): hell leuchtender Kern, Halo und wehende Schleier; zwei Schwebe-Bild-Geometrien (Vertexfarben) | entwurf |
 | keiler | `engine/models/kreaturen/keiler.js` | Low-Poly-Keiler (Wildschwein) als Horden-Gegner: massig, Borstenkamm, Hauer; zwei Lauf-Bild-Geometrien (Vertexfarben) | entwurf |
 | ratte | `engine/models/kreaturen/ratte.js` | Low-Poly-Riesenratte als Horden-Gegner: liefert zwei Lauf-Bild-Geometrien (Vertexfarben) für InstancedMesh | entwurf |
+| reh | `engine/models/kreaturen/reh.js` | Low-Poly-Reh (Wild, scheu): schlanker Rumpf, langer Hals, große Ohren, weißer Spiegel, Bock mit kleinem Gehörn; zwei Lauf-Bild-Geometrien (Vertexfarben) für InstancedMesh | entwurf |
 | wolf | `engine/models/kreaturen/wolf.js` | Low-Poly-Wolf als Horden-Gegner (und Boss-Wolf per Skala): zwei Lauf-Bild-Geometrien (Vertexfarben) für InstancedMesh | entwurf |
 | baum-arten | `engine/models/natur/baum-arten.js` | Reine Parameter-Daten der Baumarten (Wuchs, Verzweigung, Laubform, Farben, Jahreszeiten) für baum-skelett/baum | entwurf |
 | baum-skelett | `engine/models/natur/baum-skelett.js` | Ast-Skelett eines Baums aus Art-Parametern + Seed: rekursive Verzweigung mit Tropismus, Krümmung, Verjüngung, Laub-Knoten und Nadel-Etagen (reine Logik) | entwurf |
@@ -489,6 +491,7 @@
 | hand | hand, figur-koerper |
 | handy | touch-stick, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, qualitaet, modul-kampf, modul-oberflaeche, modul-zauber, chat, figur-editor, menue, minikarte, zauber-leiste |
 | hang | klettern, character-anim-hang |
+| hase | hase |
 | hash | rng |
 | haus | haus |
 | haut | figur-haut |
@@ -522,7 +525,7 @@
 | insel | worldgen-presets, worldgen-shape, worldgen |
 | instanced | character-lod |
 | instancedmesh | bau-instanzen, horde-mesh |
-| instancing | keiler, ratte, wolf, grosszauber-wand-ansicht, horde-mesh, fern-wald |
+| instancing | hase, keiler, ratte, reh, wolf, grosszauber-wand-ansicht, horde-mesh, fern-wald |
 | instanzen | laub-klumpen, bau-instanzen, natur-material, gras-feld, scatter-mesh |
 | instanziert | gauss-wolke, laub-karten |
 | interaktion | interaktion, tueren |
@@ -530,6 +533,7 @@
 | interpolation | math, schnappschuss-puffer |
 | inventar | behaelter, hand, inventar, rezepte, welt-dinge, modul-fortschritt, modul-oberflaeche, oberflaeche-fenster, inventar-ansicht |
 | irrlicht | irrlicht |
+| jagd | hase, reh |
 | jahreszeit | zeit, baum |
 | joystick | move-input, touch-stick |
 | kachel | welt-streu |
@@ -555,6 +559,7 @@
 | klang | klang |
 | klasse | klassen-daten, progression, modul-kampf |
 | kleidung | character-parts-becken, character-parts-torso, character-parts, figur-form, figur-kleidung-basis, figur-kleidung-oben, figur-kleidung-unten, figur-kleidung |
+| klein | hase |
 | klettern | ausdauer, klettern, modul-spieler |
 | klima | wetter, worldgen-biomes, worldgen-climate |
 | knoepfe | touch-stick |
@@ -564,7 +569,7 @@
 | kommando | befehle |
 | kopf | character-anim-blick, character-parts-haar, character-parts-hut, character-parts-kopf, figur-koerper-kopf |
 | korb | character-ausruestung |
-| kreatur | irrlicht, keiler, ratte, wolf |
+| kreatur | hase, irrlicht, keiler, ratte, reh, wolf |
 | krieger | klassen-daten |
 | kristall | tempel, fundmodelle |
 | krit | kampf-werte |
@@ -597,7 +602,7 @@
 | look | character-look, figur-material, psx, splat-look, figur-editor |
 | loop | schleife |
 | loot | beute |
-| lowpoly | bau-teile, bau-dorf-teile, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau, character-parts, irrlicht, keiler, ratte, wolf, baum, fels-form, fels, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-unterwuchs, pflanze-wueste, totholz-form, totholz, mesh-builder |
+| lowpoly | bau-teile, bau-dorf-teile, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau, character-parts, hase, irrlicht, keiler, ratte, reh, wolf, baum, fels-form, fels, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-unterwuchs, pflanze-wueste, totholz-form, totholz, mesh-builder |
 | magie | element-reaktionen, grosszauber-riss, grosszauber-sturm, grosszauber-welle, grosszauber, zauber-daten, zauber, character-clips-zauber, zauber-effekte, modul-zauber |
 | magier | klassen-daten |
 | maler | splat-look |
@@ -625,7 +630,7 @@
 | mittelalter | bau-dorf-teile, bau-markt, bau-vorrat, bau-wegbau |
 | mmo | entitaeten, bedrohung, befehle, beute, boss, faehigkeiten-daten, faehigkeiten, gegenstaende-daten, gegner-lager, grosszauber-wand, grosszauber-welle, grosszauber, kampf-werte, kampf, klassen-daten, nahkampf-daten, nahkampf, progression, zustaende, character-lod, modul-dorf, modul-entitaeten, modul-fortschritt, modul-gegner, modul-oberflaeche, modul-welt, oberflaeche-fenster, spiel, chat, kampf-leiste, minikarte, ziel-rahmen, welt-regionen |
 | mobil | grosszauber-riss-ansicht, grosszauber-welle-ansicht |
-| modell | sdf-netz, sdf, character-model, irrlicht, keiler, ratte, wolf, mesh-builder |
+| modell | sdf-netz, sdf, character-model, hase, irrlicht, keiler, ratte, reh, wolf, mesh-builder |
 | modul | modul-kern, modul-bewohner, modul-dorf, modul-entitaeten, modul-fortschritt, modul-gegner, modul-himmel, modul-kampf, modul-oberflaeche, modul-riesenwald, modul-spieler, modul-tutorial, modul-welt, modul-zauber, module-register, module, spiel |
 | mond | mond, modul-himmel, himmel-stand, himmel |
 | monokel | character-parts-zubehoer |
@@ -716,6 +721,7 @@
 | regionen | modul-welt, welt-regionen |
 | register | register, module-register, module |
 | registry | natur-assets |
+| reh | reh |
 | reichweite | faehigkeiten, interaktion |
 | render | grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht, kronen-lichtkarte, laub-karten, natur-material, gras-feld |
 | render-target | kronen-lichtkarte |
@@ -856,6 +862,7 @@
 | testfeld | module-register, module |
 | third-person | follow-camera |
 | tiefe | gauss-sortierung |
+| tier | hase, reh |
 | toast | hud |
 | tod | character-reaktion |
 | tor | tueren, mauer |
@@ -918,6 +925,7 @@
 | werkzeug | hand, rohstoffe, character-ausruestung |
 | wetter | niederschlag, modul-himmel, himmel-stand, wetter |
 | whittaker | worldgen-biomes |
+| wild | hase, reh |
 | wildschwein | keiler |
 | wind | grosszauber-sturm, baum, natur-basis, pflanze-basis, pflanze-boden, pflanze-busch, pflanze-unterwuchs, grosszauber-sturm-ansicht, laub-karten, natur-material, gras-feld, scatter-mesh, wetter |
 | wirbel | grosszauber-sturm |
@@ -1952,7 +1960,7 @@ const p = rezepte.pruefe('axt', inventar);          // { ok: false, grund: 'zuta
 if (p.ok) rezepte.stelleHer('axt', inventar);       // nimmt Zutaten, legt die Axt ins Inventar
 ```
 
-Genutzt von: handwerk · Tags: rezept, herstellen, crafting, werkbank, zutaten, inventar, gameplay · THREE: nein
+Genutzt von: erde, handwerk · Tags: rezept, herstellen, crafting, werkbank, zutaten, inventar, gameplay · THREE: nein
 Rezept: { id, name, zutaten {id: anzahl}, ergebnis {id, anzahl, daten?}, werkzeug [id oder Tag, wird nicht verbraucht],
         station (Text oder null), dauer (Sekunden, nur Angabe fürs Spiel) }.
 grund: null | 'unbekannt' | 'station' | 'werkzeug' | 'zutaten' | 'platz' (nur bei stelleHer, dann bleibt das Inventar unverändert).
@@ -2275,7 +2283,7 @@ import { createLagerfeuer } from '../../engine/models/bau/licht.js';
 const feuer = createLagerfeuer({ seed: 5 });   // feuer.leucht = Flammen, feuer.anker.licht = PointLight-Vorlage
 ```
 
-Genutzt von: daemmerwald, enklave · Tags: bau, licht, laterne, fackel, lagerfeuer, leucht, asset, lowpoly · THREE: ja
+Genutzt von: daemmerwald, enklave, erde · Tags: bau, licht, laterne, fackel, lagerfeuer, leucht, asset, lowpoly · THREE: ja
 
 ### bau-markt · `engine/models/bau/markt.js` · v1.0.0 · entwurf
 Marktplatz-Kleinkram als Low-Poly-Asset: Marktstand mit Stoffdach (4 Farben), Brunnen mit Holzdach, Sitzbank
@@ -3042,6 +3050,20 @@ Alle Punkte im Knochen-Raum über ctx.P (Bindungs-Pose = A-Pose): Gliedmaßen h�
 Reihenfolge: Rumpf → Kopf → Beine → Arme. Gliedmaßen verschmelzen nur an Hüfte/Schulter mit dem Rumpf (kleines glatt).
 Kinder (L.koerper.groesse < 1) werden rundlicher und weicher, Muskeln (L.koerper.muskeln) formen Brust, Schultern, Arme, Waden.
 
+### hase · `engine/models/kreaturen/hase.js` · v1.0.0 · entwurf
+Low-Poly-Feldhase (kleines Wild): runder Rumpf, kräftige Hinterläufe, lange Ohren mit schwarzen Spitzen, weiße Blume; zwei Sprung-Bild-Geometrien (Vertexfarben) für InstancedMesh
+
+- `createHase({ seed, fell, bauch, dunkel, laenge }) -> { frames:[geoBild0, geoBild1], laenge, hoehe, breite, dispose() }`
+
+```js
+import { createHase } from '../../engine/models/kreaturen/hase.js';
+const hase = createHase({ seed: 2 });
+const hm = createHordeMesh({ modelle: { hase: hase.frames }, max: 40 });
+// Nase nach +Z, Pfoten auf y = 0; ≈ 0.6 m lang, Ohrspitzen ≈ 0.5 m; Bild 0 = geduckt, Bild 1 = gestreckt im Sprung
+```
+
+Genutzt von: erde · Tags: hase, wild, kreatur, jagd, tier, klein, lowpoly, instancing, modell · THREE: ja
+
 ### irrlicht · `engine/models/kreaturen/irrlicht.js` · v1.0.0 · entwurf
 Low-Poly-Irrlicht (Moorgeist): hell leuchtender Kern, Halo und wehende Schleier; zwei Schwebe-Bild-Geometrien (Vertexfarben)
 
@@ -3068,7 +3090,7 @@ const hm = createHordeMesh({ modelle: { keiler: keiler.frames }, max: 40 });
 // Rüssel nach +Z, Hufe auf y = 0; ≈ 1.4 m lang, 0.95 m hoch
 ```
 
-Genutzt von: – · Tags: keiler, wildschwein, kreatur, gegner, horde, lowpoly, instancing, modell · THREE: ja
+Genutzt von: erde · Tags: keiler, wildschwein, kreatur, gegner, horde, lowpoly, instancing, modell · THREE: ja
 
 ### ratte · `engine/models/kreaturen/ratte.js` · v1.0.0 · entwurf
 Low-Poly-Riesenratte als Horden-Gegner: liefert zwei Lauf-Bild-Geometrien (Vertexfarben) für InstancedMesh
@@ -3085,6 +3107,20 @@ const bilder = ratte.frames.map((g) => new THREE.InstancedMesh(g, standardMateri
 
 Genutzt von: enklave, figuren · Tags: ratte, kreatur, gegner, horde, lowpoly, instancing, modell · THREE: ja
 
+### reh · `engine/models/kreaturen/reh.js` · v1.0.0 · entwurf
+Low-Poly-Reh (Wild, scheu): schlanker Rumpf, langer Hals, große Ohren, weißer Spiegel, Bock mit kleinem Gehörn; zwei Lauf-Bild-Geometrien (Vertexfarben) für InstancedMesh
+
+- `createReh({ seed, fell, bauch, dunkel, spiegel, bock, laenge }) -> { frames:[geoBild0, geoBild1], laenge, hoehe, breite, dispose() }`
+
+```js
+import { createReh } from '../../engine/models/kreaturen/reh.js';
+const reh = createReh({ seed: 4 });
+const hm = createHordeMesh({ modelle: { reh: reh.frames }, max: 30 });
+// Nase nach +Z, Hufe auf y = 0, Ursprung unter der Rumpfmitte; ≈ 1.15 m lang, 0.75 m Schulterhöhe, Kopf ≈ 1.05 m
+```
+
+Genutzt von: erde · Tags: reh, wild, kreatur, jagd, tier, lowpoly, instancing, modell · THREE: ja
+
 ### wolf · `engine/models/kreaturen/wolf.js` · v1.0.0 · entwurf
 Low-Poly-Wolf als Horden-Gegner (und Boss-Wolf per Skala): zwei Lauf-Bild-Geometrien (Vertexfarben) für InstancedMesh
 
@@ -3097,7 +3133,7 @@ const hm = createHordeMesh({ modelle: { wolf: wolf.frames }, max: 60 });
 // Nase nach +Z, Pfoten auf y = 0, Ursprung unter der Rumpfmitte, Rute nach −Z; ≈ 1.3 m lang, 0.8 m Schulterhöhe
 ```
 
-Genutzt von: – · Tags: wolf, kreatur, gegner, horde, boss, lowpoly, instancing, modell · THREE: ja
+Genutzt von: erde · Tags: wolf, kreatur, gegner, horde, boss, lowpoly, instancing, modell · THREE: ja
 
 ### baum-arten · `engine/models/natur/baum-arten.js` · v1.0.0 · entwurf
 Reine Parameter-Daten der Baumarten (Wuchs, Verzweigung, Laubform, Farben, Jahreszeiten) für baum-skelett/baum
@@ -3722,7 +3758,7 @@ b.box(0.6, 0.4, 1.0, '#d9772b', { y: 0.5 }).sphere(0.25, 0xffffff, { y: 0.8, z: 
 szene.add(b.mesh());   // THREE.Mesh mit standardMaterial()
 ```
 
-Genutzt von: enklave, figuren · Tags: mesh, geometrie, lowpoly, vertexfarben, modell, primitive, merge · THREE: ja
+Genutzt von: enklave, erde, figuren · Tags: mesh, geometrie, lowpoly, vertexfarben, modell, primitive, merge · THREE: ja
 
 ### mond · `engine/render/mond.js` · v1.1.0 · entwurf
 Mond mit Kratertextur, Phase aus dem Sonnenwinkel und Mondlicht mit Schatten (für Szenen mit Floating Origin)

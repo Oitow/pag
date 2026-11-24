@@ -782,7 +782,7 @@ function bild() {
     fallV -= G_ERDE * dt;
     cam.addScaledVector(oben, fallV * dt);
     // Kollision mit Stämmen und Felsen (waagerecht hinausschieben)
-    for (const h of natur.naheHindernisse()) {
+    for (const h of [...natur.naheHindernisse(), ...(erwWelt.dienste.bau?.hindernisse?.(cam, 12) ?? [])]) {
       tmp.set(cam.x - h.x, cam.y - h.y, cam.z - h.z);
       const hoehe = tmp.dot(oben);
       if (hoehe > 12 || hoehe < -2) continue;
@@ -805,9 +805,10 @@ function bild() {
   // Nie unter den Boden (Augenhöhe 1,7 m), nie zu weit weg. Zu Fuß: im tiefen Wasser schwimmen (Kopf über Wasser).
   oben.copy(cam).normalize();
   const pr = planet.probe(oben.x, oben.y, oben.z, 0.5);
-  const g2 = Math.max(0, pr.h, pr.wasser);
-  schwimmt = gehen && pr.wasser > pr.h + AUGE - 0.3;
-  const minR = R + (schwimmt ? pr.wasser + 0.3 : Math.max(pr.h, pr.wasser) + AUGE), maxR = R + 3e7;
+  const bau = gehen ? (erwWelt.dienste.bau?.bodenUnter?.(cam) ?? null) : null;   // Fundament, Boden, Treppe
+  const g2 = Math.max(0, pr.h, pr.wasser, bau ?? -Infinity);
+  schwimmt = gehen && bau === null && pr.wasser > pr.h + AUGE - 0.3;
+  const minR = R + (schwimmt ? pr.wasser + 0.3 : Math.max(pr.h, pr.wasser, bau ?? -Infinity) + AUGE), maxR = R + 3e7;
   const lc = cam.length();
   if (lc < minR) { cam.setLength(minR); if (fallV < 0) fallV = 0; amBoden = true; }
   else if (lc > maxR) cam.setLength(maxR);
