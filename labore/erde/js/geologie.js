@@ -131,7 +131,7 @@ export function berechneGeologie({ seed = 1, radius = 100_000, N = 192, platten 
   const vulkane = [];
   for (let k = 0; k < 4; k++) {
     const v = einheit(), hoch = 1800 + zufall() * 1600, rad = (2500 + zufall() * 2000) / R;
-    vulkane.push({ d: v, hoch });
+    vulkane.push({ d: v, hoch, rad });
     for (let c = 0; c < n; c++) {
       const cs = dir[c * 3] * v[0] + dir[c * 3 + 1] * v[1] + dir[c * 3 + 2] * v[2];
       if (cs < Math.cos(rad * 3)) continue;

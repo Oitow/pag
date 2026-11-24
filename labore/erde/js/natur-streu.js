@@ -107,6 +107,7 @@ export function streueKachel(k, planet) {
   for (let j = 0; j < M; j++) for (let i = 0; i < M; i++) {
     const c = j * M + i, p = P[c];
     const nassTief = p.wasser - p.h;                      // > 0: unter Wasser
+    if (p.vulkan > 0.55) { if (p.lava < 0.05 && z() < 0.04 * (1 - p.vulkan)) setze(c, A.geroell, 0.6 + z()); continue; } // Vulkangipfel: kahl
     const hl = hAt(i - 1, j), hr = hAt(i + 1, j), hu = hAt(i, j - 1), ho = hAt(i, j + 1);
     const steil = Math.hypot(hr - hl, ho - hu) / (zelle * 2); // tan(Neigung)
     let amSee = false;

@@ -109,7 +109,7 @@ export function baueKachel(k, planet, N = ZELLEN) {
 // ---------- Fernwald: Bäume als Punkte (ein Eckpunkt je Baum, im Shader als Silhouette) ----------
 // Nur für mittlere/grobe Kacheln (140 m … 2,5 km Kante); nah stehen die echten Bäume (natur.js).
 // Dichte wie bei den echten Bäumen (waldDichte), grobe Zellen bündeln mehrere Bäume in einem größeren Punkt.
-const FW = { temp: FELDER.indexOf('temp'), feuchte: FELDER.indexOf('feuchte'), h: FELDER.indexOf('h'), wasser: FELDER.indexOf('wasser') };
+const FW = { temp: FELDER.indexOf('temp'), feuchte: FELDER.indexOf('feuchte'), h: FELDER.indexOf('h'), wasser: FELDER.indexOf('wasser'), vulkan: FELDER.indexOf('vulkan') };
 function fernBaeume(k, planet, N, M, P, D, IF, nor, kante, abstand, cx, cy, cz) {
   if (kante < 140 || kante > 2500 || !planet.flecken) return null;   // feinere Kacheln liegen im Bereich der echten Bäume
   const NF = FELDER.length, z = rng(hashSeed(planet.seed, 'fernwald', k.key));
@@ -120,6 +120,7 @@ function fernBaeume(k, planet, N, M, P, D, IF, nor, kante, abstand, cx, cy, cz) 
     const g = (j + 1) * M + (i + 1), v = j * (N + 1) + i;
     const h = IF[g * NF + FW.h], w = IF[g * NF + FW.wasser];
     if (w > h - 0.5) continue;                                   // Wasser/Ufer
+    if (IF[g * NF + FW.vulkan] > 0.55) continue;                 // kahler Vulkangipfel (wie natur-streu)
     const flach = nor[v * 3] * D[g * 3] + nor[v * 3 + 1] * D[g * 3 + 1] + nor[v * 3 + 2] * D[g * 3 + 2];
     if (flach < 0.8) continue;
     const T = IF[g * NF + FW.temp], F = IF[g * NF + FW.feuchte];

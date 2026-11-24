@@ -22,6 +22,9 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
   const ZK = geo.zellKante, AMIN = geo.amin;
   const gw = G.neueGewichte();
   const W_WARP = ZK * 2.6, WARP = (ZK * 0.32) / R;
+  // Vulkane: Gipfel und Krater sind kleiner als eine Geologie-Zelle (~800 m) und würden weggeglättet → hier fein nachformen.
+  // rad = Kegelradius (Bogenmaß); Krater ≈ 0,16·rad (~500 m), Kraterrand als Grat, Lava am Kraterboden.
+  const VULK = (geo.vulkane || []).filter((v) => v.rad).map((v) => ({ ...v, cosMax: Math.cos(v.rad * 1.4) }));
 
   function fbmBis(x, y, z, welle, feinste, maxOkt, versatz) {
     let sum = 0, amp = 1, norm = 0, w = welle;
@@ -47,7 +50,7 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
     return Math.min(1, sum * 1.1);
   }
 
-  const aus = { eingriff: 0, h: 0, wasser: -Infinity, ufer: 0, fluss: 0, gebirge: 0, meer: 0, temp: 0, feuchte: 0, fr: 0, fg: 0, fb: 0, gestein: 0 };
+  const aus = { vulkan: 0, lava: 0, eingriff: 0, h: 0, wasser: -Infinity, ufer: 0, fluss: 0, gebirge: 0, meer: 0, temp: 0, feuchte: 0, fr: 0, fg: 0, fb: 0, gestein: 0 };
 
   /** Füllt `aus`: h = Boden (m über Meer), wasser = Wasserspiegel (−∞ = kein Wasser), ufer 0…1, fluss 0/1,
    *  temp (°C am Ort), feuchte 0…1, fr/fg/fb = Felsfarbe des Gesteins (weich gemischt), gestein = Index der nächsten Zelle. */
@@ -78,6 +81,18 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
     if (see > -Infinity) { wasser = see; detail *= glatt(see, see - 25, Hm); }
     if (Fm < 0.5) wasser = 0;                                                         // Meer
     let h = Hm + detail;
+    let vulkan = 0, lava = 0;
+    for (const v of VULK) {
+      const cs = dx * v.d[0] + dy * v.d[1] + dz * v.d[2];
+      if (cs < v.cosMax) continue;
+      const w = Math.acos(Math.min(1, cs)) / v.rad, kr = 0.16;
+      const spitze = v.hoch * 0.3 * Math.max(0, 1 - w / 0.55) ** 2;              // Gipfel nachschärfen
+      const rand = v.hoch * 0.05 * Math.exp(-(((w - kr) / 0.06) ** 2));            // Kraterrand
+      const krater = w < kr ? v.hoch * 0.2 * (1 - (w / kr) ** 2) ** 0.6 : 0;        // Schüssel
+      h += spitze + rand - krater - detail * glatt(0.6, 0.2, w) * 0.7;             // oben kaum Hügel-Rauschen
+      vulkan = Math.max(vulkan, glatt(0.95, 0.35, w));
+      lava = Math.max(lava, glatt(kr * 0.6, kr * 0.35, w));
+    }
 
     // Flüsse: nächste Abfluss-Strecke (Zelle → Ziel) in der Nachbarschaft
     if (Hm > -5) {
@@ -129,7 +144,7 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
     if (h < 0 && wasser < 0) { wasser = 0; meer = 1; }
     let fr = 0, fg = 0, fb = 0;
     for (let i = 0; i < 4; i++) { const fc = GESTEIN_FARBE[GS[gw.z[i]]], w = gw.w[i]; fr += fc[0] * w; fg += fc[1] * w; fb += fc[2] * w; }
-    aus.eingriff = dE; aus.h = h; aus.wasser = wasser; aus.ufer = ufer; aus.fluss = fluss; aus.gebirge = gb; aus.meer = meer;
+    aus.vulkan = vulkan; aus.lava = lava; aus.eingriff = dE; aus.h = h; aus.wasser = wasser; aus.ufer = ufer; aus.fluss = fluss; aus.gebirge = gb; aus.meer = meer;
     aus.temp = tempAm(G.lese(GT, gw), h); aus.feuchte = Math.min(1, G.lese(GFe, gw) + 0.25 * ufer);
     aus.fr = fr; aus.fg = fg; aus.fb = fb; aus.gestein = GS[gw.naechste];
     return aus;
@@ -160,6 +175,16 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
     const fels = Math.max(1 - glatt(0.7, 0.85, flach), glatt(1, -4, p.temp + (v - 0.5) * 3) * (0.4 + 0.6 * p.gebirge));
     const hell = 0.9 + 0.2 * v;
     r += (p.fr * hell - r) * fels; g += (p.fg * hell - g) * fels; b += (p.fb * hell - b) * fels;
+    // Vulkan: dunkles Lavagestein und Asche zum Gipfel hin, Lava (glüht im Shader) am Kraterboden
+    if (p.vulkan > 0) {
+      const a = p.vulkan * 0.85 * (0.8 + 0.2 * v);
+      r += (0.25 - r) * a; g += (0.22 - g) * a; b += (0.2 - b) * a;
+    }
+    if (p.lava > 0) { // glühende Lava mit erstarrten Krustenschollen (dunkel, glühen nicht)
+      const kr = glatt(0.05, 0.3, n(x / 45 + 7.7, y / 45, z / 45 - 1.9) + 0.4 * n(x / 12, y / 12 + 3.3, z / 12));
+      const lr = 1 - 0.78 * kr, lg = 0.32 - 0.12 * kr, lb = 0.04 + 0.12 * kr;
+      r += (lr - r) * p.lava; g += (lg - g) * p.lava; b += (lb - b) * p.lava; out[0] = r; out[1] = g; out[2] = b; return out;
+    }
     // Schnee, wo es kalt genug ist (Temperatur sinkt mit der Höhe), nicht an Steilwänden
     const schnee = glatt(-3, -7, p.temp + (v - 0.5) * 3) * glatt(0.6, 0.78, flach);
     r += (0.94 - r) * schnee; g += (0.95 - g) * schnee; b += (0.97 - b) * schnee;
@@ -183,4 +208,4 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
 }
 
 /** Felder von probe(), die der Kachelbau je Punkt für die Farbe aufhebt. */
-export const FELDER = ['h', 'wasser', 'ufer', 'gebirge', 'meer', 'temp', 'feuchte', 'fr', 'fg', 'fb', 'eingriff'];
+export const FELDER = ['vulkan', 'lava', 'h', 'wasser', 'ufer', 'gebirge', 'meer', 'temp', 'feuchte', 'fr', 'fg', 'fb', 'eingriff'];

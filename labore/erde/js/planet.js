@@ -92,6 +92,7 @@ if (wT > 0.01) {
   normal = normalize((viewMatrix * vec4(nW, 0.0)).xyz);
 }`)
     .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+totalEmissiveRadiance += diffuseColor.rgb * smoothstep(0.72, 0.9, diffuseColor.r - diffuseColor.b) * 1.6; // Lava glüht
 if (wT > 0.01) {
   float fr = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 4.0);
   totalEmissiveRadiance += wHimmel * fr * 0.55 * wT;
@@ -352,7 +353,7 @@ const orte = (() => {
   return { ...biomOrte, wald: D(wald),
     berg: D(berg), kueste: D(kueste), fluss: D(fluss >= 0 ? fluss : kueste),
     flussAb: D(fluss >= 0 ? ab[ab[ab[fluss]] >= 0 ? ab[fluss] : fluss] : kueste),
-    see: D(see >= 0 ? see : kueste), vulkan: new THREE.Vector3(...v.d),
+    see: D(see >= 0 ? see : kueste), vulkan: new THREE.Vector3(...v.d), kraterWeg: (v.rad || 0.035) * R * 0.32,
   };
 })();
 // Sonne so stellen, dass am Ort Vormittag ist (später: echte Tageszeit)
@@ -393,6 +394,7 @@ const ORTE = {
   fluss:  { ziel: 'fluss', h: 60, nei: -14, blick: 'flussAb', weg: 150 },
   see:    { ziel: 'see', h: 250, nei: -10, blick: 'see', weg: 2500 },
   vulkan: { ziel: 'vulkan', h: 2500, nei: -8, blick: 'vulkan', weg: 9000 },
+  krater: { ziel: 'vulkan', h: 1500, nei: -55, blick: 'vulkan', weg: orte.kraterWeg },
   wald:   { ziel: 'wald', h: 1.8, nei: 2, blick: 'berg', gehen: true },
 };
 const BIOM_ORTE = Object.keys(orte).filter((k) => k.startsWith('biom'));
