@@ -3,21 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Erde-Labor – Planet (Stufe 1)</title>
+<title>Erde-Labor – Planet</title>
 <style>
 /* VOICE: ruhiges Flug-Labor  IDEA: ein Planet, den man von oben bis unten anfassen kann
    PICTURE: der Planet selbst, Vollbild  COLOUR: Nachtblau-Glas, warmes Gelb für Aktionen
    TYPE: System-UI + Monospace für Messwerte  LAYOUT: Messwerte oben links, Orte rechts, Tempo unten, Daumen-Steuerung */
 html,body{margin:0;height:100%;overflow:hidden;background:#01030a;touch-action:none;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#e8eef6}
 canvas{display:block}
-#hud{position:fixed;left:8px;top:8px;font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;background:rgba(6,10,20,.6);padding:7px 9px;border-radius:10px;pointer-events:none;white-space:pre;z-index:5;max-width:64vw;overflow:hidden}
-#rechts{position:fixed;right:8px;top:8px;display:flex;flex-direction:column;gap:5px;z-index:6}
-.b{background:rgba(6,10,20,.6);color:#eef3fa;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:6px 10px;font-size:13px;min-width:80px;min-height:32px;box-sizing:border-box;text-align:center;user-select:none;-webkit-user-select:none;cursor:pointer}
+#hud{position:fixed;left:8px;top:8px;font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;background:rgba(6,10,20,.6);padding:7px 9px;border-radius:10px;pointer-events:none;white-space:pre;z-index:5;max-width:calc(100vw - 120px);overflow:hidden}
+@media (max-width:640px){#hud{white-space:pre-wrap;font-size:10.5px}}
+#rechts{position:fixed;right:8px;top:8px;bottom:8px;display:flex;flex-direction:column;gap:5px;z-index:6;overflow-y:auto}
+.b{background:rgba(6,10,20,.6);color:#eef3fa;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:6px 10px;font-size:13px;min-width:86px;min-height:32px;flex:none;box-sizing:border-box;text-align:center;user-select:none;-webkit-user-select:none;cursor:pointer}
 .b:active,.b.on{background:rgba(70,110,170,.8)}
 .b.gelb{background:rgba(200,150,50,.45)}
 #unten{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);width:min(70vw,360px);display:flex;gap:8px;align-items:center;background:rgba(6,10,20,.6);border-radius:14px;padding:7px 10px;z-index:6;box-sizing:border-box;font-size:12px}
 #unten input{flex:1}
-#hochrunter{position:fixed;right:10px;bottom:70px;display:flex;flex-direction:column;gap:10px;z-index:6}
+#hochrunter{position:fixed;right:104px;bottom:64px;display:flex;flex-direction:column;gap:10px;z-index:6}
 #hochrunter .b{min-width:58px;min-height:52px;font-size:20px;padding:0;display:flex;align-items:center;justify-content:center}
 #joy{position:fixed;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.06);display:none;z-index:4;pointer-events:none}
 #knob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px;border-radius:50%;background:rgba(255,255,255,.35)}
@@ -25,8 +26,10 @@ canvas{display:block}
 #load{position:fixed;inset:0;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;background:#01030a;z-index:20}
 #load i{font-style:normal;font-size:12px;opacity:.7}
 a.b{text-decoration:none}
-#karteBox{position:fixed;left:8px;top:150px;width:min(62vw,420px);aspect-ratio:2/1;display:none;z-index:7;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.25)}
+#karteBox{position:fixed;left:8px;top:190px;width:min(62vw,420px);aspect-ratio:2/1;display:none;z-index:7;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.25)}
 #karte{width:100%;height:100%;display:block;cursor:crosshair}
+#legende{position:absolute;left:0;right:0;bottom:0;font-size:10px;background:rgba(6,10,20,.7);padding:2px 5px;pointer-events:none}
+#legende b{display:inline-block;width:8px;height:8px;margin:0 3px 0 6px;border-radius:2px}
 #kpunkt{position:absolute;width:10px;height:10px;margin:-5px;border-radius:50%;background:#ffd04a;border:2px solid #000;pointer-events:none}
 </style>
 </head>
@@ -42,15 +45,17 @@ a.b{text-decoration:none}
   <div class="b" id="bFluss">Fluss</div>
   <div class="b" id="bSee">See</div>
   <div class="b" id="bVulkan">Vulkan</div>
+  <div class="b" id="bWald">Wald</div>
+  <div class="b gelb" id="bGehen">🚶 Gehen</div>
   <div class="b" id="bKarte">Karte</div>
   <div class="b" id="bLod">LOD-Farben</div>
   <div class="b" id="bSeed">Neuer Seed</div>
   <a class="b" href="kugel.html">Echte Erde</a>
 </div>
 <div id="hochrunter"><div class="b" id="hoch">▲</div><div class="b" id="runter">▼</div></div>
-<div id="karteBox"><canvas id="karte"></canvas><div id="kpunkt"></div></div>
+<div id="karteBox"><canvas id="karte"></canvas><div id="kpunkt"></div><div id="legende"></div></div>
 <div id="joy"><div id="knob"></div></div>
-<div id="hilfe">Links ziehen: fliegen · rechts ziehen: umsehen · PC: WASD, Maus, Leertaste/Shift</div>
+<div id="hilfe">Links ziehen: bewegen · rechts ziehen: umsehen · ▲ springt beim Gehen · PC: WASD, Maus, Leertaste/Shift</div>
 <div id="unten">Tempo<input id="tempo" type="range" min="-3" max="3" step="0.5" value="0"></div>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}

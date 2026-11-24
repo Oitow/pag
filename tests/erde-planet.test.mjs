@@ -101,3 +101,54 @@ test('Kachel-Strom: beim Teilen bleibt die alte Kachel, bis alle Kinder fertig s
   assert.equal(sichtbar.size, 4);
   assert.ok([...sichtbar].every((s) => kinder.some((c) => c.key === s)));
 });
+
+test('Klima und Gestein: kalt an den Polen, warm am Äquator; alle Gesteinsarten kommen vor', async () => {
+  const { tempAm } = await import('../labore/erde/js/klima.js');
+  let pol = 0, aeq = 0, np = 0, na = 0;
+  const arten = new Set();
+  for (let c = 0; c < G.n; c++) {
+    const y = Math.abs(G.dir[c * 3 + 1]);
+    const t = tempAm(geo.temp0[c], geo.hoehe[c]);
+    if (y > 0.95) { pol += t; np++; } else if (y < 0.1) { aeq += t; na++; }
+    if (geo.hoehe[c] >= 0) arten.add(geo.gestein[c]);
+    assert.ok(geo.feuchte[c] >= 0 && geo.feuchte[c] <= 1);
+  }
+  assert.ok(pol / np < -5 && aeq / na > 15, `Pol ${pol / np}, Äquator ${aeq / na}`);
+  assert.equal(arten.size, 5);
+});
+
+test('Küste: unter Meereshöhe ist nie trockenes Land (keine Mulden neben dem Meer)', () => {
+  const planet = createPlanetHoehe({ seed: 5, radius: R, geo, G });
+  let geprueft = 0;
+  for (let c = 0; c < G.n; c += 7) {
+    if (Math.abs(geo.hoehe[c]) > 30) continue; // Küstensaum
+    const p = planet.probe(G.dir[c * 3], G.dir[c * 3 + 1], G.dir[c * 3 + 2], 1);
+    geprueft++;
+    if (p.h < 0) assert.ok(p.wasser >= 0, `trocken bei ${p.h} m`);
+  }
+  assert.ok(geprueft > 50);
+});
+
+test('Natur-Streuung: gleicher Seed → gleiche Natur; Bäume stehen auf Land, Seerosen/Fische im Wasser', async () => {
+  const { streuKacheln, streueKachel, streuStufe, STREU_ARTEN, STRIDE } = await import('../labore/erde/js/natur-streu.js');
+  const planet = createPlanetHoehe({ seed: 5, radius: R, geo, G });
+  let c = -1; // Landzelle mit Fluss in der Nähe
+  for (let i = 0; i < G.n; i++) if (geo.hoehe[i] > 30 && geo.hoehe[i] < 600 && geo.flaeche[i] > 20) { c = i; break; }
+  const d = [G.dir[c * 3], G.dir[c * 3 + 1], G.dir[c * 3 + 2]];
+  const ks = streuKacheln(d.map((v) => v * (R + 100)), R, streuStufe(R), 200);
+  assert.ok(ks.length > 10);
+  const a = streueKachel(ks[0], planet), b = streueKachel(ks[0], planet);
+  assert.deepEqual(a.daten, b.daten);
+  let stueck = 0;
+  for (const k of ks.slice(0, 12)) {
+    const s = streueKachel(k, planet);
+    for (let i = 0; i < s.anzahl; i++, stueck++) {
+      const o = i * STRIDE, art = STREU_ARTEN[s.daten[o]];
+      const x = s.mitte[0] + s.daten[o + 1], y = s.mitte[1] + s.daten[o + 2], z = s.mitte[2] + s.daten[o + 3];
+      const l = Math.hypot(x, y, z), p = planet.probe(x / l, y / l, z / l, 2);
+      if (art === 'fichte' || art === 'birke') assert.ok(p.wasser < p.h + 0.05, 'Baum im Wasser');
+      if (art === 'seerose' || art === 'forelle' || art === 'barsch') assert.ok(p.wasser > p.h && !p.meer, art + ' auf dem Trockenen');
+    }
+  }
+  assert.ok(stueck > 0);
+});

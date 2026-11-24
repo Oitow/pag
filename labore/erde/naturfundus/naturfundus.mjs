@@ -55,7 +55,7 @@ export function baueNaturAsset(art, seed = 1) {
     teil(stamm(),0xd5d0bb,0,2.05,0,.14,4.1,.14);
     for (let i=0;i<7;i++) {
       const a=dreh();
-      teil(kugel(),0x574f47,.12*Math.cos(a),.4+i*.48,.12*Math.sin(a),.067,.023,.065);
+      teil(kugel(),0x574f47,.1*Math.cos(a),.4+i*.48,.1*Math.sin(a),.05,.02,.05); // Rindenfleck, liegt am Stamm an
     }
     for (let i=0;i<5;i++) {
       const a=i*2.4+zufall()*.35;

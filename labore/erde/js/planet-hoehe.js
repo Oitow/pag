@@ -4,6 +4,8 @@
 // `feinste` = kleinste Wellenlänge in Metern, die noch berechnet wird (grobe Kacheln sparen Arbeit).
 import { createNoise3D } from '../../../engine/core/noise.js';
 import { createGeoGitter } from './geo-gitter.js';
+import { GESTEIN_FARBE } from './geologie.js';
+import { tempAm, bodenFarbe } from './klima.js';
 
 const glatt = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
@@ -14,7 +16,7 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter }
   const n = createNoise3D(seed);
   const R = radius;
   const G = gitter || createGeoGitter(geo.N);
-  const { hoehe: GH, spiegel: GF, ab: GA, flaeche: GA2, gebirge: GB } = geo;
+  const { hoehe: GH, spiegel: GF, ab: GA, flaeche: GA2, gebirge: GB, gestein: GS, temp0: GT, feuchte: GFe } = geo;
   const dir = G.dir, nb = G.nb;
   const ZK = geo.zellKante, AMIN = geo.amin;
   const gw = G.neueGewichte();
@@ -44,9 +46,10 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter }
     return Math.min(1, sum * 1.1);
   }
 
-  const aus = { h: 0, wasser: -Infinity, ufer: 0, fluss: 0, gebirge: 0, meer: 0 };
+  const aus = { h: 0, wasser: -Infinity, ufer: 0, fluss: 0, gebirge: 0, meer: 0, temp: 0, feuchte: 0, fr: 0, fg: 0, fb: 0, gestein: 0 };
 
-  /** Füllt `aus`: h = Boden (m über Meer), wasser = Wasserspiegel (−∞ = kein Wasser), ufer 0…1, fluss 0/1. */
+  /** Füllt `aus`: h = Boden (m über Meer), wasser = Wasserspiegel (−∞ = kein Wasser), ufer 0…1, fluss 0/1,
+   *  temp (°C am Ort), feuchte 0…1, fr/fg/fb = Felsfarbe des Gesteins (weich gemischt), gestein = Index der nächsten Zelle. */
   function probe(dx, dy, dz, feinste = 1) {
     // leichte Verwirbelung: bricht das Gitter auf, lässt Flüsse mäandern (gleich für Form und Flüsse)
     const wf = R / W_WARP;
@@ -112,7 +115,14 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter }
         }
       }
     }
-    aus.h = h; aus.wasser = wasser; aus.ufer = ufer; aus.fluss = fluss; aus.gebirge = gb; aus.meer = Fm < 0.5 ? 1 : 0;
+    // Unter Meereshöhe ohne Wasser (Rauschen drückt den Küstensaum unter 0) → Meer läuft hinein, keine trockene Mulde
+    let meer = Fm < 0.5 ? 1 : 0;
+    if (h < 0 && wasser < 0) { wasser = 0; meer = 1; }
+    let fr = 0, fg = 0, fb = 0;
+    for (let i = 0; i < 4; i++) { const fc = GESTEIN_FARBE[GS[gw.z[i]]], w = gw.w[i]; fr += fc[0] * w; fg += fc[1] * w; fb += fc[2] * w; }
+    aus.h = h; aus.wasser = wasser; aus.ufer = ufer; aus.fluss = fluss; aus.gebirge = gb; aus.meer = meer;
+    aus.temp = tempAm(G.lese(GT, gw), h); aus.feuchte = Math.min(1, G.lese(GFe, gw) + 0.25 * ufer);
+    aus.fr = fr; aus.fg = fg; aus.fb = fb; aus.gestein = GS[gw.naechste];
     return aus;
   }
 
@@ -123,8 +133,7 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter }
   /** Farbe (0…1) nach out. p = Ergebnis von probe(), flach = 1 eben … 0 senkrecht. */
   function farbe(dx, dy, dz, p, flach, out) {
     const x = dx * R, y = dy * R, z = dz * R;
-    const v = n(x / 700 + 5.5, y / 700, z / 700 - 3.3) * 0.5 + 0.5;
-    const feucht = n(x / 9000 - 1.1, y / 9000 + 8.8, z / 9000) * 0.5 + 0.5;
+    const v = n(x / 700 + 5.5, y / 700, z / 700 - 3.3) * 0.5 + 0.5; // = flecken()
     const h = p.h;
     if (p.wasser > h + 0.02) {
       const t = glatt(0, p.meer ? 300 : 12, p.wasser - h);
@@ -132,21 +141,28 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter }
       else { out[0] = 0.12 - 0.07 * t; out[1] = 0.33 - 0.12 * t; out[2] = 0.38 - 0.02 * t; } // Fluss/See: grünlicher
       return out;
     }
-    const wald = glatt(0.45, 0.65, feucht * 0.7 + v * 0.3);
-    let r = 0.34 + 0.18 * (1 - feucht) - 0.17 * wald, g = 0.5 + 0.06 * (1 - feucht) - 0.2 * wald, b = 0.2 - 0.06 * wald;
+    bodenFarbe(p.temp, p.feuchte, v, out);
+    let r = out[0], g = out[1], b = out[2];
     const sand = p.meer ? 1 - glatt(1.5, 6 + v * 5, h) : 0;            // Strand nur am Meer
     r += (0.78 - r) * sand; g += (0.71 - g) * sand; b += (0.52 - b) * sand;
     const kies = p.ufer * (1 - sand);                                  // Flussufer: Kies/Schlamm
     r += (0.47 - r) * kies; g += (0.43 - g) * kies; b += (0.34 - b) * kies;
-    const fels = Math.max(1 - glatt(0.7, 0.85, flach), glatt(1700, 2700, h + v * 300) * (0.4 + 0.6 * p.gebirge));
-    const fr = 0.44 + 0.08 * v, fg = 0.41 + 0.06 * v, fb = 0.38 + 0.05 * v;
-    r += (fr - r) * fels; g += (fg - g) * fels; b += (fb - b) * fels;
-    const schneeGrenze = 2900 - Math.abs(dy) * 2600 + (v - 0.5) * 400;
-    const schnee = glatt(schneeGrenze, schneeGrenze + 250, h) * glatt(0.6, 0.78, flach);
+    // Fels: steile Hänge, Hochgebirge über der Baumgrenze – Farbe nach Gestein
+    const fels = Math.max(1 - glatt(0.7, 0.85, flach), glatt(1, -4, p.temp + (v - 0.5) * 3) * (0.4 + 0.6 * p.gebirge));
+    const hell = 0.9 + 0.2 * v;
+    r += (p.fr * hell - r) * fels; g += (p.fg * hell - g) * fels; b += (p.fb * hell - b) * fels;
+    // Schnee, wo es kalt genug ist (Temperatur sinkt mit der Höhe), nicht an Steilwänden
+    const schnee = glatt(-3, -7, p.temp + (v - 0.5) * 3) * glatt(0.6, 0.78, flach);
     r += (0.94 - r) * schnee; g += (0.95 - g) * schnee; b += (0.97 - b) * schnee;
     out[0] = r; out[1] = g; out[2] = b;
     return out;
   }
 
-  return { radius: R, seed, probe, hoehe, oberflaeche, farbe, G };
+  /** Fleckenrauschen 0…1 (Waldflecken, Farbvariation) – gleich wie in farbe(). */
+  const flecken = (dx, dy, dz) => n(dx * R / 700 + 5.5, dy * R / 700, dz * R / 700 - 3.3) * 0.5 + 0.5;
+
+  return { radius: R, seed, probe, hoehe, oberflaeche, farbe, flecken, G };
 }
+
+/** Felder von probe(), die der Kachelbau je Punkt für die Farbe aufhebt. */
+export const FELDER = ['h', 'wasser', 'ufer', 'gebirge', 'meer', 'temp', 'feuchte', 'fr', 'fg', 'fb'];
