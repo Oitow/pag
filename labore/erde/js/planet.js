@@ -458,6 +458,7 @@ const erwWelt = {
     return out.multiplyScalar(R + Math.max(pr.h, pr.wasser));
   },
   spieler: () => ({ gehen, schwimmt, amBoden, fallV }),
+  ansicht: () => (MENUE.person === 1 ? 1 : 3),
   setzeFall: (v) => { fallV = v; },
   melde: (t, gut = true) => melde(t, gut),
   speichern: () => speichern(),
@@ -550,6 +551,8 @@ setInterval(speichern, 15000); // Uhr/Wetter ab und zu sichern
 const MENUE = (() => { try { return JSON.parse(localStorage.getItem('erde-menue') || 'null'); } catch { return null; } })()
   || { auf: !(navigator.maxTouchPoints > 0 || innerWidth < 700), groesse: 1, info: innerWidth < 640 ? 'kurz' : 'voll' };
 const menueEl = document.getElementById('menue'), hudEl = document.getElementById('hud');
+if (P.get('person')) MENUE.person = +P.get('person') === 1 ? 1 : 3;
+else if (MENUE.person == null) MENUE.person = 3;
 function menueSichern() { try { localStorage.setItem('erde-menue', JSON.stringify(MENUE)); } catch { /* egal */ } }
 function menueZeigen() {
   menueEl.classList.toggle('auf', MENUE.auf);
@@ -562,6 +565,8 @@ function menueZeigen() {
 document.getElementById('bMenue').onclick = () => { MENUE.auf = !MENUE.auf; menueZeigen(); menueSichern(); };
 document.getElementById('bKleiner').onclick = () => { MENUE.groesse = Math.max(0.7, +(MENUE.groesse - 0.1).toFixed(2)); menueZeigen(); menueSichern(); };
 document.getElementById('bGroesser').onclick = () => { MENUE.groesse = Math.min(1.5, +(MENUE.groesse + 0.1).toFixed(2)); menueZeigen(); menueSichern(); };
+document.getElementById('bPerson').textContent = MENUE.person === 1 ? '1. Person' : '3. Person';
+document.getElementById('bPerson').onclick = (e) => { MENUE.person = MENUE.person === 1 ? 3 : 1; e.target.textContent = MENUE.person === 1 ? '1. Person' : '3. Person'; menueSichern(); };
 document.getElementById('bInfo').onclick = () => { const s = ['voll', 'kurz', 'aus']; MENUE.info = s[(s.indexOf(MENUE.info) + 1) % 3]; menueZeigen(); menueSichern(); };
 // Auf dem Handy schließt das Menü nach einem Ortssprung (Blick frei)
 menueEl.addEventListener('click', (e) => { if (e.target.closest('.raster') && innerWidth < 700 && /^b(All|Berg|Kueste|Boden|Fluss|See|Vulkan|Wald|Orbit)$/.test(e.target.id)) { MENUE.auf = false; menueZeigen(); menueSichern(); } });
@@ -720,6 +725,7 @@ function karteMarker() {
 // ---------- Schleife ----------
 const hud = document.getElementById('hud');
 const nullPunkt = new THREE.Vector3();
+const kamOff = new THREE.Vector3(), kamAbs = new THREE.Vector3(), kamZiel = new THREE.Vector3();
 const grau = new THREE.Color(), abend = new THREE.Color(1, 0.55, 0.3);
 const blau = new THREE.Color(0x8fbfea), nacht = new THREE.Color(0x0a1020), schwarz = new THREE.Color(0x01030a), himmel = new THREE.Color();
 let alt = performance.now(), fpsT = 0, fpsN = 0, fps = 0, wahlT = 1, info = { angezeigt: 0, gebaut: 0, laufend: 0, offen: 0 };
@@ -840,7 +846,16 @@ function bild() {
   erw.update(dt);
   camera.position.set(0, 0, 0);
   camera.up.copy(oben);
-  camera.lookAt(blick);
+  if (gehen && MENUE.person !== 1) {
+    // 3. Person: Kamera hinter und etwas über der Figur (über die rechte Schulter), nie im Boden
+    kamOff.copy(blick).multiplyScalar(-4.6).addScaledVector(oben, 1.0).addScaledVector(rechts, 0.6);
+    kamAbs.copy(cam).add(kamOff);
+    const kd = tmp.copy(kamAbs).normalize(), kp = planet.probe(kd.x, kd.y, kd.z, 0.5);
+    const unter = R + Math.max(kp.h, kp.wasser) + 0.4 - kamAbs.length();
+    if (unter > 0) kamOff.addScaledVector(oben, unter);
+    camera.position.copy(kamOff);
+    camera.lookAt(kamZiel.copy(blick).multiplyScalar(12).addScaledVector(oben, -0.6));
+  } else camera.lookAt(blick);
 
   // Zeit & Wetter (Klima vom Ort, alle 0,3 s erneuert)
   zw.update(dt, oben, klimaHier);

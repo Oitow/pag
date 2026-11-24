@@ -20,6 +20,7 @@
 //   cam, oben, vorn, blick   THREE.Vector3 (nur lesen): Augenpunkt absolut, Ortsnormale, Blick waagerecht, Blickstrahl
 //   planet       probe(x,y,z,s) → { h, wasser, … } und oberflaeche(x,y,z,s) → m über R (x,y,z = Einheitsrichtung)
 //   bodenPunkt(dir, out?)       → absoluter Punkt auf Boden/Wasser in Richtung dir; bodenHoehe(dir) → m über R
+//   ansicht()    → 1 | 3 (Ich-Sicht oder Kamera hinter der Figur)
 //   spieler()    → { gehen, schwimmt, amBoden, fallV }, setzeFall(v) (senkrechte Geschwindigkeit m/s beim Zurückgeben)
 //   inventar (engine/gameplay/inventar), zw (Uhr, Wetter, tJetzt °C), natur, eingriffe
 //   melde(text, gut), knopf(id, text, onklick) → Element in der Aktionsleiste, speichern()
@@ -32,9 +33,10 @@ import { createHerstellen } from './herstellen.js';
 import { createGleiter } from './gleiter.js';
 import { createFelder } from './felder.js';
 import { createTagebuch } from './tagebuch.js';
+import { createSpielerfigur } from './spielerfigur.js';
 
 // Reihenfolge = Reihenfolge bei aktion(): wer zuerst kommt, darf zuerst übernehmen
-const LISTE = [createTiere, createBauen, createFelder, createHerstellen, createUeberleben, createGleiter, createTagebuch];
+const LISTE = [createTiere, createBauen, createFelder, createHerstellen, createUeberleben, createGleiter, createTagebuch, createSpielerfigur];
 
 export function createErweiterungen(welt, stand = {}) {
   const module = [];
