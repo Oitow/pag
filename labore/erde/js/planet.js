@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { createPlanetHoehe } from './planet-hoehe.js';
 import { berechneGeologie, GESTEIN_NAME, GESTEIN_FARBE } from './geologie.js';
 import { biom, BIOM_NAME, tempAm, waldDichte, bodenFarbe } from './klima.js';
-import { streuKacheln, streueKachel, streuStufe } from './natur-streu.js';
+import { streuKacheln, streueKachel, streuStufe, STREU_ARTEN, STRIDE } from './natur-streu.js';
 import { createNatur } from './natur.js';
 import { createMond } from '../../naturstimmungen/mond.js';
 import { createEingriffe } from './eingriffe.js';
@@ -336,7 +336,15 @@ const orte = (() => {
     const sc = D(c).dot(D(kueste));
     if (sc > b.s) { b.s = sc; b.c = c; }
   }
+  // je Gestein ein Ort (flach, trocken, nah an der Küste) – ?ort=gestein0…4
+  const gst = GESTEIN_NAME.map(() => ({ c: -1, s: -2 }));
+  for (let c = 0; c < n; c++) {
+    if (H[c] < 40 || H[c] > 900 || F[c] > H[c] + 1 || A[c] >= geo.amin) continue;
+    const g = gst[geo.gestein[c]], sc = D(c).dot(D(kueste));
+    if (sc > g.s) { g.s = sc; g.c = c; }
+  }
   const biomOrte = {};
+  gst.forEach((g, i) => { if (g.c >= 0) biomOrte['gestein' + i] = D(g.c); });
   biome.forEach((b, i) => { if (b.c >= 0) biomOrte['biom' + i] = D(b.c); });
   return { ...biomOrte, wald: D(wald),
     berg: D(berg), kueste: D(kueste), fluss: D(fluss >= 0 ? fluss : kueste),
@@ -385,6 +393,7 @@ const ORTE = {
   wald:   { ziel: 'wald', h: 1.8, nei: 2, blick: 'berg', gehen: true },
 };
 const BIOM_ORTE = Object.keys(orte).filter((k) => k.startsWith('biom'));
+for (const k of Object.keys(orte).filter((k) => k.startsWith('gestein'))) ORTE[k] = { ziel: k, h: 1.8, nei: -12, blick: 'berg', gehen: true };
 for (const k of BIOM_ORTE) ORTE[k] = { ziel: k, h: 1.8, nei: 2, blick: 'berg', gehen: true };
 let biomWahl = -1;
 document.getElementById('bBiom').onclick = (e) => {
@@ -860,5 +869,21 @@ addEventListener('resize', () => {
 setzeOrt(P.get('ort') || 'orbit');
 // Testschalter: ?wetter=regen|schnee|gewitter|nebel|sturm|klar … und ?uhr=19 (Ortszeit)
 if (P.get('wetter')) zw.wetter.setze(P.get('wetter'), true);
+// Testschalter ?zeige=<art>: nach dem Laden vor das nächste Stück dieser Art stellen (z. B. ammonit, quarzdruse)
+if (P.get('zeige')) setTimeout(() => {
+  const ai = STREU_ARTEN.indexOf(P.get('zeige'));
+  let best = null, bd = Infinity;
+  for (const k of streuDa.values()) for (let i = 0; i < k.anzahl; i++) {
+    if (k.daten[i * STRIDE] !== ai) continue;
+    const x = k.mitte[0] + k.daten[i * STRIDE + 1], y = k.mitte[1] + k.daten[i * STRIDE + 2], z = k.mitte[2] + k.daten[i * STRIDE + 3];
+    const d = Math.hypot(x - cam.x, y - cam.y, z - cam.z);
+    if (d < bd) { bd = d; best = new THREE.Vector3(x, y, z); }
+  }
+  if (!best) return;
+  const auf = best.clone().normalize(), seite = new THREE.Vector3(0.3, 1, 0.2).cross(auf).normalize();
+  cam.copy(best).addScaledVector(seite, 1.6).addScaledVector(auf, 1.8);
+  vorn.copy(best).sub(cam).projectOnPlane(auf).normalize();
+  neigung = -0.75;
+}, 9000);
 if (P.get('uhr')) zw.stelleOrtszeit([cam.x / cam.length(), cam.y / cam.length(), cam.z / cam.length()], +P.get('uhr'));
 requestAnimationFrame(bild);

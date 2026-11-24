@@ -22,6 +22,8 @@ export const STREU_ARTEN = [
   'baumstumpf', 'liegenderStamm', 'geroell', 'felsnadel', 'wedelfarn', 'busch_unterholz', 'moospolster', 'laubstreu',
   // Landschaftsgruppen (labore/naturstimmungen): Wollgras am nassen Ufer/Moor, Pilzholz im feuchten Wald, Flechten auf Fels
   'wollgras', 'pilzholz', 'flechtenbank',
+  // Fundstücke (labore/gigantwelt): halb im Boden, passend zum Gestein darunter
+  'erzbrocken', 'ammonit', 'quarzdruse',
 ];
 const A = Object.fromEntries(STREU_ARTEN.map((a, i) => [a, i]));
 export const STRIDE = 10; // art, px, py, pz (m, relativ zur Kachelmitte auf Meereshöhe), skala, drehung, r, g, b, frei
@@ -135,6 +137,11 @@ export function streueKachel(k, planet) {
       else setze(c, A.granitblock, (0.25 + 1.3 * z() ** 2) * (1 + fels), tint[0], tint[1], tint[2], 0.15);
       continue;
     }
+    // Fundstücke nach Gestein: Ammoniten im Kalk (Meeresablagerung), Quarzdrusen im Granit, Erz in Basalt/Schiefer –
+    // halb eingegraben, an felsigen Stellen häufiger
+    const fundArt = [A.ammonit, A.ammonit, A.quarzdruse, A.erzbrocken, A.erzbrocken][p.gestein];
+    const fundP = [0.001, 0.003, 0.003, 0.004, 0.004][p.gestein] * (1 + 3 * fels);
+    if (z() < fundP) { setze(c, fundArt, 0.9 + 0.5 * z(), 1, 1, 1, fundArt === A.ammonit ? 0.1 : 0.22); continue; }
     if (fels > 0.6 && w < 0.2) { setze(c, p.temp < 10 && p.feuchte > 0.4 && z() < 0.4 ? A.flechtenbank : A.geroell, 0.8 + z() * 0.6); continue; } // Schutthalde, feucht-kühl mit Flechten
     // Bäume
     const wald = waldDichte(p.temp, p.feuchte, p.v) * (1 - glatt(0.45, 0.8, steil));
