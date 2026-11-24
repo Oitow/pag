@@ -68,15 +68,42 @@ const himmelLicht = new THREE.HemisphereLight(0xa8ccff, 0x3b3424, 0.7);
 scene.add(sonne, sonne.target, himmelLicht, new THREE.AmbientLight(0x404858, 0.25));
 scene.fog = new THREE.FogExp2(0x9cc4ec, 0);
 
+// Wertrauschen 0…1 im Shader (Felsdetail), billig: ein Hash je Gitterpunkt
+const RAUSCH_GLSL = `
+float hash3(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float rausch(vec3 x) {
+  vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(hash3(i), hash3(i + vec3(1, 0, 0)), f.x), mix(hash3(i + vec3(0, 1, 0)), hash3(i + vec3(1, 1, 0)), f.x), f.y),
+             mix(mix(hash3(i + vec3(0, 0, 1)), hash3(i + vec3(1, 0, 1)), f.x), mix(hash3(i + vec3(0, 1, 1)), hash3(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+}
+`;
 const bodenMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
 // Wasser: glatt (Sonnenglanz), wandernde Wellen in der Normalen, Himmel spiegelt sich im flachen Blickwinkel (Fresnel).
 // Weltlage = Kachellage relativ zur Kamera + Kamera (wasserCam) → Wellen bleiben beim Fliegen am Ort.
-const wasserU = { wZeit: { value: 0 }, wasserCam: { value: new THREE.Vector3() }, wHimmel: { value: new THREE.Color() } };
+const wasserU = { wZeit: { value: 0 }, wasserCam: { value: new THREE.Vector3() }, wHimmel: { value: new THREE.Color() }, uR: { value: R } };
 bodenMat.onBeforeCompile = (sh) => {
   Object.assign(sh.uniforms, wasserU);
-  sh.vertexShader = 'attribute float nass;\nuniform vec3 wasserCam;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.vertexShader
-    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvNass = nass;\nvWelt = (modelMatrix * vec4(position, 1.0)).xyz + wasserCam;\nvObenW = normalize(vWelt);');
-  sh.fragmentShader = 'uniform float wZeit;\nuniform vec3 wHimmel;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.fragmentShader
+  sh.vertexShader = 'attribute float nass;\nattribute vec3 colW;\nuniform vec3 wasserCam;\nvarying float vTiefe;\nvarying vec3 vColW;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\nvarying vec3 vNorW;\n' + sh.vertexShader
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvTiefe = (nass * 255.0 - 128.0) / 15.0;\nvColW = colW;\nvWelt = (modelMatrix * vec4(position, 1.0)).xyz + wasserCam;\nvObenW = normalize(vWelt);\nvNorW = normalize(mat3(modelMatrix) * objectNormal);');
+  sh.fragmentShader = 'uniform float wZeit;\nuniform vec3 wHimmel;\nuniform float uR;\nvarying float vTiefe;\nvarying vec3 vColW;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\nvarying vec3 vNorW;\n' + RAUSCH_GLSL + sh.fragmentShader
+    .replace('#include <color_fragment>', `#include <color_fragment>
+float vNass = smoothstep(0.0, 0.25, vTiefe);              // Wasserkante je Pixel (glatte Küste)
+diffuseColor.rgb = mix(diffuseColor.rgb, vColW, vNass);
+// Felsdetail je Pixel: Gesteinsbänke (waagerechte Schichten) und Flecken an steilen Hängen, leichte Bodenflecken überall.
+// Bricht die gestreckten Eckpunkt-Farben an Steilwänden auf. Fern ausgeblendet (sonst Flimmern).
+{
+  float dist = length(vViewPosition);
+  float steil = (1.0 - smoothstep(0.6, 0.86, dot(normalize(vNorW), vObenW))) * (1.0 - vNass);
+  float n1 = rausch(vWelt * 0.045);
+  float n2 = rausch(vWelt * 0.35 + 7.0) * (1.0 - smoothstep(80.0, 400.0, dist));
+  float boden = 1.0 + (0.1 * (n1 - 0.5) + 0.08 * (n2 - 0.5)) * (1.0 - vNass);
+  float hh = length(vWelt) - uR;
+  float bank = smoothstep(0.25, 0.85, sin(hh * 0.55 + n1 * 6.0 + n2 * 1.5) * 0.5 + 0.5);
+  float grob = smoothstep(0.3, 0.8, sin(hh * 0.07 + n1 * 3.0) * 0.5 + 0.5);
+  float nahB = 1.0 - smoothstep(350.0, 1800.0, dist);
+  float fels = 0.8 + 0.22 * mix(grob, bank, nahB * 0.7) + 0.25 * (n1 - 0.5) + 0.16 * (n2 - 0.5);
+  diffuseColor.rgb *= mix(boden, fels, steil);
+}`)
     .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.12, vNass);')
     .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 if (vNass > 0.01) {
@@ -152,6 +179,7 @@ function erzeuge(d) {
   geo.setAttribute('normal', new THREE.BufferAttribute(d.nor, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(d.col, 3, true));
   geo.setAttribute('nass', new THREE.BufferAttribute(d.nass, 1, true));
+  geo.setAttribute('colW', new THREE.BufferAttribute(d.colW, 3, true));
   geo.setIndex(new THREE.BufferAttribute(d.idx, 1));
   geo.computeBoundingSphere();
   const m = new THREE.Mesh(geo, stufenFarben ? stufenMat[d.L] : bodenMat);
@@ -866,6 +894,11 @@ addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
 });
+{ // Testschalter ?h= (Höhe über Boden, m) und ?nei= (Blickneigung, Grad) für die Start-Sprungmarke
+  const o = ORTE[P.get('ort')] || ORTE.orbit;
+  if (P.has('h')) { o.h = +P.get('h'); o.gehen = false; }
+  if (P.has('nei')) o.nei = +P.get('nei');
+}
 setzeOrt(P.get('ort') || 'orbit');
 // Testschalter: ?wetter=regen|schnee|gewitter|nebel|sturm|klar … und ?uhr=19 (Ortszeit)
 if (P.get('wetter')) zw.wetter.setze(P.get('wetter'), true);

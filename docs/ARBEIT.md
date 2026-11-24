@@ -9,7 +9,7 @@
 | Figurenlabor | Codex | character-lab-parcours | 23.11.2026 | Bewegung, Parcours und Übungsgegner |
 | Figur organisch (figur-form, figur-haut, figur-koerper, figur-kleidung, figur-haar, Galerie im Figurenlabor) | Claude (+2 Agents) | `claude/figur-organisch` | 23.11. | Figuren aus einem glatten SDF-Körper mit Skinning statt Klötzen |
 | welt, riesenwald-Boden, dorf (neu), tutorial | Claude (Weltgen + 5 Agents) | `claude/welt-startdorf` | 23.11. | Startdorf Erlenwacht, Bäche, Gras, Dorf-Assets, Licht, Dorf-Tutorial – Plan `docs/plaene/WELT-STARTDORF.md` |
-| Erde-Labor (`labore/erde`) | Claude | `claude/erde-ferne` | 24.11. | Planeten-Spiel: Fernwald, flache Seen, Menü |
+| Erde-Labor (`labore/erde`) | Claude | `claude/erde-gelaende` | 24.11. | Gelände: sanftere Ebenen/Täler, glatte Küsten, Felsschichten |
 | Gigantwelt-Fundstellen | Codex | `codex/gigantwelt-fundstellen` | 24.11. | Fossilien, Drusen und Erz beim Graben entdecken |
 
 ## Geteilte Dateien (nur beim Zusammenführen ändern)

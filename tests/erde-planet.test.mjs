@@ -181,3 +181,28 @@ test('Seen sind flach (Spiegel steigt nicht am Ufer hoch); Fernwald-Punkte stehe
   }
   assert.ok(punkte >= 0);
 });
+
+// Gelände außerhalb der Gebirge: überwiegend flach genug zum Bauen, und stetig (keine Stufen, wo Täler zusammenlaufen)
+test('Gelände: Flachland ist überwiegend sanft, Höhe springt nirgends', () => {
+  const planet = createPlanetHoehe({ seed: 5, radius: R, geo, G });
+  let s = 7; const z = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  let land = 0, sanft = 0, sprung = 0;
+  for (let L = 0; L < 40; L++) {
+    let x = z() * 2 - 1, y = z() * 2 - 1, w = z() * 2 - 1, l = Math.hypot(x, y, w); x /= l; y /= l; w /= l;
+    let tx = z() - 0.5, ty = z() - 0.5, tz = z() - 0.5; const d = tx * x + ty * y + tz * w;
+    tx -= d * x; ty -= d * y; tz -= d * w; l = Math.hypot(tx, ty, tz); tx /= l; ty /= l; tz /= l;
+    let vor = null;
+    for (let i = 0; i < 600; i++) {
+      const e = (i * 2) / R, p = planet.probe(x + tx * e, y + ty * e, w + tz * e, 1);
+      if (p.gebirge > 0.05 || p.h < 1 || p.wasser > p.h) { vor = null; continue; }
+      if (vor !== null) {
+        const g = Math.abs(p.h - vor) / 2;
+        land++; if (g < Math.tan(10 * Math.PI / 180)) sanft++; if (g > 4) sprung++;
+      }
+      vor = p.h;
+    }
+  }
+  assert.ok(land > 2000, `zu wenig Land: ${land}`);
+  assert.ok(sanft / land > 0.65, `nur ${(100 * sanft / land).toFixed(0)} % unter 10°`);
+  assert.equal(sprung, 0, 'Höhensprünge > 4 m/m');
+});
