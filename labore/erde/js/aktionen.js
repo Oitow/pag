@@ -2,13 +2,14 @@
 // Verbindet die Regeln (boden.js, ernte.js) mit Welt-Zustand (eingriffe.js) und Inventar (engine/gameplay/inventar).
 // Ziele kommen als Weltpunkte {x,y,z} (m, Planetenmitte = 0). Alles liefert { ok, text } für die Meldung.
 import { schichten, stoffInTiefe, grabung, STOFFE } from './boden.js';
+import { NAMEN } from './herstellen-daten.js';
 import { ernte } from './ernte.js';
 import { biom } from './klima.js';
 
 export const GRAB_RADIUS = 1.1, GRAB_TIEFE = 0.5;
 // Was man aufschütten kann (Reihenfolge = was zuerst verbraucht wird)
 const BAUSTOFFE = ['humus', 'lehm', 'sand', 'kies', 'roterLehm', 'torf', 'steine', 'sandstein', 'kalkstein', 'schiefer', 'granit', 'basalt', 'schnee'];
-const NAME = (id) => STOFFE[id]?.name || ({ holz: 'Holz', rinde: 'Rinde', ruten: 'Ruten', oliven: 'Oliven', zapfen: 'Zapfen', kokosnuss: 'Kokosnuss',
+const NAME = (id) => STOFFE[id]?.name || NAMEN[id] || ({ holz: 'Holz', rinde: 'Rinde', ruten: 'Ruten', oliven: 'Oliven', zapfen: 'Zapfen', kokosnuss: 'Kokosnuss',
   stoecke: 'Stöcke', beeren: 'Beeren', fasern: 'Fasern', schilf: 'Schilf', moos: 'Moos', laub: 'Laub', blume: 'Blume', pilz: 'Pilz',
   steinpilz: 'Steinpilz', seerose: 'Seerose', kaktusfleisch: 'Kaktusfleisch', fisch: 'Fisch', steine: 'Steine', schieferplatten: 'Schieferplatten', wolle: 'Wollgras-Wolle', flechten: 'Flechten',
   axt: 'Axt', schaufel: 'Schaufel', spitzhacke: 'Spitzhacke', eisenhacke: 'Eisen-Spitzhacke' }[id] || id);

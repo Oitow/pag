@@ -251,6 +251,7 @@ if (stand?.inventar) inventar.lade(stand.inventar);
 else for (const w of ['axt', 'schaufel', 'spitzhacke']) inventar.gib(w, 1);
 let speicherT = null, erw = null;
 function speichern() {
+  if (P.get('test')) return;   // ?test=1: kein Spielstand
   clearTimeout(speicherT);
   speicherT = setTimeout(() => {
     try { localStorage.setItem(SPEICHER, JSON.stringify({ eingriffe: eingriffe.zustand(), inventar: inventar.zustand(), zeit: zw.zustand(), erw: erw?.zustand() })); } catch { /* voll/privat */ }
@@ -406,6 +407,7 @@ document.getElementById('bBiom').onclick = (e) => {
   setzeOrt(BIOM_ORTE[biomWahl]);
   e.currentTarget.textContent = '▸ ' + BIOM_NAME[+BIOM_ORTE[biomWahl].slice(4)];
 };
+let heimat = orte.kueste.clone().normalize();   // Aufwach-Platz nach dem Tod (letzter Sprung zu Fuß)
 function setzeOrt(name) {
   const o = ORTE[name] || ORTE.orbit;
   const d = orte[o.ziel].clone().normalize();
@@ -414,6 +416,7 @@ function setzeOrt(name) {
     d.applyAxisAngle(quer, o.weg / R);
   }
   cam.copy(d).multiplyScalar(R + boden(d) + o.h);
+  if (o.gehen) heimat.copy(d);
   sonneZu(d);
   oben.copy(d);
   vorn.copy(orte[o.blick]).multiplyScalar(R).sub(cam).projectOnPlane(oben);
@@ -451,6 +454,12 @@ const erwWelt = {
   spieler: () => ({ gehen, schwimmt, amBoden, fallV }),
   melde: (t, gut = true) => melde(t, gut),
   speichern: () => speichern(),
+  // nach dem Tod: zurück zum Startplatz (Ort beim Start bzw. letzter Sprung), zu Fuß
+  aufwachen() {
+    const d = heimat.clone();
+    cam.copy(d).multiplyScalar(R + boden(d) + AUGE); fallV = 0;
+    if (!gehen) setzeGehen(true);
+  },
   knopf(id, text, onklick) {
     const el = document.createElement('div');
     el.className = 'b'; el.id = id; el.textContent = text;

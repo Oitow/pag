@@ -56,6 +56,7 @@ export function createUeberleben(welt) {
   function aufwachen() {
     for (const { id, anzahl } of todVerlust(welt.inventar.plaetze)) welt.inventar.nimm(id, anzahl);
     wiederbeleben(z);
+    welt.aufwachen?.();                       // zurück zum Startplatz (planet.js), sonst stirbt man am selben Ort gleich wieder
     welt.melde('Du wachst auf – die Hälfte der Tasche ist weg', false);
     welt.speichern?.();
   }
@@ -134,6 +135,9 @@ export function createUeberleben(welt) {
       luft: welt.zw.tJetzt, wind: W.wind, regen: W.regen, schnee: W.schnee, nass: z.nass, dach, feuer,
       kleidung: d.herstellen?.kleidungWaerme?.() ?? 0,
     });
+    // Lava verbrennt (Kraterboden, siehe planet-hoehe: Feld lava)
+    { const c = welt.cam, l = c.length() || 1, pr = welt.planet.probe(c.x / l, c.y / l, c.z / l, 0.5);
+      if (pr.lava > 0.3 && l - welt.R - pr.h < 3) schaden(40 * dt, 'Lava'); }
     if (dh > 0 && dh <= MAX_DH) {
       const gruende = schritt(z, dh, { tGefuehlt, schwimmt: sp.schwimmt, regen: dach ? 0 : W.regen, feuer });
       if (gruende.length) { letzterGrund = gruende[0]; pruefeTod(); }
