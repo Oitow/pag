@@ -2,7 +2,7 @@
 // Verbindet die Regeln (boden.js, ernte.js) mit Welt-Zustand (eingriffe.js) und Inventar (engine/gameplay/inventar).
 // Ziele kommen als Weltpunkte {x,y,z} (m, Planetenmitte = 0). Alles liefert { ok, text } für die Meldung.
 import { schichten, stoffInTiefe, grabung, STOFFE } from './boden.js';
-import { NAMEN } from './herstellen-daten.js';
+import { NAMEN, HACKE, AXT, FUND_STUFE, hackeName, stufe } from './herstellen-daten.js';
 import { ernte } from './ernte.js';
 import { biom } from './klima.js';
 
@@ -21,8 +21,9 @@ export { NAME as gegenstandName };
  */
 export function createAktionen({ planet, eingriffe, natur, inventar, seed = 1, beiEingriff = () => {}, beiEntfernen = () => {} }) {
   const R = planet.radius;
-  const werkzeug = () => ({ axt: inventar.hat('axt', 1), schaufel: inventar.hat('schaufel', 1),
-    hacke: inventar.hat('eisenhacke', 1) ? 3 : inventar.hat('spitzhacke', 1) ? 2 : inventar.hat('schaufel', 1) ? 1 : 0 });
+  // axt = Stufe 0…3 (0 = keine), hacke = Stufe 0…4 (Stein 2, Kupfer 3, Eisen 4) – Tabellen in herstellen-daten.js
+  const hat = (id) => inventar.hat(id, 1);
+  const werkzeug = () => ({ axt: stufe(AXT, hat), schaufel: hat('schaufel'), hacke: stufe(HACKE, hat) });
 
   function richtung(p) { const l = Math.hypot(p.x, p.y, p.z); return [p.x / l, p.y / l, p.z / l]; }
 
@@ -55,14 +56,16 @@ export function createAktionen({ planet, eingriffe, natur, inventar, seed = 1, b
     const o = naturImWeg(p);
     if (o && (o.r > 0.5 || o.art === 'granitblock')) return { ok: false, text: `Erst ${o.art} wegräumen` };
     const u = untergrund(p);
-    const g = grabung(u.stoff, [p.x, p.y, p.z], u.tiefe, werkzeug().hacke, seed);
-    if (!g.ok) return { ok: false, text: `${NAME(u.stoff)}: ${g.grund}` };
+    const hacke = werkzeug().hacke;
+    const g = grabung(u.stoff, [p.x, p.y, p.z], u.tiefe, hacke, seed);
+    if (!g.ok) return { ok: false, text: `${NAME(u.stoff)}: ${STOFFE[u.stoff] ? hackeName(STOFFE[u.stoff].haerte) + ' nötig' : g.grund}` };
     if (o) { eingriffe.entferne(o.id); beiEntfernen(); }
     const e = eingriffe.setze(u.d, GRAB_RADIUS, -GRAB_TIEFE);
     beiEingriff(e);
     inventar.gib(g.stoff, g.menge);
     let text = `+${g.menge} ${NAME(g.stoff)}`;
-    if (g.fund) { inventar.gib(g.fund, 1); text += ` · Fund: ${NAME(g.fund)}!`; }
+    if (g.fund && (FUND_STUFE[g.fund] || 0) > hacke) text += ` · ${NAME(g.fund)} im Fels – ${hackeName(FUND_STUFE[g.fund])} nötig`;
+    else if (g.fund) { inventar.gib(g.fund, 1); text += ` · Fund: ${NAME(g.fund)}!`; }
     return { ok: true, text };
   }
 
@@ -83,7 +86,8 @@ export function createAktionen({ planet, eingriffe, natur, inventar, seed = 1, b
     if (!e.ok) return { ok: false, text: e.grund };
     eingriffe.entferne(o.id); beiEntfernen();
     for (const [id, n] of e.gibt) inventar.gib(id, n);
-    return { ok: true, text: (e.baum ? 'Gefällt: ' : '') + e.gibt.map(([id, n]) => `+${n} ${NAME(id)}`).join(' · ') };
+    return { ok: true, text: (e.baum ? 'Gefällt: ' : '') + e.gibt.map(([id, n]) => `+${n} ${NAME(id)}`).join(' · ') +
+      (e.verpasst || []).map((v) => ` · ${NAME(v.id)} – ${hackeName(v.stufe)} nötig`).join('') };
   }
 
   return { graben, bauen, nehmen, untergrund, werkzeug };

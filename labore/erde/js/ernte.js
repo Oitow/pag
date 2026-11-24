@@ -1,6 +1,7 @@
 // Ernte-Regeln (reine Logik, ohne THREE): was gibt ein Natur-Stück, welches Werkzeug braucht man?
 // werkzeug: 0 = Hände, 'axt' = Axt, Zahl = Härte der Spitzhacke (wie boden.js STOFFE.haerte).
-// Menge skaliert mit der Größe (skala) des Stücks.
+// Menge skaliert mit der Größe (skala) des Stücks. Bessere Axt (Stufe 2 Kupfer, 3 Eisen) gibt mehr Holz.
+// ab: [[Stufe, id, menge]…] = gibt es zusätzlich erst ab dieser Spitzhacken-Stufe (Erzbrocken: Eisenerz ab Kupfer-Spitzhacke).
 
 const holz = (basis) => ({ werkzeug: 'axt', gibt: [['holz', basis]], baum: true });
 export const ERNTE = {
@@ -20,17 +21,26 @@ export const ERNTE = {
   geroell: { werkzeug: 0, gibt: [['steine', 2]] },
   wollgras: { werkzeug: 0, gibt: [['fasern', 2], ['wolle', 1]] }, pilzholz: { werkzeug: 0, gibt: [['pilz', 3], ['holz', 1]] },
   flechtenbank: { werkzeug: 2, gibt: [['steine', 3], ['flechten', 2]] },
-  erzbrocken: { werkzeug: 2, gibt: [['eisenerz', 2], ['steine', 1]] }, quarzdruse: { werkzeug: 2, gibt: [['quarz', 3], ['steine', 1]] },
+  erzbrocken: { werkzeug: 2, gibt: [['kupfererz', 2], ['steine', 1]], ab: [[3, 'eisenerz', 2]] }, quarzdruse: { werkzeug: 2, gibt: [['quarz', 3], ['steine', 1]] },
   ammonit: { werkzeug: 1, gibt: [['ammonit', 1]] },
   granitblock: { werkzeug: 2, gibt: [['steine', 4]] }, schiefer: { werkzeug: 2, gibt: [['schieferplatten', 3]] }, felsnadel: { werkzeug: 2, gibt: [['steine', 6]] },
 };
 
-/** Ernte versuchen. hat = { axt: bool, hacke: Härte 0…3 }. → { ok, grund?, gibt: [[id, menge]…], baum? } */
+/** Holz-Faktor je Axt-Stufe (1 Stein, 2 Kupfer, 3 Eisen). */
+export const AXT_HOLZ = [0, 1, 1.3, 1.6];
+
+/** Ernte versuchen. hat = { axt: bool oder Stufe 0…3, hacke: Stufe 0…4 }. → { ok, grund?, gibt: [[id, menge]…], baum?, verpasst: [{ id, stufe }] } */
 export function ernte(art, skala, hat) {
   const e = ERNTE[art];
   if (!e) return { ok: false, grund: 'nichts zu holen', gibt: [] };
-  if (e.werkzeug === 'axt' && !hat.axt) return { ok: false, grund: 'Axt nötig', gibt: [] };
-  if (typeof e.werkzeug === 'number' && e.werkzeug > (hat.hacke || 0)) return { ok: false, grund: 'Spitzhacke nötig', gibt: [] };
+  const axt = hat.axt === true ? 1 : Math.min(3, +hat.axt || 0), hacke = hat.hacke || 0;
+  if (e.werkzeug === 'axt' && !axt) return { ok: false, grund: 'Axt nötig', gibt: [] };
+  if (typeof e.werkzeug === 'number' && e.werkzeug > hacke) return { ok: false, grund: 'Spitzhacke nötig', gibt: [] };
   const f = Math.max(0.5, Math.min(2, skala));
-  return { ok: true, baum: !!e.baum, gibt: e.gibt.map(([id, n]) => [id, Math.max(1, Math.round(n * f))]) };
+  const gibt = e.gibt.map(([id, n]) => [id, Math.max(1, Math.round(n * f * (e.werkzeug === 'axt' && id === 'holz' ? AXT_HOLZ[axt] : 1)))]);
+  const verpasst = [];
+  for (const [st, id, n] of e.ab || []) {
+    if (hacke >= st) gibt.push([id, Math.max(1, Math.round(n * f))]); else verpasst.push({ id, stufe: st });
+  }
+  return { ok: true, baum: !!e.baum, gibt, verpasst };
 }

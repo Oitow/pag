@@ -12,10 +12,14 @@ export const TEILE = {
   boden: { name: 'Boden', platz: 'zelle', kosten: { holz: 4 }, box: [-1, 1, -0.2, 0, -1, 1], begehbar: true },
   wand: { name: 'Wand', platz: 'kante', kosten: { holz: 4 }, box: [-1, 1, 0, WAND_H, -0.1, 0.1] },
   tuerwand: { name: 'Wand mit Tür', platz: 'kante', kosten: { holz: 3 }, box: [-1, 1, 0, WAND_H, -0.1, 0.1], tuer: 0.55 },
+  eisentuer: { name: 'Verstärkte Tür', platz: 'kante', kosten: { holz: 4, naegel: 6, eisenbarren: 1 }, box: [-1, 1, 0, WAND_H, -0.1, 0.1], tuer: 0.55 },
   dach: { name: 'Dach', platz: 'zelle', kosten: { holz: 2, fasern: 3 }, box: [-1, 1, 0, DACH_HUB, -1, 1], dach: true },
   treppe: { name: 'Treppe', platz: 'zelle', kosten: { holz: 4 }, box: [-1, 1, 0, WAND_H, -1, 1], begehbar: true, rampe: true },
   lagerfeuer: { name: 'Lagerfeuer', platz: 'frei', kosten: { steine: 5, holz: 3 }, box: [-0.65, 0.65, 0, 0.5, -0.65, 0.65], station: true },
   werkbank: { name: 'Werkbank', platz: 'frei', kosten: { holz: 6, steine: 2 }, box: [-0.8, 0.8, 0, 0.95, -0.4, 0.4], station: true },
+  // Fortschritt Kupfer/Eisen: Schmelzofen (Erz → Barren, glüht = Feuer wie das Lagerfeuer) und Steinamboss (Metall-Werkzeug)
+  schmelzofen: { name: 'Schmelzofen', platz: 'frei', kosten: { steine: 12, lehm: 4 }, box: [-0.6, 0.6, 0, 1.8, -0.6, 0.6], station: true },
+  amboss: { name: 'Amboss', platz: 'frei', kosten: { steine: 6, holz: 2 }, box: [-0.45, 0.45, 0, 0.75, -0.3, 0.3], station: true },
 };
 export const ARTEN = Object.keys(TEILE);
 const MAX_MIT_FUNDAMENT = 8, MAX_OHNE = 3;
@@ -47,7 +51,7 @@ function ueberlappt(a, b) {
 function angebote(t) {
   const a = t.art;
   if (a === 'fundament' || a === 'boden') return [t.y];
-  if (a === 'wand' || a === 'tuerwand' || a === 'treppe') return [t.y, t.y + WAND_H];
+  if (a === 'wand' || a === 'tuerwand' || a === 'eisentuer' || a === 'treppe') return [t.y, t.y + WAND_H];
   if (a === 'dach') return [t.y, t.y + DACH_HUB];
   return [];
 }

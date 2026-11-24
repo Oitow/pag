@@ -9,8 +9,13 @@ import { bauteilGeometrie, disposeBauteile } from './bauteile.js';
 import { standardMaterial } from '../../../engine/render/mesh-builder.js';
 import { gegenstandName } from './aktionen.js';
 import { createBauLeiste } from './bauen-leiste.js';
+import { zwischenprodukte } from './herstellen-daten.js';
 
 const PLATZ_R = 60, AUGE = 1.7, VOR = 3.2, NAH = 14, MAX_LICHT = 3, FUNKEN = 18;
+// Feuerstellen (Teile mit leucht-Geometrie): Licht (Teil-Rahmen x, y, z), Flammen flackern?, Funken ab Höhe, Lichtstärke
+const GLUT = { lagerfeuer: { licht: [0, 0.8, 0], flackern: true, funken: 0, staerke: 1 },
+  schmelzofen: { licht: [0, 0.55, 1.0], flackern: false, funken: 1.5, staerke: 0.75 } };
+const GLUT_STD = GLUT.lagerfeuer;
 
 export function createBauen(welt) {
   const { THREE, anker, cam, oben, vorn, blick, inventar } = welt;
@@ -66,10 +71,14 @@ export function createBauen(welt) {
       mesh.computeBoundingSphere();
       pl.meshes.push(mesh); pl.gruppe.add(mesh);
       if (g.leucht) {
-        const fl = new THREE.InstancedMesh(g.leucht, flammenMat, liste.length);
-        liste.forEach((t, i) => { fl.setMatrixAt(i, matrix(t)); pl.feuer.push({ t, i, w: absolut(pl, t.x, t.y, t.z) }); });
+        const fl = new THREE.InstancedMesh(g.leucht, flammenMat, liste.length), k = GLUT[art] || GLUT_STD;
+        liste.forEach((t, i) => {
+          fl.setMatrixAt(i, matrix(t));
+          const c = Math.cos(t.rot * Math.PI / 2), s = Math.sin(t.rot * Math.PI / 2), [u, h, v] = k.licht;
+          pl.feuer.push({ t, i, fl, k, w: absolut(pl, t.x, t.y, t.z), l: absolut(pl, t.x + u * c + v * s, t.y + h, t.z - u * s + v * c) });
+        });
         fl.computeBoundingSphere();
-        pl.flammen = fl; pl.meshes.push(fl); pl.gruppe.add(fl);
+        pl.meshes.push(fl); pl.gruppe.add(fl);
       }
     }
     if (pl.teile.length && !pl.gruppe.parent) anker.add(pl.gruppe);
@@ -98,19 +107,20 @@ export function createBauen(welt) {
     feuerSlots(fs.length);
     for (const f of fs) f.d = f.w.distanceToSquared(cam);
     fs.sort((a, b) => a.d - b.d);
-    for (const pl of plaetze) if (pl.flammen) {   // Flammen flackern (Höhe je Feuer eigene Phase)
-      for (const f of pl.feuer) { const ph = f.i * 2.3 + f.t.x; pl.flammen.setMatrixAt(f.i, matrix(f.t, 0.85 + 0.2 * Math.sin(zeit * 11 + ph) + 0.1 * Math.sin(zeit * 23.7 + ph * 1.7))); }
-      pl.flammen.instanceMatrix.needsUpdate = true;
+    for (const pl of plaetze) for (const f of pl.feuer) if (f.k.flackern) {   // Flammen flackern (Höhe je Feuer eigene Phase)
+      const ph = f.i * 2.3 + f.t.x;
+      f.fl.setMatrixAt(f.i, matrix(f.t, 0.85 + 0.2 * Math.sin(zeit * 11 + ph) + 0.1 * Math.sin(zeit * 23.7 + ph * 1.7)));
+      f.fl.instanceMatrix.needsUpdate = true;
     }
     // tags nur ein Hauch (sonst gelber Fleck in der Sonne), nachts voll
     const hs = welt.zw?.sonne ? welt.zw.sonne.dot(oben) : -1, nacht = THREE.MathUtils.smoothstep(-hs, -0.25, 0.05);
     lichter.forEach((l, k) => {
       const f = fs[k], pk = funken[k];
-      l.intensity = f ? (3 + 19 * nacht) * (1 + 0.12 * Math.sin(zeit * 9 + k) + 0.07 * Math.sin(zeit * 17.3 + k * 2)) : 0;
+      l.intensity = f ? (3 + 19 * nacht) * f.k.staerke * (1 + 0.12 * Math.sin(zeit * 9 + k) + 0.07 * Math.sin(zeit * 17.3 + k * 2)) : 0;
       pk.visible = !!f && f.d < 60 * 60;
       if (!f) return;
-      l.position.copy(f.w).addScaledVector(f.pl.U, 0.8);
-      pk.position.copy(f.w); pk.quaternion.copy(f.pl.gruppe.quaternion);
+      l.position.copy(f.l);
+      pk.position.copy(f.w).addScaledVector(f.pl.U, f.k.funken); pk.quaternion.copy(f.pl.gruppe.quaternion);
       const a = pk.geometry.attributes.position;
       for (let i = 0; i < FUNKEN; i++) {   // Funken steigen 1,8 m auf, schlingern, beginnen von vorn (deterministisch, kein Zufall)
         const u = (zeit * (0.45 + (i % 5) * 0.08) + i * 0.618) % 1, w = i * 2.4 + zeit * 1.3;
@@ -258,7 +268,14 @@ export function createBauen(welt) {
 
   // ?bautest=1 (2 = ohne Bau-Modus, 3 = schräg mit Treppe): kleine Hütte ~10 m vor dem Spieler (Fundament 2×2, Wände mit Tür, Dach, Lagerfeuer davor) – fürs Bild
   const testArt = +(/[?&]bautest=(\d)/.exec(location.search)?.[1] || 0);
-  let testT = testArt ? performance.now() + 6000 : 0;   // Boden lädt asynchron
+  // ?schmiedetest=1|2: Schmelzofen, Amboss, Werkbank, Lagerfeuer vor den Spieler (siehe testSchmiede);
+  // mit ?test=1&tasche=voll kommen Zwischenprodukte (Holzkohle, Barren …) und Baustoffe in die Tasche (Rohstoffe gibt herstellen.js)
+  const schmiedeTest = /[?&]schmiedetest=[12]/.test(location.search);
+  if (schmiedeTest && /[?&]test=1/.test(location.search) && /[?&]tasche=voll/.test(location.search)) {
+    const bau = Object.values(TEILE).flatMap((t) => Object.keys(t.kosten));
+    for (const id of new Set([...zwischenprodukte(), ...bau])) inventar.gib(id, 20);
+  }
+  let testT = testArt || schmiedeTest ? performance.now() + 6000 : 0;   // Boden lädt asynchron
   function testHuette() {
     const p = welt.bodenPunkt(t1.copy(cam).addScaledVector(vorn, 11), V());
     const pl = neuerPlatz(p, p.clone().normalize(), vorn);
@@ -276,12 +293,22 @@ export function createBauen(welt) {
     setz('lagerfeuer', -0.8, -2.8, 0);
     if (testArt === 1) { schalte(true); leiste.waehle('wand'); }   // bautest=2: nur die Hütte, ohne Bau-Modus
   }
+  // schmiedetest=1: Schmiede-Ecke 6 m vor dem Spieler (zum Ansehen); =2 oder mit ?herstellen=offen: im Halbkreis ≤ 4 m um den Spieler
+  // (alle Stationen in Reichweite fürs Herstellen-Fenster). Platz-Rahmen: +z = Blickrichtung, +x = LINKS vom Spieler; rot 2 = Vorderseite zum Spieler.
+  function testSchmiede() {
+    const nah = /[?&](schmiedetest=2|herstellen=offen)/.test(location.search), ab = nah ? 3 : 6;
+    const p = welt.bodenPunkt(t1.copy(cam).addScaledVector(vorn, ab), V());
+    const pl = neuerPlatz(p, p.clone().normalize(), vorn);
+    const lage = nah ? [['schmelzofen', 2.05, -0.4, 2], ['amboss', 0.55, 0.2, 2], ['werkbank', -1.0, 0.1, 2], ['lagerfeuer', -2.3, -0.6, 0]]
+      : [['schmelzofen', 1.9, 0.5, 2], ['amboss', 0.2, -0.4, 2], ['werkbank', -1.6, 0.3, 2], ['lagerfeuer', -2.4, -2.1, 0]];
+    for (const [art, x, z, rot] of lage) setzeTeil(pl, einrasten(art, x, z, rot, pl.teile, { boden: pl.boden }));
+  }
 
   return {
     name: 'bauen',
     update(dt) {
       zeit += dt;
-      if (testT && performance.now() > testT && welt.spieler().gehen) { testT = 0; testHuette(); }
+      if (testT && performance.now() > testT && welt.spieler().gehen) { testT = 0; if (testArt) testHuette(); if (schmiedeTest) testSchmiede(); }
       const gehen = welt.spieler().gehen;
       leiste.zeige(modus && gehen);
       if (modus && gehen) vorschauRechnen(); else vorschau.visible = false;
@@ -328,5 +355,8 @@ function kreise(art) {
   if (art === 'fundament' || art === 'boden') return [[-0.5, -0.5, 0.72], [0.5, -0.5, 0.72], [-0.5, 0.5, 0.72], [0.5, 0.5, 0.72]];
   if (art === 'lagerfeuer') return [[0, 0, 0.6]];
   if (art === 'werkbank') return [[-0.4, 0, 0.42], [0.4, 0, 0.42]];
+  if (art === 'eisentuer') return [-0.95, -0.8, 0.8, 0.95].map((u) => [u, 0, 0.12]);
+  if (art === 'schmelzofen') return [[0, 0, 0.62]];
+  if (art === 'amboss') return [[0, 0, 0.38]];
   return [];
 }

@@ -18,7 +18,7 @@ und dann um `oben` drehen. Größen in Metern, Mensch 1,8 m.
 | Dienst | Anbieter | Funktionen |
 |---|---|---|
 | `ueberleben` | Überleben | `schaden(n, grund)`, `heile(n)`, `iss(id) → bool`, `leben`, `tot` |
-| `bau` | Bauen | `waermeBei(p) → °C` (Lagerfeuer in der Nähe), `unterDach(p) → bool`, `naheStationen(p, r=4) → ['lagerfeuer','werkbank',…]`, `hindernisse(p, r) → [{x,y,z,r}]` |
+| `bau` | Bauen | `waermeBei(p) → °C` (Lagerfeuer in der Nähe), `unterDach(p) → bool`, `naheStationen(p, r=4) → ['lagerfeuer','werkbank','schmelzofen','amboss',…]`, `hindernisse(p, r) → [{x,y,z,r}]` |
 | `tiere` | Tiere | `nahe(p, r) → [{art, pos, leben}]` |
 | `herstellen` | Herstellen | `kleidungWaerme() → °C` (getragene Kleidung), `traegt(id) → bool` |
 
@@ -30,6 +30,19 @@ Neu:
 - Tiere: `fleisch`, `fell`, `knochen` (Fische: `fisch` gibt es schon)
 - Herstellen: `seil`, `speer`, `fackel`, `fellmantel`, `fellstiefel`, `gebratenesFleisch`, `gebratenerFisch`, `beerenbrei`, `pfeil`, `bogen`
 - Bauen (als Bausatz im Inventar oder direkt aus Rohstoffen – entscheidet das Bau-Modul): `lagerfeuer`, `werkbank`
+- Schmiede (Fortschritt): `holzkohle`, `kupferbarren`, `eisenbarren`, `naegel`, `kupferaxt`, `kupferhacke`, `eisenaxt`, `eisenspeer`;
+  Bauteile `schmelzofen`, `amboss`, `eisentuer`
+
+## Fortschritt Stein → Kupfer → Eisen (Valheim-artig)
+Stationen (`dienste.bau.naheStationen`): `schmelzofen` (Holzkohle, Barren; glüht, wärmt wie ein Feuer), `amboss` (Nägel);
+gedachte Station `schmiede` = Werkbank + Amboss (alles Metall-Werkzeug). Stufen in `herstellen-daten.js` (`HACKE`, `AXT`, `FUND_STUFE`):
+| Stufe | Spitzhacke | schafft |
+|---|---|---|
+| 2 | `spitzhacke` (Stein) | Sand-/Kalkstein, Schiefer, Kohle, Erzbrocken → **Kupfererz** |
+| 3 | `kupferhacke` | Granit, Basalt, **Eisenerz** (Funde und Erzbrocken) |
+| 4 | `eisenhacke` | **Gold**-Funde |
+Axt: `axt` 1 · `kupferaxt` 2 · `eisenaxt` 3 → ×1 / ×1,3 / ×1,6 Holz je Baum. Testschalter: `?schmiedetest=1` (Schmiede-Ecke 6 m vor dem
+Spieler), `=2` bzw. mit `?herstellen=offen` (alle Stationen ≤ 4 m); mit `?test=1&tasche=voll` auch Barren, Holzkohle, Baustoffe.
 
 ## Module
 1. **Überleben** (`ueberleben.js`): Leben, Hunger, Durst, Körperwärme. Wärme aus Lufttemperatur `welt.zw.tJetzt`, Wind/Regen/Schnee
