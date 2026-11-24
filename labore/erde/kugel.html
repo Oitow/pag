@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Erde-Labor – Kugel in echter Größe</title>
+<style>
+/* VOICE: ruhiges Messlabor  IDEA: Maßband zwischen Mensch und Mond
+   PICTURE: die Kugel selbst, Vollbild  COLOUR: Nachtblau-Glas, warmes Gelb für Maße
+   TYPE: System-UI + Monospace für Messwerte  LAYOUT: Messwerte oben links, Orte rechts, Höhenregler unten */
+html,body{margin:0;height:100%;overflow:hidden;background:#02040a;touch-action:none;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#e8eef6}
+canvas{display:block}
+#hud{position:fixed;left:8px;top:8px;font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;background:rgba(6,10,20,.62);padding:7px 9px;border-radius:10px;pointer-events:none;white-space:pre;z-index:5;max-width:70vw;overflow:hidden}
+#orte{position:fixed;right:8px;top:8px;display:flex;flex-direction:column;gap:6px;z-index:6}
+.b{background:rgba(6,10,20,.62);color:#eef3fa;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:9px 12px;font-size:13px;min-width:84px;min-height:36px;box-sizing:border-box;text-align:center;user-select:none;-webkit-user-select:none;cursor:pointer}
+.b:active{background:rgba(70,110,170,.8)}
+#unten{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);width:min(94vw,480px);display:flex;gap:8px;align-items:center;background:rgba(6,10,20,.62);border-radius:14px;padding:8px 10px;z-index:6;box-sizing:border-box}
+#unten input{flex:1}
+#flug{min-width:0;background:rgba(200,150,50,.35)}
+#labels{position:fixed;inset:0;pointer-events:none;z-index:4}
+.lab{position:absolute;left:0;top:0;font-size:12px;padding:2px 6px;border-radius:6px;background:rgba(6,10,20,.6);color:#ffd88a;white-space:nowrap}
+#load{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#02040a;z-index:20}
+</style>
+</head>
+<body>
+<div id="load">Baue Erde in echter Größe…</div>
+<div id="labels"></div>
+<div id="hud"></div>
+<div id="orte"></div>
+<div id="unten"><span style="font-size:12px;opacity:.8">1,5 m</span><input id="hoehe" type="range" min="0" max="1000" value="700"><span style="font-size:12px;opacity:.8">Mond</span><div class="b" id="flug">▶ Flug</div></div>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
+</script>
+<script type="module" src="js/kugel.js"></script>
+</body>
+</html>
