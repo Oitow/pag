@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { heightAt } from './welt.js';
 import { createHimmel } from './himmel.js';
 import { createTerrain } from './terrain.js';
+import { createFundstellen } from './fundstellen.js';
 import { createVoxel } from './voxel.js';
 import { createVegetation, key } from './vegetation.js';
 import { createSpieler } from './spieler.js';
@@ -57,6 +58,7 @@ const K = {
 K.himmel = createHimmel(K);
 K.terrain = createTerrain(K);
 K.vox = createVoxel(K);
+K.fundstellen = createFundstellen(K);
 K.veg = createVegetation(K);
 K.spieler = createSpieler(K);
 K.bauen = createBauen(K);
@@ -78,6 +80,7 @@ function frame(now) {
   if (K.shake > .01) { camera.position.x += (Math.random() - .5) * K.shake * .25; camera.position.y += (Math.random() - .5) * K.shake * .25; K.shake *= Math.pow(.02, dt); }
   U.uCam.value.copy(pos);
   terrain.update(pos.x, pos.z);
+  K.fundstellen.update(pos.x, pos.z);
   himmel.follow(pos, dt);
   if (K.shadowsOn) himmel.placeShadowCam();
 
