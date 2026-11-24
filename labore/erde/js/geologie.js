@@ -3,10 +3,17 @@
 //  2. Grundhöhe + großes Rauschen + Hotspot-Vulkane
 //  3. Abfluss (Priority-Flood: jede Senke läuft über → Seen), Einzugsgebiete, Flächen
 //  4. Fluss-Erosion (Stream-Power, implizit nach Braun & Willett) + Hangabtrag → Täler
-// Ergebnis: Typed Arrays je Zelle (Höhe, Wasserspiegel, Abfluss-Ziel, Einzugsfläche, Gebirge, Platte).
+//  Dazu: Klima (Temperatur nach Breite, Feuchte nach Meeresnähe/Windgürteln) und Gestein an der Oberfläche.
+// Ergebnis: Typed Arrays je Zelle (Höhe, Wasserspiegel, Abfluss-Ziel, Einzugsfläche, Gebirge, Platte, Gestein, Temperatur, Feuchte).
 import { createNoise3D } from '../../../engine/core/noise.js';
 import { rng as erzeugeRng } from '../../../engine/core/rng.js';
 import { createGeoGitter } from './geo-gitter.js';
+
+/** Gesteinsarten an der Oberfläche (Index in geo.gestein). */
+export const GESTEIN = Object.freeze({ SANDSTEIN: 0, KALK: 1, GRANIT: 2, SCHIEFER: 3, BASALT: 4 });
+export const GESTEIN_NAME = ['Sandstein', 'Kalkstein', 'Granit', 'Schiefer', 'Basalt'];
+/** Felsfarbe je Gestein (0…1). */
+export const GESTEIN_FARBE = [[0.64, 0.49, 0.36], [0.76, 0.73, 0.64], [0.56, 0.51, 0.49], [0.34, 0.39, 0.45], [0.22, 0.22, 0.24]];
 
 const glatt = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
@@ -137,6 +144,34 @@ export function berechneGeologie({ seed = 1, radius = 100_000, N = 192, platten 
   }
   glaette(2, 0.35);
 
+  // ---------- Klima: Temperatur auf Meereshöhe + Feuchte (vor der Erosion: trockene Gebiete haben weniger Flüsse) ----------
+  // Temperatur nach Breite; Feuchte aus Meeresnähe, Wind-Gürteln (Tropen nass, Wendekreise trocken) und Rauschen.
+  const temp0 = new Float32Array(n), feuchte = new Float32Array(n);
+  const meerAbst = new Float32Array(n).fill(1e9);
+  {
+    const q = [];
+    for (let c = 0; c < n; c++) if (H[c] < 0) { meerAbst[c] = 0; q.push(c); }
+    for (let s = 0; s < q.length; s++) {
+      const c = q[s];
+      for (let k = 0; k < 8; k++) {
+        const z = nb[c * 8 + k];
+        if (z < 0) continue;
+        const d = meerAbst[c] + (k < 4 ? 1 : 1.414);
+        if (d < meerAbst[z] - 0.01) { meerAbst[z] = d; q.push(z); }
+      }
+    }
+  }
+  const gauss = (x, w) => Math.exp(-(x / w) * (x / w));
+  for (let c = 0; c < n; c++) {
+    const x = dir[c * 3], y = dir[c * 3 + 1], z = dir[c * 3 + 2];
+    const breite = Math.asin(Math.min(1, Math.abs(y))) * 180 / Math.PI;      // Grad
+    temp0[c] = 27 - 50 * (breite / 90) ** 1.6 + 2.5 * fbmD(x, y, z, 3 * f0, 2, 21);
+    const km = meerAbst[c] * zellKante / 1000;
+    let f = 0.22 + 0.42 * (0.5 + 0.5 * fbmD(x, y, z, 4 * f0, 3, 11)) + 0.32 * Math.exp(-km / 18);
+    f += 0.25 * gauss(breite, 11) - 0.5 * gauss(breite - 27, 10) + 0.1 * gauss(breite - 55, 12);
+    feuchte[c] = Math.min(1, Math.max(0, f));
+  }
+
   // ---------- 4. Abfluss + Erosion ----------
   const F = new Float32Array(n), ab = new Int32Array(n), reihe = new Int32Array(n), A = new Float32Array(n);
   let landAnz = 0;
@@ -175,7 +210,7 @@ export function berechneGeologie({ seed = 1, radius = 100_000, N = 192, platten 
     }
   }
   const regen = new Float32Array(n);
-  for (let c = 0; c < n; c++) { const x = dir[c * 3], y = dir[c * 3 + 1], z = dir[c * 3 + 2]; regen[c] = zellKm2 * (0.55 + 0.9 * (0.5 + 0.5 * fbmD(x, y, z, 4 * f0, 3, 11))); }
+  for (let c = 0; c < n; c++) regen[c] = zellKm2 * (0.15 + 1.5 * feuchte[c]);
   function fliessen() {
     for (let s = 0; s < landAnz; s++) A[reihe[s]] = regen[reihe[s]];
     for (let s = landAnz - 1; s >= 0; s--) { const c = reihe[s], d = ab[c]; if (d >= 0 && H[d] >= 0) A[d] += A[c]; }
@@ -219,6 +254,26 @@ export function berechneGeologie({ seed = 1, radius = 100_000, N = 192, platten 
 
   const gebirge = new Float32Array(n);
   for (let c = 0; c < n; c++) gebirge[c] = glatt(250, 2200, hub[c]) * glatt(0, 300, H[c]);
+
+  // ---------- 5. Gestein an der Oberfläche ----------
+  // Vulkane/Ozeanboden/Grabenbrüche → Basalt · Kern der Kollisionsgebirge → Granit, Flanken → Schiefer (umgewandelt)
+  // alte Schilde (Kratone) → Granit · flache, einst überflutete Tiefländer → Kalkstein · sonst Sandstein (Ablagerungen)
+  const gestein = new Uint8Array(n);
+  for (let c = 0; c < n; c++) {
+    const x = dir[c * 3], y = dir[c * 3 + 1], z = dir[c * 3 + 2];
+    const eigen = P[platte[c]];
+    let vulk = false;
+    for (const v of vulkane) if (x * v.d[0] + y * v.d[1] + z * v.d[2] > Math.cos((6000 / R))) vulk = true;
+    const rift = quelle[c] >= 0 && konv[quelle[c]] < -0.05 && abst[c] < 3;
+    let g;
+    if (vulk || !eigen.kont || (rift && eigen.kont)) g = GESTEIN.BASALT;
+    else if (hub[c] > 1500) g = GESTEIN.GRANIT;
+    else if (hub[c] > 320) g = GESTEIN.SCHIEFER;
+    else if (fbmD(x, y, z, 2.6 * f0, 3, 31) > 0.28) g = GESTEIN.GRANIT;
+    else if (H[c] < 450 && fbmD(x, y, z, 5 * f0, 3, 37) > -0.05) g = GESTEIN.KALK;
+    else g = GESTEIN.SANDSTEIN;
+    gestein[c] = g;
+  }
   let seen = 0, fluss = 0, land = 0;
   const AMIN = 5;
   for (let c = 0; c < n; c++) {
@@ -228,7 +283,7 @@ export function berechneGeologie({ seed = 1, radius = 100_000, N = 192, platten 
   }
   return {
     N, seed, radius: R, zellKante, amin: AMIN,
-    hoehe: H, spiegel: F, ab, flaeche: A, gebirge, platte,
+    hoehe: H, spiegel: F, ab, flaeche: A, gebirge, platte, gestein, temp0, feuchte,
     vulkane, platten: P.map((p) => ({ kont: p.kont })),
     stat: { land: land / n, seeZellen: seen, flussZellen: fluss },
   };

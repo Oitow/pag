@@ -1,9 +1,13 @@
-// Erde-Labor, Stufe 1: erfundener Planet mit Detailstufen, nahtlos vom Orbit bis zum Boden.
-// Würfel-Kugel + Quadtree-Kacheln (planet-baum), Höhe/Farbe aus dem Seed (planet-hoehe),
-// Kachelbau im Worker (kachel-worker, Rückfall: Hauptthread), Kamera bleibt im Ursprung (Floating Origin).
+// Erde-Labor: erfundener Planet mit Detailstufen, nahtlos vom Orbit bis zum Boden – und zu Fuß begehbar.
+// Würfel-Kugel + Quadtree-Kacheln (planet-baum), Geologie/Klima/Gestein einmal beim Start (geologie),
+// Höhe/Farbe je Punkt (planet-hoehe), Natur aus dem Naturfundus (natur-streu → natur),
+// Kachelbau + Streuung im Worker (kachel-worker, Rückfall: Hauptthread), Kamera bleibt im Ursprung (Floating Origin).
 import * as THREE from 'three';
 import { createPlanetHoehe } from './planet-hoehe.js';
-import { berechneGeologie } from './geologie.js';
+import { berechneGeologie, GESTEIN_NAME, GESTEIN_FARBE } from './geologie.js';
+import { biom, BIOM_NAME, tempAm, waldDichte, bodenFarbe } from './klima.js';
+import { streuKacheln, streueKachel, streuStufe } from './natur-streu.js';
+import { createNatur } from './natur.js';
 import { createGeoGitter } from './geo-gitter.js';
 import { waehleKacheln, maxStufeFuer } from './planet-baum.js';
 import { baueKachel, ZELLEN } from './kachel-bau.js';
@@ -74,10 +78,13 @@ function starteWorker() {
     for (let i = 0; i < n; i++) {
       const w = new Worker(new URL('./kachel-worker.js', import.meta.url), { type: 'module' });
       w.offen = new Map();
-      w.onmessage = (e) => { w.offen.delete(e.data.key); bauMs += e.data.ms; bauN++; strom.fertigGebaut(e.data.key, e.data); };
+      w.onmessage = (e) => {
+        if (e.data.typ === 'streu') { w.offen.delete('s:' + e.data.key); streuFertig(e.data); return; }
+        w.offen.delete(e.data.key); bauMs += e.data.ms; bauN++; strom.fertigGebaut(e.data.key, e.data);
+      };
       w.onerror = () => { // Worker kaputt → seine Aufträge in den Hauptthread
         worker = worker.filter((x) => x !== w);
-        for (const k of w.offen.values()) hauptQueue.push(k);
+        for (const [key, k] of w.offen) (key.startsWith('s:') ? streuQueue : hauptQueue).push(k);
         w.terminate();
       };
       w.postMessage({ art: 'planet', opts: { seed: SEED, radius: R, geo } });
@@ -94,6 +101,7 @@ function bauen(k) {
 }
 function hauptBau(budgetMs) {
   const t0 = performance.now();
+  while (streuQueue.length && performance.now() - t0 < budgetMs * 0.4) streuFertig(streueKachel(streuQueue.shift(), planet));
   while (hauptQueue.length && performance.now() - t0 < budgetMs) {
     const k = hauptQueue.shift();
     const t = performance.now();
@@ -102,6 +110,28 @@ function hauptBau(budgetMs) {
     strom.fertigGebaut(k.key, d);
   }
 }
+// ---------- Natur: Streu-Kacheln (~80 m) rund um die Kamera, gebaut im Worker ----------
+const STREU_L = streuStufe(R), STREU_RADIUS = 330;
+const streuQueue = [], streuDa = new Map(), streuLaeuft = new Set();
+let streuSchnitt = 0; // reihum über die Worker
+function streuFertig(d) { streuLaeuft.delete(d.key); streuDa.set(d.key, d); natur.neu(); }
+function streuen(wunsch) {
+  for (const k of wunsch) {
+    if (streuDa.has(k.key) || streuLaeuft.has(k.key)) continue;
+    if (streuLaeuft.size >= 8) break;
+    streuLaeuft.add(k.key);
+    if (!worker.length) { streuQueue.push(k); continue; }
+    const w = worker[streuSchnitt++ % worker.length];
+    w.offen.set('s:' + k.key, k);
+    w.postMessage({ art: 'streu', k });
+  }
+  if (streuDa.size > 500) { // weit entfernte vergessen
+    const nah = new Set(wunsch.map((k) => k.key));
+    for (const key of streuDa.keys()) if (!nah.has(key) && streuDa.size > 300) streuDa.delete(key);
+  }
+}
+const natur = createNatur(scene);
+
 starteWorker();
 const strom = createKachelStrom({ bauen, erzeuge, zeige, entsorge, parallel: Math.max(2, worker.length * 2) });
 
@@ -157,7 +187,13 @@ const orte = (() => {
     if (s > kBest) { kBest = s; kueste = c; }
   }
   const v = geo.vulkane.reduce((a, b) => (b.hoch > a.hoch ? b : a));
-  return {
+  let wald = kueste, wBest = 0; // dichter Wald in mildem Tiefland, nahe der Küste
+  for (let c = 0; c < n; c++) {
+    if (H[c] < 30 || H[c] > 700 || F[c] > H[c] + 1 || A[c] >= geo.amin) continue;
+    const w = waldDichte(tempAm(geo.temp0[c], H[c]), geo.feuchte[c]) * (1 + 0.3 * D(c).dot(D(kueste)));
+    if (w > wBest) { wBest = w; wald = c; }
+  }
+  return { wald: D(wald),
     berg: D(berg), kueste: D(kueste), fluss: D(fluss >= 0 ? fluss : kueste),
     flussAb: D(fluss >= 0 ? ab[ab[ab[fluss]] >= 0 ? ab[fluss] : fluss] : kueste),
     see: D(see >= 0 ? see : kueste), vulkan: new THREE.Vector3(...v.d),
@@ -181,6 +217,7 @@ const ORTE = {
   fluss:  { ziel: 'fluss', h: 60, nei: -14, blick: 'flussAb', weg: 150 },
   see:    { ziel: 'see', h: 250, nei: -10, blick: 'see', weg: 2500 },
   vulkan: { ziel: 'vulkan', h: 2500, nei: -8, blick: 'vulkan', weg: 9000 },
+  wald:   { ziel: 'wald', h: 1.8, nei: 2, blick: 'berg', gehen: true },
 };
 function setzeOrt(name) {
   const o = ORTE[name] || ORTE.orbit;
@@ -197,7 +234,20 @@ function setzeOrt(name) {
   vorn.normalize();
   neigung = THREE.MathUtils.degToRad(o.nei);
   auto = null;
+  setzeGehen(!!o.gehen);
 }
+
+// ---------- Geh-Modus: Schwerkraft, Springen, Schwimmen, Bäume/Felsen sind fest ----------
+let gehen = false, fallV = 0, amBoden = false, schwimmt = false;
+const AUGE = 1.7, GEH_TEMPO = 4.2, SPRUNG = 5.2, G_ERDE = 9.81;
+const bGehen = document.getElementById('bGehen');
+function setzeGehen(an) {
+  gehen = an; fallV = 0;
+  bGehen.textContent = an ? '🕊 Fliegen' : '🚶 Gehen';
+  bGehen.classList.toggle('on', an);
+  if (an) { auto = null; neigung = THREE.MathUtils.clamp(neigung, -0.6, 0.6); }
+}
+bGehen.onclick = () => { setzeGehen(!gehen); if (gehen) { const d = cam.clone().normalize(); cam.copy(d).multiplyScalar(R + boden(d) + AUGE); } };
 
 // ---------- Steuerung ----------
 const tasten = new Set();
@@ -251,12 +301,12 @@ const tempoEl = document.getElementById('tempo');
 let auto = null;
 const AUTO_STUFEN = [1_500_000, 200_000, 20_000, 2_000, 200, 20, 2];
 document.getElementById('bOrbit').onclick = () => {
-  setzeOrt('kueste');
+  setzeOrt('kueste'); setzeGehen(false);
   const d = cam.clone().normalize();
   cam.copy(d).multiplyScalar(R + boden(d) + AUTO_STUFEN[0]);
   auto = { stufen: [...AUTO_STUFEN, ...AUTO_STUFEN.slice(0, -1).reverse()], pause: 0, punkt: d };
 };
-for (const [id, ort] of [['bAll', 'orbit'], ['bBerg', 'berg'], ['bKueste', 'kueste'], ['bBoden', 'boden'], ['bFluss', 'fluss'], ['bSee', 'see'], ['bVulkan', 'vulkan']])
+for (const [id, ort] of [['bAll', 'orbit'], ['bBerg', 'berg'], ['bKueste', 'kueste'], ['bBoden', 'boden'], ['bFluss', 'fluss'], ['bSee', 'see'], ['bVulkan', 'vulkan'], ['bWald', 'wald']])
   document.getElementById(id).onclick = () => setzeOrt(ort);
 document.getElementById('bLod').onclick = (e) => {
   stufenFarben = !stufenFarben;
@@ -271,8 +321,12 @@ document.getElementById('bSeed').onclick = () => {
 // ---------- Karte: Geologie von oben (Höhen, Flüsse, Seen), Tippen = hinfliegen ----------
 const karteBox = document.getElementById('karteBox'), karteEl = document.getElementById('karte'), punktEl = document.getElementById('kpunkt');
 const KW = 360, KH = 180;
+const KARTEN = ['Höhe', 'Gestein', 'Klima'];
+let karteModus = -1; // -1 = aus
+const kf = [0, 0, 0];
 function zeichneKarte() {
   karteEl.width = KW; karteEl.height = KH;
+  const modus = KARTEN[karteModus];
   const ctx = karteEl.getContext('2d'), bildDaten = ctx.createImageData(KW, KH), px = bildDaten.data;
   const g = GITTER.neueGewichte();
   for (let y = 0; y < KH; y++) for (let x = 0; x < KW; x++) {
@@ -281,25 +335,39 @@ function zeichneKarte() {
     const h = GITTER.lese(geo.hoehe, g), f = GITTER.lese(geo.spiegel, g), c = g.naechste;
     let r, gg, b;
     if (h < 0) { const t = Math.min(1, -h / 4000); r = 20 * (1 - t) + 6; gg = 95 * (1 - t) + 22; b = 150 * (1 - t) + 62; }
+    else if (modus === 'Gestein') { const fc = GESTEIN_FARBE[geo.gestein[c]]; r = fc[0] * 300; gg = fc[1] * 300; b = fc[2] * 300; }
+    else if (modus === 'Klima') {
+      const T = tempAm(GITTER.lese(geo.temp0, g), h), Fe = GITTER.lese(geo.feuchte, g);
+      bodenFarbe(T, Fe, 0.5, kf); r = kf[0] * 290; gg = kf[1] * 290; b = kf[2] * 290;
+      if (T < -6) { r = gg = b = 240; }
+    }
     else { const t = Math.min(1, h / 3200); r = 80 + 140 * t; gg = 130 + 50 * t - 50 * t * t; b = 60 + 130 * t * t; }
     if (f > h + 1 && f > 0) { r = 50; gg = 120; b = 210; }
     if (geo.hoehe[c] >= 0 && geo.flaeche[c] >= geo.amin) { const s2 = Math.min(1, Math.log10(geo.flaeche[c] / geo.amin) / 2.3); r += (40 - r) * s2; gg += (110 - gg) * s2; b += (235 - b) * s2; }
     const i = (y * KW + x) * 4; px[i] = r; px[i + 1] = gg; px[i + 2] = b; px[i + 3] = 255;
   }
   ctx.putImageData(bildDaten, 0, 0);
+  const chip = (rgb, t) => `<b style="background:rgb(${rgb.map((v) => Math.min(255, v * 300 | 0))})"></b>${t}`;
+  document.getElementById('legende').innerHTML =
+    modus === 'Gestein' ? GESTEIN_NAME.map((n, i) => chip(GESTEIN_FARBE[i], n)).join('') :
+    modus === 'Klima' ? 'Grün = Wald · Gelb = Gras/Steppe · Sand = Wüste · Weiß = Eis' :
+    'Braun/Grau = Gebirge · Blau = Flüsse und Seen · Tippen = hinfliegen';
 }
+// Knopf schaltet reihum: Höhe → Gestein → Klima → aus
 document.getElementById('bKarte').onclick = (e) => {
-  const an = karteBox.style.display !== 'block';
-  if (an && !karteEl.dataset.fertig) { zeichneKarte(); karteEl.dataset.fertig = '1'; }
+  karteModus = karteModus + 1 >= KARTEN.length ? -1 : karteModus + 1;
+  const an = karteModus >= 0;
+  if (an) zeichneKarte();
   karteBox.style.display = an ? 'block' : 'none';
   e.currentTarget.classList.toggle('on', an);
+  e.currentTarget.textContent = an ? 'Karte: ' + KARTEN[karteModus] : 'Karte';
 };
 karteEl.addEventListener('pointerdown', (e) => {
   const r = karteEl.getBoundingClientRect();
   const lat = (0.5 - (e.clientY - r.top) / r.height) * Math.PI, lon = ((e.clientX - r.left) / r.width) * 2 * Math.PI;
   const d = new THREE.Vector3(Math.cos(lat) * Math.cos(lon), Math.sin(lat), Math.cos(lat) * Math.sin(lon));
   cam.copy(d).multiplyScalar(R + boden(d) + 3000);
-  neigung = THREE.MathUtils.degToRad(-35); auto = null;
+  neigung = THREE.MathUtils.degToRad(-35); auto = null; setzeGehen(false);
 });
 function karteMarker() {
   if (karteBox.style.display !== 'block') return;
@@ -312,7 +380,16 @@ function karteMarker() {
 const hud = document.getElementById('hud');
 const blau = new THREE.Color(0x8fbfea), nacht = new THREE.Color(0x0a1020), schwarz = new THREE.Color(0x01030a), himmel = new THREE.Color();
 let alt = performance.now(), fpsT = 0, fpsN = 0, fps = 0, wahlT = 1, info = { angezeigt: 0, gebaut: 0, laufend: 0, offen: 0 };
-let geladen = false, tempoAnzeige = 0;
+let geladen = false, tempoAnzeige = 0, ortT = 1, ortText = '';
+/** Was ist hier? Gestein, Biom/Gewässer, Temperatur, Feuchte – direkt aus der Geologie. */
+function ortsInfo(d) {
+  const p = planet.probe(d.x, d.y, d.z, 2);
+  let was;
+  if (p.wasser > p.h + 0.05) was = p.meer ? 'Meer' : p.fluss ? 'Fluss' : 'See';
+  else was = BIOM_NAME[biom(p.temp, p.feuchte)];
+  const tiefe = p.wasser > p.h ? ` · ${Math.round(p.wasser - p.h)} m tief` : '';
+  return `${was} · ${GESTEIN_NAME[p.gestein]} · ${p.temp.toFixed(0)} °C · Feuchte ${Math.round(p.feuchte * 100)} %${tiefe}${gehen ? (schwimmt ? ' · schwimmt' : ' · zu Fuß') : ''}`;
+}
 const ladeEl = document.getElementById('load');
 
 function bild() {
@@ -328,7 +405,7 @@ function bild() {
   vorn.projectOnPlane(oben).normalize();
   blick.copy(vorn).multiplyScalar(Math.cos(neigung)).addScaledVector(oben, Math.sin(neigung));
   rechts.crossVectors(vorn, oben).normalize();
-  const tempo = Math.max(3, hoeheBoden * 1.2) * 2 ** (+tempoEl.value);
+  const tempo = gehen ? GEH_TEMPO * (schwimmt ? 0.45 : 1) * 2 ** (+tempoEl.value) : Math.max(3, hoeheBoden * 1.2) * 2 ** (+tempoEl.value);
   let vor = -stick.y, seit = stick.x, hoch = hochRunter;
   if (tasten.has('KeyW') || tasten.has('ArrowUp')) vor += 1;
   if (tasten.has('KeyS') || tasten.has('ArrowDown')) vor -= 1;
@@ -339,9 +416,29 @@ function bild() {
   if (tasten.has('Space') || tasten.has('KeyE')) hoch += 1;
   if (tasten.has('ShiftLeft') || tasten.has('KeyQ')) hoch -= 1;
   if (vor || seit || hoch) auto = null;
-  const schritt = tmp.set(0, 0, 0).addScaledVector(blick, vor).addScaledVector(rechts, seit).addScaledVector(oben, hoch);
   const altPos = cam.clone();
-  cam.addScaledVector(schritt, tempo * dt);
+  if (gehen) {
+    // waagerecht laufen (Blick hoch/runter ändert die Richtung nicht), Sprung mit ▲/Leertaste
+    const l = Math.hypot(vor, seit);
+    const schritt = tmp.set(0, 0, 0).addScaledVector(vorn, vor).addScaledVector(rechts, seit);
+    if (l > 1) schritt.multiplyScalar(1 / l);
+    cam.addScaledVector(schritt, tempo * dt);
+    if (hoch > 0 && (amBoden || schwimmt)) { fallV = schwimmt ? 2.5 : SPRUNG; amBoden = false; }
+    fallV -= G_ERDE * dt;
+    cam.addScaledVector(oben, fallV * dt);
+    // Kollision mit Stämmen und Felsen (waagerecht hinausschieben)
+    for (const h of natur.naheHindernisse()) {
+      tmp.set(cam.x - h.x, cam.y - h.y, cam.z - h.z);
+      const hoehe = tmp.dot(oben);
+      if (hoehe > 12 || hoehe < -2) continue;
+      tmp.addScaledVector(oben, -hoehe);
+      const d = tmp.length(), r = h.r + 0.3;
+      if (d < r && d > 1e-4) cam.addScaledVector(tmp, (r - d) / d);
+    }
+  } else {
+    const schritt = tmp.set(0, 0, 0).addScaledVector(blick, vor).addScaledVector(rechts, seit).addScaledVector(oben, hoch);
+    cam.addScaledVector(schritt, tempo * dt);
+  }
 
   if (auto) { // Orbit-Test
     const ziel = auto.stufen[0];
@@ -350,12 +447,17 @@ function bild() {
     neigung = -THREE.MathUtils.degToRad(THREE.MathUtils.lerp(6, 89, THREE.MathUtils.smoothstep(Math.log10(neu), 0.5, 4.8)));
     if (Math.abs(Math.log(neu / ziel)) < 0.04) { auto.pause += dt; if (auto.pause > 0.6) { auto.stufen.shift(); auto.pause = 0; if (!auto.stufen.length) auto = null; } }
   }
-  // Nie unter den Boden (Augenhöhe 1,7 m), nie zu weit weg
+  // Nie unter den Boden (Augenhöhe 1,7 m), nie zu weit weg. Zu Fuß: im tiefen Wasser schwimmen (Kopf über Wasser).
   oben.copy(cam).normalize();
-  const g2 = boden(cam);
-  const minR = R + g2 + 1.7, maxR = R + 3e7;
+  const pr = planet.probe(oben.x, oben.y, oben.z, 0.5);
+  const g2 = Math.max(0, pr.h, pr.wasser);
+  schwimmt = gehen && pr.wasser > pr.h + AUGE - 0.3;
+  const minR = R + (schwimmt ? pr.wasser + 0.3 : Math.max(pr.h, pr.wasser) + AUGE), maxR = R + 3e7;
   const lc = cam.length();
-  if (lc < minR) cam.setLength(minR); else if (lc > maxR) cam.setLength(maxR);
+  if (lc < minR) { cam.setLength(minR); if (fallV < 0) fallV = 0; amBoden = true; }
+  else if (lc > maxR) cam.setLength(maxR);
+  else if (gehen && lc > minR + 0.05) amBoden = false;
+  if (gehen && schwimmt && fallV < 0) fallV = Math.max(fallV, -1);
   hoeheBoden = cam.length() - R - g2;
   tempoAnzeige = THREE.MathUtils.lerp(tempoAnzeige, cam.distanceTo(altPos) / Math.max(dt, 1e-3), 0.1);
 
@@ -366,7 +468,11 @@ function bild() {
     const wunsch = waehleKacheln([cam.x, cam.y, cam.z], { R, maxStufe: MAX_STUFE }).filter((k) => !k.verdeckt);
     info = strom.update(wunsch);
   }
+  // Natur nur nah am Boden
+  const naturAn = hoeheBoden < 1200 && !stufenFarben;
+  if (wahlT === 0 && naturAn) streuen(streuKacheln([cam.x, cam.y, cam.z], R, STREU_L, STREU_RADIUS));
   if (!worker.length) hauptBau(geladen ? 8 : 30);
+  natur.update(cam, naturAn ? [...streuDa.values()] : [], jetzt / 1000, naturAn);
 
   // Floating Origin: Kamera im Ursprung, Welt verschoben
   for (const m of strom.sichtbar()) {
@@ -398,13 +504,21 @@ function bild() {
   else if (!geladen) ladeEl.querySelector('i').textContent = `${info.angezeigt} Kacheln`;
 
   const r = renderer.info.render;
-  hud.textContent =
+  ortT += dt;
+  if (ortT > 0.3) { ortT = 0; ortText = ortsInfo(oben); }
+  const kompakt = innerWidth < 640; // Handy hochkant: nur das Wichtigste
+  hud.textContent = kompakt ?
+    `${ortText}\n` +
+    `Höhe ${laenge(Math.max(0, hoeheBoden))} · Boden ${laenge(Math.max(0, g2))} · ${Math.round(tempoAnzeige * 3.6)} km/h\n` +
+    `${fps.toFixed(0)} fps · ${r.triangles.toLocaleString('de-DE')} Dreiecke · Natur ${natur.info.anzahl}` :
+    `Hier        ${ortText}\n` +
     `Höhe        ${laenge(Math.max(0, hoeheBoden))} über Boden\n` +
     `Meereshöhe  ${laenge(Math.max(0, g2))} Boden · ${laenge(Math.max(0, ueberMeer))} Kamera\n` +
     `Tempo       ${Math.round(tempoAnzeige * 3.6).toLocaleString('de-DE')} km/h\n` +
     `Kacheln     ${info.angezeigt} sichtbar · ${info.gebaut} gebaut · ${info.offen} offen\n` +
     `Bau         ${worker.length ? worker.length + ' Worker' : 'Hauptthread'} · ${(bauMs / Math.max(1, bauN)).toFixed(1)} ms/Kachel\n` +
     `Planet      R ${laenge(R)} · Seed ${SEED} · Stufen 0–${MAX_STUFE}\n` +
+    `Natur       ${natur.info.anzahl.toLocaleString('de-DE')} Stück · ${natur.info.dreiecke.toLocaleString('de-DE')} Dreiecke · ${streuDa.size} Streu-Kacheln\n` +
     `Geologie    ${geo.platten.length} Platten · Land ${(geo.stat.land * 100).toFixed(0)} % · ${geo.stat.flussZellen} Fluss- · ${geo.stat.seeZellen} See-Zellen · ${(geoMs / 1000).toFixed(1)} s\n` +
     `Dreiecke    ${r.triangles.toLocaleString('de-DE')} · ${r.calls} Draw-Calls · ${fps.toFixed(0)} fps`;
   requestAnimationFrame(bild);

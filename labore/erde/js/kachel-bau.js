@@ -1,6 +1,8 @@
 // Baut die Daten einer Planeten-Kachel (reine Logik, ohne THREE, läuft im Worker oder im Hauptthread).
 // Ergebnis: Typed Arrays, Lage relativ zum Kachel-Mittelpunkt auf Meereshöhe (genau genug für Float32).
 import { kachelUV, kachelMitte, wuerfelZuKugel } from './planet-baum.js';
+import { FELDER } from './planet-hoehe.js';
+const NF = FELDER.length;
 
 export const ZELLEN = 32; // 33×33 Punkte je Kachel
 
@@ -15,7 +17,7 @@ export function baueKachel(k, planet, N = ZELLEN) {
   // Gitter mit 1 Punkt Rand (für Normalen über die Kachelkante hinweg)
   const M = N + 3, G = M * M;
   const P = new Float64Array(G * 3), D = new Float64Array(G * 3), H = new Float64Array(G);
-  const IW = new Float64Array(G), IU = new Float32Array(G), IG = new Float32Array(G), IM = new Uint8Array(G), IH = new Float64Array(G);
+  const IF = new Float64Array(G * NF); // probe()-Felder je Punkt (für die Farbe)
   const dir = [0, 0, 0];
   let minH = Infinity, maxH = -Infinity;
   for (let j = -1; j <= N + 1; j++) for (let i = -1; i <= N + 1; i++) {
@@ -26,7 +28,7 @@ export function baueKachel(k, planet, N = ZELLEN) {
     const h = Math.max(p.h, p.wasser);  // sichtbar: Boden oder Wasserspiegel
     const r = R + h;
     const g = (j + 1) * M + (i + 1);
-    IH[g] = p.h; IW[g] = p.wasser; IU[g] = p.ufer; IG[g] = p.gebirge; IM[g] = p.meer;
+    for (let f = 0; f < NF; f++) IF[g * NF + f] = p[FELDER[f]];
     P[g * 3] = dx * r; P[g * 3 + 1] = dy * r; P[g * 3 + 2] = dz * r;
     D[g * 3] = dx; D[g * 3 + 1] = dy; D[g * 3 + 2] = dz;
     H[g] = h;
@@ -50,7 +52,7 @@ export function baueKachel(k, planet, N = ZELLEN) {
     const flach = nx * dx + ny * dy + nz * dz;
     pos[v * 3] = P[g * 3] - cx; pos[v * 3 + 1] = P[g * 3 + 1] - cy; pos[v * 3 + 2] = P[g * 3 + 2] - cz;
     nor[v * 3] = nx; nor[v * 3 + 1] = ny; nor[v * 3 + 2] = nz;
-    info.h = IH[g]; info.wasser = IW[g]; info.ufer = IU[g]; info.gebirge = IG[g]; info.meer = IM[g];
+    for (let f = 0; f < NF; f++) info[FELDER[f]] = IF[g * NF + f];
     planet.farbe(dx, dy, dz, info, flach, farbe);
     col[v * 3] = Math.min(255, farbe[0] * 255); col[v * 3 + 1] = Math.min(255, farbe[1] * 255); col[v * 3 + 2] = Math.min(255, farbe[2] * 255);
   }
