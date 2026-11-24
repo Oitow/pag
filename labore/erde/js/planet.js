@@ -22,6 +22,7 @@ import { baueKachel, ZELLEN } from './kachel-bau.js';
 import { createKachelStrom } from './kachel-strom.js';
 import { laenge } from './mass.js';
 import { createErweiterungen } from './erweiterungen.js';
+import { createVulkanRauch } from './vulkan-rauch.js';
 
 const P = new URLSearchParams(location.search);
 const SEED = +(P.get('seed') || 7);
@@ -444,6 +445,7 @@ bGehen.onclick = () => { setzeGehen(!gehen); if (gehen) { const d = cam.clone().
 // ---------- Erweiterungen (Überleben, Bauen, Tiere, Herstellen): Vertrag in erweiterungen.js ----------
 const anker = new THREE.Group();
 scene.add(anker);
+const rauch = createVulkanRauch(anker, { vulkane: geo.vulkane, planet, R });
 const erwWelt = {
   THREE, scene, R, seed: SEED, anker, cam, oben, vorn, blick, planet, inventar, zw, natur, eingriffe, dienste: {},
   bodenHoehe: (d) => boden(d),
@@ -872,6 +874,7 @@ function bild() {
   wasserU.wZeit.value = jetzt / 1000;
   wasserU.wasserCam.value.copy(cam);
   wasserU.wHimmel.value.copy(himmel).lerp(blau, 0.3);
+  rauch.update(dt, zw.windWelt, fernU.uPixel.value, fernU.uLicht.value);
   renderer.info.reset();
   renderer.render(scene, camera);
   zw.zeichne(renderer, camera);
