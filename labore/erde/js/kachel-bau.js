@@ -37,7 +37,7 @@ export function baueKachel(k, planet, N = ZELLEN) {
 
   const innen = (N + 1) * (N + 1), rand = 4 * N;
   const nv = innen + rand;
-  const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Uint8Array(nv * 3);
+  const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Uint8Array(nv * 3), nass = new Uint8Array(nv);
   const farbe = [0, 0, 0], info = {};
   let v = 0;
   for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++, v++) {
@@ -53,6 +53,7 @@ export function baueKachel(k, planet, N = ZELLEN) {
     pos[v * 3] = P[g * 3] - cx; pos[v * 3 + 1] = P[g * 3 + 1] - cy; pos[v * 3 + 2] = P[g * 3 + 2] - cz;
     nor[v * 3] = nx; nor[v * 3 + 1] = ny; nor[v * 3 + 2] = nz;
     for (let f = 0; f < NF; f++) info[FELDER[f]] = IF[g * NF + f];
+    nass[v] = info.wasser > info.h + 0.02 ? 255 : 0;   // Wasseroberfläche (glänzt, Wellen)
     planet.farbe(dx, dy, dz, info, flach, farbe);
     col[v * 3] = Math.min(255, farbe[0] * 255); col[v * 3 + 1] = Math.min(255, farbe[1] * 255); col[v * 3 + 2] = Math.min(255, farbe[2] * 255);
   }
@@ -72,6 +73,7 @@ export function baueKachel(k, planet, N = ZELLEN) {
     pos[v * 3 + 1] = pos[a * 3 + 1] - D[g * 3 + 1] * tiefe;
     pos[v * 3 + 2] = pos[a * 3 + 2] - D[g * 3 + 2] * tiefe;
     for (let c = 0; c < 3; c++) { nor[v * 3 + c] = nor[a * 3 + c]; col[v * 3 + c] = col[a * 3 + c] * 0.8; }
+    nass[v] = nass[a];
   }
 
   const idx = new Uint16Array(N * N * 6 + rand * 6);
@@ -88,5 +90,5 @@ export function baueKachel(k, planet, N = ZELLEN) {
     idx[t++] = b; idx[t++] = sa; idx[t++] = sb;
   }
 
-  return { key: k.key, L: k.L, pos, nor, col, idx, mitte: [cx, cy, cz], minH, maxH, kante };
+  return { key: k.key, L: k.L, pos, nor, col, nass, idx, mitte: [cx, cy, cz], minH, maxH, kante };
 }

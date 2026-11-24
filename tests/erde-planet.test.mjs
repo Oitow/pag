@@ -146,7 +146,7 @@ test('Natur-Streuung: gleicher Seed → gleiche Natur; Bäume stehen auf Land, S
       const o = i * STRIDE, art = STREU_ARTEN[s.daten[o]];
       const x = s.mitte[0] + s.daten[o + 1], y = s.mitte[1] + s.daten[o + 2], z = s.mitte[2] + s.daten[o + 3];
       const l = Math.hypot(x, y, z), p = planet.probe(x / l, y / l, z / l, 2);
-      if (art === 'fichte' || art === 'birke') assert.ok(p.wasser < p.h + 0.05, 'Baum im Wasser');
+      if (['fichte', 'birke', 'eiche', 'buche', 'kiefer', 'tanne', 'tropenbaum', 'palme', 'akazie'].includes(art)) assert.ok(p.wasser < p.h + 0.05, 'Baum im Wasser');
       if (art === 'seerose' || art === 'forelle' || art === 'barsch') assert.ok(p.wasser > p.h && !p.meer, art + ' auf dem Trockenen');
     }
   }

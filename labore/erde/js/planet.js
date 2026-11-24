@@ -45,6 +45,33 @@ scene.add(sonne, himmelLicht, new THREE.AmbientLight(0x404858, 0.25));
 scene.fog = new THREE.FogExp2(0x9cc4ec, 0);
 
 const bodenMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
+// Wasser: glatt (Sonnenglanz), wandernde Wellen in der Normalen, Himmel spiegelt sich im flachen Blickwinkel (Fresnel).
+// Weltlage = Kachellage relativ zur Kamera + Kamera (wasserCam) → Wellen bleiben beim Fliegen am Ort.
+const wasserU = { wZeit: { value: 0 }, wasserCam: { value: new THREE.Vector3() }, wHimmel: { value: new THREE.Color() } };
+bodenMat.onBeforeCompile = (sh) => {
+  Object.assign(sh.uniforms, wasserU);
+  sh.vertexShader = 'attribute float nass;\nuniform vec3 wasserCam;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.vertexShader
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvNass = nass;\nvWelt = (modelMatrix * vec4(position, 1.0)).xyz + wasserCam;\nvObenW = normalize(vWelt);');
+  sh.fragmentShader = 'uniform float wZeit;\nuniform vec3 wHimmel;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.fragmentShader
+    .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.12, vNass);')
+    .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+if (vNass > 0.01) {
+  vec3 p = vWelt * 0.45; float t = wZeit;
+  vec3 st = vec3(sin(p.x * 1.1 + t * 1.3) + 0.6 * sin((p.y + p.z) * 2.3 - t * 1.7),
+                 sin(p.y * 0.9 - t * 1.1) + 0.6 * sin((p.z - p.x) * 2.1 + t * 1.5),
+                 sin(p.z * 1.0 + t * 0.9) + 0.6 * sin((p.x + p.y) * 1.9 + t * 1.2));
+  st -= vObenW * dot(st, vObenW);                       // nur in der Wasserebene kippen
+  float nahW = 1.0 - smoothstep(25.0, 220.0, length(vViewPosition));   // fern: keine Wellen (sonst Gittermuster)
+  vec3 nW = normalize(vObenW + st * 0.07 * vNass * nahW);
+  normal = normalize((viewMatrix * vec4(nW, 0.0)).xyz);
+}`)
+    .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+if (vNass > 0.01) {
+  float fr = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 4.0);
+  totalEmissiveRadiance += wHimmel * fr * 0.55 * vNass;
+}`);
+};
+bodenMat.customProgramCacheKey = () => 'erde-boden-wasser';
 const stufenMat = []; // Debug: jede Stufe eigene Farbe
 for (let i = 0; i <= MAX_STUFE; i++) stufenMat.push(new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL((i * 0.13) % 1, 0.6, 0.55), roughness: 1 }));
 let stufenFarben = false;
@@ -57,6 +84,7 @@ function erzeuge(d) {
   geo.setAttribute('position', new THREE.BufferAttribute(d.pos, 3));
   geo.setAttribute('normal', new THREE.BufferAttribute(d.nor, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(d.col, 3, true));
+  geo.setAttribute('nass', new THREE.BufferAttribute(d.nass, 1, true));
   geo.setIndex(new THREE.BufferAttribute(d.idx, 1));
   geo.computeBoundingSphere();
   const m = new THREE.Mesh(geo, stufenFarben ? stufenMat[d.L] : bodenMat);
@@ -193,7 +221,20 @@ const orte = (() => {
     const w = waldDichte(tempAm(geo.temp0[c], H[c]), geo.feuchte[c]) * (1 + 0.3 * D(c).dot(D(kueste)));
     if (w > wBest) { wBest = w; wald = c; }
   }
-  return { wald: D(wald),
+  // je Biom ein Beispielort: flaches Land, kein Wasser, möglichst nah an der Küsten-Startstelle
+  const biome = BIOM_NAME.map(() => ({ c: -1, s: -2 }));
+  for (let c = 0; c < n; c++) {
+    if (H[c] < 20 || H[c] > 900 || F[c] > H[c] + 1 || A[c] >= geo.amin) continue;
+    const b = biome[biom(tempAm(geo.temp0[c], H[c]), geo.feuchte[c])];
+    let rand = false;  // nicht am Biom-Rand
+    for (let k = 0; k < 8; k++) { const q = nb[c * 8 + k]; if (q >= 0 && biom(tempAm(geo.temp0[q], H[q]), geo.feuchte[q]) !== biom(tempAm(geo.temp0[c], H[c]), geo.feuchte[c])) rand = true; }
+    if (rand) continue;
+    const sc = D(c).dot(D(kueste));
+    if (sc > b.s) { b.s = sc; b.c = c; }
+  }
+  const biomOrte = {};
+  biome.forEach((b, i) => { if (b.c >= 0) biomOrte['biom' + i] = D(b.c); });
+  return { ...biomOrte, wald: D(wald),
     berg: D(berg), kueste: D(kueste), fluss: D(fluss >= 0 ? fluss : kueste),
     flussAb: D(fluss >= 0 ? ab[ab[ab[fluss]] >= 0 ? ab[fluss] : fluss] : kueste),
     see: D(see >= 0 ? see : kueste), vulkan: new THREE.Vector3(...v.d),
@@ -218,6 +259,14 @@ const ORTE = {
   see:    { ziel: 'see', h: 250, nei: -10, blick: 'see', weg: 2500 },
   vulkan: { ziel: 'vulkan', h: 2500, nei: -8, blick: 'vulkan', weg: 9000 },
   wald:   { ziel: 'wald', h: 1.8, nei: 2, blick: 'berg', gehen: true },
+};
+const BIOM_ORTE = Object.keys(orte).filter((k) => k.startsWith('biom'));
+for (const k of BIOM_ORTE) ORTE[k] = { ziel: k, h: 1.8, nei: 2, blick: 'berg', gehen: true };
+let biomWahl = -1;
+document.getElementById('bBiom').onclick = (e) => {
+  biomWahl = (biomWahl + 1) % BIOM_ORTE.length;
+  setzeOrt(BIOM_ORTE[biomWahl]);
+  e.currentTarget.textContent = '▸ ' + BIOM_NAME[+BIOM_ORTE[biomWahl].slice(4)];
 };
 function setzeOrt(name) {
   const o = ORTE[name] || ORTE.orbit;
@@ -497,6 +546,9 @@ function bild() {
   himmelLicht.position.copy(oben);
   himmelLicht.intensity = 0.25 + 0.55 * tag * (1 - raum);
 
+  wasserU.wZeit.value = jetzt / 1000;
+  wasserU.wasserCam.value.copy(cam);
+  wasserU.wHimmel.value.copy(himmel).lerp(blau, 0.3);
   renderer.render(scene, camera);
   karteMarker();
 

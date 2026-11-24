@@ -12,7 +12,7 @@ self.onmessage = (e) => {
     const t0 = performance.now();
     const k = baueKachel(m.k, planet);
     k.ms = performance.now() - t0;
-    self.postMessage(k, [k.pos.buffer, k.nor.buffer, k.col.buffer, k.idx.buffer]);
+    self.postMessage(k, [k.pos.buffer, k.nor.buffer, k.col.buffer, k.nass.buffer, k.idx.buffer]);
   }
   if (m.art === 'streu') { // Natur einer Streu-Kachel (Bäume, Felsen, Schilf …)
     const s = streueKachel(m.k, planet);
