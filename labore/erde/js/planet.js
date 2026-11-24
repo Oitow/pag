@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { createPlanetHoehe } from './planet-hoehe.js';
 import { berechneGeologie, GESTEIN_NAME, GESTEIN_FARBE } from './geologie.js';
 import { biom, BIOM_NAME, tempAm, waldDichte, bodenFarbe } from './klima.js';
-import { streuKacheln, streueKachel, streuStufe } from './natur-streu.js';
+import { streuKacheln, streueKachel, streuStufe, STREU_ARTEN, STRIDE } from './natur-streu.js';
 import { createNatur } from './natur.js';
 import { createMond } from '../../naturstimmungen/mond.js';
 import { createEingriffe } from './eingriffe.js';
@@ -103,6 +103,49 @@ let stufenFarben = false;
 // ---------- Kacheln ----------
 const welt = new THREE.Group();
 scene.add(welt);
+// ---------- Fernwald: Bäume als Punkte (Silhouette im Shader), hängen an ihrer Gelände-Kachel ----------
+const fernU = { uPixel: { value: 600 }, uNah: { value: 270 }, uLicht: { value: new THREE.Color(1, 1, 1) }, uNebelDichte: { value: 0 }, uNebelFarbe: { value: new THREE.Color() } };
+const fernMat = new THREE.ShaderMaterial({
+  uniforms: fernU,
+  vertexShader: `
+attribute float groesse; attribute float art; attribute vec3 farbe;
+uniform float uPixel, uNah;
+varying vec3 vFarbe; varying float vArt, vAlpha, vNebel;
+#include <common>
+#include <logdepthbuf_pars_vertex>
+void main() {
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  float d = length(mv.xyz);
+  vAlpha = smoothstep(uNah, uNah + 60.0, d);                  // nah stehen die echten Bäume
+  float px = groesse * uPixel / max(d, 1.0);
+  vAlpha *= clamp(px / 1.5, 0.0, 1.0);                        // winzig: blass statt flimmern
+  gl_PointSize = vAlpha < 0.01 ? 0.0 : clamp(px, 1.5, 64.0);
+  vFarbe = farbe; vArt = art; vNebel = d;
+  gl_Position = projectionMatrix * mv;
+  #include <logdepthbuf_vertex>
+}`,
+  fragmentShader: `
+uniform vec3 uLicht, uNebelFarbe; uniform float uNebelDichte;
+varying vec3 vFarbe; varying float vArt, vAlpha, vNebel;
+#include <logdepthbuf_pars_fragment>
+void main() {
+  vec2 p = gl_PointCoord; p.y = 1.0 - p.y;                    // 0 unten … 1 oben
+  float x = abs(p.x - 0.5), hell;
+  if (vArt < 0.5) {                                           // Nadelbaum: Kegel mit Stamm
+    if (p.y < 0.1) { if (x > 0.04) discard; hell = 0.5; }
+    else { if (x > (1.0 - p.y) * 0.42) discard; hell = 0.75 + 0.35 * p.y - 0.4 * x; }
+  } else {                                                    // Laubbaum: runde Krone über Stamm
+    vec2 k = vec2(x, p.y - 0.6);
+    if (length(k * vec2(1.0, 1.15)) > 0.4) { if (p.y > 0.3 || x > 0.05) discard; hell = 0.5; }
+    else hell = 0.8 + 0.4 * (p.y - 0.4) - 0.3 * x;
+  }
+  #include <logdepthbuf_fragment>
+  vec3 c = vFarbe * hell * uLicht;
+  float nebel = 1.0 - exp(-uNebelDichte * uNebelDichte * vNebel * vNebel);
+  gl_FragColor = vec4(mix(c, uNebelFarbe, nebel), 1.0);
+  if (vAlpha < 0.5 && fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) > vAlpha * 2.0) discard; // weiches Einblenden ohne Sortieren
+}`,
+});
 function erzeuge(d) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(d.pos, 3));
@@ -116,11 +159,22 @@ function erzeuge(d) {
   m.castShadow = d.L >= MAX_STUFE - 2;   // nur feine Kacheln nahe am Spieler werfen Schatten (Böschungen, Grubenränder)
   m.userData = { mitte: d.mitte, L: d.L };
   m.visible = false;
+  if (d.baeume) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(d.baeume.pos, 3));
+    const ga = new THREE.InterleavedBuffer(d.baeume.groesse, 2);
+    g.setAttribute('groesse', new THREE.InterleavedBufferAttribute(ga, 1, 0));
+    g.setAttribute('art', new THREE.InterleavedBufferAttribute(ga, 1, 1));
+    g.setAttribute('farbe', new THREE.BufferAttribute(d.baeume.farbe, 3, true));
+    g.computeBoundingSphere();
+    const punkte = new THREE.Points(g, fernMat);
+    m.add(punkte);
+  }
   welt.add(m);
   return m;
 }
 const zeige = (m, an) => { if (m) m.visible = an; };
-const entsorge = (m) => { welt.remove(m); m.geometry.dispose(); };
+const entsorge = (m) => { welt.remove(m); m.geometry.dispose(); for (const c of m.children) c.geometry.dispose(); };
 
 // Worker-Pool; bei file:// oder Fehler: Bau im Hauptthread mit Zeitbudget
 const hauptQueue = [];
@@ -282,7 +336,15 @@ const orte = (() => {
     const sc = D(c).dot(D(kueste));
     if (sc > b.s) { b.s = sc; b.c = c; }
   }
+  // je Gestein ein Ort (flach, trocken, nah an der Küste) – ?ort=gestein0…4
+  const gst = GESTEIN_NAME.map(() => ({ c: -1, s: -2 }));
+  for (let c = 0; c < n; c++) {
+    if (H[c] < 40 || H[c] > 900 || F[c] > H[c] + 1 || A[c] >= geo.amin) continue;
+    const g = gst[geo.gestein[c]], sc = D(c).dot(D(kueste));
+    if (sc > g.s) { g.s = sc; g.c = c; }
+  }
   const biomOrte = {};
+  gst.forEach((g, i) => { if (g.c >= 0) biomOrte['gestein' + i] = D(g.c); });
   biome.forEach((b, i) => { if (b.c >= 0) biomOrte['biom' + i] = D(b.c); });
   return { ...biomOrte, wald: D(wald),
     berg: D(berg), kueste: D(kueste), fluss: D(fluss >= 0 ? fluss : kueste),
@@ -331,6 +393,7 @@ const ORTE = {
   wald:   { ziel: 'wald', h: 1.8, nei: 2, blick: 'berg', gehen: true },
 };
 const BIOM_ORTE = Object.keys(orte).filter((k) => k.startsWith('biom'));
+for (const k of Object.keys(orte).filter((k) => k.startsWith('gestein'))) ORTE[k] = { ziel: k, h: 1.8, nei: -12, blick: 'berg', gehen: true };
 for (const k of BIOM_ORTE) ORTE[k] = { ziel: k, h: 1.8, nei: 2, blick: 'berg', gehen: true };
 let biomWahl = -1;
 document.getElementById('bBiom').onclick = (e) => {
@@ -435,6 +498,29 @@ document.getElementById('bReset').onclick = () => {
   location.reload();
 };
 setInterval(speichern, 15000); // Uhr/Wetter ab und zu sichern
+
+// ---------- Menü: auf/zu, Größe, Info-Box (alles gespeichert) ----------
+const MENUE = (() => { try { return JSON.parse(localStorage.getItem('erde-menue') || 'null'); } catch { return null; } })()
+  || { auf: !(navigator.maxTouchPoints > 0 || innerWidth < 700), groesse: 1, info: innerWidth < 640 ? 'kurz' : 'voll' };
+const menueEl = document.getElementById('menue'), hudEl = document.getElementById('hud');
+function menueSichern() { try { localStorage.setItem('erde-menue', JSON.stringify(MENUE)); } catch { /* egal */ } }
+function menueZeigen() {
+  menueEl.classList.toggle('auf', MENUE.auf);
+  document.body.classList.toggle('menueAuf', MENUE.auf);
+  document.getElementById('bMenue').classList.toggle('on', MENUE.auf);
+  document.documentElement.style.setProperty('--ui', MENUE.groesse);
+  hudEl.classList.toggle('aus', MENUE.info === 'aus');
+  document.getElementById('bInfo').textContent = 'Info: ' + MENUE.info;
+}
+document.getElementById('bMenue').onclick = () => { MENUE.auf = !MENUE.auf; menueZeigen(); menueSichern(); };
+document.getElementById('bKleiner').onclick = () => { MENUE.groesse = Math.max(0.7, +(MENUE.groesse - 0.1).toFixed(2)); menueZeigen(); menueSichern(); };
+document.getElementById('bGroesser').onclick = () => { MENUE.groesse = Math.min(1.5, +(MENUE.groesse + 0.1).toFixed(2)); menueZeigen(); menueSichern(); };
+document.getElementById('bInfo').onclick = () => { const s = ['voll', 'kurz', 'aus']; MENUE.info = s[(s.indexOf(MENUE.info) + 1) % 3]; menueZeigen(); menueSichern(); };
+// Auf dem Handy schließt das Menü nach einem Ortssprung (Blick frei)
+menueEl.addEventListener('click', (e) => { if (e.target.closest('.raster') && innerWidth < 700 && /^b(All|Berg|Kueste|Boden|Fluss|See|Vulkan|Wald|Orbit)$/.test(e.target.id)) { MENUE.auf = false; menueZeigen(); menueSichern(); } });
+menueZeigen();
+// Hilfe-Text nur am Anfang
+setTimeout(() => { const h = document.getElementById('hilfe'); if (h) h.style.transition = 'opacity 1s', h.style.opacity = 0; }, 12000);
 
 // ---------- Grafik-Stufe (Handy: Mittel) ----------
 const GRAFIK = {
@@ -733,6 +819,13 @@ function bild() {
   renderer.shadowMap.autoUpdate = schattenAn || (tag < 0.5 && GRAFIK[grafik].schatten);
   sterne.visible = raum > 0.5 || (tag < 0.3 && wolken < 0.6);
 
+  // Fernwald: Pixelmaßstab, Licht wie die Natur (Sonne + Himmel), Nebel wie die Szene
+  fernU.uPixel.value = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+  fernU.uNah.value = 270 * GRAFIK[grafik].natur;
+  const lichtStaerke = 0.3 + 0.85 * THREE.MathUtils.smoothstep(hs, -0.05, 0.25) * (1 - 0.5 * wolken) + 0.1 * (1 - tag);
+  fernU.uLicht.value.copy(sonne.color).multiplyScalar(lichtStaerke);
+  fernU.uNebelDichte.value = scene.fog.density;
+  fernU.uNebelFarbe.value.copy(scene.fog.color);
   wasserU.wZeit.value = jetzt / 1000;
   wasserU.wasserCam.value.copy(cam);
   wasserU.wHimmel.value.copy(himmel).lerp(blau, 0.3);
@@ -749,7 +842,7 @@ function bild() {
   ortT += dt;
   if (ortT > 0.3) { ortT = 0; ortText = ortsInfo(oben); invText = inventarText(); }
   const zeitText = zw.text(oben);
-  const kompakt = innerWidth < 640; // Handy hochkant: nur das Wichtigste
+  const kompakt = MENUE.info === 'kurz';
   hud.textContent = kompakt ?
     `${ortText}\n${zeitText}\n` + (gehen ? `${invText}\n` : '') +
     `Höhe ${laenge(Math.max(0, hoeheBoden))} · Boden ${laenge(Math.max(0, g2))} · ${Math.round(tempoAnzeige * 3.6)} km/h\n` +
@@ -776,5 +869,21 @@ addEventListener('resize', () => {
 setzeOrt(P.get('ort') || 'orbit');
 // Testschalter: ?wetter=regen|schnee|gewitter|nebel|sturm|klar … und ?uhr=19 (Ortszeit)
 if (P.get('wetter')) zw.wetter.setze(P.get('wetter'), true);
+// Testschalter ?zeige=<art>: nach dem Laden vor das nächste Stück dieser Art stellen (z. B. ammonit, quarzdruse)
+if (P.get('zeige')) setTimeout(() => {
+  const ai = STREU_ARTEN.indexOf(P.get('zeige'));
+  let best = null, bd = Infinity;
+  for (const k of streuDa.values()) for (let i = 0; i < k.anzahl; i++) {
+    if (k.daten[i * STRIDE] !== ai) continue;
+    const x = k.mitte[0] + k.daten[i * STRIDE + 1], y = k.mitte[1] + k.daten[i * STRIDE + 2], z = k.mitte[2] + k.daten[i * STRIDE + 3];
+    const d = Math.hypot(x - cam.x, y - cam.y, z - cam.z);
+    if (d < bd) { bd = d; best = new THREE.Vector3(x, y, z); }
+  }
+  if (!best) return;
+  const auf = best.clone().normalize(), seite = new THREE.Vector3(0.3, 1, 0.2).cross(auf).normalize();
+  cam.copy(best).addScaledVector(seite, 1.6).addScaledVector(auf, 1.8);
+  vorn.copy(best).sub(cam).projectOnPlane(auf).normalize();
+  neigung = -0.75;
+}, 9000);
 if (P.get('uhr')) zw.stelleOrtszeit([cam.x / cam.length(), cam.y / cam.length(), cam.z / cam.length()], +P.get('uhr'));
 requestAnimationFrame(bild);

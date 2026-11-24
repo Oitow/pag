@@ -12,13 +12,23 @@ html,body{margin:0;height:100%;overflow:hidden;background:#01030a;touch-action:n
 canvas{display:block}
 #hud{position:fixed;left:8px;top:8px;font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;background:rgba(6,10,20,.6);padding:7px 9px;border-radius:10px;pointer-events:none;white-space:pre;z-index:5;max-width:calc(100vw - 120px);overflow:hidden}
 @media (max-width:640px){#hud{white-space:pre-wrap;font-size:10.5px}}
-#rechts{position:fixed;right:8px;top:8px;bottom:8px;display:flex;flex-direction:column;gap:5px;z-index:6;overflow-y:auto}
+#rechts{position:fixed;right:8px;top:8px;display:flex;flex-direction:column;align-items:flex-end;gap:6px;z-index:6;max-height:calc(100vh - 200px)}
+#rechts .kopf{display:flex;gap:6px}
+#bMenue{min-width:44px;font-size:18px;padding:4px 10px}
+#menue{display:none;background:rgba(6,10,20,.72);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:6px 8px 8px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#menue.auf{display:block}
+#menue .titel{font-size:10px;letter-spacing:.08em;text-transform:uppercase;opacity:.55;margin:6px 2px 4px}
+#menue .raster{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+#menue .b{min-width:0;font-size:12.5px;padding:6px 6px}
+.ui{zoom:var(--ui,1)}
+#hud.aus{display:none}
+body.menueAuf #hud{max-width:calc(100vw - 250px)}
 .b{background:rgba(6,10,20,.6);color:#eef3fa;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:6px 10px;font-size:13px;min-width:86px;min-height:32px;flex:none;box-sizing:border-box;text-align:center;user-select:none;-webkit-user-select:none;cursor:pointer}
 .b:active,.b.on{background:rgba(70,110,170,.8)}
 .b.gelb{background:rgba(200,150,50,.45)}
 #unten{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);width:min(70vw,360px);display:flex;gap:8px;align-items:center;background:rgba(6,10,20,.6);border-radius:14px;padding:7px 10px;z-index:6;box-sizing:border-box;font-size:12px}
 #unten input{flex:1}
-#hochrunter{position:fixed;right:104px;bottom:64px;display:flex;flex-direction:column;gap:10px;z-index:6}
+#hochrunter{position:fixed;right:10px;bottom:64px;display:flex;flex-direction:column;gap:10px;z-index:6}
 #hochrunter .b{min-width:58px;min-height:52px;font-size:20px;padding:0;display:flex;align-items:center;justify-content:center}
 #joy{position:fixed;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.06);display:none;z-index:4;pointer-events:none}
 #knob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px;border-radius:50%;background:rgba(255,255,255,.35)}
@@ -42,30 +52,35 @@ a.b{text-decoration:none}
 </head>
 <body>
 <div id="load"><div>Erschaffe Planet…</div><i></i></div>
-<div id="hud"></div>
-<div id="rechts">
-  <div class="b gelb" id="bOrbit">▶ Orbit-Test</div>
-  <div class="b" id="bAll">All</div>
-  <div class="b" id="bBerg">Berg</div>
-  <div class="b" id="bKueste">Küste</div>
-  <div class="b" id="bBoden">Boden</div>
-  <div class="b" id="bFluss">Fluss</div>
-  <div class="b" id="bSee">See</div>
-  <div class="b" id="bVulkan">Vulkan</div>
-  <div class="b" id="bWald">Wald</div>
-  <div class="b" id="bBiom">Biom ▸</div>
-  <div class="b gelb" id="bGehen">🚶 Gehen</div>
-  <div class="b" id="bZeit">⏩ Zeit 1×</div>
-  <div class="b" id="bGrafik">Grafik</div>
-  <div class="b" id="bKarte">Karte</div>
-  <div class="b" id="bLod">LOD-Farben</div>
-  <div class="b" id="bSeed">Neuer Seed</div>
-  <a class="b" href="kugel.html">Echte Erde</a>
-  <div class="b" id="bReset">↺ Spielstand</div>
+<div id="hud" class="ui"></div>
+<div id="rechts" class="ui">
+  <div class="kopf"><div class="b" id="bMenue" title="Menü auf/zu">☰</div><div class="b gelb" id="bGehen">🚶 Gehen</div></div>
+  <div id="menue">
+    <div class="titel">Orte</div>
+    <div class="raster">
+      <div class="b gelb" id="bOrbit">▶ Orbit-Test</div><div class="b" id="bAll">All</div>
+      <div class="b" id="bBerg">Berg</div><div class="b" id="bKueste">Küste</div>
+      <div class="b" id="bBoden">Boden</div><div class="b" id="bFluss">Fluss</div>
+      <div class="b" id="bSee">See</div><div class="b" id="bVulkan">Vulkan</div>
+      <div class="b" id="bWald">Wald</div><div class="b" id="bBiom">Biom ▸</div>
+    </div>
+    <div class="titel">Ansicht</div>
+    <div class="raster">
+      <div class="b" id="bKarte">Karte</div><div class="b" id="bZeit">⏩ Zeit 1×</div>
+      <div class="b" id="bGrafik">Grafik</div><div class="b" id="bInfo">Info: voll</div>
+      <div class="b" id="bKleiner">A−</div><div class="b" id="bGroesser">A+</div>
+      <div class="b" id="bLod">LOD-Farben</div>
+    </div>
+    <div class="titel">Welt</div>
+    <div class="raster">
+      <div class="b" id="bSeed">Neuer Seed</div><a class="b" href="kugel.html">Echte Erde</a>
+      <div class="b" id="bReset">↺ Spielstand</div>
+    </div>
+  </div>
 </div>
-<div id="hochrunter"><div class="b" id="hoch">▲</div><div class="b" id="runter">▼</div></div>
+<div id="hochrunter" class="ui"><div class="b" id="hoch">▲</div><div class="b" id="runter">▼</div></div>
 <div id="karteBox"><canvas id="karte"></canvas><div id="kpunkt"></div><div id="legende"></div></div>
-<div id="aktionen"><div class="b" id="aNehmen">✋ Nehmen</div><div class="b" id="aGraben">⛏ Graben</div><div class="b" id="aBauen">⛰ Aufschütten</div></div>
+<div id="aktionen" class="ui"><div class="b" id="aNehmen">✋ Nehmen</div><div class="b" id="aGraben">⛏ Graben</div><div class="b" id="aBauen">⛰ Aufschütten</div></div>
 <div id="meldung"></div>
 <div id="ziel"></div>
 <div id="joy"><div id="knob"></div></div>

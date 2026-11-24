@@ -20,6 +20,8 @@ export const ERNTE = {
   geroell: { werkzeug: 0, gibt: [['steine', 2]] },
   wollgras: { werkzeug: 0, gibt: [['fasern', 2], ['wolle', 1]] }, pilzholz: { werkzeug: 0, gibt: [['pilz', 3], ['holz', 1]] },
   flechtenbank: { werkzeug: 2, gibt: [['steine', 3], ['flechten', 2]] },
+  erzbrocken: { werkzeug: 2, gibt: [['eisenerz', 2], ['steine', 1]] }, quarzdruse: { werkzeug: 2, gibt: [['quarz', 3], ['steine', 1]] },
+  ammonit: { werkzeug: 1, gibt: [['ammonit', 1]] },
   granitblock: { werkzeug: 2, gibt: [['steine', 4]] }, schiefer: { werkzeug: 2, gibt: [['schieferplatten', 3]] }, felsnadel: { werkzeug: 2, gibt: [['steine', 6]] },
 };
 

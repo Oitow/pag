@@ -20,7 +20,9 @@ Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Sprungmarken `?ort=o
 | `zeit-wetter.js` | Uhr (engine `zeit`), Wetter (engine `wetter`), Regen/Schnee (engine `niederschlag`) auf der Kugel |
 | `planet.js` | Seite: Steuerung, Kamera, Himmel, Sonnenschatten, Mond, Grafik-Stufe, HUD, Karte |
 
-Mitbenutzt aus `labore/naturstimmungen` (Codex): `gruppen.js` (Wollgras, Pilzholz, Flechtenbank) und `mond.js` (Mond + Mondlicht-Schatten).
+Mitbenutzt aus `labore/naturstimmungen` (Codex): `gruppen.js` (Wollgras, Pilzholz, Flechtenbank) und `mond.js` (Mond + Mondlicht-Schatten),
+aus `labore/gigantwelt/js/fundmodelle.mjs` (Codex): Fundstücke Erzbrocken, Ammonit, Quarzdruse – liegen nach Gestein halb im Boden.
+Testschalter `?ort=gestein0…4` (je Gesteinsart), `?zeige=<art>` (vor das nächste Stück dieser Art stellen).
 Grafik-Stufe Hoch/Mittel/Niedrig (Knopf, gespeichert): Schatten, Sichtweite der Natur, Geländedetail, Auflösung. Das HUD zeigt,
 welche Natur-Arten die meisten Dreiecke kosten.
 

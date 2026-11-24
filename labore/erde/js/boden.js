@@ -27,13 +27,15 @@ export const STOFFE = {
   feuerstein:{ name: 'Feuerstein', haerte: 2, dichte: 2600, fund: true },
   gold:      { name: 'Gold', haerte: 2, dichte: 19300, fund: true },
   salz:      { name: 'Salz', haerte: 1, dichte: 2200, fund: true },
+  ammonit:   { name: 'Ammonit', haerte: 1, dichte: 2600, fund: true },
+  quarz:     { name: 'Quarz', haerte: 2, dichte: 2650, fund: true },
 };
 const GESTEIN_STOFF = ['sandstein', 'kalkstein', 'granit', 'schiefer', 'basalt'];
 // Funde je Gestein: [stoff, Wahrscheinlichkeit je Grabung, Mindesttiefe m]
 const FUNDE = {
   sandstein: [['kohle', 0.08, 1], ['eisenerz', 0.02, 3], ['salz', 0.03, 2]],
-  kalkstein: [['feuerstein', 0.12, 0.5], ['salz', 0.02, 2]],
-  granit:    [['kupfererz', 0.05, 1], ['gold', 0.006, 3], ['eisenerz', 0.03, 2]],
+  kalkstein: [['ammonit', 0.06, 0.5], ['feuerstein', 0.12, 0.5], ['salz', 0.02, 2]],
+  granit:    [['quarz', 0.08, 1], ['kupfererz', 0.05, 1], ['gold', 0.006, 3], ['eisenerz', 0.03, 2]],
   schiefer:  [['eisenerz', 0.06, 1], ['kohle', 0.03, 2], ['gold', 0.004, 4]],
   basalt:    [['eisenerz', 0.08, 1], ['kupfererz', 0.03, 2]],
 };

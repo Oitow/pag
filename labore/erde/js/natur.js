@@ -1,5 +1,6 @@
 // Natur am Boden: zeigt die gestreute Natur (natur-streu) als InstancedMesh – eine Gruppe je Art/Variante.
-// Quellen: Naturfundus (labore/erde/naturfundus), Landschaftsgruppen (labore/naturstimmungen/gruppen.js)
+// Quellen: Naturfundus (labore/erde/naturfundus), Landschaftsgruppen (labore/naturstimmungen/gruppen.js),
+// Fundstücke (labore/gigantwelt/js/fundmodelle.mjs)
 // und engine/models/natur (natur-assets, echte Größen, Wind-Attribut). Bäume/Felsen/Büsche werfen Schatten.
 // Nah: volles Asset. Fern (nur Bäume): schlanke Form aus Maßen und Farben des Assets (~30 Dreiecke).
 // Wind wie engine/render/natur-material, aber für die Kugel: Windrichtung je Instanz in die Tangentialebene gelegt,
@@ -9,17 +10,19 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { baueNaturAsset } from '../naturfundus/naturfundus.mjs';
 import { baueGruppe } from '../../naturstimmungen/gruppen.js';
+import { baueFundmodell } from '../../gigantwelt/js/fundmodelle.mjs';
 import { createAssetCache } from '../../../engine/models/natur/natur-assets.js';
 import { STREU_ARTEN, STRIDE } from './natur-streu.js';
 
 const FUNDUS = new Set(['fichte', 'birke', 'granitblock', 'schiefer', 'rohrkolben', 'seerose', 'steinpilz', 'forelle', 'barsch']);
 const GRUPPEN = new Set(['wollgras', 'pilzholz', 'flechtenbank']);   // aus labore/naturstimmungen/gruppen.js
+const FUNDE = new Set(['erzbrocken', 'ammonit', 'quarzdruse']);       // aus labore/gigantwelt/js/fundmodelle.mjs
 // Werfen Schatten (Gras, Moos, Blumen u. ä. nicht – kostet viel, sieht man kaum)
-const WIRFT = (art) => BAUM.has(art) || MITTEL.has(art) || ['granitblock', 'schiefer', 'felsnadel', 'pilzholz', 'flechtenbank', 'rohrkolben'].includes(art);
+const WIRFT = (art) => BAUM.has(art) || MITTEL.has(art) || ['granitblock', 'schiefer', 'felsnadel', 'pilzholz', 'flechtenbank', 'rohrkolben', 'erzbrocken', 'quarzdruse'].includes(art);
 const BAUM = new Set(['fichte', 'birke', 'kiefer', 'tanne', 'eiche', 'buche', 'ahorn', 'weide', 'tropenbaum', 'palme', 'akazie', 'olive', 'pinie', 'toterBaum']);
 const NADEL = new Set(['fichte', 'tanne']);
-const KLEIN = new Set(['wollgras', 'pilzholz', 'farn', 'wedelfarn', 'zwergstrauch', 'moospolster', 'laubstreu', 'blume', 'pilz', 'steinpilz', 'seerose', 'rohrkolben']);
-const MITTEL = new Set(['flechtenbank', 'busch', 'beerenbusch', 'ginster', 'busch_unterholz', 'kaktus', 'saeulenkaktus', 'agave', 'baumstumpf', 'liegenderStamm', 'geroell']);
+const KLEIN = new Set(['ammonit', 'wollgras', 'pilzholz', 'farn', 'wedelfarn', 'zwergstrauch', 'moospolster', 'laubstreu', 'blume', 'pilz', 'steinpilz', 'seerose', 'rohrkolben']);
+const MITTEL = new Set(['erzbrocken', 'quarzdruse', 'flechtenbank', 'busch', 'beerenbusch', 'ginster', 'busch_unterholz', 'kaktus', 'saeulenkaktus', 'agave', 'baumstumpf', 'liegenderStamm', 'geroell']);
 const FISCH = new Set(['forelle', 'barsch']);
 // Zielhöhe (m) je Art: jedes Asset wird beim Laden darauf gebracht – egal, wie groß es gebaut ist
 // (Naturfundus und Engine dürfen ihre Modelle frei ändern). Ohne Eintrag: Größe des Assets bleibt.
@@ -161,7 +164,14 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
     let erste = null;
     for (let v = 0; v < cfg.varianten; v++) {
       let geo;
-      if (FUNDUS.has(art) || GRUPPEN.has(art)) {
+      if (FUNDE.has(art)) {
+        const { positions, colors } = baueFundmodell(art, 310 + v * 53);
+        geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        geo.computeVertexNormals();
+        geo.setAttribute('wind', new THREE.BufferAttribute(new Float32Array(positions.length / 3), 1));
+      } else if (FUNDUS.has(art) || GRUPPEN.has(art)) {
         const m = (GRUPPEN.has(art) ? baueGruppe : baueNaturAsset)(art, 11 + v * 977);
         m.material.dispose(); geo = mitWind(m.geometry, art);
       }
@@ -315,7 +325,7 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
   function setzeWind(staerke, richtung) { wind.kwStaerke.value = staerke; wind.kwRicht.value.copy(richtung); }
 
   function dispose() {
-    for (const t of toepfe) { if (t.mesh) { gruppe.remove(t.mesh); t.mesh.dispose(); } if (FUNDUS.has(t.art) || GRUPPEN.has(t.art) || t === FERN[t.art]) t.geo.dispose(); }
+    for (const t of toepfe) { if (t.mesh) { gruppe.remove(t.mesh); t.mesh.dispose(); } if (FUNDUS.has(t.art) || GRUPPEN.has(t.art) || FUNDE.has(t.art) || t === FERN[t.art]) t.geo.dispose(); }
     engine.dispose(); engineGrob.dispose();
     for (const m of materialien.values()) { m.tiefe.dispose(); m.dispose(); }
     scene.remove(gruppe);
