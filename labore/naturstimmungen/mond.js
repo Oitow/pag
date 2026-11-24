@@ -43,7 +43,7 @@ export function createMond(scene, { abstand = 900, seed = 37, schattenweite = 24
   const karte = mondOberflaeche(seed);
   const uniforms = { karte: { value: karte }, sonne: { value: new THREE.Vector3() } };
   const material = new THREE.ShaderMaterial({
-    uniforms, depthWrite: false,
+    uniforms, depthWrite: false, transparent: true,
     vertexShader: `varying vec2 vUV;
 varying vec3 vNormal;
 #include <common>
@@ -63,7 +63,9 @@ void main() {
   #include <logdepthbuf_fragment>
   float licht = max(0., dot(normalize(vNormal), sonne));
   float grund = texture2D(karte, vUV).r;
-  gl_FragColor = vec4(grund * (vec3(.025,.032,.045) + vec3(1.,.965,.87) * sqrt(licht)), 1.);
+  // Nachtseite durchsichtig: tagsüber keine schwarze Scheibe am Himmel, nachts nur die beleuchtete Sichel
+  float hell = sqrt(licht);
+  gl_FragColor = vec4(grund * vec3(1.,.965,.87) * hell, clamp(hell * 1.6, 0., 1.));
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }`,
@@ -81,14 +83,15 @@ void main() {
   scene.add(kugel, licht, licht.target);
   const ursprung = new THREE.Vector3(), auf = new THREE.Vector3(0, 1, 0), richt = new THREE.Vector3();
   return {
-    update({ kamera, richtung, sonne, oben = auf, nacht = 1, anker = ursprung }) {
+    update({ kamera, richtung, sonne, oben = auf, nacht = 1, anker = ursprung, sichtbar = true }) {
       richt.copy(richtung).normalize();
       kugel.position.copy(kamera).addScaledVector(richt, abstand);
       uniforms.sonne.value.copy(sonne).normalize();
       const hoehe = oben.dot(richt);
-      kugel.visible = hoehe > -0.025;
+      kugel.visible = sichtbar && hoehe > -0.025;
       const phase = (1 - richt.dot(uniforms.sonne.value)) / 2;
       licht.intensity = 0.85 * phase * THREE.MathUtils.clamp(nacht, 0, 1) * THREE.MathUtils.smoothstep(hoehe, 0, 0.24);
+      if (!sichtbar) licht.intensity = 0;
       licht.visible = licht.intensity > 0.002;
       licht.target.position.copy(anker);
       licht.position.copy(anker).addScaledVector(richt, schattenweite * 3);

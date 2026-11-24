@@ -20,6 +20,8 @@ export const STREU_ARTEN = [
   // Engine: Büsche, Boden, Wüste, Totholz, Unterwuchs
   'busch', 'beerenbusch', 'ginster', 'zwergstrauch', 'farn', 'grasbueschel', 'blume', 'pilz', 'kaktus', 'saeulenkaktus', 'agave',
   'baumstumpf', 'liegenderStamm', 'geroell', 'felsnadel', 'wedelfarn', 'busch_unterholz', 'moospolster', 'laubstreu',
+  // Landschaftsgruppen (labore/naturstimmungen): Wollgras am nassen Ufer/Moor, Pilzholz im feuchten Wald, Flechten auf Fels
+  'wollgras', 'pilzholz', 'flechtenbank',
 ];
 const A = Object.fromEntries(STREU_ARTEN.map((a, i) => [a, i]));
 export const STRIDE = 10; // art, px, py, pz (m, relativ zur Kachelmitte auf Meereshöhe), skala, drehung, r, g, b, frei
@@ -31,10 +33,10 @@ const GRANIT_BASIS = [0.57, 0.545, 0.51];
 // Boden je Biom: [art, wahrscheinlichkeit je Kandidat, skala]
 const BODEN = {
   [BIOM.EIS]: [['geroell', 0.03, 1]],
-  [BIOM.TUNDRA]: [['zwergstrauch', 0.16, 1], ['moospolster', 0.14, 1], ['geroell', 0.04, 1], ['blume', 0.04, 1]],
-  [BIOM.NADELWALD]: [['moospolster', 0.18, 1], ['zwergstrauch', 0.14, 1], ['farn', 0.08, 1], ['steinpilz', 0.025, 1.1], ['baumstumpf', 0.012, 1], ['liegenderStamm', 0.012, 1]],
-  [BIOM.MISCHWALD]: [['farn', 0.2, 1], ['busch', 0.05, 1], ['beerenbusch', 0.03, 1], ['steinpilz', 0.02, 1.1], ['pilz', 0.02, 1], ['liegenderStamm', 0.012, 1], ['baumstumpf', 0.01, 1]],
-  [BIOM.LAUBWALD]: [['laubstreu', 0.2, 1], ['farn', 0.16, 1], ['busch_unterholz', 0.07, 1], ['blume', 0.06, 1], ['pilz', 0.02, 1], ['liegenderStamm', 0.012, 1]],
+  [BIOM.TUNDRA]: [['zwergstrauch', 0.16, 1], ['moospolster', 0.14, 1], ['wollgras', 0.1, 1], ['flechtenbank', 0.04, 1], ['geroell', 0.04, 1], ['blume', 0.04, 1]],
+  [BIOM.NADELWALD]: [['moospolster', 0.18, 1], ['zwergstrauch', 0.14, 1], ['farn', 0.08, 1], ['pilzholz', 0.02, 1], ['steinpilz', 0.025, 1.1], ['baumstumpf', 0.012, 1], ['liegenderStamm', 0.012, 1]],
+  [BIOM.MISCHWALD]: [['farn', 0.2, 1], ['busch', 0.05, 1], ['beerenbusch', 0.03, 1], ['pilzholz', 0.02, 1], ['steinpilz', 0.02, 1.1], ['pilz', 0.02, 1], ['liegenderStamm', 0.012, 1], ['baumstumpf', 0.01, 1]],
+  [BIOM.LAUBWALD]: [['laubstreu', 0.2, 1], ['farn', 0.16, 1], ['busch_unterholz', 0.07, 1], ['blume', 0.06, 1], ['pilzholz', 0.015, 1], ['pilz', 0.02, 1], ['liegenderStamm', 0.012, 1]],
   [BIOM.GRASLAND]: [['blume', 0.16, 1], ['busch', 0.025, 1], ['beerenbusch', 0.015, 1]],
   [BIOM.STEPPE]: [['ginster', 0.05, 1], ['busch', 0.015, 0.8], ['geroell', 0.03, 1], ['agave', 0.01, 1]],
   [BIOM.WUESTE]: [['kaktus', 0.012, 1], ['saeulenkaktus', 0.012, 1.3], ['agave', 0.02, 1], ['geroell', 0.04, 1]],
@@ -120,7 +122,7 @@ export function streueKachel(k, planet) {
     const bi = biom(p.temp, p.feuchte);
     // Ufer: Schilf, ab und zu eine Weide
     if ((p.ufer > 0.35 || amSee) && p.temp > 2) {
-      if (w < 0.4) { setze(c, A.rohrkolben, 0.8 + z() * 0.6); continue; }
+      if (w < 0.4) { setze(c, p.temp < 8 && z() < 0.45 ? A.wollgras : A.rohrkolben, 0.8 + z() * 0.6); continue; }
       if (w > 0.96 && p.temp > 5) { setze(c, A.weide, 0.8 + 0.4 * z(), 1, 1, 1, 0.2); continue; }
     }
     // Fels: Steilhang, Gebirge, über der Baumgrenze – sonst vereinzelte Findlinge
@@ -133,7 +135,7 @@ export function streueKachel(k, planet) {
       else setze(c, A.granitblock, (0.25 + 1.3 * z() ** 2) * (1 + fels), tint[0], tint[1], tint[2], 0.15);
       continue;
     }
-    if (fels > 0.6 && w < 0.2) { setze(c, A.geroell, 1 + z()); continue; } // Schutthalde
+    if (fels > 0.6 && w < 0.2) { setze(c, p.temp < 10 && p.feuchte > 0.4 && z() < 0.4 ? A.flechtenbank : A.geroell, 0.8 + z() * 0.6); continue; } // Schutthalde, feucht-kühl mit Flechten
     // Bäume
     const wald = waldDichte(p.temp, p.feuchte, p.v) * (1 - glatt(0.45, 0.8, steil));
     const einzeln = bi === BIOM.SAVANNE ? 0.025 : bi === BIOM.GRASLAND ? 0.006 : bi === BIOM.STEPPE ? 0.004 : 0.002;

@@ -18,12 +18,17 @@ Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Sprungmarken `?ort=o
 | `planet-baum.js`, `kachel-bau.js`, `kachel-strom.js`, `kachel-worker.js` | Würfel-Kugel-Quadtree, Kachelbau im Worker, nahtloser Austausch |
 | `natur-streu.js` → `natur.js` | Natur je 80-m-Kachel streuen (Worker) → InstancedMesh, Wind, nah/mittel/fern |
 | `zeit-wetter.js` | Uhr (engine `zeit`), Wetter (engine `wetter`), Regen/Schnee (engine `niederschlag`) auf der Kugel |
-| `planet.js` | Seite: Steuerung, Kamera, Himmel, HUD, Karte |
+| `planet.js` | Seite: Steuerung, Kamera, Himmel, Sonnenschatten, Mond, Grafik-Stufe, HUD, Karte |
+
+Mitbenutzt aus `labore/naturstimmungen` (Codex): `gruppen.js` (Wollgras, Pilzholz, Flechtenbank) und `mond.js` (Mond + Mondlicht-Schatten).
+Grafik-Stufe Hoch/Mittel/Niedrig (Knopf, gespeichert): Schatten, Sichtweite der Natur, Geländedetail, Auflösung. Das HUD zeigt,
+welche Natur-Arten die meisten Dreiecke kosten.
 
 ## Assets – Vertrag (für jede KI, die daran arbeitet)
-- Quellen: `naturfundus/naturfundus.mjs` (`baueNaturAsset(art, seed)` → Mesh) und `engine/models/natur/natur-assets.js`.
+- Quellen: `naturfundus/naturfundus.mjs` (`baueNaturAsset(art, seed)` → Mesh), `../naturstimmungen/gruppen.js` (`baueGruppe(art, seed)`)
+  und `engine/models/natur/natur-assets.js`.
 - Ursprung am Fußpunkt, **+Y = oben**, Maße in Metern, eine Geometrie mit Vertexfarben (optional Attribut `wind` 0…1).
 - **Größe egal**: `natur.js` bringt Bäume u. a. auf `ZIEL_HOEHE` (m). Neue Zielhöhe → dort eintragen.
 - **Namen und Funktion nicht umbenennen** – sonst findet die Welt das Asset nicht.
 - **Neue Art** sichtbar machen: in `natur-streu.js` in `STREU_ARTEN` + Regel (Baum: `wachstum.js` PFLANZEN; Boden: `BODEN` je Biom),
-  in `ernte.js` was sie gibt. Fundus-Art zusätzlich in `natur.js` `FUNDUS`.
+  in `ernte.js` was sie gibt. Fundus-Art zusätzlich in `natur.js` `FUNDUS` (Gruppe: `GRUPPEN`).
