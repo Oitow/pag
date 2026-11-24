@@ -12,7 +12,8 @@ const glatt = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a)
 /** Flussbreite (m) aus Einzugsfläche (km²). */
 export const flussBreite = (aKm2) => Math.min(140, 3 + 2.4 * Math.sqrt(aKm2));
 
-export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter }) {
+/** eingriffe (optional) = createEingriffe(): Graben/Aufschütten verändert die Höhe (siehe eingriffe.js). */
+export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, eingriffe = null }) {
   const n = createNoise3D(seed);
   const R = radius;
   const G = gitter || createGeoGitter(geo.N);
@@ -46,7 +47,7 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter }
     return Math.min(1, sum * 1.1);
   }
 
-  const aus = { h: 0, wasser: -Infinity, ufer: 0, fluss: 0, gebirge: 0, meer: 0, temp: 0, feuchte: 0, fr: 0, fg: 0, fb: 0, gestein: 0 };
+  const aus = { eingriff: 0, h: 0, wasser: -Infinity, ufer: 0, fluss: 0, gebirge: 0, meer: 0, temp: 0, feuchte: 0, fr: 0, fg: 0, fb: 0, gestein: 0 };
 
   /** Füllt `aus`: h = Boden (m über Meer), wasser = Wasserspiegel (−∞ = kein Wasser), ufer 0…1, fluss 0/1,
    *  temp (°C am Ort), feuchte 0…1, fr/fg/fb = Felsfarbe des Gesteins (weich gemischt), gestein = Index der nächsten Zelle. */
@@ -115,12 +116,15 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter }
         }
       }
     }
+    // Eingriffe (Graben/Aufschütten): ändern den Boden, nicht den Wasserspiegel – wer am Ufer gräbt, gräbt ins Wasser
+    const dE = eingriffe ? eingriffe.delta(dx, dy, dz) : 0;
+    h += dE;
     // Unter Meereshöhe ohne Wasser (Rauschen drückt den Küstensaum unter 0) → Meer läuft hinein, keine trockene Mulde
     let meer = Fm < 0.5 ? 1 : 0;
     if (h < 0 && wasser < 0) { wasser = 0; meer = 1; }
     let fr = 0, fg = 0, fb = 0;
     for (let i = 0; i < 4; i++) { const fc = GESTEIN_FARBE[GS[gw.z[i]]], w = gw.w[i]; fr += fc[0] * w; fg += fc[1] * w; fb += fc[2] * w; }
-    aus.h = h; aus.wasser = wasser; aus.ufer = ufer; aus.fluss = fluss; aus.gebirge = gb; aus.meer = meer;
+    aus.eingriff = dE; aus.h = h; aus.wasser = wasser; aus.ufer = ufer; aus.fluss = fluss; aus.gebirge = gb; aus.meer = meer;
     aus.temp = tempAm(G.lese(GT, gw), h); aus.feuchte = Math.min(1, G.lese(GFe, gw) + 0.25 * ufer);
     aus.fr = fr; aus.fg = fg; aus.fb = fb; aus.gestein = GS[gw.naechste];
     return aus;
@@ -154,6 +158,15 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter }
     // Schnee, wo es kalt genug ist (Temperatur sinkt mit der Höhe), nicht an Steilwänden
     const schnee = glatt(-3, -7, p.temp + (v - 0.5) * 3) * glatt(0.6, 0.78, flach);
     r += (0.94 - r) * schnee; g += (0.95 - g) * schnee; b += (0.97 - b) * schnee;
+    // Gegraben/aufgeschüttet: offener Boden – oben Erde, tiefer Lehm, ab ~2 m das Gestein
+    const e = Math.abs(p.eingriff || 0);
+    if (e > 0.05) {
+      const k = glatt(0.05, 0.3, e), tief = -(p.eingriff || 0);
+      let er = 0.3, eg = 0.22, eb = 0.14;
+      if (tief > 0.4) { const t = glatt(0.4, 0.9, tief); er += (0.6 - er) * t; eg += (0.43 - eg) * t; eb += (0.28 - eb) * t; }
+      if (tief > 1.8) { const t = glatt(1.8, 2.4, tief); er += (p.fr - er) * t; eg += (p.fg - eg) * t; eb += (p.fb - eb) * t; }
+      r += (er - r) * k; g += (eg - g) * k; b += (eb - b) * k;
+    }
     out[0] = r; out[1] = g; out[2] = b;
     return out;
   }
@@ -161,8 +174,8 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter }
   /** Fleckenrauschen 0…1 (Waldflecken, Farbvariation) – gleich wie in farbe(). */
   const flecken = (dx, dy, dz) => n(dx * R / 700 + 5.5, dy * R / 700, dz * R / 700 - 3.3) * 0.5 + 0.5;
 
-  return { radius: R, seed, probe, hoehe, oberflaeche, farbe, flecken, G };
+  return { radius: R, seed, probe, hoehe, oberflaeche, farbe, flecken, G, eingriffe };
 }
 
 /** Felder von probe(), die der Kachelbau je Punkt für die Farbe aufhebt. */
-export const FELDER = ['h', 'wasser', 'ufer', 'gebirge', 'meer', 'temp', 'feuchte', 'fr', 'fg', 'fb'];
+export const FELDER = ['h', 'wasser', 'ufer', 'gebirge', 'meer', 'temp', 'feuchte', 'fr', 'fg', 'fb', 'eingriff'];

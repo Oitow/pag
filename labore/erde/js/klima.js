@@ -47,3 +47,37 @@ export function bodenFarbe(T, F, v, out) {
   out[0] = r + (v - 0.5) * 0.05; out[1] = g + (v - 0.5) * 0.05; out[2] = b + (v - 0.5) * 0.03;
   return out;
 }
+
+// ---------- Zeit: Sonnenstand und Temperatur im Tages- und Jahresgang ----------
+// Drehachse des Planeten = y. Länge λ = atan2(z, x) (wie die Karte), Breite φ = asin(y).
+// stunde = Uhrzeit bei λ = 0 (0…24); Ortszeit = stunde + λ/2π·24. jahr = Anteil 0…1 (0 = Frühlingsanfang Nord).
+const NEIGUNG = 23.4 * Math.PI / 180;
+
+/** Ortszeit (Stunden 0…24) an Richtung d zur Weltuhr `stunde`. */
+export function ortszeit(stunde, d) {
+  const lon = Math.atan2(d[2], d[0]);
+  return (((stunde + lon / (2 * Math.PI) * 24) % 24) + 24) % 24;
+}
+/** Weltuhr, bei der am Ort d die Ortszeit `ziel` ist. */
+export const uhrFuer = (ziel, d) => (((ziel - Math.atan2(d[2], d[0]) / (2 * Math.PI) * 24) % 24) + 24) % 24;
+
+/** Richtung zur Sonne (Einheitsvektor) für Weltuhr und Jahresanteil. */
+export function sonnenRichtung(stunde, jahr, out = [0, 0, 0]) {
+  const dek = NEIGUNG * Math.sin(2 * Math.PI * jahr);           // Deklination: Sommer Nord = +
+  const lonS = (12 - stunde) / 24 * 2 * Math.PI;                // wo gerade Mittag ist
+  out[0] = Math.cos(dek) * Math.cos(lonS); out[1] = Math.sin(dek); out[2] = Math.cos(dek) * Math.sin(lonS);
+  return out;
+}
+
+/**
+ * Temperatur jetzt (°C): Jahresmittel am Ort (tempAm) + Jahreszeit (stärker in hohen Breiten, Süden umgekehrt)
+ * + Tagesgang (Max ~15 Uhr, trockene Luft schwankt stärker) + Wetter (Wolken dämpfen den Tag, Regen kühlt).
+ */
+export function tempJetzt(tMittel, d, stunde, jahr, feuchte = 0.5, wetter = null) {
+  const breite = Math.asin(Math.max(-1, Math.min(1, d[1])));
+  const jahresAmp = 2 + 15 * Math.abs(Math.sin(breite)) * (1.1 - 0.4 * feuchte);
+  const sommer = Math.sin(2 * Math.PI * (jahr - 0.06)) * Math.sign(breite || 1);   // Höhepunkt etwas nach der Sonnenwende
+  const tagAmp = (3 + 6 * (1 - feuchte)) * (1 - 0.6 * (wetter?.wolken ?? 0));
+  const tag = Math.cos(2 * Math.PI * (ortszeit(stunde, d) - 15) / 24);
+  return tMittel + jahresAmp * sommer + tagAmp * tag - 3 * (wetter?.regen ?? 0);
+}

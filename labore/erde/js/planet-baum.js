@@ -51,9 +51,11 @@ export function enthaelt(k1, k2) {
 /**
  * Welche Kacheln braucht man für eine Kamera bei Position p (Meter, Planetenmitte = 0)?
  * Kacheln hinter dem Horizont werden nicht weiter geteilt und als `verdeckt` markiert.
- * opts: R, maxStufe, teilung (Abstand < teilung · Kante → teilen), maxBerg (m, für den Horizont)
+ * opts: R, maxStufe, teilung (Abstand < teilung · Kante → teilen), maxBerg (m, für den Horizont),
+ *       hBoden (m, Geländehöhe unter der Kamera: Kachelmitten liegen auf dieser Höhe statt auf Meereshöhe –
+ *       sonst bekäme man auf Hochebenen nie die feinste Stufe)
  */
-export function waehleKacheln(p, { R, maxStufe, teilung = 1.8, maxBerg = 4500 }) {
+export function waehleKacheln(p, { R, maxStufe, teilung = 1.8, maxBerg = 4500, hBoden = 0 }) {
   const lp = Math.hypot(p[0], p[1], p[2]);
   const pd = [p[0] / lp, p[1] / lp, p[2] / lp];
   // Horizont: bis wohin sieht man? Großzügig, damit Berge hinter der Kante nicht fehlen.
@@ -67,7 +69,8 @@ export function waehleKacheln(p, { R, maxStufe, teilung = 1.8, maxBerg = 4500 })
     const winkelKachel = (kante / R) * 0.75;
     const cosW = d[0] * pd[0] + d[1] * pd[1] + d[2] * pd[2];
     const verdeckt = Math.acos(Math.max(-1, Math.min(1, cosW))) > hor + winkelKachel;
-    const dist = Math.hypot(d[0] * R - p[0], d[1] * R - p[1], d[2] * R - p[2]);
+    const rb = R + hBoden;
+    const dist = Math.hypot(d[0] * rb - p[0], d[1] * rb - p[1], d[2] * rb - p[2]);
     if (!verdeckt && k.L < maxStufe && dist < teilung * kante) {
       for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++)
         stapel.push({ f: k.f, L: k.L + 1, ix: k.ix * 2 + i, iy: k.iy * 2 + j });
