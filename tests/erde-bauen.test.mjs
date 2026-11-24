@@ -1,7 +1,7 @@
 // Bauen-Regeln (labore/erde/js/bauen-regeln.js): Einrasten, Statik, Abriss, begehbare Flächen
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { einrasten, pruefe, statik, abriss, oberflaeche, dachUeber, huelle, WAND_H, DACH_HUB } from '../labore/erde/js/bauen-regeln.js';
+import { einrasten, pruefe, statik, abriss, oberflaeche, dachUeber, huelle, WAND_H, DACH_HUB, TEILE } from '../labore/erde/js/bauen-regeln.js';
 
 const flach = () => 0;
 let n = 0;
@@ -60,4 +60,13 @@ test('Begehbar: Treppe als Rampe, Boden oben, Dach über Kopf', () => {
   const h = dachUeber([D], 0, -0.9);   // rot 2: Schräge steigt nach −z
   assert.ok(h > WAND_H + DACH_HUB * 0.9, 'gedrehtes Dach ist bei −z hoch');
   assert.deepEqual(huelle(T).map((v) => +v.toFixed(2)), [-1, 1, 0, WAND_H, -1, 1]);
+});
+
+test('Schmiede-Teile: Ofen und Amboss sind Stationen, auf der verstärkten Tür steht eine Wand wie auf der Türwand', () => {
+  assert.ok(TEILE.schmelzofen.station && TEILE.amboss.station && !TEILE.eisentuer.station);
+  const T = teil('eisentuer', 20, 0, -1);
+  assert.equal(einrasten('wand', 20.2, -0.8, 0, [T], { wunschY: WAND_H + 0.3 }).y, WAND_H, 'Wand oben auf der Tür');
+  const r = abriss([T], T.id, flach);
+  assert.deepEqual(r.zurueck, { holz: 2, naegel: 3, eisenbarren: 0 });
+  assert.equal(pruefe({ art: 'amboss', x: 20.3, y: 0, z: -0.6, rot: 0 }, [teil('schmelzofen', 20, 0, 0)], flach).ok, false, 'Amboss im Ofen');
 });

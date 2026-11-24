@@ -1,7 +1,8 @@
 // Bau-Leiste (DOM, handytauglich): Teilwahl + Drehen / Abreißen / Setzen. Sitzt über der Aktionsleiste,
 // mittig, lässt rechts die ▲▼-Knöpfe und unten den Tempo-Regler frei. Nur sichtbar im Bau-Modus zu Fuß.
-const SYMBOL = { fundament: '🧱', boden: '▦', wand: '🪵', tuerwand: '🚪', dach: '🏠', treppe: '🪜', lagerfeuer: '🔥', werkbank: '🛠️' };
-const KURZ = { tuerwand: 'Tür', lagerfeuer: 'Feuer', fundament: 'Fundam.' };
+const SYMBOL = { fundament: '🧱', boden: '▦', wand: '🪵', tuerwand: '🚪', eisentuer: '🔩', dach: '🏠', treppe: '🪜', lagerfeuer: '🔥', werkbank: '🛠️',
+  schmelzofen: '🏺', amboss: '⚒️' };
+const KURZ = { tuerwand: 'Tür', eisentuer: 'Eisentür', lagerfeuer: 'Feuer', fundament: 'Fundam.', schmelzofen: 'Ofen' };
 
 const CSS = `
 #bauLeiste{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);max-width:calc(100vw - 170px);display:none;flex-direction:column;gap:6px;z-index:6;align-items:center}
