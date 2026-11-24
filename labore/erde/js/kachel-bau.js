@@ -2,6 +2,8 @@
 // Ergebnis: Typed Arrays, Lage relativ zum Kachel-Mittelpunkt auf Meereshöhe (genau genug für Float32).
 import { kachelUV, kachelMitte, wuerfelZuKugel } from './planet-baum.js';
 import { FELDER } from './planet-hoehe.js';
+import { waldDichte, nadelAnteil } from './klima.js';
+import { rng, hashSeed } from '../../../engine/core/rng.js';
 const NF = FELDER.length;
 
 export const ZELLEN = 32; // 33×33 Punkte je Kachel
@@ -90,5 +92,53 @@ export function baueKachel(k, planet, N = ZELLEN) {
     idx[t++] = b; idx[t++] = sa; idx[t++] = sb;
   }
 
-  return { key: k.key, L: k.L, pos, nor, col, nass, idx, mitte: [cx, cy, cz], minH, maxH, kante };
+  const baeume = fernBaeume(k, planet, N, M, P, D, IF, nor, kante, abstand, cx, cy, cz);
+  return { key: k.key, L: k.L, pos, nor, col, nass, idx, mitte: [cx, cy, cz], minH, maxH, kante, baeume };
+}
+
+// ---------- Fernwald: Bäume als Punkte (ein Eckpunkt je Baum, im Shader als Silhouette) ----------
+// Nur für mittlere/grobe Kacheln (140 m … 2,5 km Kante); nah stehen die echten Bäume (natur.js).
+// Dichte wie bei den echten Bäumen (waldDichte), grobe Zellen bündeln mehrere Bäume in einem größeren Punkt.
+const FW = { temp: FELDER.indexOf('temp'), feuchte: FELDER.indexOf('feuchte'), h: FELDER.indexOf('h'), wasser: FELDER.indexOf('wasser') };
+function fernBaeume(k, planet, N, M, P, D, IF, nor, kante, abstand, cx, cy, cz) {
+  if (kante < 140 || kante > 2500 || !planet.flecken) return null;   // feinere Kacheln liegen im Bereich der echten Bäume
+  const NF = FELDER.length, z = rng(hashSeed(planet.seed, 'fernwald', k.key));
+  const flaeche = abstand * abstand;
+  const maxJeZelle = kante < 400 ? 3 : kante < 1000 ? 2 : 1;   // fern: weniger, dafür größere Punkte (Baumgruppen)
+  const pos = [], gr = [], col = [];
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const g = (j + 1) * M + (i + 1), v = j * (N + 1) + i;
+    const h = IF[g * NF + FW.h], w = IF[g * NF + FW.wasser];
+    if (w > h - 0.5) continue;                                   // Wasser/Ufer
+    const flach = nor[v * 3] * D[g * 3] + nor[v * 3 + 1] * D[g * 3 + 1] + nor[v * 3 + 2] * D[g * 3 + 2];
+    if (flach < 0.8) continue;
+    const T = IF[g * NF + FW.temp], F = IF[g * NF + FW.feuchte];
+    const fl = planet.flecken(D[g * 3], D[g * 3 + 1], D[g * 3 + 2]);
+    const dichte = (waldDichte(T, F, fl) * 0.24 + 0.002) / 16;   // Bäume je m² (wie natur-streu)
+    const erwartet = dichte * flaeche;
+    let anzahl = erwartet < 1 ? (z() < erwartet ? 1 : 0) : Math.min(maxJeZelle, Math.round(erwartet));
+    if (!anzahl) continue;
+    const buendel = Math.min(3, Math.sqrt(Math.max(1, erwartet / anzahl)));
+    const na = nadelAnteil(T), warm = Math.min(1, Math.max(0, (T - 18) / 8));
+    for (let q = 0; q < anzahl; q++) {
+      // Lage: zufällig in der Zelle, bilinear zwischen den vier Eckpunkten (liegt auf dem gezeichneten Boden)
+      const a = z(), b = z();
+      const g00 = g, g10 = g + 1, g01 = g + M, g11 = g + M + 1;
+      const nadel = z() < na;
+      const hoehe = (nadel ? 16 + 8 * z() : 13 + 7 * z()) * (1 + 0.5 * warm) * buendel;
+      const p = [0, 0, 0];
+      for (let c = 0; c < 3; c++) {
+        p[c] = (P[g00 * 3 + c] * (1 - a) + P[g10 * 3 + c] * a) * (1 - b) + (P[g01 * 3 + c] * (1 - a) + P[g11 * 3 + c] * a) * b;
+      }
+      const l = Math.hypot(p[0], p[1], p[2]);
+      const mitteH = hoehe * 0.45;                              // Punkt sitzt in halber Baumhöhe
+      pos.push(p[0] + p[0] / l * mitteH - cx, p[1] + p[1] / l * mitteH - cy, p[2] + p[2] / l * mitteH - cz);
+      gr.push(hoehe, nadel ? 0 : 1);
+      const t = 0.85 + 0.3 * z() + (fl - 0.5) * 0.2;
+      if (nadel) col.push(0.15 * t, 0.29 * t, 0.19 * t);
+      else col.push((0.22 - 0.06 * warm) * t, (0.4 - 0.04 * warm) * t, (0.15 - 0.03 * warm) * t);
+    }
+  }
+  if (!pos.length) return null;
+  return { pos: new Float32Array(pos), groesse: new Float32Array(gr), farbe: new Uint8Array(col.map((x) => Math.min(255, x * 255))) };
 }

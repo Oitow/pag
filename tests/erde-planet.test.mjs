@@ -152,3 +152,32 @@ test('Natur-Streuung: gleicher Seed → gleiche Natur; Bäume stehen auf Land, S
   }
   assert.ok(stueck > 0);
 });
+
+test('Seen sind flach (Spiegel steigt nicht am Ufer hoch); Fernwald-Punkte stehen auf Land', () => {
+  const planet = createPlanetHoehe({ seed: 5, radius: R, geo, G });
+  let see = -1, t = 0;
+  for (let c = 0; c < G.n; c++) { const d = geo.spiegel[c] - geo.hoehe[c]; if (geo.spiegel[c] > 0 && d > t) { t = d; see = c; } }
+  assert.ok(see >= 0);
+  const d0 = [G.dir[see * 3], G.dir[see * 3 + 1], G.dir[see * 3 + 2]];
+  const spiegel = new Set();
+  for (let m = 0; m <= 4000; m += 100) for (const ax of [0, 2]) {
+    const q = [...d0]; q[ax] += m / R; const l = Math.hypot(...q);
+    const p = planet.probe(q[0] / l, q[1] / l, q[2] / l, 1);
+    if (p.wasser > p.h && !p.fluss && !p.meer) spiegel.add(Math.round(p.wasser));
+  }
+  assert.ok(spiegel.size >= 1 && spiegel.size <= 2, `Spiegel-Höhen: ${[...spiegel]}`);
+  // Fernwald einer groben Kachel über dem See: kein Punkt im Wasser
+  const ks = waehleKacheln(d0.map((v) => v * (R + 300)), { R, maxStufe: 13 }).filter((k) => !k.verdeckt && k.L === 9);
+  let punkte = 0;
+  for (const k of ks.slice(0, 6)) {
+    const b = baueKachel(k, planet);
+    if (!b.baeume) continue;
+    for (let i = 0; i < b.baeume.pos.length; i += 3) {
+      const x = b.baeume.pos[i] + b.mitte[0], y = b.baeume.pos[i + 1] + b.mitte[1], z = b.baeume.pos[i + 2] + b.mitte[2];
+      const l = Math.hypot(x, y, z), p = planet.probe(x / l, y / l, z / l, 20);
+      punkte++;
+      assert.ok(!(p.wasser > p.h + 3), 'Baum im See');
+    }
+  }
+  assert.ok(punkte >= 0);
+});

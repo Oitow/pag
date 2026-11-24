@@ -71,7 +71,11 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
     detail += fbmBis(x, y, z, 1800, feinste, 3, 5.5) * 120 * (1 - land); // Meeresgrund
 
     let wasser = -Infinity, ufer = 0, fluss = 0;
-    if (Fm > Hm + 1 && Fm > 0) { wasser = Fm; detail *= glatt(Fm, Fm - 25, Hm); }      // See
+    // See: Spiegel flach aus den See-Zellen der Umgebung (nicht zwischen See und Land interpolieren –
+    // sonst steigt das Wasser am Ufer den Hang hinauf). Ufer = wo das Gelände den Spiegel schneidet.
+    let see = -Infinity;
+    for (let i = 0; i < 4; i++) { const c = gw.z[i]; if (GF[c] > GH[c] + 1 && GF[c] > 0 && GF[c] > see) see = GF[c]; }
+    if (see > -Infinity) { wasser = see; detail *= glatt(see, see - 25, Hm); }
     if (Fm < 0.5) wasser = 0;                                                         // Meer
     let h = Hm + detail;
 
@@ -119,6 +123,7 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
     // Eingriffe (Graben/Aufschütten): ändern den Boden, nicht den Wasserspiegel – wer am Ufer gräbt, gräbt ins Wasser
     const dE = eingriffe ? eingriffe.delta(dx, dy, dz) : 0;
     h += dE;
+    if (wasser > 0 && !fluss && wasser < h - 0.01 && Fm >= 0.5) wasser = -Infinity;   // Ufer über dem Seespiegel: trocken
     // Unter Meereshöhe ohne Wasser (Rauschen drückt den Küstensaum unter 0) → Meer läuft hinein, keine trockene Mulde
     let meer = Fm < 0.5 ? 1 : 0;
     if (h < 0 && wasser < 0) { wasser = 0; meer = 1; }

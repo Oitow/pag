@@ -9,7 +9,7 @@
 | Figurenlabor | Codex | character-lab-parcours | 23.11.2026 | Bewegung, Parcours und Übungsgegner |
 | Figur organisch (figur-form, figur-haut, figur-koerper, figur-kleidung, figur-haar, Galerie im Figurenlabor) | Claude (+2 Agents) | `claude/figur-organisch` | 23.11. | Figuren aus einem glatten SDF-Körper mit Skinning statt Klötzen |
 | welt, riesenwald-Boden, dorf (neu), tutorial | Claude (Weltgen + 5 Agents) | `claude/welt-startdorf` | 23.11. | Startdorf Erlenwacht, Bäche, Gras, Dorf-Assets, Licht, Dorf-Tutorial – Plan `docs/plaene/WELT-STARTDORF.md` |
-| Erde-Labor (`labore/erde`) | Claude | `claude/erde-licht` | 24.11. | Planeten-Spiel: Schatten, Mond, Naturstimmungen eingebaut, Grafik-Stufen |
+| Erde-Labor (`labore/erde`) | Claude | `claude/erde-ferne` | 24.11. | Planeten-Spiel: Fernwald, flache Seen, Menü |
 
 ## Geteilte Dateien (nur beim Zusammenführen ändern)
 Diese Dateien fasst nur der **Zusammenführ-Schritt** an (ein eigener Branch/PR, nachdem die Modul-PRs drin sind),
