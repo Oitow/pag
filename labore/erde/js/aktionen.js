@@ -10,7 +10,7 @@ export const GRAB_RADIUS = 1.1, GRAB_TIEFE = 0.5;
 const BAUSTOFFE = ['humus', 'lehm', 'sand', 'kies', 'roterLehm', 'torf', 'steine', 'sandstein', 'kalkstein', 'schiefer', 'granit', 'basalt', 'schnee'];
 const NAME = (id) => STOFFE[id]?.name || ({ holz: 'Holz', rinde: 'Rinde', ruten: 'Ruten', oliven: 'Oliven', zapfen: 'Zapfen', kokosnuss: 'Kokosnuss',
   stoecke: 'Stöcke', beeren: 'Beeren', fasern: 'Fasern', schilf: 'Schilf', moos: 'Moos', laub: 'Laub', blume: 'Blume', pilz: 'Pilz',
-  steinpilz: 'Steinpilz', seerose: 'Seerose', kaktusfleisch: 'Kaktusfleisch', fisch: 'Fisch', steine: 'Steine', schieferplatten: 'Schieferplatten',
+  steinpilz: 'Steinpilz', seerose: 'Seerose', kaktusfleisch: 'Kaktusfleisch', fisch: 'Fisch', steine: 'Steine', schieferplatten: 'Schieferplatten', wolle: 'Wollgras-Wolle', flechten: 'Flechten',
   axt: 'Axt', schaufel: 'Schaufel', spitzhacke: 'Spitzhacke', eisenhacke: 'Eisen-Spitzhacke' }[id] || id);
 export { NAME as gegenstandName };
 

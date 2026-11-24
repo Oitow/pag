@@ -18,6 +18,8 @@ export const ERNTE = {
   kaktus: { werkzeug: 'axt', gibt: [['kaktusfleisch', 2]] }, saeulenkaktus: { werkzeug: 'axt', gibt: [['kaktusfleisch', 2]] },
   forelle: { werkzeug: 0, gibt: [['fisch', 1]] }, barsch: { werkzeug: 0, gibt: [['fisch', 1]] },
   geroell: { werkzeug: 0, gibt: [['steine', 2]] },
+  wollgras: { werkzeug: 0, gibt: [['fasern', 2], ['wolle', 1]] }, pilzholz: { werkzeug: 0, gibt: [['pilz', 3], ['holz', 1]] },
+  flechtenbank: { werkzeug: 2, gibt: [['steine', 3], ['flechten', 2]] },
   granitblock: { werkzeug: 2, gibt: [['steine', 4]] }, schiefer: { werkzeug: 2, gibt: [['schieferplatten', 3]] }, felsnadel: { werkzeug: 2, gibt: [['steine', 6]] },
 };
 

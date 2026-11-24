@@ -9,7 +9,8 @@ export function createKachelStrom({ bauen, erzeuge, zeige, entsorge, parallel = 
   const fertig = new Map();     // key → { k, obj, zuletzt }
   const laufend = new Map();    // key → k
   let angezeigt = new Map();    // key → k
-  const nochmal = new Set();    // während des Baus veraltet → danach gleich noch einmal
+  const nochmal = new Set();
+  let wartend = [];              // gewünscht, noch nicht gestartet (nächste zuerst) – fertigGebaut() startet sofort die nächste    // während des Baus veraltet → danach gleich noch einmal
   let zeit = 0;
 
   function fertigGebaut(key, daten) {
@@ -22,6 +23,16 @@ export function createKachelStrom({ bauen, erzeuge, zeige, entsorge, parallel = 
       entsorge(alt.obj);
     }
     fertig.set(key, { k, obj, zuletzt: zeit, veraltet: nochmal.delete(key) });
+    nachschieben();
+  }
+  function nachschieben() {
+    while (laufend.size < parallel && wartend.length) {
+      const n = wartend.shift();
+      const e = fertig.get(n.key);
+      if ((e && !e.veraltet) || laufend.has(n.key)) continue;
+      laufend.set(n.key, n);
+      bauen(n);
+    }
   }
 
   /** Kacheln, für die betroffen(k) wahr ist, neu bauen (fertige und gerade laufende). */
@@ -36,11 +47,8 @@ export function createKachelStrom({ bauen, erzeuge, zeige, entsorge, parallel = 
 
     // 1) Bauaufträge: nächste zuerst
     const fehlt = wunsch.filter((k) => (!fertig.has(k.key) || fertig.get(k.key).veraltet) && !laufend.has(k.key)).sort((a, b) => a.dist - b.dist);
-    for (const k of fehlt) {
-      if (laufend.size >= parallel) break;
-      laufend.set(k.key, k);
-      bauen(k);
-    }
+    wartend = fehlt;
+    nachschieben();
 
     // 2) Was bleibt von den bisher angezeigten?
     const bleibt = new Map();

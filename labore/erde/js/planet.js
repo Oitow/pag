@@ -8,6 +8,7 @@ import { berechneGeologie, GESTEIN_NAME, GESTEIN_FARBE } from './geologie.js';
 import { biom, BIOM_NAME, tempAm, waldDichte, bodenFarbe } from './klima.js';
 import { streuKacheln, streueKachel, streuStufe } from './natur-streu.js';
 import { createNatur } from './natur.js';
+import { createMond } from '../../naturstimmungen/mond.js';
 import { createEingriffe } from './eingriffe.js';
 import { createZeitWetter } from './zeit-wetter.js';
 import { createAktionen, gegenstandName, GRAB_RADIUS } from './aktionen.js';
@@ -46,6 +47,8 @@ const planet = createPlanetHoehe({ seed: SEED, radius: R, geo, G: GITTER, eingri
 // ---------- Renderer ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.info.autoReset = false; // Zählung über Hauptszene + Niederschlag (Reset je Bild in der Schleife)
 renderer.setSize(innerWidth, innerHeight);
 document.body.prepend(renderer.domElement);
@@ -53,8 +56,16 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.2, 5e8);
 const sonne = new THREE.DirectionalLight(0xfff1dc, 2.4);
 sonne.position.copy(SONNE);
+// Schatten der Sonne: Kasten ±SCHATTEN m um den Spieler, folgt der Kamera in Texel-Schritten (kein Flimmern)
+const SCHATTEN = 40, SCHATTEN_KARTE = Math.min(innerWidth, innerHeight) < 700 ? 1024 : 2048;
+sonne.castShadow = true;
+sonne.shadow.mapSize.set(SCHATTEN_KARTE, SCHATTEN_KARTE);
+Object.assign(sonne.shadow.camera, { left: -SCHATTEN, right: SCHATTEN, top: SCHATTEN, bottom: -SCHATTEN, near: 1, far: 700 });
+sonne.shadow.camera.updateProjectionMatrix();
+sonne.shadow.bias = -0.0004;
+sonne.shadow.normalBias = 0.06;
 const himmelLicht = new THREE.HemisphereLight(0xa8ccff, 0x3b3424, 0.7);
-scene.add(sonne, himmelLicht, new THREE.AmbientLight(0x404858, 0.25));
+scene.add(sonne, sonne.target, himmelLicht, new THREE.AmbientLight(0x404858, 0.25));
 scene.fog = new THREE.FogExp2(0x9cc4ec, 0);
 
 const bodenMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
@@ -101,6 +112,8 @@ function erzeuge(d) {
   geo.setIndex(new THREE.BufferAttribute(d.idx, 1));
   geo.computeBoundingSphere();
   const m = new THREE.Mesh(geo, stufenFarben ? stufenMat[d.L] : bodenMat);
+  m.receiveShadow = true;
+  m.castShadow = d.L >= MAX_STUFE - 2;   // nur feine Kacheln nahe am Spieler werfen Schatten (Böschungen, Grubenränder)
   m.userData = { mitte: d.mitte, L: d.L };
   m.visible = false;
   welt.add(m);
@@ -198,7 +211,7 @@ const aktionen = createAktionen({
 });
 
 starteWorker();
-const strom = createKachelStrom({ bauen, erzeuge, zeige, entsorge, parallel: Math.max(2, worker.length * 2) });
+const strom = createKachelStrom({ bauen, erzeuge, zeige, entsorge, parallel: Math.max(3, worker.length * 3) });
 
 // ---------- Lufthülle von außen, Sterne ----------
 const atmo = new THREE.Mesh(new THREE.SphereGeometry(R + ATMO, 160, 80), new THREE.ShaderMaterial({
@@ -278,6 +291,25 @@ const orte = (() => {
   };
 })();
 // Sonne so stellen, dass am Ort Vormittag ist (später: echte Tageszeit)
+// Schatten-Kasten an der Kamera, in Texel-Schritten der Sonnen-Ebene eingerastet; Sonne 300 m davor
+const sU = new THREE.Vector3(), sV = new THREE.Vector3(), sZiel = new THREE.Vector3();
+function schattenZiel(s) {
+  sU.set(0, 1, 0).cross(s); if (sU.lengthSq() < 1e-6) sU.set(1, 0, 0).cross(s); sU.normalize();
+  sV.crossVectors(s, sU);
+  const texel = (2 * SCHATTEN) / SCHATTEN_KARTE;
+  const u = cam.dot(sU), v = cam.dot(sV);
+  sZiel.copy(sU).multiplyScalar(Math.round(u / texel) * texel - u).addScaledVector(sV, Math.round(v / texel) * texel - v);
+  sonne.target.position.copy(sZiel);
+  sonne.position.copy(sZiel).addScaledVector(s, 300);
+}
+// Mond (labore/naturstimmungen/mond.js): umkreist den Planeten in 29,5 Tagen, Phase aus dem Winkel zur Sonne
+const mond = createMond(scene, { abstand: 3000, schattenweite: 30 });
+const mondDir = new THREE.Vector3();
+function mondRichtung(s, uhr) {
+  const a = 2 * Math.PI * ((uhr.tag + uhr.stunde / 24) / 29.5 + 0.5);   // Tag 1 ≈ Vollmond
+  const c = Math.cos(a), si = Math.sin(a);
+  return mondDir.set(s.x * c - s.z * si, s.y * 0.6 + 0.08 * Math.sin(a * 0.5), s.x * si + s.z * c).normalize();
+}
 // Beim Springen an einen Ort: dort Vormittag (die Uhr läuft danach weiter, Sonne wandert)
 function sonneZu(d) { zw.stelleOrtszeit([d.x, d.y, d.z], 9.5); }
 
@@ -403,6 +435,27 @@ document.getElementById('bReset').onclick = () => {
   location.reload();
 };
 setInterval(speichern, 15000); // Uhr/Wetter ab und zu sichern
+
+// ---------- Grafik-Stufe (Handy: Mittel) ----------
+const GRAFIK = {
+  Hoch:    { schatten: true, natur: 1, teilung: 1.8, pixel: 2 },
+  Mittel:  { schatten: true, natur: 0.75, teilung: 1.5, pixel: 1.5 },
+  Niedrig: { schatten: false, natur: 0.5, teilung: 1.25, pixel: 1 },
+};
+let grafik = 'Hoch';
+try { grafik = localStorage.getItem('erde-grafik') || ((navigator.maxTouchPoints > 0 || innerWidth < 700) ? 'Mittel' : 'Hoch'); } catch { /* egal */ }
+if (!GRAFIK[grafik]) grafik = 'Hoch';
+function setzeGrafik(name) {
+  grafik = name;
+  const g = GRAFIK[name];
+  renderer.setPixelRatio(Math.min(devicePixelRatio, g.pixel));
+  renderer.setSize(innerWidth, innerHeight);
+  natur.setzeWeite(g.natur);
+  document.getElementById('bGrafik').textContent = 'Grafik: ' + name;
+  try { localStorage.setItem('erde-grafik', name); } catch { /* egal */ }
+}
+document.getElementById('bGrafik').onclick = () => { const n = Object.keys(GRAFIK); setzeGrafik(n[(n.indexOf(grafik) + 1) % n.length]); };
+setzeGrafik(grafik);
 
 // ---------- Steuerung ----------
 const tasten = new Set();
@@ -533,6 +586,7 @@ function karteMarker() {
 
 // ---------- Schleife ----------
 const hud = document.getElementById('hud');
+const nullPunkt = new THREE.Vector3();
 const grau = new THREE.Color(), abend = new THREE.Color(1, 0.55, 0.3);
 const blau = new THREE.Color(0x8fbfea), nacht = new THREE.Color(0x0a1020), schwarz = new THREE.Color(0x01030a), himmel = new THREE.Color();
 let alt = performance.now(), fpsT = 0, fpsN = 0, fps = 0, wahlT = 1, info = { angezeigt: 0, gebaut: 0, laufend: 0, offen: 0 };
@@ -631,7 +685,7 @@ function bild() {
   wahlT += dt;
   if (wahlT > 0.1) {
     wahlT = 0;
-    const wunsch = waehleKacheln([cam.x, cam.y, cam.z], { R, maxStufe: MAX_STUFE, hBoden: Math.max(0, g2) }).filter((k) => !k.verdeckt);
+    const wunsch = waehleKacheln([cam.x, cam.y, cam.z], { R, maxStufe: MAX_STUFE, hBoden: Math.max(0, g2), teilung: GRAFIK[grafik].teilung }).filter((k) => !k.verdeckt);
     info = strom.update(wunsch);
   }
   // Natur nur nah am Boden
@@ -652,7 +706,8 @@ function bild() {
 
   // Zeit & Wetter (Klima vom Ort, alle 0,3 s erneuert)
   zw.update(dt, oben, klimaHier);
-  SONNE.copy(zw.sonne); sonne.position.copy(SONNE);
+  SONNE.copy(zw.sonne);
+  schattenZiel(SONNE);
   natur.setzeWind(0.25 + 1.6 * zw.wetter.wind, zw.windWelt);
   // Himmel, Nebel, Licht nach Höhe und Tageszeit
   const ueberMeer = cam.length() - R;
@@ -669,9 +724,14 @@ function bild() {
   sonne.intensity = 2.4 * THREE.MathUtils.smoothstep(hs, -0.03, 0.12) * (1 - 0.7 * wolken) + blitz * 2;
   sonne.color.setRGB(1, 0.95, 0.86).lerp(abend, (1 - THREE.MathUtils.smoothstep(hs, 0.02, 0.3)) * 0.8);
   atmo.visible = ueberMeer > ATMO * 0.6;
-  sterne.visible = raum > 0.5 || tag < 0.3;
   himmelLicht.position.copy(oben);
   himmelLicht.intensity = 0.12 + (0.5 * tag * (1 - 0.3 * wolken) + blitz) * (1 - raum);
+  // Schatten nur nah am Boden und wenn die Sonne scheint; Wolken machen sie weich/blass
+  const schattenAn = GRAFIK[grafik].schatten && hoeheBoden < 300 && hs > -0.03 && !stufenFarben;
+  sonne.shadow.intensity = schattenAn ? 0.85 * (1 - 0.75 * wolken) : 0;
+  mond.update({ kamera: nullPunkt, richtung: mondRichtung(SONNE, zw.uhr), sonne: SONNE, oben, nacht: (1 - tag) * (1 - 0.8 * wolken), anker: sZiel, sichtbar: raum < 0.2 });
+  renderer.shadowMap.autoUpdate = schattenAn || (tag < 0.5 && GRAFIK[grafik].schatten);
+  sterne.visible = raum > 0.5 || (tag < 0.3 && wolken < 0.6);
 
   wasserU.wZeit.value = jetzt / 1000;
   wasserU.wasserCam.value.copy(cam);
@@ -703,7 +763,7 @@ function bild() {
     `Kacheln     ${info.angezeigt} sichtbar · ${info.gebaut} gebaut · ${info.offen} offen\n` +
     `Bau         ${worker.length ? worker.length + ' Worker' : 'Hauptthread'} · ${(bauMs / Math.max(1, bauN)).toFixed(1)} ms/Kachel\n` +
     `Planet      R ${laenge(R)} · Seed ${SEED} · Stufen 0–${MAX_STUFE}\n` +
-    `Natur       ${natur.info.anzahl.toLocaleString('de-DE')} Stück · ${natur.info.dreiecke.toLocaleString('de-DE')} Dreiecke · ${streuDa.size} Streu-Kacheln\n` +
+    `Natur       ${natur.info.anzahl.toLocaleString('de-DE')} Stück · ${natur.info.dreiecke.toLocaleString('de-DE')} Dreiecke (${natur.info.top}) · ${streuDa.size} Streu-Kacheln\n` +
     `Geologie    ${geo.platten.length} Platten · Land ${(geo.stat.land * 100).toFixed(0)} % · ${geo.stat.flussZellen} Fluss- · ${geo.stat.seeZellen} See-Zellen · ${(geoMs / 1000).toFixed(1)} s\n` +
     `Dreiecke    ${r.triangles.toLocaleString('de-DE')} · ${r.calls} Draw-Calls · ${fps.toFixed(0)} fps`;
   requestAnimationFrame(bild);

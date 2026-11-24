@@ -1,5 +1,6 @@
 // Natur am Boden: zeigt die gestreute Natur (natur-streu) als InstancedMesh – eine Gruppe je Art/Variante.
-// Quellen: Naturfundus (labore/erde/naturfundus) und engine/models/natur (natur-assets, echte Größen, Wind-Attribut).
+// Quellen: Naturfundus (labore/erde/naturfundus), Landschaftsgruppen (labore/naturstimmungen/gruppen.js)
+// und engine/models/natur (natur-assets, echte Größen, Wind-Attribut). Bäume/Felsen/Büsche werfen Schatten.
 // Nah: volles Asset. Fern (nur Bäume): schlanke Form aus Maßen und Farben des Assets (~30 Dreiecke).
 // Wind wie engine/render/natur-material, aber für die Kugel: Windrichtung je Instanz in die Tangentialebene gelegt,
 // Phase aus der echten Weltlage (wackelt nicht beim Laufen). Kleines blendet am Rand weich aus (schrumpft) statt zu ploppen.
@@ -7,14 +8,18 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { baueNaturAsset } from '../naturfundus/naturfundus.mjs';
+import { baueGruppe } from '../../naturstimmungen/gruppen.js';
 import { createAssetCache } from '../../../engine/models/natur/natur-assets.js';
 import { STREU_ARTEN, STRIDE } from './natur-streu.js';
 
 const FUNDUS = new Set(['fichte', 'birke', 'granitblock', 'schiefer', 'rohrkolben', 'seerose', 'steinpilz', 'forelle', 'barsch']);
+const GRUPPEN = new Set(['wollgras', 'pilzholz', 'flechtenbank']);   // aus labore/naturstimmungen/gruppen.js
+// Werfen Schatten (Gras, Moos, Blumen u. ä. nicht – kostet viel, sieht man kaum)
+const WIRFT = (art) => BAUM.has(art) || MITTEL.has(art) || ['granitblock', 'schiefer', 'felsnadel', 'pilzholz', 'flechtenbank', 'rohrkolben'].includes(art);
 const BAUM = new Set(['fichte', 'birke', 'kiefer', 'tanne', 'eiche', 'buche', 'ahorn', 'weide', 'tropenbaum', 'palme', 'akazie', 'olive', 'pinie', 'toterBaum']);
 const NADEL = new Set(['fichte', 'tanne']);
-const KLEIN = new Set(['farn', 'wedelfarn', 'zwergstrauch', 'moospolster', 'laubstreu', 'blume', 'pilz', 'steinpilz', 'seerose', 'rohrkolben']);
-const MITTEL = new Set(['busch', 'beerenbusch', 'ginster', 'busch_unterholz', 'kaktus', 'saeulenkaktus', 'agave', 'baumstumpf', 'liegenderStamm', 'geroell']);
+const KLEIN = new Set(['wollgras', 'pilzholz', 'farn', 'wedelfarn', 'zwergstrauch', 'moospolster', 'laubstreu', 'blume', 'pilz', 'steinpilz', 'seerose', 'rohrkolben']);
+const MITTEL = new Set(['flechtenbank', 'busch', 'beerenbusch', 'ginster', 'busch_unterholz', 'kaktus', 'saeulenkaktus', 'agave', 'baumstumpf', 'liegenderStamm', 'geroell']);
 const FISCH = new Set(['forelle', 'barsch']);
 // Zielhöhe (m) je Art: jedes Asset wird beim Laden darauf gebracht – egal, wie groß es gebaut ist
 // (Naturfundus und Engine dürfen ihre Modelle frei ändern). Ohne Eintrag: Größe des Assets bleibt.
@@ -27,7 +32,7 @@ function sicht(art) {
   // Bäume: nah volles Asset, mittel (nur Engine) Detailstufe 0, fern schlanke Form
   if (art === 'fichte') return { nah: 70, mittel: 0, fern: 320, varianten: 3 };
   if (art === 'birke') return { nah: 30, mittel: 0, fern: 320, varianten: 3 };
-  if (BAUM.has(art)) return { nah: 28, mittel: 85, fern: 320, varianten: 3 };
+  if (BAUM.has(art)) return { nah: 22, mittel: 65, fern: 320, varianten: 3 };
   if (art === 'grasbueschel') return { nah: 30, fern: 0, varianten: 3 };
   if (KLEIN.has(art)) return { nah: 45, fern: 0, varianten: 2 };
   if (MITTEL.has(art)) return { nah: 95, fern: 0, varianten: 2 };
@@ -40,8 +45,8 @@ function mitWind(geo, art) {
   const pos = geo.attributes.position, n = pos.count, w = new Float32Array(n);
   geo.computeBoundingBox();
   const h = geo.boundingBox.max.y || 1;
-  const schwingt = art === 'fichte' || art === 'birke' || art === 'rohrkolben' || art === 'seerose';
-  if (schwingt) for (let i = 0; i < n; i++) w[i] = Math.min(1, Math.max(0, pos.getY(i) / h)) ** 1.5 * (art === 'seerose' ? 0.2 : 0.8);
+  const schwingt = art === 'fichte' || art === 'birke' || art === 'rohrkolben' || art === 'seerose' || art === 'wollgras';
+  if (schwingt) for (let i = 0; i < n; i++) w[i] = Math.min(1, Math.max(0, pos.getY(i) / h)) ** 1.5 * (art === 'seerose' ? 0.2 : art === 'wollgras' ? 1 : 0.8);
   geo.setAttribute('wind', new THREE.BufferAttribute(w, 1));
   return geo;
 }
@@ -115,14 +120,23 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
   const gruppe = new THREE.Group();
   scene.add(gruppe);
   const wind = { kwZeit: { value: 0 }, kwStaerke: { value: 1 }, kwRicht: { value: new THREE.Vector3(1, 0.3, 0.6).normalize() }, kwCam: { value: new THREE.Vector3() } };
-  const materialien = new Map(); // weite → Material
+  let weiteF = 1; // Grafik-Stufe: Sichtweiten der Natur × weiteF
+  const materialien = new Map(); // weite → Material (+ .tiefe für den Schatten: gleicher Wind, gleiches Ausblenden)
   const material = (weite) => {
     if (materialien.has(weite)) return materialien.get(weite);
+    const tiefe = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+    tiefe.customProgramCacheKey = () => 'kugelwind-tiefe-' + weite;
     const m = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.9, metalness: 0 });
-    m.onBeforeCompile = (sh) => {
-      Object.assign(sh.uniforms, wind, { kwWeite: { value: weite } });
+    m.tiefe = tiefe;
+    m.userData.u = { kwWeite: { value: weite * weiteF } };
+    tiefe.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, wind, m.userData.u);
       sh.vertexShader = KOPF + sh.vertexShader.replace('#include <begin_vertex>', KOERPER);
-      // Streulicht durch Laub und vom Boden: Schattenseiten nicht schwarz (es gibt noch keine echten Schatten)
+    };
+    m.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, wind, m.userData.u);
+      sh.vertexShader = KOPF + sh.vertexShader.replace('#include <begin_vertex>', KOERPER);
+      // Streulicht durch Laub und vom Boden: Schatten- und Rückseiten nicht schwarz
       sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * 0.28;');
     };
     m.customProgramCacheKey = () => 'kugelwind-' + weite;
@@ -147,7 +161,10 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
     let erste = null;
     for (let v = 0; v < cfg.varianten; v++) {
       let geo;
-      if (FUNDUS.has(art)) { const m = baueNaturAsset(art, 11 + v * 977); m.material.dispose(); geo = mitWind(m.geometry, art); }
+      if (FUNDUS.has(art) || GRUPPEN.has(art)) {
+        const m = (GRUPPEN.has(art) ? baueGruppe : baueNaturAsset)(art, 11 + v * 977);
+        m.material.dispose(); geo = mitWind(m.geometry, art);
+      }
       else {
         const a = engine.holen(art, v);
         geo = a.geometrie;
@@ -181,10 +198,14 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
     t.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     t.mesh.setColorAt(0, new THREE.Color(1, 1, 1));
     t.mesh.frustumCulled = false;
+    t.mesh.receiveShadow = true;
+    t.mesh.castShadow = WIRFT(t.art) && t !== FERN[t.art] && t !== MITTEL_T[t.art];   // nur Nahes wirft (Schattenkasten ±40 m)
+    t.mesh.customDepthMaterial = t.mat.tiefe;
     gruppe.add(t.mesh);
   };
 
   const anker = new THREE.Vector3(), letzteKamera = new THREE.Vector3(1e12, 0, 0);
+  const teuer = new Map(); // Art → Dreiecke (fürs HUD: wo geht die Leistung hin?)
   let schmutzig = true, fische = [], hindernisse = [], nahe = [], dreiecke = 0, anzahl = 0;
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), qd = new THREE.Quaternion(), oben = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
   const pos = new THREE.Vector3(), skal = new THREE.Vector3(), farbe = new THREE.Color();
@@ -220,7 +241,7 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
           if (istWeg(k.key, i)) continue;
           const o = i * STRIDE, art = STREU_ARTEN[d[o]], cfg = CFG[art];
           const ax = mx + d[o + 1], ay = my + d[o + 2], az = mz + d[o + 3];
-          const ab = Math.hypot(ax - cam.x, ay - cam.y, az - cam.z);
+          const ab = Math.hypot(ax - cam.x, ay - cam.y, az - cam.z) / weiteF;
           if (ab < 60) {
             const id = k.key + '#' + i;
             const sk = d[o + 4];
@@ -238,7 +259,7 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
         }
       }
       for (const t of toepfe) { kapazitaet(t, t.n); t.mesh.count = 0; }
-      dreiecke = 0; anzahl = 0;
+      dreiecke = 0; anzahl = 0; teuer.clear();
       for (let w = 0; w < wahl.length; w += 6) {
         const t = wahl[w], ax = wahl[w + 1], ay = wahl[w + 2], az = wahl[w + 3], o = wahl[w + 4], d = wahl[w + 5];
         const i = t.mesh.count++;
@@ -250,7 +271,9 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
         t.mesh.instanceMatrix.needsUpdate = true;
         if (t.mesh.instanceColor) t.mesh.instanceColor.needsUpdate = true;
         t.mesh.visible = t.mesh.count > 0;
-        dreiecke += t.mesh.count * t.geo.attributes.position.count / 3;
+        const dr = t.mesh.count * t.geo.attributes.position.count / 3;
+        dreiecke += dr;
+        teuer.set(t.art, (teuer.get(t.art) || 0) + dr);
         anzahl += t.mesh.count;
       }
     }
@@ -292,11 +315,16 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
   function setzeWind(staerke, richtung) { wind.kwStaerke.value = staerke; wind.kwRicht.value.copy(richtung); }
 
   function dispose() {
-    for (const t of toepfe) { if (t.mesh) { gruppe.remove(t.mesh); t.mesh.dispose(); } if (FUNDUS.has(t.art) || t === FERN[t.art]) t.geo.dispose(); }
+    for (const t of toepfe) { if (t.mesh) { gruppe.remove(t.mesh); t.mesh.dispose(); } if (FUNDUS.has(t.art) || GRUPPEN.has(t.art) || t === FERN[t.art]) t.geo.dispose(); }
     engine.dispose(); engineGrob.dispose();
-    for (const m of materialien.values()) m.dispose();
+    for (const m of materialien.values()) { m.tiefe.dispose(); m.dispose(); }
     scene.remove(gruppe);
   }
 
-  return { update, naheHindernisse, finde, setzeWind, neu: () => { schmutzig = true; }, dispose, get info() { return { anzahl, dreiecke: Math.round(dreiecke) }; } };
+  /** Sichtweiten-Faktor (Grafik-Stufe), 0.5 … 1 */
+  function setzeWeite(f) { weiteF = f; schmutzig = true; for (const [w, m] of materialien) { if (m.userData.u) m.userData.u.kwWeite.value = w * f; } }
+  return { update, naheHindernisse, finde, setzeWind, setzeWeite, neu: () => { schmutzig = true; }, dispose, get info() {
+    const top = [...teuer].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([a, n]) => `${a} ${Math.round(n / 1000)}k`).join(', ');
+    return { anzahl, dreiecke: Math.round(dreiecke), top };
+  } };
 }
