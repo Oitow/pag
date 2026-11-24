@@ -40,6 +40,9 @@ export function baueKachel(k, planet, N = ZELLEN) {
   const innen = (N + 1) * (N + 1), rand = 4 * N;
   const nv = innen + rand;
   const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Uint8Array(nv * 3), nass = new Uint8Array(nv);
+  // land: Bodenfarbe auch unter Wasserpunkten (Strand/Ufer) – der Shader nimmt sie überall, wo die Fläche nicht ganz Wasser ist.
+  // So färbt das Wasser keine Hangdreiecke an der Küste mehr ein (vorher blaue Zacken den Hang hinauf).
+  const land = new Uint8Array(nv * 3);
   const farbe = [0, 0, 0], info = {};
   let v = 0;
   for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++, v++) {
@@ -58,6 +61,13 @@ export function baueKachel(k, planet, N = ZELLEN) {
     nass[v] = info.wasser > info.h + 0.02 ? 255 : 0;   // Wasseroberfläche (glänzt, Wellen)
     planet.farbe(dx, dy, dz, info, flach, farbe);
     col[v * 3] = Math.min(255, farbe[0] * 255); col[v * 3 + 1] = Math.min(255, farbe[1] * 255); col[v * 3 + 2] = Math.min(255, farbe[2] * 255);
+    if (nass[v]) { // Boden am Wasserspiegel: Sand am Meer, Kies am Fluss
+      const hw = info.h, ww = info.wasser;
+      info.h = ww; info.wasser = -Infinity; info.ufer = Math.max(info.ufer, 0.6);
+      planet.farbe(dx, dy, dz, info, 1, farbe);
+      info.h = hw; info.wasser = ww;
+      land[v * 3] = Math.min(255, farbe[0] * 255); land[v * 3 + 1] = Math.min(255, farbe[1] * 255); land[v * 3 + 2] = Math.min(255, farbe[2] * 255);
+    } else { land[v * 3] = col[v * 3]; land[v * 3 + 1] = col[v * 3 + 1]; land[v * 3 + 2] = col[v * 3 + 2]; }
   }
 
   // Schürze: Randpunkte noch einmal, nach unten versetzt – verdeckt Risse zu gröberen Nachbarn
@@ -74,7 +84,7 @@ export function baueKachel(k, planet, N = ZELLEN) {
     pos[v * 3] = pos[a * 3] - D[g * 3] * tiefe;
     pos[v * 3 + 1] = pos[a * 3 + 1] - D[g * 3 + 1] * tiefe;
     pos[v * 3 + 2] = pos[a * 3 + 2] - D[g * 3 + 2] * tiefe;
-    for (let c = 0; c < 3; c++) { nor[v * 3 + c] = nor[a * 3 + c]; col[v * 3 + c] = col[a * 3 + c] * 0.8; }
+    for (let c = 0; c < 3; c++) { nor[v * 3 + c] = nor[a * 3 + c]; col[v * 3 + c] = col[a * 3 + c] * 0.8; land[v * 3 + c] = land[a * 3 + c] * 0.8; }
     nass[v] = nass[a];
   }
 
@@ -93,7 +103,7 @@ export function baueKachel(k, planet, N = ZELLEN) {
   }
 
   const baeume = fernBaeume(k, planet, N, M, P, D, IF, nor, kante, abstand, cx, cy, cz);
-  return { key: k.key, L: k.L, pos, nor, col, nass, idx, mitte: [cx, cy, cz], minH, maxH, kante, baeume };
+  return { key: k.key, L: k.L, pos, nor, col, land, nass, idx, mitte: [cx, cy, cz], minH, maxH, kante, baeume };
 }
 
 // ---------- Fernwald: Bäume als Punkte (ein Eckpunkt je Baum, im Shader als Silhouette) ----------

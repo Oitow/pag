@@ -14,7 +14,7 @@ self.onmessage = (e) => {
     const t0 = performance.now();
     const k = baueKachel(m.k, planet);
     k.ms = performance.now() - t0;
-    const t = [k.pos.buffer, k.nor.buffer, k.col.buffer, k.nass.buffer, k.idx.buffer];
+    const t = [k.pos.buffer, k.nor.buffer, k.col.buffer, k.land.buffer, k.nass.buffer, k.idx.buffer];
     if (k.baeume) t.push(k.baeume.pos.buffer, k.baeume.groesse.buffer, k.baeume.farbe.buffer);
     self.postMessage(k, t);
   }

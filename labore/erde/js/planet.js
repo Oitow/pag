@@ -75,25 +75,26 @@ const bodenMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness:
 const wasserU = { wZeit: { value: 0 }, wasserCam: { value: new THREE.Vector3() }, wHimmel: { value: new THREE.Color() } };
 bodenMat.onBeforeCompile = (sh) => {
   Object.assign(sh.uniforms, wasserU);
-  sh.vertexShader = 'attribute float nass;\nuniform vec3 wasserCam;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.vertexShader
-    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvNass = nass;\nvWelt = (modelMatrix * vec4(position, 1.0)).xyz + wasserCam;\nvObenW = normalize(vWelt);');
-  sh.fragmentShader = 'uniform float wZeit;\nuniform vec3 wHimmel;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.fragmentShader
-    .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.12, vNass);')
+  sh.vertexShader = 'attribute float nass;\nattribute vec3 land;\nvarying vec3 vLand;\nuniform vec3 wasserCam;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.vertexShader
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvNass = nass;\nvLand = land;\nvWelt = (modelMatrix * vec4(position, 1.0)).xyz + wasserCam;\nvObenW = normalize(vWelt);');
+  sh.fragmentShader = 'uniform float wZeit;\nuniform vec3 wHimmel;\nvarying vec3 vLand;\nvarying float vNass;\nfloat wT;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.fragmentShader
+    .replace('#include <color_fragment>', '#include <color_fragment>\nwT = smoothstep(0.82, 0.98, vNass);\ndiffuseColor.rgb = mix(vLand, diffuseColor.rgb, wT);')
+    .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.12, wT);')
     .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
-if (vNass > 0.01) {
+if (wT > 0.01) {
   vec3 p = vWelt * 0.45; float t = wZeit;
   vec3 st = vec3(sin(p.x * 1.1 + t * 1.3) + 0.6 * sin((p.y + p.z) * 2.3 - t * 1.7),
                  sin(p.y * 0.9 - t * 1.1) + 0.6 * sin((p.z - p.x) * 2.1 + t * 1.5),
                  sin(p.z * 1.0 + t * 0.9) + 0.6 * sin((p.x + p.y) * 1.9 + t * 1.2));
   st -= vObenW * dot(st, vObenW);                       // nur in der Wasserebene kippen
   float nahW = 1.0 - smoothstep(25.0, 220.0, length(vViewPosition));   // fern: keine Wellen (sonst Gittermuster)
-  vec3 nW = normalize(vObenW + st * 0.07 * vNass * nahW);
+  vec3 nW = normalize(vObenW + st * 0.07 * wT * nahW);
   normal = normalize((viewMatrix * vec4(nW, 0.0)).xyz);
 }`)
     .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-if (vNass > 0.01) {
+if (wT > 0.01) {
   float fr = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 4.0);
-  totalEmissiveRadiance += wHimmel * fr * 0.55 * vNass;
+  totalEmissiveRadiance += wHimmel * fr * 0.55 * wT;
 }`);
 };
 bodenMat.customProgramCacheKey = () => 'erde-boden-wasser';
@@ -119,7 +120,7 @@ void main() {
   float d = length(mv.xyz);
   vAlpha = smoothstep(uNah, uNah + 60.0, d);                  // nah stehen die echten Bäume
   float px = groesse * uPixel / max(d, 1.0);
-  vAlpha *= clamp(px / 1.5, 0.0, 1.0);                        // winzig: blass statt flimmern
+  vAlpha *= smoothstep(1.2, 3.0, px);                         // unter ~2 px ausblenden: sonst dunkle Krümel von hoch oben
   gl_PointSize = vAlpha < 0.01 ? 0.0 : clamp(px, 1.5, 64.0);
   vFarbe = farbe; vArt = art; vNebel = d;
   gl_Position = projectionMatrix * mv;
@@ -153,6 +154,7 @@ function erzeuge(d) {
   geo.setAttribute('normal', new THREE.BufferAttribute(d.nor, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(d.col, 3, true));
   geo.setAttribute('nass', new THREE.BufferAttribute(d.nass, 1, true));
+  geo.setAttribute('land', new THREE.BufferAttribute(d.land, 3, true));
   geo.setIndex(new THREE.BufferAttribute(d.idx, 1));
   geo.computeBoundingSphere();
   const m = new THREE.Mesh(geo, stufenFarben ? stufenMat[d.L] : bodenMat);
