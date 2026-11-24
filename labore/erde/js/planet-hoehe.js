@@ -80,6 +80,15 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
     for (let i = 0; i < 4; i++) { const c = gw.z[i]; if (GF[c] > GH[c] + 1 && GF[c] > 0 && GF[c] > see) see = GF[c]; }
     if (see > -Infinity) { wasser = see; detail *= glatt(see, see - 25, Hm); }
     if (Fm < 0.5) wasser = 0;                                                         // Meer
+    // Dünen in heißen, trockenen Ebenen: scharfe Kämme (gestreckt, Wellenlänge ~250 m), dazu Sandriffeln
+    const fe0 = G.lese(GFe, gw), t0 = G.lese(GT, gw);
+    const wueste = glatt(0.24, 0.1, fe0) * glatt(10, 18, t0) * glatt(0, 60, Hm) * (1 - gb);
+    if (wueste > 0.01 && feinste < 120) {
+      const kamm = 1 - Math.abs(n(x / 300 + 31.7, y / 110 - 8.2, z / 300 + 2.9));
+      const duene = kamm * kamm * (0.6 + 0.4 * n(x / 1500, y / 1500 + 9.1, z / 1500)) * 22;
+      const riffel = feinste < 6 ? (1 - Math.abs(n(x / 9, y / 4, z / 9))) * 0.25 : 0;
+      detail = detail * (1 - 0.7 * wueste) + (duene + riffel) * wueste;
+    }
     let h = Hm + detail;
     let vulkan = 0, lava = 0;
     for (const v of VULK) {
