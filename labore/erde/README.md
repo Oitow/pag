@@ -1,7 +1,7 @@
 # 🌍 Erde-Labor
 
 Erfundener Planet (Standard R = 100 km) vom Orbit bis zum Boden, zu Fuß begehbar, mit Geologie, Klima, Wetter, Natur und Graben.
-Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Sprungmarken `?ort=orbit|berg|kueste|boden|fluss|ufer|see|vulkan|krater|wald|biom0…9|gestein0…4`
+Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Sprungmarken `?ort=orbit|berg|kueste|boden|himmel|fluss|ufer|see|vulkan|krater|wald|biom0…9|gestein0…4`
 · Testschalter `?test=1` (kein Spielstand), `?hunger=0.2`, `?tasche=voll`, `?herstellen=offen`, `?bautest=1`, `?tiere=test|aus`, `?ueberleben=aus`, `?wetter=regen|schnee|gewitter|nebel|sturm|klar`, `?uhr=19` (Ortszeit), `?seed=`, `?r=` (km), `?neu=1`.
 
 ## Module (`js/`, reine Logik ohne THREE wo möglich → Tests in `tests/erde-*.test.mjs`)
@@ -23,6 +23,8 @@ Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Sprungmarken `?ort=o
 | `ueberleben.js` (+ `-regeln`) | Leben, Hunger, Durst, Körperwärme (Wetter, Nässe, Kleidung, Feuer, Dach), Essen, Trinken, Tod/Aufwachen, Lava |
 | `herstellen.js` (+ `-daten`) | Herstellen-Fenster (engine `rezepte`), Stationen Lagerfeuer/Werkbank, Kleidung tragen |
 | `bauen.js` (+ `-regeln`, `bauteile.js`) | Bau-Modus: Fundament, Wand, Dach, Treppe, Lagerfeuer, Werkbank – einrasten, Kosten, Abreißen |
+| `spielerfigur.js` | sichtbare Figur in der 3.-Person-Ansicht (Menü Ansicht „1./3. Person“, `?person=1`, `?figur=ritter`, `?koerper=organisch`) |
+| `wolken.js`, `vulkan-rauch.js` | Wolkendecke nach Wetter/Wind (`?wolken=aus`), Rauchsäulen über den Kratern |
 | `tiere.js` (+ `-regeln`) | Wild je Biom (Reh, Hase, Keiler, Wolf), Flucht/Angriff, Jagen → Fleisch, Fell, Knochen |
 
 Aus der Engine (geteilt mit Naturstimmungen/Gigantwelt): `engine/models/natur/naturfundus.js`, `landschaftsgruppen.js` (Wollgras, Pilzholz,
