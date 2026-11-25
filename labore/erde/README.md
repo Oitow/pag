@@ -16,7 +16,7 @@ Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Baum-Galerie: `labor
 | `aktionen.js` | Spieler: graben, aufschütten, nehmen (Regeln + Eingriffe + Inventar) |
 | `planet-hoehe.js` | Höhe/Wasser/Farbe an jedem Punkt (Geologie + feines Rauschen + Flussbetten + Eingriffe) |
 | `planet-baum.js`, `kachel-bau.js`, `kachel-strom.js`, `kachel-worker.js` | Würfel-Kugel-Quadtree, Kachelbau im Worker, nahtloser Austausch |
-| `natur-streu.js` → `natur.js` | Natur je 80-m-Kachel streuen (Worker) → InstancedMesh, Wind, nah/mittel/fern. Laubbäume + Kiefer/Pinie aus `engine/models/natur/astbaum.js` (echte Äste, Zweige, Blätter): nah bis 16 m (~5k △), mittel bis 45 m (~1.3k △), fern ~45 △ |
+| `natur-streu.js` → `natur.js` | Natur je 80-m-Kachel streuen (Worker) → InstancedMesh, Wind, nah/mittel/fern. Laubbäume + Kiefer/Pinie aus `engine/models/natur/astbaum.js` (echte Äste, Zweige, Blätter): nah bis 16 m (~5k △), nah bis 25 m, mittel bis 50 m, weit bis 90 m; fern **Impostor** (`engine/render/baum-impostor.js`: Foto des nahen Modells aus 8 Richtungen, 2 △ je Baum, alle Baumarten) |
 | `zeit-wetter.js` | Uhr (engine `zeit`), Wetter (engine `wetter`), Regen/Schnee (engine `niederschlag`) auf der Kugel |
 | `planet.js` | Seite: Steuerung, Kamera, Himmel, Sonnenschatten, Mond, Grafik-Stufe, HUD, Karte |
 | `erweiterungen.js` | Andock-Stelle für Spiel-Module (Vertrag oben in der Datei); Plan: `docs/plaene/ERDE-UEBERLEBEN.md` |
