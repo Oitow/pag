@@ -227,6 +227,7 @@
 | scatter-mesh | `engine/world/scatter-mesh.js` | Zeichnet die Objekte einer erzeugten Welt (welt.objekte) als InstancedMesh je (Typ, Variante): mit Asset-Cache prozedurale Natur-Assets in Metern (Bäume, Felsen, Büsche, Bodendecker …) mit Wind, sonst einfache Low-Poly-FORMEN; unbekannte Typen → Ersatz nach Art oder weglassen; Seerosen auf dem Wasser | entwurf |
 | terrain-farben | `engine/world/terrain-farben.js` | Geländefarben je Gitterzelle aus einer erzeugten Welt: weiche Biom-Übergänge mit ausgefransten Grenzen, Wiesenflecken und trockene Grastöne, Mikrovariation, Hangfels mit Gesteinsbändern, nasser Sand, Flusskies und Seeschlamm, festgetretene Wege (FLAG.WEG), Meeresgrund nach Tiefe, Schnee mit Rauschgrenze (an Nordhängen tiefer), Mulden dunkler | entwurf |
 | terrain-mesh | `engine/world/terrain-mesh.js` | Baut aus einer erzeugten Welt (worldgen) und ihrem Welt-Adapter ein Three-Gelände: Boden mit weich gemischten Biomfarben, Wiesenflecken, Hangfels, Ufern (Sand/Kies/Schlamm) und Schnee (terrain-farben), Seen/Flüsse auf ihrem Wasserspiegel und ein Meer bis zum Horizont | entwurf |
+| voxel-kugel | `engine/world/voxel-kugel.js` | Voxel-Nahzone auf einem Kugelplaneten: festes Gitter auf der Würfelkugel (Winkelzellen × Radius-Stufen), Dichte aus Höhenfunktion + Eingriffen (Graben/Füllen als Kugeln), Stoff je Voxel, Surface-Nets-Netz – Tunnel, Überhänge, Höhlen | entwurf |
 | wasser-glanz | `engine/world/wasser-glanz.js` | Lebendiges Wasser für vorhandene Wasser-Materialien (Seen/Flüsse/Meer aus terrain-mesh): wandernde Helligkeits-Wellen, kleine Glitzerpunkte und ein Schaumsaum am Ufer – reiner Shader-Hook, keine neue Geometrie, kein Draw-Call mehr | entwurf |
 | wege-lage | `engine/world/wege-lage.js` | Lage der Brücken einer Welt in Metern (Mitte, Richtung, Länge, Höhe an beiden Enden) und ein Adapter, auf dem Figuren über die Brücken laufen statt durch den Fluss | entwurf |
 | wege-mesh | `engine/world/wege-mesh.js` | Holzbrücken für die Wege einer Welt als Three-Meshes: Bohlendeck, Längsbalken, Geländer und Pfeiler bis zum Flussgrund, passend geneigt zwischen beiden Ufern (Lage aus wege-lage) | entwurf |
@@ -484,7 +485,7 @@
 | glanz | wasser-glanz |
 | gleiten | character-motor, character-anim-zustand |
 | glut | grosszauber-riss-ansicht |
-| graben | grosszauber-riss, fundmodelle, welt-aenderung |
+| graben | grosszauber-riss, fundmodelle, voxel-kugel, welt-aenderung |
 | grading | psx |
 | gras | pflanze-boden, gras-feld |
 | groesse | riesenbaum |
@@ -515,6 +516,7 @@
 | hinweis | interaktion, hud |
 | hoehe | welt-regionen, worldgen-height, worldgen-query |
 | hoehenkarte | sdf-netz, riesenbaum-netz, boden-anpassung |
+| hoehle | voxel-kugel |
 | hoeren | character-sinne |
 | holz | wege-mesh |
 | horde | gegner-lager, horde, zauber-daten, zauber, irrlicht, keiler, ratte, wolf, horde-mesh, modul-gegner |
@@ -584,6 +586,7 @@
 | krit | kampf-werte |
 | krone | character-parts-hut, character-parts-kopf, laub-klumpen, riesenbaum-krone, laub-karten |
 | kronen | kronen-lichtkarte |
+| kugel | voxel-kugel |
 | körper | character-parts, figur-form, figur-haut, figur-koerper |
 | l-system | baum-skelett |
 | labor | module-register |
@@ -693,6 +696,7 @@
 | pinsel | welt-aenderung |
 | pixel | psx |
 | plan | dorf-plan-kern, dorf-plan, riesenwald-plan, welt-plan-formen, welt-plan |
+| planet | voxel-kugel |
 | plateau | welt-plan |
 | platzierung | riesenwald-plan |
 | plugin | modul-kern |
@@ -849,7 +853,7 @@
 | stufe | progression, modul-fortschritt, module-register |
 | sturm | grosszauber-sturm, grosszauber, grosszauber-mesh, grosszauber-sturm-ansicht, zauber-gross |
 | sukkulente | pflanze-wueste |
-| surface-nets | sdf-netz |
+| surface-nets | sdf-netz, voxel-kugel |
 | synth | klang |
 | system | modul-kern |
 | tabelle | zauber-daten |
@@ -888,6 +892,7 @@
 | truhe | behaelter, inventar-ansicht |
 | tuer | interaktion, tueren |
 | tuning | character-motor-tuning |
+| tunnel | voxel-kugel |
 | turban | character-parts-hut |
 | turm | tempel |
 | tutorial | aufgaben, modul-tutorial, tutorial-daten, aufgaben-anzeige, welt-plan |
@@ -914,6 +919,7 @@
 | vertexfarben | fels-basis, fels, natur-basis, pflanze-basis, totholz, mesh-builder, terrain-farben |
 | verzweigung | baum-skelett |
 | vfx | zauber-effekte, zauber-anzeige |
+| voxel | voxel-kugel |
 | wachturm | wachturm |
 | waffe | gegenstaende-daten, nahkampf-daten, nahkampf, character-ausruestung |
 | wahrnehmung | character-sinne |
@@ -930,7 +936,7 @@
 | wegpunkt | modul-tutorial |
 | wegweiser | bau-wegbau |
 | welle | grosszauber-welle, grosszauber, grosszauber-mesh, grosszauber-welle-ansicht, zauber-gross |
-| welt | noise, rng, sdf-netz, sdf, grosszauber, kampf, welt-dinge, modul-welt, zauber-gross, boden-anpassung, chunk-strom, dorf-plan, fern-wald, fluss-mesh, gras-feld, kollision, scatter-mesh, terrain-farben, terrain-mesh, wasser-glanz, wege-lage, wege-mesh, welt-aenderung, welt-plan-formen, welt-plan, welt-regionen, welt-streu, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
+| welt | noise, rng, sdf-netz, sdf, grosszauber, kampf, welt-dinge, modul-welt, zauber-gross, boden-anpassung, chunk-strom, dorf-plan, fern-wald, fluss-mesh, gras-feld, kollision, scatter-mesh, terrain-farben, terrain-mesh, voxel-kugel, wasser-glanz, wege-lage, wege-mesh, welt-aenderung, welt-plan-formen, welt-plan, welt-regionen, welt-streu, worldgen-adapter, worldgen-biomes, worldgen-chunkfluss, worldgen-chunks, worldgen-climate, worldgen-erosion, worldgen-grid, worldgen-height, worldgen-hydrology, worldgen-path, worldgen-presets, worldgen-query, worldgen-rivers, worldgen-scatter, worldgen-shape, worldgen-sites, worldgen-vegetation, worldgen-wege, worldgen |
 | werfen | welt-dinge |
 | werkbank | rezepte, stationen |
 | werkzeug | hand, rohstoffe, character-ausruestung |
@@ -3161,7 +3167,7 @@ const { geometrie } = baueAstbaum('eiche', 7, { detail: 2 });   // nah: Zweige +
 // Material: weich (kein flatShading), side: DoubleSide, Normalen NICHT umdrehen (Krone wird von außen beleuchtet)
 ```
 
-Genutzt von: erde · Tags: natur, baum, aeste, zweige, blaetter, laub, nadeln, lod, wind, prozedural · THREE: ja
+Genutzt von: erde, naturstimmungen · Tags: natur, baum, aeste, zweige, blaetter, laub, nadeln, lod, wind, prozedural · THREE: ja
 
 ### baum-arten · `engine/models/natur/baum-arten.js` · v1.0.0 · entwurf
 Reine Parameter-Daten der Baumarten (Wuchs, Verzweigung, Laubform, Farben, Jahreszeiten) für baum-skelett/baum
@@ -4686,6 +4692,21 @@ aend.onAenderung(({ bereich }) => bereich && gelaende.aktualisiere(bereich, { er
 ```
 
 Genutzt von: enklave, handwerk · Tags: welt, terrain, gelaende, wasser, meer, mesh, biome, teilupdate · THREE: ja
+
+### voxel-kugel · `engine/world/voxel-kugel.js` · v1.0.0 · entwurf
+Voxel-Nahzone auf einem Kugelplaneten: festes Gitter auf der Würfelkugel (Winkelzellen × Radius-Stufen), Dichte aus Höhenfunktion + Eingriffen (Graben/Füllen als Kugeln), Stoff je Voxel, Surface-Nets-Netz – Tunnel, Überhänge, Höhlen
+
+- `createVoxelKugel({ radius, zelle = 0.5, n = 32, saeule(dx,dy,dz) -> { h, … }, stoff(saeule, tiefe, x, y, z) -> 1…255 }) -> { zelle, n, R, schluessel(f,ci,cj,ck), zerlege(key), zelleVon(x,y,z) -> { f, i, j, k } (Bruchteile), chunkVon(x,y,z) -> key, chunksFuerOp(op) -> [key], punkt(f,i,j,k,out?) -> out, erzeuge(key, ops) -> daten, netz(daten, { rand }) -> netz, dichteAn(daten, x,y,z) -> m (> 0 fest, NaN = außerhalb), stoffAn(daten, x,y,z) -> id }, Eingriff = { typ: 'weg'|'fest', x, y, z, r, stoff? }`
+
+```js
+import { createVoxelKugel } from '../../engine/world/voxel-kugel.js';
+const vk = createVoxelKugel({ radius: 100_000, saeule: (x, y, z) => ({ h: 12 }), stoff: (s, tiefe) => (tiefe < 1 ? 1 : 2) });
+const op = { typ: 'weg', x: 0, y: 100_012, z: 0, r: 1.2 };
+const key = vk.chunkVon(op.x, op.y, op.z);
+const netz = vk.netz(vk.erzeuge(key, [op]));   // netz.pos relativ zu netz.ursprung (double)
+```
+
+Genutzt von: erde · Tags: voxel, graben, tunnel, hoehle, planet, kugel, surface-nets, welt · THREE: nein
 
 ### wasser-glanz · `engine/world/wasser-glanz.js` · v1.0.0 · entwurf
 Lebendiges Wasser für vorhandene Wasser-Materialien (Seen/Flüsse/Meer aus terrain-mesh): wandernde Helligkeits-Wellen, kleine Glitzerpunkte und ein Schaumsaum am Ufer – reiner Shader-Hook, keine neue Geometrie, kein Draw-Call mehr
