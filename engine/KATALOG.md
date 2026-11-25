@@ -990,7 +990,7 @@ klang.spiele('wumms', { staerke: 1.5, tonhoehe: 0.8 });
 klang.dauerton('laden', { staerke: 0.4, tonhoehe: 1.3 }); // jedes Bild; null = aus
 ```
 
-Genutzt von: enklave, figuren · Tags: audio, klang, sound, zauber, kampf, synth, webaudio · THREE: nein
+Genutzt von: enklave, erde, figuren · Tags: audio, klang, sound, zauber, kampf, synth, webaudio · THREE: nein
 
 ### follow-camera · `engine/camera/follow-camera.js` · v1.1.0 · entwurf
 Third-Person-Orbitkamera: weiches Folgen (vertikal träger), Kollision entlang des Sichtstrahls (Boden + Hindernisse, sanftes Zurückfahren), Auto-Ausrichtung, Sprint-FOV, Zoom, Schütteln, weiches Lock-On mit Zielwechsel, Erste-Person beim Reinzoomen, Presets (nah/weit/Schulter), Kamerafahrten

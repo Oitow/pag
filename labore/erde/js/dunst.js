@@ -34,7 +34,7 @@ float fogFactor = 1.0 - exp(-fogDensity * fogDensity * vFogDepth * vFogDepth);
 float fogFactor = smoothstep(fogNear, fogFar, vFogDepth);
 #endif
 vec3 dunstC = fogColor;
-#if NUM_DIR_LIGHTS > 0
+#if NUM_DIR_LIGHTS > 0 && ( defined( STANDARD ) || defined( LAMBERT ) || defined( PHONG ) || defined( TOON ) )   // nur beleuchtete Materialien haben directionalLights
 dunstC += dunstGlanz(vFogRicht, directionalLights[0].direction, directionalLights[0].color, fogFactor);
 #endif
 gl_FragColor.rgb = mix(gl_FragColor.rgb, linearToOutputTexel(vec4(dunstC, 1.0)).rgb, fogFactor);
