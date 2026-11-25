@@ -5,7 +5,11 @@
 // Fortschritt (Valheim-artig): Stein → Kupfer → Eisen. Werkzeug-Stufen (HACKE, AXT, FUND_STUFE) stehen unten, aktionen.js nutzt sie.
 
 /** Anzeigenamen der Gegenstände, die das Herstellen neu einführt oder braucht (Rest: gegenstandName aus aktionen.js). */
+import { FELD_NAMEN } from './felder-regeln.js';
+
 export const NAMEN = {
+  ...FELD_NAMEN,
+  brot: 'Brot', gebackeneKartoffel: 'Gebackene Kartoffel', geroesteterMais: 'Gerösteter Mais', reisbrei: 'Reisbrei', hirsebrei: 'Hirsebrei',
   fleisch: 'Fleisch', fell: 'Fell', knochen: 'Knochen',
   seil: 'Seil', speer: 'Speer', fackel: 'Fackel', bogen: 'Bogen', pfeil: 'Pfeil',
   fellmantel: 'Fellmantel', fellstiefel: 'Fellstiefel',
@@ -59,6 +63,12 @@ export const REZEPTE = {
   gebratenesFleisch: { gruppe: 'essen', zutaten: { fleisch: 1 }, ergebnis: 'gebratenesFleisch', station: 'lagerfeuer' },
   gebratenerFisch:   { gruppe: 'essen', zutaten: { fisch: 1 }, ergebnis: 'gebratenerFisch', station: 'lagerfeuer' },
   beerenbrei:    { gruppe: 'essen', zutaten: { beeren: 3, pilz: 1 }, ergebnis: 'beerenbrei', station: 'lagerfeuer' },
+  brot:          { gruppe: 'essen', zutaten: { weizen: 3 }, ergebnis: 'brot', station: 'lagerfeuer' },
+  roggenbrot:    { gruppe: 'essen', name: 'Brot (Roggen)', zutaten: { roggen: 3 }, ergebnis: 'brot', station: 'lagerfeuer' },
+  gebackeneKartoffel: { gruppe: 'essen', zutaten: { kartoffel: 1 }, ergebnis: 'gebackeneKartoffel', station: 'lagerfeuer' },
+  geroesteterMais: { gruppe: 'essen', zutaten: { mais: 1 }, ergebnis: 'geroesteterMais', station: 'lagerfeuer' },
+  reisbrei:      { gruppe: 'essen', zutaten: { reis: 2 }, ergebnis: 'reisbrei', station: 'lagerfeuer' },
+  hirsebrei:     { gruppe: 'essen', zutaten: { hirse: 2 }, ergebnis: 'hirsebrei', station: 'lagerfeuer' },
   beerenbreiSteinpilz: { gruppe: 'essen', name: 'Beerenbrei (Steinpilz)', zutaten: { beeren: 3, steinpilz: 1 }, ergebnis: 'beerenbrei', station: 'lagerfeuer' },
 };
 

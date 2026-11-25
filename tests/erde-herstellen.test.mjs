@@ -13,7 +13,7 @@ const BEKANNT = new Set(('holz rinde ruten stoecke beeren fasern schilf moos lau
   'steine schieferplatten wolle flechten eisenerz kupfererz kohle gold salz feuerstein quarz ammonit erde lehm sand ' +
   'axt schaufel spitzhacke eisenhacke fleisch fell knochen seil speer fackel fellmantel fellstiefel gebratenesFleisch ' +
   'gebratenerFisch beerenbrei pfeil bogen lagerfeuer werkbank ' +
-  'holzkohle kupferbarren eisenbarren naegel kupferaxt kupferhacke eisenaxt eisenspeer schmelzofen amboss eisentuer gleiter').split(' '));
+  'holzkohle kupferbarren eisenbarren naegel kupferaxt kupferhacke eisenaxt eisenspeer schmelzofen amboss eisentuer gleiter ' + 'weizen roggen kartoffel mais reis hirse brot gebackeneKartoffel geroesteterMais reisbrei hirsebrei').split(' '));
 const STATION = new Set(['lagerfeuer', 'werkbank', 'schmelzofen', 'amboss', 'schmiede']);
 
 function neu(plaetze = 30) {

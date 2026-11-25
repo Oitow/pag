@@ -13,7 +13,6 @@ import { pflanzenGeo, pflanzOrte, disposeFelderModelle } from './felder-modelle.
 import { schichten, stoffInTiefe, STOFFE } from './boden.js';
 import { biom } from './klima.js';
 import { eignung } from './wachstum.js';
-import { NAMEN } from './herstellen-daten.js';
 import { standardMaterial } from '../../../engine/render/mesh-builder.js';
 import { rng, hashSeed } from '../../../engine/core/rng.js';
 
@@ -22,8 +21,6 @@ const ABSTAND_TEST = 8, HOF_R = 120, BLICK = 5, MAX_DH = 6, NX = 17, NZ = 9, HEB
 export function createFelder(welt) {
   const { THREE, anker, cam, blick, inventar, planet, R } = welt;
   const P = new URLSearchParams(globalThis.location?.search || '');
-  // Anzeigenamen für Saat und Ertrag (fehlen in herstellen-daten NAMEN – nur ergänzen, nie überschreiben)
-  for (const [id, n] of Object.entries(FELD_NAMEN)) if (!(id in NAMEN)) NAMEN[id] = n;
   const name = (id) => FELD_NAMEN[id] || id;
 
   const V = () => new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
