@@ -156,6 +156,7 @@
 | totholz-form | `engine/models/natur/totholz-form.js` | Reine Röhren-Geometrie (ohne THREE) für Totholz/Äste: Ringe entlang eines Pfads, Enden zu/Spitze/Jahresring-Scheibe, Markierung je Dreieck | neu |
 | totholz | `engine/models/natur/totholz.js` | Prozedurales Low-Poly-Totholz (Vertrag NATUR-ASSETS): baumstumpf (Jahresringe, Wurzelansätze), liegenderStamm (Aststummel), ast | neu |
 | bau-instanzen | `engine/render/bau-instanzen.js` | Bau-Teile (Häuser, Laternen, Brunnen …) als InstancedMesh je typ#variante, ein gemeinsames Leucht-Mesh, Kollisions-Körper und Anker in Weltlage | entwurf |
+| baum-impostor | `engine/render/baum-impostor.js` | Ferne Bäume als „Foto“ des echten Modells: jede Art wird beim Start aus N Richtungen in einen Atlas (Farbe + Normale) gerendert und fern als EIN Quad (2 Dreiecke) gezeigt, das sich zur Kamera dreht; Licht aus der gebackenen Normale → sieht aus wie der nahe Baum, kostet fast nichts | entwurf |
 | figur-material | `engine/render/figur-material.js` | Weiches Figuren-Material: Standard-Material mit Randlicht (Fresnel), aufgehellter Schattenseite und kräftigeren Farben – Figuren heben sich vom Gelände ab | entwurf |
 | gauss-saat | `engine/render/gauss-saat.js` | Prozedurale Gauß-Splats erzeugen: wachsender Daten-Sammler, Quaternion aus einer Normalen und flächengleiche Aussaat flacher Scheiben auf einem Dreiecksnetz (Moos, Flechten, Laub) | entwurf |
 | gauss-sortierung | `engine/render/gauss-sortierung.js` | Tiefen-Sortierung für Gauß-Splats: 16-Bit-Zähl-Sortierung entlang der Blickrichtung (hinten→vorn), ohne Allokation je Aufruf – 120 k Splats in ~1–3 ms | entwurf |
@@ -295,6 +296,7 @@
 | asset | bau-basis, bau-pruefung, bau-dorf-teile, gebaeude-pruefen, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau, fundmodelle, landschaftsgruppen, naturfundus |
 | ast | totholz-form, totholz, riesenwald-teile |
 | astar | worldgen-path |
+| atlas | baum-impostor |
 | attrappe | fake-dom |
 | attribute | progression |
 | audio | klang |
@@ -325,7 +327,7 @@
 | bau | bau-basis, bau-pruefung, bau-teile, bau-dorf-teile, gebaeude-pruefen, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau, bau-instanzen |
 | bauen | welt-aenderung |
 | baukasten | modul-kern, spiel |
-| baum | klettern, astbaum, baum-arten, baum-skelett, baum, laub-klumpen, natur-assets, natur-basis, naturfundus, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum |
+| baum | klettern, astbaum, baum-arten, baum-skelett, baum, laub-klumpen, natur-assets, natur-basis, naturfundus, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum, baum-impostor |
 | baumstumpf | totholz |
 | beben | grosszauber-riss, grosszauber-wand, grosszauber-welle, grosszauber, grosszauber-mesh |
 | bedrohung | bedrohung |
@@ -340,6 +342,7 @@
 | bewegung | character-motor-tuning, character-motor, character-steering, character, klettern |
 | bewohner | modul-bewohner |
 | bildzeit | qualitaet |
+| billboard | baum-impostor |
 | biome | terrain-farben, terrain-mesh, worldgen-biomes, worldgen-query |
 | blaetter | astbaum |
 | blatt | laub-klumpen, laub-karten |
@@ -423,7 +426,7 @@
 | fels | grosszauber-wand, klettern, fels-basis, fels-form, fels, natur-assets, naturfundus, grosszauber-wand-ansicht |
 | felsen | scatter-mesh, welt-streu, worldgen-vegetation |
 | fenster | bau-teile, oberflaeche-fenster, menue |
-| fern | character-lod, fern-wald |
+| fern | character-lod, baum-impostor, fern-wald |
 | festung | grosszauber-wand |
 | feuchte | worldgen-climate |
 | feuer | grosszauber-riss, grosszauber-riss-ansicht |
@@ -492,7 +495,7 @@
 | halten | zauber-leiste |
 | haltung | kampf-werte, ziel-rahmen |
 | hand | hand, figur-koerper |
-| handy | touch-stick, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, qualitaet, modul-kampf, modul-oberflaeche, modul-zauber, chat, figur-editor, menue, minikarte, zauber-leiste |
+| handy | touch-stick, baum-impostor, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, qualitaet, modul-kampf, modul-oberflaeche, modul-zauber, chat, figur-editor, menue, minikarte, zauber-leiste |
 | hang | klettern, character-anim-hang |
 | hase | hase |
 | hash | rng |
@@ -524,7 +527,7 @@
 | id | entitaeten |
 | idle | character-anim-idle, character-clips-mehr |
 | ik | character-anim-hang, character-gang |
-| impostor | riesenwald-teile, fern-wald |
+| impostor | baum-impostor, riesenwald-teile, fern-wald |
 | insel | worldgen-presets, worldgen-shape, worldgen |
 | instanced | character-lod |
 | instancedmesh | bau-instanzen, horde-mesh |
@@ -600,7 +603,7 @@
 | localStorage | speicher |
 | lock-on | follow-camera, ziel-wahl, modul-spieler |
 | locken | character-parts-haar, figur-haar |
-| lod | character-lod, astbaum, laub-klumpen, modul-bewohner, modul-riesenwald, modul-welt, riesenwald-teile, chunk-strom, fern-wald |
+| lod | character-lod, astbaum, laub-klumpen, baum-impostor, modul-bewohner, modul-riesenwald, modul-welt, riesenwald-teile, chunk-strom, fern-wald |
 | logik | pflanze-formen |
 | look | character-look, figur-material, psx, splat-look, figur-editor |
 | loop | schleife |
@@ -675,7 +678,7 @@
 | partikel | niederschlag, zauber-effekte |
 | patrouille | character-steering-extra, character-steering |
 | pause | menue |
-| performance | character-lod, qualitaet |
+| performance | character-lod, baum-impostor, qualitaet |
 | persistenz | speicher |
 | pfad | character-steering, welt-plan, worldgen-path, worldgen-wege |
 | pfeil | aufgaben-anzeige |
@@ -727,7 +730,7 @@
 | registry | natur-assets |
 | reh | reh |
 | reichweite | faehigkeiten, interaktion |
-| render | grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht, kronen-lichtkarte, laub-karten, natur-material, gras-feld |
+| render | baum-impostor, grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht, kronen-lichtkarte, laub-karten, natur-material, gras-feld |
 | render-target | kronen-lichtkarte |
 | renderer | spiel |
 | rendern | horde-mesh |
@@ -910,7 +913,7 @@
 | wachturm | wachturm |
 | waffe | gegenstaende-daten, nahkampf-daten, nahkampf, character-ausruestung |
 | wahrnehmung | character-sinne |
-| wald | baum, riesenbaum, kronen-lichtkarte, modul-riesenwald, fern-wald, riesenwald-plan |
+| wald | baum, riesenbaum, baum-impostor, kronen-lichtkarte, modul-riesenwald, fern-wald, riesenwald-plan |
 | waldläufer | klassen-daten |
 | wand | grosszauber-wand, grosszauber, klettern, grosszauber-mesh, grosszauber-wand-ansicht, zauber-gross |
 | wandern | character-steering |
@@ -3563,6 +3566,19 @@ Genutzt von: – · Tags: bau, instanzen, instancedmesh, kollision, anker, leuch
 Teil: { id, typ, variante = 0, x, z, winkel (Drehung um Y; lokal +z zeigt nach (sin w, cos w)), y = 0 }.
 Welt = (x + lx·cos w + lz·sin w, z − lx·sin w + lz·cos w). Kasten-bx/bz der Assets sind HALBE Maße (wie in world/kollision).
 Anker-Eintrag: { teilId, typ, art (Anker-Name, bei station deren art), x, y, z, winkel, daten (Original-Anker) }.
+
+### baum-impostor · `engine/render/baum-impostor.js` · v1.0.0 · entwurf
+Ferne Bäume als „Foto“ des echten Modells: jede Art wird beim Start aus N Richtungen in einen Atlas (Farbe + Normale) gerendert und fern als EIN Quad (2 Dreiecke) gezeigt, das sich zur Kamera dreht; Licht aus der gebackenen Normale → sieht aus wie der nahe Baum, kostet fast nichts
+
+- `createBaumImpostor({ renderer, baeume: [{ art, geometrie }], richtungen = 8, px = 128, streulicht = 0.28, alphaTest = 0.42 }) -> { material, geometrie(art) -> BufferGeometry (Quad, für InstancedMesh), hat(art), dispose() }`
+
+```js
+import { createBaumImpostor } from '../../engine/render/baum-impostor.js';
+const imp = createBaumImpostor({ renderer, baeume: [{ art: 'eiche', geometrie: eicheGeo }] });
+const fern = new THREE.InstancedMesh(imp.geometrie('eiche'), imp.material, 500);   // Instanz-Matrix: Fußpunkt, +Y = oben, Drehung, Skala
+```
+
+Genutzt von: erde · Tags: render, baum, impostor, billboard, atlas, lod, fern, wald, performance, handy · THREE: ja
 
 ### figur-material · `engine/render/figur-material.js` · v1.1.0 · entwurf
 Weiches Figuren-Material: Standard-Material mit Randlicht (Fresnel), aufgehellter Schattenseite und kräftigeren Farben – Figuren heben sich vom Gelände ab
