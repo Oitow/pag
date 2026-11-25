@@ -256,7 +256,7 @@ function streuen(wunsch) {
     for (const key of streuDa.keys()) if (!nah.has(key) && streuDa.size > 300) streuDa.delete(key);
   }
 }
-const natur = createNatur(scene, { istWeg: eingriffe.istWeg });
+const natur = createNatur(scene, { istWeg: eingriffe.istWeg, renderer });
 
 // ---------- Zeit, Wetter, Inventar, Aktionen ----------
 const zw = createZeitWetter({ seed: SEED, zustand: stand?.zeit });

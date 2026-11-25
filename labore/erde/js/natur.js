@@ -12,11 +12,13 @@ import { baueGruppe } from '../../../engine/models/natur/landschaftsgruppen.js';
 import { baueFundmodell } from '../../../engine/models/natur/fundmodelle.js';
 import { createAssetCache } from '../../../engine/models/natur/natur-assets.js';
 import { baueAstbaum, baueAstbaumFern, kannAstbaum } from '../../../engine/models/natur/astbaum.js';
+import { createBaumImpostor } from '../../../engine/render/baum-impostor.js';
 import { STREU_ARTEN, STRIDE } from './natur-streu.js';
 
 const FUNDUS = new Set(['fichte', 'birke', 'granitblock', 'schiefer', 'rohrkolben', 'seerose', 'steinpilz', 'forelle', 'barsch']);
 // Astbäume (engine astbaum): echte Äste + Blätter; Fichte/Birke kommen weiter aus dem Naturfundus
 const AST = (art) => kannAstbaum(art) && !FUNDUS.has(art);
+const VOLL = [1.25, 1.55, 1.05];   // Laubfülle je Variante: manche Bäume dicht belaubt, manche lichter
 const GRUPPEN = new Set(['wollgras', 'pilzholz', 'flechtenbank']);   // engine/models/natur/landschaftsgruppen.js
 const FUNDE = new Set(['erzbrocken', 'ammonit', 'quarzdruse']);       // engine/models/natur/fundmodelle.js
 // Werfen Schatten (Gras, Moos, Blumen u. ä. nicht – kostet viel, sieht man kaum)
@@ -122,7 +124,7 @@ const KOERPER = `
 `;
 
 /** istWeg(kachelKey, index) → true: Stück wurde entfernt (gefällt, abgebaut, ausgegraben). */
-export function createNatur(scene, { istWeg = () => false } = {}) {
+export function createNatur(scene, { istWeg = () => false, renderer = null } = {}) {
   const gruppe = new THREE.Group();
   scene.add(gruppe);
   const wind = { kwZeit: { value: 0 }, kwStaerke: { value: 1 }, kwRicht: { value: new THREE.Vector3(1, 0.3, 0.6).normalize() }, kwCam: { value: new THREE.Vector3() } };
@@ -183,7 +185,7 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
         m.material.dispose(); geo = mitWind(m.geometry, art);
       }
       else if (AST(art)) {   // Äste, Zweige, Blätter statt Kugel-Kronen
-        const a = baueAstbaum(art, 31 + v * 977, { detail: 2 });
+        const a = baueAstbaum(art, 31 + v * 977, { detail: 2, dichte: VOLL[v % 3] });
         geo = a.geometrie;
         if (v === 0) cfg.stamm = a.stammRadius;
       }
@@ -201,13 +203,13 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
     toepfe.push(...NAH[art]);
     if (cfg.mittel) {
       const ast = AST(art);
-      const g = ast ? baueAstbaum(art, 31, { detail: 1 }).geometrie : engineGrob.holen(art, 0).geometrie;
+      const g = ast ? baueAstbaum(art, 31, { detail: 1, dichte: 1.25 }).geometrie : engineGrob.holen(art, 0).geometrie;
       aufZiel(art, g);
       MITTEL_T[art] = { art, geo: g, mat: material(0, ast), mesh: null, n: 0, kap: 0 };
       toepfe.push(MITTEL_T[art]);
     }
     if (cfg.weit) {   // Zwischenstufe: Astgerüst + grobe Blätter (statt gleich Klumpen)
-      const g = baueAstbaum(art, 31, { detail: 0 }).geometrie;
+      const g = baueAstbaum(art, 31, { detail: 0, dichte: 1.25 }).geometrie;
       aufZiel(art, g);
       WEIT_T[art] = { art, geo: g, mat: material(0, true), mesh: null, n: 0, kap: 0 };
       toepfe.push(WEIT_T[art]);
@@ -222,6 +224,24 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
     cfg.groesse = erste.boundingBox ? Math.max(0.3, (erste.boundingBox.max.x - erste.boundingBox.min.x) * 0.25) : 0.5; // fürs Antippen
     CFG[art] = cfg;
   }
+  // Ferne Bäume (alle Arten): „Foto“ des nahen Modells aus 8 Richtungen → ein Quad je Baum (engine/render/baum-impostor)
+  let impostor = null;
+  if (renderer) {
+    const liste = STREU_ARTEN.filter((art) => BAUM.has(art) && FERN[art]).map((art) => {
+      const geo = NAH[art][1 % NAH[art].length].geo;
+      if (!geo.attributes.normal) geo.computeVertexNormals();
+      return { art, geometrie: geo };
+    });
+    if (liste.length) {
+      impostor = createBaumImpostor({ renderer, baeume: liste });
+      for (const { art } of liste) {
+        const alt = FERN[art], i = toepfe.indexOf(alt);
+        alt.geo.dispose();
+        FERN[art] = { art, geo: impostor.geometrie(art), mat: impostor.material, mesh: null, n: 0, kap: 0, impostor: true };
+        toepfe[i] = FERN[art];
+      }
+    }
+  }
   const kapazitaet = (t, n) => {
     if (t.mesh && t.kap >= n) return;
     if (t.mesh) { gruppe.remove(t.mesh); t.mesh.dispose(); }
@@ -231,8 +251,8 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
     t.mesh.setColorAt(0, new THREE.Color(1, 1, 1));
     t.mesh.frustumCulled = false;
     t.mesh.receiveShadow = true;
-    t.mesh.castShadow = WIRFT(t.art) && t !== FERN[t.art] && t !== MITTEL_T[t.art];   // nur Nahes wirft (Schattenkasten ±40 m)
-    t.mesh.customDepthMaterial = t.mat.tiefe;
+    t.mesh.castShadow = WIRFT(t.art) && t !== FERN[t.art] && t !== MITTEL_T[t.art] && !t.impostor;   // nur Nahes wirft (Schattenkasten ±40 m)
+    if (t.mat.tiefe) t.mesh.customDepthMaterial = t.mat.tiefe;
     gruppe.add(t.mesh);
   };
 
@@ -284,7 +304,7 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
           if (ab < cfg.nah) t = NAH[art][idx % cfg.varianten];
           else if (ab < cfg.mittel) t = MITTEL_T[art];
           else if (ab < cfg.weit) t = WEIT_T[art];
-          else if (ab < cfg.fern && (ab < 140 || idx % (ab < 230 ? 2 : 3) === 0)) t = FERN[art]; // weit weg: jeder zweite/dritte reicht
+          else if (ab < cfg.fern && (ab < (FERN[art]?.impostor ? 230 : 140) || idx % (ab < 230 ? 2 : 3) === 0)) t = FERN[art]; // weit weg: jeder zweite/dritte reicht
           if (!t) continue;
           t.n++;
           wahl.push(t, ax, ay, az, o, d);
@@ -349,7 +369,7 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
 
   function dispose() {
     for (const t of toepfe) { if (t.mesh) { gruppe.remove(t.mesh); t.mesh.dispose(); } if (FUNDUS.has(t.art) || GRUPPEN.has(t.art) || FUNDE.has(t.art) || t === FERN[t.art]) t.geo.dispose(); }
-    engine.dispose(); engineGrob.dispose();
+    engine.dispose(); engineGrob.dispose(); impostor?.dispose();
     for (const m of materialien.values()) { m.tiefe.dispose(); m.dispose(); }
     scene.remove(gruppe);
   }

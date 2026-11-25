@@ -20,11 +20,12 @@
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
 </script>
 <script type="module">
-// Galerie der Astbäume (engine/models/natur/astbaum.js) – von links: fern, alt (Kugel-Krone), nah (Detail 2), mittel (Detail 1, wie im Labor).
+// Galerie der Astbäume (engine/models/natur/astbaum.js) – von links: Impostor (fern), alt (Kugel-Krone), nah (Detail 2), mittel (Detail 1, wie im Labor).
 // ?art=eiche  ?zeit=herbst|winter  ?dreh=0 (Kamera steht)  ?nah=1 (Kamera dicht an der Krone)
 import * as THREE from 'three';
 import { baueAstbaum, baueAstbaumFern, ASTBAUM_ARTEN } from '../../engine/models/natur/astbaum.js';
 import { erzeuge } from '../../engine/models/natur/baum.js';
+import { createBaumImpostor } from '../../engine/render/baum-impostor.js';
 import { ZIEL_HOEHE } from './js/natur.js';
 
 const P = new URLSearchParams(location.search);
@@ -57,6 +58,7 @@ const alt = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: tr
 alt.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * 0.28;'); };
 
 const baeume = new THREE.Group(); szene.add(baeume);
+let imp = null;
 let H = 16;
 function zeige() {
   for (const m of [...baeume.children]) { baeume.remove(m); m.geometry.dispose(); }
@@ -70,8 +72,14 @@ function zeige() {
   stelle(baueAstbaum(art, 31, { detail: 2, jahreszeit: zeit }).geometrie, weich, 0);
   stelle(baueAstbaum(art, 31, { detail: 1, jahreszeit: zeit }).geometrie, weich, H * 1.1);
   stelle(erzeuge(art, 31, { detail: 1, jahreszeit: zeit }).geometrie, alt, -H * 1.1);
-  stelle(baueAstbaumFern(art, 31, { jahreszeit: zeit }), weich, -H * 2.2);
-  document.getElementById('info').textContent = `${art} · ${H} m · links alt ${dreiecke[2]} △ · Mitte nah ${dreiecke[0]} △ · rechts mittel ${dreiecke[1]} △ · ganz links fern ${dreiecke[3]} △`;
+  // ganz links: Impostor („Foto“ des nahen Baums, 2 Dreiecke) – so sehen ferne Bäume im Spiel aus
+  const nahGeo = baueAstbaum(art, 31, { detail: 2, jahreszeit: zeit }).geometrie;
+  nahGeo.computeBoundingBox(); const sk = H / nahGeo.boundingBox.max.y; nahGeo.scale(sk, sk, sk);
+  imp?.dispose(); imp = createBaumImpostor({ renderer, baeume: [{ art, geometrie: nahGeo }] });
+  const im = new THREE.InstancedMesh(imp.geometrie(art), imp.material, 1);
+  im.setMatrixAt(0, new THREE.Matrix4().makeTranslation(-H * 2.2, 0, 0)); im.frustumCulled = false;
+  baeume.add(im); dreiecke.push(2);
+  document.getElementById('info').textContent = `${art} · ${H} m · links alt ${dreiecke[2]} △ · Mitte nah ${dreiecke[0]} △ · rechts mittel ${dreiecke[1]} △ · ganz links Impostor ${dreiecke[3]} △`;
   for (const b of document.querySelectorAll('#leiste button')) b.classList.toggle('an', b.textContent === art);
 }
 for (const a of ASTBAUM_ARTEN) {
