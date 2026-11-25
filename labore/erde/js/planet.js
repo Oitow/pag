@@ -785,6 +785,11 @@ function karteMarker() {
 const hud = document.getElementById('hud');
 const nullPunkt = new THREE.Vector3();
 const kamOff = new THREE.Vector3(), kamAbs = new THREE.Vector3(), kamZiel = new THREE.Vector3();
+// Kamera-Lebendigkeit (nur Darstellung, die Physik-Position `cam` bleibt unberührt)
+const WACKELN = P.get('wackeln') !== 'aus';
+const FOV_BASIS = 65;
+let wackelPhase = 0, wackelAmp = 0, landeAmp = 0, landeT = 1, fovExtra = 0, kamGlatt = null;
+const daempf = (rate, dt) => 1 - Math.exp(-rate * dt);   // bildratenunabhängige Glättung
 const grau = new THREE.Color(), abend = new THREE.Color(1, 0.55, 0.3);
 const blau = new THREE.Color(0x8fbfea), nacht = new THREE.Color(0x0a1020), schwarz = new THREE.Color(0x01030a), himmel = new THREE.Color();
 let alt = performance.now(), fpsT = 0, fpsN = 0, fps = 0, wahlT = 1, info = { angezeigt: 0, gebaut: 0, laufend: 0, offen: 0 };
@@ -835,6 +840,7 @@ function bild() {
   if (tasten.has('ShiftLeft') || tasten.has('KeyQ')) hoch -= 1;
   if (vor || seit || hoch) auto = null;
   const altPos = cam.clone();
+  const fallVAnfang = fallV, warAmBoden = amBoden;
   let kleben = 0;   // Bergab-Klebedistanz (m): >0 nur, wenn man zu Fuß am Boden lief und nicht springt
   if (gehen && erw.bewegung(dt, { vor, seit, hoch, tempo: 2 ** (+tempoEl.value) })) {
     // ein Modul (z. B. Gleiter) bewegt den Spieler selbst; Boden-Grenze unten gilt weiter
@@ -883,6 +889,8 @@ function bild() {
   else if (gehen && lc > minR + 0.05) amBoden = false;
   if (gehen && schwimmt && fallV < 0) fallV = Math.max(fallV, -1);
   hoeheBoden = cam.length() - R - g2;
+  // Landestoß: Aufprallgeschwindigkeit merken (nur wenn man vorher in der Luft war)
+  if (gehen && amBoden && !warAmBoden && !schwimmt && fallVAnfang < -3.5) { landeAmp = Math.min(0.28, -fallVAnfang * 0.014); landeT = 0; }
   tempoAnzeige = THREE.MathUtils.lerp(tempoAnzeige, cam.distanceTo(altPos) / Math.max(dt, 1e-3), 0.1);
 
   // Kacheln wählen (10× pro Sekunde reicht)
@@ -912,13 +920,39 @@ function bild() {
     // 3. Person: Kamera hinter und etwas über der Figur (über die rechte Schulter), nie im Boden
     const fliegt = !!erwWelt.dienste.gleiter?.fliegt?.();   // im Gleiter weiter weg, damit Schirm + Figur ins Bild passen
     kamOff.copy(blick).multiplyScalar(fliegt ? -9 : -4.6).addScaledVector(oben, fliegt ? 2.2 : 1.0).addScaledVector(rechts, fliegt ? 0 : 0.6);
-    kamAbs.copy(cam).add(kamOff);
-    const kd = tmp.copy(kamAbs).normalize(), kp = planet.probe(kd.x, kd.y, kd.z, 0.5);
-    const unter = R + Math.max(kp.h, kp.wasser) + 0.4 - kamAbs.length();
+    // weich nachziehen (Wunschversatz → geglätteter Versatz); bei Sprüngen (Ortswechsel, Modus) sofort
+    if (!kamGlatt || kamGlatt.distanceTo(kamOff) > 6) kamGlatt = (kamGlatt ?? new THREE.Vector3()).copy(kamOff);
+    else kamGlatt.lerp(kamOff, daempf(9, dt));
+    kamOff.copy(kamGlatt);
+    // Boden-Abstand an Kamera und Mitte zwischen Kamera und Figur prüfen (Hang: Kamera nicht in den Berg)
+    let unter = 0;
+    for (const f of [1, 0.5]) {
+      kamAbs.copy(cam).addScaledVector(kamOff, f);
+      const kd = tmp.copy(kamAbs).normalize(), kp = planet.probe(kd.x, kd.y, kd.z, 0.5);
+      unter = Math.max(unter, R + Math.max(kp.h, kp.wasser) + 0.4 - kamAbs.length());
+    }
     if (unter > 0) kamOff.addScaledVector(oben, unter);
     camera.position.copy(kamOff);
     camera.lookAt(kamZiel.copy(blick).multiplyScalar(12).addScaledVector(oben, fliegt ? 1.2 : -0.6));
-  } else camera.lookAt(blick);
+  } else {
+    kamGlatt = null;
+    // 1. Person: Kopfwippen beim Gehen am Boden + Landestoß, nur als Darstellungsversatz
+    const gleitet = !!erwWelt.dienste.gleiter?.fliegt?.();
+    const laeuft = WACKELN && gehen && amBoden && !schwimmt && !gleitet && !auto;
+    const v = Math.min(tempoAnzeige, GEH_TEMPO * 2.5);
+    wackelAmp += ((laeuft && v > 0.6 ? 1 : 0) - wackelAmp) * daempf(8, dt);
+    wackelPhase += dt * v * 1.9;   // ≈ 2 Schritte/s bei Gehtempo
+    landeT = Math.min(1, landeT + dt / 0.25);
+    const dip = WACKELN ? -landeAmp * Math.sin(Math.PI * landeT) * (1 - landeT) * 1.6 : 0;
+    const bobY = Math.sin(wackelPhase * 2) * 0.035 * wackelAmp, bobX = Math.sin(wackelPhase) * 0.02 * wackelAmp;
+    camera.position.set(0, 0, 0).addScaledVector(oben, bobY + dip).addScaledVector(rechts, bobX);
+    camera.lookAt(tmp.copy(blick).add(camera.position));
+  }
+  // Blickfeld: schneller Gleitflug / Sprint weitet leicht, sonst normal
+  const gl = !!erwWelt.dienste.gleiter?.fliegt?.();
+  const fovZiel = !gehen ? 0 : gl ? 9 * THREE.MathUtils.smoothstep(tempoAnzeige, 14, 40) : 7 * THREE.MathUtils.smoothstep(tempoAnzeige, GEH_TEMPO * 1.25, GEH_TEMPO * 2);
+  fovExtra += (fovZiel - fovExtra) * daempf(3, dt);
+  if (Math.abs(camera.fov - (FOV_BASIS + fovExtra)) > 0.01) { camera.fov = FOV_BASIS + fovExtra; camera.updateProjectionMatrix(); }
 
   // Zeit & Wetter (Klima vom Ort, alle 0,3 s erneuert)
   zw.update(dt, oben, klimaHier);
