@@ -13,6 +13,7 @@ import { baueFundmodell } from '../../../engine/models/natur/fundmodelle.js';
 import { createAssetCache } from '../../../engine/models/natur/natur-assets.js';
 import { baueAstbaum, baueAstbaumFern, kannAstbaum } from '../../../engine/models/natur/astbaum.js';
 import { createBaumImpostor } from '../../../engine/render/baum-impostor.js';
+import { UEBER_VERT_KOPF, UEBER_VERT, UEBER_FRAG_KOPF, UEBER_FRAG, ueberAnteil, ueberWert } from '../../../engine/render/ueberblenden.js';
 import { STREU_ARTEN, STRIDE } from './natur-streu.js';
 
 const FUNDUS = new Set(['fichte', 'birke', 'granitblock', 'schiefer', 'rohrkolben', 'seerose', 'steinpilz', 'forelle', 'barsch']);
@@ -100,10 +101,10 @@ const KOPF = `
 uniform float kwZeit, kwStaerke, kwWeite;
 uniform vec3 kwRicht, kwCam;
 attribute float wind;
-`;
+` + UEBER_VERT_KOPF;
 const KOERPER = `
 #include <begin_vertex>
-{
+` + UEBER_VERT + `{
   mat4 kwM = modelMatrix * instanceMatrix;
   vec3 kwBasis = kwM[3].xyz;                       // Lage relativ zur Kamera (Floating Origin)
   if (wind > 0.0 && kwStaerke > 0.0) {
@@ -148,7 +149,8 @@ export function createNatur(scene, { istWeg = () => false, renderer = null } = {
       Object.assign(sh.uniforms, wind, m.userData.u);
       sh.vertexShader = KOPF + sh.vertexShader.replace('#include <begin_vertex>', KOERPER);
       // Streulicht durch Laub und vom Boden: Schatten- und Rückseiten nicht schwarz
-      sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * 0.28;');
+      sh.fragmentShader = UEBER_FRAG_KOPF + sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * 0.28;')
+        .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n' + UEBER_FRAG);
       if (weich) sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal *= faceDirection;');
     };
     m.customProgramCacheKey = () => 'kugelwind-' + schl;
@@ -242,10 +244,22 @@ export function createNatur(scene, { istWeg = () => false, renderer = null } = {
       }
     }
   }
+  // Stufen je Baumart (nah → mittel → weit → fern) mit Grenzen in m; nah steht für alle Varianten
+  const STUFEN = {};
+  for (const art of STREU_ARTEN) {
+    if (!BAUM.has(art)) continue;
+    const c = CFG[art], st = [];
+    if (c.nah) st.push({ pot: NAH[art], bis: c.nah });
+    if (c.mittel && MITTEL_T[art]) st.push({ pot: MITTEL_T[art], bis: c.mittel });
+    if (c.weit && WEIT_T[art]) st.push({ pot: WEIT_T[art], bis: c.weit });
+    if (c.fern && FERN[art]) st.push({ pot: FERN[art], bis: c.fern });
+    if (st.length > 1) STUFEN[art] = st;
+  }
   const kapazitaet = (t, n) => {
     if (t.mesh && t.kap >= n) return;
     if (t.mesh) { gruppe.remove(t.mesh); t.mesh.dispose(); }
     t.kap = Math.max(32, 1 << Math.ceil(Math.log2(n + 1)));
+    if (STUFEN[t.art]) { t.ueber = new THREE.InstancedBufferAttribute(new Float32Array(t.kap), 1); t.ueber.setUsage(THREE.DynamicDrawUsage); t.geo.setAttribute('ueber', t.ueber); }
     t.mesh = new THREE.InstancedMesh(t.geo, t.mat, t.kap);
     t.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     t.mesh.setColorAt(0, new THREE.Color(1, 1, 1));
@@ -301,27 +315,52 @@ export function createNatur(scene, { istWeg = () => false, renderer = null } = {
               r: BAUM.has(art) ? Math.max(0.45, cfg.kolli * sk * 1.6) : Math.max(0.25, cfg.groesse * sk) });
           }
           let t = null;
+          const st = STUFEN[art];
+          if (st) {   // Bäume: Stufe wählen, an den Grenzen weich überblenden (beide Stufen, Gegen-Raster)
+            let k = 0;
+            while (k < st.length && ab >= st[k].bis) k++;
+            if (k >= st.length) continue;
+            if (st[k].pot === FERN[art] && ab >= 230 && idx % 2 !== 0) continue;   // ganz weit: jeder zweite reicht
+            const hier = st[k].pot === NAH[art] ? NAH[art][idx % cfg.varianten] : st[k].pot;
+            const unten = k > 0 ? st[k - 1].bis : 0, bu = Math.max(3, unten * 0.12), bo = Math.max(3, st[k].bis * 0.12);
+            let wert = 0;
+            if (k > 0 && ab < unten + bu) {
+              const f = ueberAnteil(ab, unten, bu), vor = st[k - 1].pot === NAH[art] ? NAH[art][idx % cfg.varianten] : st[k - 1].pot;
+              wert = ueberWert(f, 'ein');
+              const w2 = ueberWert(f, 'aus');
+              if (w2 !== 0) { vor.n++; wahl.push(vor, ax, ay, az, o, d, w2); }
+            } else if (k < st.length - 1 && ab > st[k].bis - bo) {
+              const f = ueberAnteil(ab, st[k].bis, bo), nach = st[k + 1].pot;
+              wert = ueberWert(f, 'aus');
+              const w2 = ueberWert(f, 'ein');
+              if (w2 !== 0 && f > 0.001) { nach.n++; wahl.push(nach, ax, ay, az, o, d, w2); }
+            }
+            hier.n++;
+            wahl.push(hier, ax, ay, az, o, d, wert);
+            if (cfg.kolli && ab < 60) hindernisse.push({ x: ax, y: ay, z: az, r: cfg.kolli * d[o + 4] });
+            continue;
+          }
           if (ab < cfg.nah) t = NAH[art][idx % cfg.varianten];
-          else if (ab < cfg.mittel) t = MITTEL_T[art];
-          else if (ab < cfg.weit) t = WEIT_T[art];
-          else if (ab < cfg.fern && (ab < (FERN[art]?.impostor ? 230 : 140) || idx % (ab < 230 ? 2 : 3) === 0)) t = FERN[art]; // weit weg: jeder zweite/dritte reicht
+          else if (ab < cfg.fern && (ab < 140 || idx % (ab < 230 ? 2 : 3) === 0)) t = FERN[art]; // weit weg: jeder zweite/dritte reicht
           if (!t) continue;
           t.n++;
-          wahl.push(t, ax, ay, az, o, d);
+          wahl.push(t, ax, ay, az, o, d, 0);
           if (cfg.kolli && ab < 60) hindernisse.push({ x: ax, y: ay, z: az, r: cfg.kolli * d[o + 4] });
         }
       }
       for (const t of toepfe) { kapazitaet(t, t.n); t.mesh.count = 0; }
       dreiecke = 0; anzahl = 0; teuer.clear();
-      for (let w = 0; w < wahl.length; w += 6) {
+      for (let w = 0; w < wahl.length; w += 7) {
         const t = wahl[w], ax = wahl[w + 1], ay = wahl[w + 2], az = wahl[w + 3], o = wahl[w + 4], d = wahl[w + 5];
         const i = t.mesh.count++;
+        if (t.ueber) t.ueber.array[i] = wahl[w + 6];
         t.mesh.setMatrixAt(i, lage(ax, ay, az, d[o + 5], d[o + 4]));
         t.mesh.setColorAt(i, farbe.setRGB(d[o + 6], d[o + 7], d[o + 8]));
         if (FISCH.has(t.art)) fische.push({ t, i, ax, ay, az, dreh: d[o + 5], s: d[o + 4] });
       }
       for (const t of toepfe) {
         t.mesh.instanceMatrix.needsUpdate = true;
+        if (t.ueber) t.ueber.needsUpdate = true;
         if (t.mesh.instanceColor) t.mesh.instanceColor.needsUpdate = true;
         t.mesh.visible = t.mesh.count > 0;
         const dr = t.mesh.count * t.geo.attributes.position.count / 3;

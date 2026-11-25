@@ -1,47 +1,57 @@
 /**
  * @modul    baum-impostor
- * @zweck    Ferne Bäume als „Foto“ des echten Modells: jede Art wird beim Start aus N Richtungen in einen Atlas (Farbe + Normale) gerendert und fern als EIN Quad (2 Dreiecke) gezeigt, das sich zur Kamera dreht; Licht aus der gebackenen Normale → sieht aus wie der nahe Baum, kostet fast nichts
- * @api      createBaumImpostor({ renderer, baeume: [{ art, geometrie }], richtungen = 8, px = 128, streulicht = 0.28, alphaTest = 0.42 }) -> { material, geometrie(art) -> BufferGeometry (Quad, für InstancedMesh), hat(art), dispose() }
+ * @zweck    Ferne Bäume als „Foto“ des echten Modells: jede Art wird beim Start aus N Richtungen und 2 Höhen (seitlich, 40° von oben) in einen Atlas (Farbe + Normale) gerendert und fern als EIN Quad (2 Dreiecke) gezeigt, das sich zur Kamera dreht; Licht aus der gebackenen Normale → sieht aus wie der nahe Baum, kostet fast nichts
+ * @api      createBaumImpostor({ renderer, baeume: [{ art, geometrie }], richtungen = 8, px = 128, streulicht = 0.28, alphaTest = 0.42 }) (Instanz-Attribut `ueber` optional, engine/render/ueberblenden) -> { material, geometrie(art) -> BufferGeometry (Quad, für InstancedMesh), hat(art), dispose() }
  * @beispiel
  *   import { createBaumImpostor } from '../../engine/render/baum-impostor.js';
  *   const imp = createBaumImpostor({ renderer, baeume: [{ art: 'eiche', geometrie: eicheGeo }] });
  *   const fern = new THREE.InstancedMesh(imp.geometrie('eiche'), imp.material, 500);   // Instanz-Matrix: Fußpunkt, +Y = oben, Drehung, Skala
  * @tags     render, baum, impostor, billboard, atlas, lod, fern, wald, performance, handy
- * @version  1.0.0
+ * @version  1.1.0
  * @status   entwurf
  * @three    ja
  */
 import * as THREE from 'three';
+import { UEBER_VERT_KOPF, UEBER_VERT, UEBER_FRAG_KOPF, UEBER_FRAG } from './ueberblenden.js';
 
-const VERT_KOPF = `
+const HOCH = 40 * Math.PI / 180;   // zweite Aufnahme-Höhe (Blick von schräg oben, z. B. Gleiter)
+
+const VERT_KOPF = UEBER_VERT_KOPF + `
 attribute float impZeile;
 attribute vec2 impUv;
+attribute float impMitte;
 uniform float impRichtungen, impZeilen;
 varying vec2 vImpUv;
 varying vec3 vImpSeite, vImpOben, vImpZu;
 `;
 // Quad steht im Fußpunkt der Instanz, dreht sich um deren +Y zur Kamera; Bild = die Aufnahme aus der passenden Richtung
-const VERT_PROJEKT = `
+const VERT_PROJEKT = UEBER_VERT + `
 mat4 iM = modelMatrix * instanceMatrix;
 vec3 iBasis = iM[3].xyz;
 float iS = length(iM[1].xyz);
 vec3 iOben = iM[1].xyz / iS;
-vec3 iZu = cameraPosition - iBasis;
-iZu -= iOben * dot(iZu, iOben);
-float iL = length(iZu);
-iZu = iL > 1e-4 ? iZu / iL : normalize(iM[2].xyz);
-vec3 iSeite = cross(iOben, iZu);
-float iWinkel = atan(dot(iZu, normalize(iM[0].xyz)), dot(iZu, normalize(iM[2].xyz)));
+vec3 iMitte = iBasis + iOben * impMitte * iS;
+vec3 iBlick = normalize(cameraPosition - iMitte);
+vec3 iFlach = iBlick - iOben * dot(iBlick, iOben);
+float iL = length(iFlach);
+vec3 iZuH = iL > 1e-4 ? iFlach / iL : normalize(iM[2].xyz);
+float iWinkel = atan(dot(iZuH, normalize(iM[0].xyz)), dot(iZuH, normalize(iM[2].xyz)));
 float iBild = mod(floor(iWinkel / 6.2831853 * impRichtungen + 0.5), impRichtungen);
-vImpUv = vec2((iBild + impUv.x) / impRichtungen, (impZeile + impUv.y) / impZeilen);
-vImpSeite = iSeite; vImpOben = iOben; vImpZu = iZu;
-vec4 mvPosition = viewMatrix * vec4(iBasis + (iSeite * position.x + iOben * position.y) * iS, 1.0);
+float iHoch = dot(iBlick, iOben) > 0.34 ? 1.0 : 0.0;          // ab ~20° von oben: Aufnahme von schräg oben
+// Blickrichtung des gewählten Bildes (wie bei der Aufnahme) → Quad steht senkrecht dazu, um die Baummitte
+float iE = iHoch * ${HOCH.toFixed(4)};
+vec3 iZu = normalize(iZuH * cos(iE) + iOben * sin(iE));
+vec3 iSeite = normalize(cross(iOben, iZuH));
+vec3 iAuf = cross(iZu, iSeite);
+vImpUv = vec2((iBild + impUv.x) / impRichtungen, (impZeile * 2.0 + iHoch + impUv.y) / impZeilen);
+vImpSeite = iSeite; vImpOben = iAuf; vImpZu = iZu;
+vec4 mvPosition = viewMatrix * vec4(iMitte + (iSeite * position.x + iAuf * position.y) * iS, 1.0);
 gl_Position = projectionMatrix * mvPosition;
 `;
 
 /** Atlas bauen: Zeile = Art, Spalte = Richtung. Ursprung der Geometrien am Fußpunkt, +Y oben, Meter. */
 export function createBaumImpostor({ renderer, baeume, richtungen = 8, px = 128, streulicht = 0.28, alphaTest = 0.42 } = {}) {
-  const n = baeume.length, W = richtungen * px, H = n * px;
+  const n = baeume.length, W = richtungen * px, H = n * 2 * px;
   const ziel = (srgb) => {
     const rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: true, depthBuffer: true });
     rt.texture.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
@@ -72,7 +82,8 @@ export function createBaumImpostor({ renderer, baeume, richtungen = 8, px = 128,
       rxz = Math.max(rxz, Math.hypot(p[i], p[i + 2]));
       if (p[i + 1] > h * 0.5) { mittelF[0] += c[i]; mittelF[1] += c[i + 1]; mittelF[2] += c[i + 2]; }
     }
-    const S = Math.max(h * 0.5, rxz) * 1.03, cy = Math.max(h * 0.5, S * 0.98 + bb.min.y);   // Quadrat um den ganzen Baum, Fuß unten
+    // Quadrat um den ganzen Baum (auch schräg von oben gesehen), Mitte in halber Höhe
+    const cy = h * 0.5, S = Math.max(h * 0.5, rxz, 0.5 * (h * Math.cos(HOCH) + 2 * rxz * Math.sin(HOCH))) * 1.04;
     const D = S * 4;
     Object.assign(cam, { left: -S, right: S, top: S, bottom: -S, near: 0.1, far: D + S * 2 });
     cam.updateProjectionMatrix();
@@ -83,12 +94,13 @@ export function createBaumImpostor({ renderer, baeume, richtungen = 8, px = 128,
     for (const [rt, mat, klar] of [[farbRT, farbMat, rand], [normRT, normMat, new THREE.Color(0.5, 0.5, 1)]]) {
       mesh.material = mat;
       renderer.setRenderTarget(rt);
-      for (let k = 0; k < richtungen; k++) {
-        const th = (k / richtungen) * Math.PI * 2;
-        cam.position.set(Math.sin(th) * D, cy, Math.cos(th) * D);
+      for (let k = 0; k < richtungen * 2; k++) {
+        const th = ((k % richtungen) / richtungen) * Math.PI * 2, e = k < richtungen ? 0 : HOCH, z2 = zeile * 2 + (k < richtungen ? 0 : 1);
+        cam.position.set(Math.sin(th) * Math.cos(e) * D, cy + Math.sin(e) * D, Math.cos(th) * Math.cos(e) * D);
+        cam.up.set(0, 1, 0);
         cam.lookAt(0, cy, 0);
-        rt.viewport.set(k * px, zeile * px, px, px);
-        rt.scissor.set(k * px, zeile * px, px, px);
+        rt.viewport.set((k % richtungen) * px, z2 * px, px, px);
+        rt.scissor.set((k % richtungen) * px, z2 * px, px, px);
         rt.scissorTest = true;
         renderer.setRenderTarget(rt);
         renderer.setClearColor(klar, 0);
@@ -96,9 +108,10 @@ export function createBaumImpostor({ renderer, baeume, richtungen = 8, px = 128,
         renderer.render(szene, cam);
       }
     }
-    // Anzeige-Quad (lokal: x quer, y hoch; Fuß bei y = cy − S)
+    // Anzeige-Quad (um die Baummitte: x quer, y hoch; impMitte = Höhe der Mitte)
     const q = new THREE.BufferGeometry();
-    q.setAttribute('position', new THREE.Float32BufferAttribute([-S, cy - S, 0, S, cy - S, 0, S, cy + S, 0, -S, cy + S, 0], 3));
+    q.setAttribute('position', new THREE.Float32BufferAttribute([-S, -S, 0, S, -S, 0, S, S, 0, -S, S, 0], 3));
+    q.setAttribute('impMitte', new THREE.Float32BufferAttribute([cy, cy, cy, cy], 1));
     q.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
     q.setAttribute('impUv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
     q.setAttribute('impZeile', new THREE.Float32BufferAttribute([zeile, zeile, zeile, zeile], 1));
@@ -116,10 +129,11 @@ export function createBaumImpostor({ renderer, baeume, richtungen = 8, px = 128,
   const material = new THREE.MeshStandardMaterial({ map: farbRT.texture, alphaTest, roughness: 0.9, metalness: 0, side: THREE.DoubleSide });
   material.onBeforeCompile = (sh) => {
     sh.uniforms.impRichtungen = { value: richtungen };
-    sh.uniforms.impZeilen = { value: n };
+    sh.uniforms.impZeilen = { value: n * 2 };
     sh.uniforms.impNormal = { value: normRT.texture };
     sh.vertexShader = VERT_KOPF + sh.vertexShader.replace('#include <project_vertex>', VERT_PROJEKT);
-    sh.fragmentShader = 'uniform sampler2D impNormal;\nvarying vec2 vImpUv;\nvarying vec3 vImpSeite, vImpOben, vImpZu;\n' + sh.fragmentShader
+    sh.fragmentShader = UEBER_FRAG_KOPF + 'uniform sampler2D impNormal;\nvarying vec2 vImpUv;\nvarying vec3 vImpSeite, vImpOben, vImpZu;\n' + sh.fragmentShader
+      .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n' + UEBER_FRAG)
       .replace('#include <map_fragment>', 'diffuseColor *= texture2D(map, vImpUv);')
       .replace('#include <normal_fragment_begin>', `#include <normal_fragment_begin>
 { vec3 iN = texture2D(impNormal, vImpUv).xyz * 2.0 - 1.0;
