@@ -80,9 +80,20 @@ bodenMat.onBeforeCompile = (sh) => {
   Object.assign(sh.uniforms, wasserU);
   sh.vertexShader = 'attribute float nass;\nattribute vec3 land;\nvarying vec3 vLand;\nuniform vec3 wasserCam;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.vertexShader
     .replace('#include <begin_vertex>', '#include <begin_vertex>\nvNass = nass;\nvLand = land;\nvWelt = (modelMatrix * vec4(position, 1.0)).xyz + wasserCam;\nvObenW = normalize(vWelt);');
-  sh.fragmentShader = 'uniform float wZeit;\nuniform vec3 wHimmel;\nvarying vec3 vLand;\nvarying float vNass;\nfloat wT;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.fragmentShader
-    .replace('#include <color_fragment>', '#include <color_fragment>\nwT = smoothstep(0.82, 0.98, vNass);\ndiffuseColor.rgb = mix(vLand, diffuseColor.rgb, wT);')
-    .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.12, wT);')
+  sh.fragmentShader = 'uniform float wZeit;\nuniform vec3 wHimmel;\nvarying vec3 vLand;\nvarying float vNass;\nfloat wT;\nfloat wSchaum;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.fragmentShader
+    // vNass = Wassertiefe (0.5 = Uferlinie, ±3.2 m): flaches Wasser klar (Grund scheint durch), Schaumsaum, nasser Sand
+    .replace('#include <color_fragment>', `#include <color_fragment>
+wT = smoothstep(0.497, 0.51, vNass);
+float wKlar = 1.0 - smoothstep(0.505, 0.62, vNass);
+vec3 wFarbe = mix(diffuseColor.rgb, mix(vLand, diffuseColor.rgb * vec3(0.75, 1.05, 1.08), 0.5), wKlar);
+diffuseColor.rgb = mix(vLand, wFarbe, wT);
+diffuseColor.rgb *= 1.0 - 0.32 * smoothstep(0.44, 0.497, vNass) * (1.0 - wT);
+float wFern = 1.0 - smoothstep(60.0, 420.0, length(vViewPosition));
+float wSaum = smoothstep(0.497, 0.505, vNass) * (1.0 - smoothstep(0.512, 0.545, vNass));
+float wWel = 0.5 + 0.5 * sin(dot(vWelt, vec3(0.71, 0.53, 0.62)) * 0.9 - wZeit * 1.4 + 1.7 * sin(dot(vWelt, vec3(-0.3, 0.6, 0.45)) * 0.35 + wZeit * 0.3));
+wSchaum = wSaum * (0.4 + 0.6 * smoothstep(0.3, 0.8, wWel)) * wFern;
+diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.94, 0.95), wSchaum * 0.8);`)
+    .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.12, wT * (1.0 - wSchaum));')
     .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 if (wT > 0.01) {
   vec3 p = vWelt * 0.45; float t = wZeit;
@@ -317,14 +328,14 @@ const orte = (() => {
     if (H[c] > 40 && F[c] <= H[c] + 1 && A[c] > geo.amin && (fluss < 0 || A[c] > A[fluss])) fluss = c;
     if (F[c] > 0 && F[c] - H[c] > seeT) { seeT = F[c] - H[c]; see = c; }
   }
-  let kueste = berg, kBest = -2;
+  let kueste = berg, kBest = -2, meer = -1;
   for (let c = 0; c < n; c++) {
     if (H[c] < 3 || H[c] > 40) continue;
-    let amMeer = false;
-    for (let k = 0; k < 8; k++) { const q = nb[c * 8 + k]; if (q >= 0 && H[q] < 0) amMeer = true; }
-    if (!amMeer) continue;
+    let amMeer = -1;
+    for (let k = 0; k < 8; k++) { const q = nb[c * 8 + k]; if (q >= 0 && H[q] < 0) amMeer = q; }
+    if (amMeer < 0) continue;
     const s = D(c).dot(D(berg));
-    if (s > kBest) { kBest = s; kueste = c; }
+    if (s > kBest) { kBest = s; kueste = c; meer = amMeer; }
   }
   const v = geo.vulkane.reduce((a, b) => (b.hoch > a.hoch ? b : a));
   let wald = kueste, wBest = 0; // dichter Wald in mildem Tiefland, nahe der Küste
@@ -355,7 +366,7 @@ const orte = (() => {
   gst.forEach((g, i) => { if (g.c >= 0) biomOrte['gestein' + i] = D(g.c); });
   biome.forEach((b, i) => { if (b.c >= 0) biomOrte['biom' + i] = D(b.c); });
   return { ...biomOrte, wald: D(wald),
-    berg: D(berg), kueste: D(kueste), fluss: D(fluss >= 0 ? fluss : kueste),
+    berg: D(berg), kueste: D(kueste), meer: D(meer >= 0 ? meer : kueste), fluss: D(fluss >= 0 ? fluss : kueste),
     flussAb: D(fluss >= 0 ? ab[ab[ab[fluss]] >= 0 ? ab[fluss] : fluss] : kueste),
     see: D(see >= 0 ? see : kueste), vulkan: new THREE.Vector3(...v.d), kraterWeg: (v.rad || 0.035) * R * 0.32,
   };
@@ -402,6 +413,7 @@ const ORTE = {
   vulkan: { ziel: 'vulkan', h: 2500, nei: -8, blick: 'vulkan', weg: 9000 },
   krater: { ziel: 'vulkan', h: 1500, nei: -55, blick: 'vulkan', weg: orte.kraterWeg },
   wald:   { ziel: 'wald', h: 1.8, nei: 2, blick: 'berg', gehen: true },
+  strand: { ziel: 'kueste', h: 1.8, nei: -9, blick: 'meer', gehen: true },
 };
 const BIOM_ORTE = Object.keys(orte).filter((k) => k.startsWith('biom'));
 for (const k of Object.keys(orte).filter((k) => k.startsWith('gestein'))) ORTE[k] = { ziel: k, h: 1.8, nei: -6, blick: 'berg', gehen: true, weg: 3 };
@@ -583,6 +595,7 @@ const GRAFIK = {
 };
 let grafik = 'Hoch';
 try { grafik = localStorage.getItem('erde-grafik') || ((navigator.maxTouchPoints > 0 || innerWidth < 700) ? 'Mittel' : 'Hoch'); } catch { /* egal */ }
+if (P.get('grafik')) grafik = P.get('grafik');   // Testschalter ?grafik=Hoch|Mittel|Niedrig (wird nicht gespeichert)
 if (!GRAFIK[grafik]) grafik = 'Hoch';
 function setzeGrafik(name) {
   grafik = name;

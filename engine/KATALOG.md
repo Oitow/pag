@@ -3146,7 +3146,7 @@ Baum mit sichtbaren Ästen, feinen Zweigen und echten Blättern (Blatt-Büschel 
 - `ASTBAUM_ARTEN [typ…]`
 - `kannAstbaum(typ) -> bool`
 - `baueAstbaum(typ, seed, { detail 0|1|2, jahreszeit, dichte, blattGroesse }) -> { geometrie, hoehe, radius, stammRadius, kroneMitte, kroneRadius }`
-- `baueAstbaumFern(typ, seed, { jahreszeit }) -> geometrie (~45 Dreiecke: Stamm + bis zu 5 Laub-Klumpen an den Hauptästen, für große Entfernung)`
+- `baueAstbaumFern(typ, seed, { jahreszeit }) -> geometrie (~90 Dreiecke: Stamm, Hauptäste + bis zu 4 Laub-Klumpen auf den Astenden, für große Entfernung)`
 
 ```js
 import { baueAstbaum } from '../../engine/models/natur/astbaum.js';

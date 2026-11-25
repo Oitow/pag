@@ -4,7 +4,7 @@ import { kachelUV, kachelMitte, wuerfelZuKugel } from './planet-baum.js';
 import { FELDER } from './planet-hoehe.js';
 import { waldDichte, nadelAnteil } from './klima.js';
 import { rng, hashSeed } from '../../../engine/core/rng.js';
-const NF = FELDER.length;
+const NF = FELDER.length, WI = FELDER.indexOf('wasser');
 
 export const ZELLEN = 32; // 33×33 Punkte je Kachel
 
@@ -58,10 +58,16 @@ export function baueKachel(k, planet, N = ZELLEN) {
     pos[v * 3] = P[g * 3] - cx; pos[v * 3 + 1] = P[g * 3 + 1] - cy; pos[v * 3 + 2] = P[g * 3 + 2] - cz;
     nor[v * 3] = nx; nor[v * 3 + 1] = ny; nor[v * 3 + 2] = nz;
     for (let f = 0; f < NF; f++) info[FELDER[f]] = IF[g * NF + f];
-    nass[v] = info.wasser > info.h + 0.02 ? 255 : 0;   // Wasseroberfläche (glänzt, Wellen)
+    // nass = Wassertiefe, 128 = Uferlinie (40 Stufen je m, ±3.2 m). Land neben Wasser bekommt eine negative Tiefe
+    // zum Spiegel des Nachbarn → die Uferlinie läuft im Shader glatt quer durchs Dreieck statt im Zickzack an den Kanten.
+    const istNass = info.wasser > info.h + 0.02;
+    let spiegel = info.wasser;
+    if (!istNass) for (const nb of [gl, gr, gu, go]) { const w = IF[nb * NF + WI]; if (w > spiegel) spiegel = w; }
+    const tief = spiegel > -1e9 ? spiegel - info.h : -10;
+    nass[v] = istNass ? Math.max(130, Math.min(255, Math.round(128 + tief * 40))) : Math.max(0, Math.min(126, Math.round(128 + tief * 40)));
     planet.farbe(dx, dy, dz, info, flach, farbe);
     col[v * 3] = Math.min(255, farbe[0] * 255); col[v * 3 + 1] = Math.min(255, farbe[1] * 255); col[v * 3 + 2] = Math.min(255, farbe[2] * 255);
-    if (nass[v]) { // Boden am Wasserspiegel: Sand am Meer, Kies am Fluss
+    if (istNass) { // Boden am Wasserspiegel: Sand am Meer, Kies am Fluss
       const hw = info.h, ww = info.wasser;
       info.h = ww; info.wasser = -Infinity; info.ufer = Math.max(info.ufer, 0.6);
       planet.farbe(dx, dy, dz, info, 1, farbe);

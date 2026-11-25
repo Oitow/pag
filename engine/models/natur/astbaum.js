@@ -1,7 +1,7 @@
 /**
  * @modul    astbaum
  * @zweck    Baum mit sichtbaren Ästen, feinen Zweigen und echten Blättern (Blatt-Büschel statt Kugel-Kronen) als EINE Geometrie mit weichen Normalen, Vertexfarben + Wind
- * @api      ASTBAUM_ARTEN [typ…] ; kannAstbaum(typ) -> bool ; baueAstbaum(typ, seed, { detail 0|1|2, jahreszeit, dichte, blattGroesse }) -> { geometrie, hoehe, radius, stammRadius, kroneMitte, kroneRadius } ; baueAstbaumFern(typ, seed, { jahreszeit }) -> geometrie (~45 Dreiecke: Stamm + bis zu 5 Laub-Klumpen an den Hauptästen, für große Entfernung)
+ * @api      ASTBAUM_ARTEN [typ…] ; kannAstbaum(typ) -> bool ; baueAstbaum(typ, seed, { detail 0|1|2, jahreszeit, dichte, blattGroesse }) -> { geometrie, hoehe, radius, stammRadius, kroneMitte, kroneRadius } ; baueAstbaumFern(typ, seed, { jahreszeit }) -> geometrie (~90 Dreiecke: Stamm, Hauptäste + bis zu 4 Laub-Klumpen auf den Astenden, für große Entfernung)
  * @beispiel
  *   import { baueAstbaum } from '../../engine/models/natur/astbaum.js';
  *   const { geometrie } = baueAstbaum('eiche', 7, { detail: 2 });   // nah: Zweige + ~500 Blatt-Büschel
@@ -25,6 +25,8 @@ const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 function norm(a) { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }
 const HELL = farbe('#dfe9a0');
 const NADEL = new Set(['kiefer', 'pinie']);
+// Je Art: Blattgröße (× Standard) und Büschel-Dichte. Akazie/Olive: kleine Blätter, dafür viele; Pinie: dichter Schirm.
+const ART_OPT = { akazie: { blatt: 0.42, dichte: 3 }, olive: { blatt: 0.65, dichte: 1.5 }, pinie: { blatt: 1.3, dichte: 2.1 }, kiefer: { blatt: 1.25, dichte: 1.8 } };
 
 /** Arten mit Ästen + Laub (keine Etagen-Nadelbäume, keine Palmen, nicht kahl). */
 export const ASTBAUM_ARTEN = Object.freeze(Object.keys(ARTEN).filter((k) => {
@@ -52,7 +54,7 @@ function glaetteNormalen(g) {
 export function baueAstbaum(typ, seed = 1, opts = {}) {
   const a = artVon(typ);
   const detail = clamp(opts.detail ?? 2, 0, 2) | 0, zeit = opts.jahreszeit || 'sommer';
-  const dichte = opts.dichte ?? 1, kahl = zeit === 'winter' && a.laubwerfend, nadel = NADEL.has(typ);
+  const ao_ = ART_OPT[typ] || {}, dichte = (opts.dichte ?? 1) * (ao_.dichte ?? 1), kahl = zeit === 'winter' && a.laubwerfend, nadel = NADEL.has(typ);
   const sk = baueSkelett(a, seed, { detail, alter: 1, kahl });
   const r = rng(hashSeed('astbaum', typ, seed, detail, zeit));
   const rr = (x, y) => x + (y - x) * r();
@@ -98,9 +100,10 @@ export function baueAstbaum(typ, seed = 1, opts = {}) {
   // ---- Laub: feine Zweige + Blatt-Büschel an den Laub-Knoten ----
   const P = [], N = [], C = [], W = [];
   const liste = zeit === 'herbst' && lb.herbst?.length ? lb.herbst : lb.farben;
-  const bg = (opts.blattGroesse ?? 1) * (nadel ? 0.34 : 0.31) * [1.75, 1.35, 1][detail];
+  const bg = (opts.blattGroesse ?? 1) * (ao_.blatt ?? 1) * (nadel ? 0.3 : 0.31) * [2.1, 1.12, 1][detail];
+  const flach = lb.form === 'flach';
   const ecke = (p, nf, f, w) => {
-    const o = aussen(p), n = norm(add(o, nf, 0.45));
+    const o = aussen(p), n = norm(add(o, nf, nadel ? 0.12 : flach ? 0.3 : 0.45));
     const tief = innen(p), licht = clamp(n[1] * 0.5 + 0.5, 0, 1);
     let ff = abdunkeln(f, (0.42 + 0.58 * tief ** 0.9) * (0.8 + 0.3 * licht));
     ff = mische(ff, HELL, clamp(n[1], 0, 1) * 0.1 * tief);
@@ -108,7 +111,7 @@ export function baueAstbaum(typ, seed = 1, opts = {}) {
   };
   /** Ein Blatt: Grund b, Richtung d, Fläche zeigt nach nf. Leicht gefaltet entlang der Mittelrippe. */
   const blatt = (b, d, nf, L, f, w) => {
-    const s = norm(cross(d, nf)), breit = L * (nadel ? 0.09 : lb.form === 'haengend' ? 0.16 : 0.34), mitte = add(b, d, L * 0.42);
+    const s = norm(cross(d, nf)), breit = L * (nadel ? 0.14 : lb.form === 'haengend' ? 0.16 : 0.34), mitte = add(b, d, L * 0.42);
     const tip = add(add(b, d, L), nf, -L * 0.08);
     const li = add(add(mitte, s, breit), nf, breit * 0.3), re = add(add(mitte, s, -breit), nf, breit * 0.3);
     const ft = mische(f, HELL, 0.06);
@@ -126,12 +129,13 @@ export function baueAstbaum(typ, seed = 1, opts = {}) {
       let d = norm(add(add(o, u, Math.cos(az) * sp), v, Math.sin(az) * sp));
       if (lb.form === 'haengend') d = norm(add(d, [0, -1.4, 0]));
       d = norm(add(d, [0, nadel ? 0.15 : -0.18, 0]));                    // Blätter hängen etwas, Nadeln streben nach oben
-      const nf = norm(add(cross(d, cross([0, 1, 0], d)), o, 0.6));     // Fläche eher nach oben/außen
+      if (flach && !nadel) d = norm([d[0], d[1] * 0.35, d[2]]);         // Schirmkrone: Blätter liegen waagerecht
+      const nf = norm(add(cross(d, cross([0, 1, 0], d)), flach ? [0, 1, 0] : o, flach ? 1.2 : 0.6));     // Fläche eher nach oben/außen
       blatt(p, d, nf, L * rr(0.75, 1.2) * (nadel ? 0.5 : 1), f, w);
     }
   };
   if (!kahl) {
-    const proKnoten = Math.round((nadel ? 10 : 10) * dichte * [0.3, 0.45, 1][detail] * (lb.form === 'haengend' ? 0.35 : 1));
+    const proKnoten = Math.round((nadel ? 10 : 10) * dichte * [0.42, 0.6, 1][detail] * (lb.form === 'haengend' ? 0.35 : 1));
     for (const l of sk.laub) {
       const g = l.groesse, w = Math.min(1, l.wind + 0.12), basis = norm(add(aussen(l.pos), l.richtung, 0.6));
       // feine Zweige (nur nah): von hier aus nach außen, daran die Büschel
@@ -170,7 +174,7 @@ export function baueAstbaum(typ, seed = 1, opts = {}) {
           p = add(p, kugel(), g * 0.18);
         } else {                            // als Hülle um den Knoten (dichter außen)
           const k = norm(kugel()), rad = g * Math.sqrt(rr(0.25, 1)) * 0.9;
-          p = add(l.pos, [k[0] * rad * sx, k[1] * rad * sy, k[2] * rad * sz]);
+          p = add(l.pos, [k[0] * rad * sx, (flach ? Math.abs(k[1]) * 0.8 + 0.1 : k[1]) * rad * sy, k[2] * rad * sz]);
         }
         bueschel(p, norm(add(aussen(p), kugel(), 0.5)), g * bg * 2.2, w);
       }
@@ -180,7 +184,7 @@ export function baueAstbaum(typ, seed = 1, opts = {}) {
     const minOrd = Math.max(1, sk.maxOrdnung - 1);
     for (const ast of sk.aeste) {
       if (ast.ordnung < minOrd || ast.punkte.length < 2) continue;
-      const n = Math.round(ast.laenge / Math.max(0.2, gMittel) * (nadel ? 2 : 3) * dichte * [0.25, 0.4, 1][detail]);
+      const n = Math.round(ast.laenge / Math.max(0.2, gMittel) * (nadel ? 2 : 3) * dichte * [0.4, 0.5, 1][detail]);
       for (let i = 0; i < n; i++) {
         const s = rr(0.35, 1) * (ast.punkte.length - 1), k = Math.min(ast.punkte.length - 2, Math.floor(s));
         const q = add(ast.punkte[k], sub(ast.punkte[k + 1], ast.punkte[k]), s - k);
@@ -222,32 +226,49 @@ function verbinde(a, b) {
   return g;
 }
 
-/** Fern-Form (~45 Dreiecke): Stamm + je Hauptast-Knoten ein unregelmäßiger Laub-Klumpen → Silhouette wie der nahe Baum, keine Kugel. */
+/** Fern-Form (~90 Dreiecke): Stamm + Hauptäste + bis zu 4 verbeulte Laub-Klumpen genau auf den Astenden → Silhouette wie der nahe Baum, nie platt. */
 export function baueAstbaumFern(typ, seed = 1, opts = {}) {
   const a = artVon(typ), zeit = opts.jahreszeit || 'sommer';
   const sk = baueSkelett(a, seed, { detail: 0, alter: 1, kahl: zeit === 'winter' && a.laubwerfend });
   const r = rng(hashSeed('astbaum-fern', typ, seed));
   const lb = a.laub, [sx, sy, sz] = lb.streckung || [1, 1, 1];
   const liste = zeit === 'herbst' && lb.herbst?.length ? lb.herbst : lb.farben;
-  const t = createTeile({ seed: hashSeed('astbaum-fern-t', typ, seed), jitter: 0.12 });
+  const t = createTeile({ seed: hashSeed('astbaum-fern-t', typ, seed), jitter: 0.08 });
   const rinde = farbe(a.rinde.farbe);
-  const st = sk.aeste[0];
-  roehre(t, [st.punkte[0], st.punkte[st.punkte.length - 1]], [st.radien[0], st.radien[st.radien.length - 1]], { seiten: 3, farbe: rinde, wind: [0, 0.3], r, spitze: true });
+  for (const ast of sk.aeste.filter((x) => x.ordnung <= 1).slice(0, 5)) {   // Stamm + 4 Hauptäste, je ein gerades Stück (3 Seiten)
+    const e = ast.punkte.length - 1;
+    roehre(t, [ast.punkte[0], ast.punkte[e]], [ast.radien[0], ast.radien[e]], { seiten: 3, farbe: rinde, wind: [ast.wind[0], ast.wind[e]], r, spitze: true });
+  }
   const geos = [t.geometrie()]; t.dispose();
-  const hoch = lb.form === 'haengend' ? 1.9 : 1;
-  // höchstens 5 Klumpen (Oktaeder, verbeult) → ~45 Dreiecke; die größten Knoten zuerst
-  const knoten = [...sk.laub].sort((x, y) => y.groesse - x.groesse).slice(0, 5), mehr = Math.sqrt(sk.laub.length / Math.max(1, knoten.length));
-  for (const l of knoten) {
-    const g = new THREE.OctahedronGeometry(mehr, 0);   // schon nicht indiziert
-    const pp = g.attributes.position, f = farbe(liste[Math.floor(r() * liste.length)]);
-    const col = new Float32Array(pp.count * 3), wnd = new Float32Array(pp.count).fill(Math.min(1, l.wind + 0.1));
+  glaetteNormalen(geos[0]);
+  if (!sk.laub.length) return geos[0];
+  // Knoten zu höchstens 4 Klumpen zusammenfassen (nach Richtung um den Stamm), Größe aus der Ausdehnung der Gruppe
+  const gruppen = Array.from({ length: Math.min(4, sk.laub.length) }, () => []);
+  for (const l of sk.laub) gruppen[Math.floor(((Math.atan2(l.pos[2], l.pos[0]) / (Math.PI * 2) + 1) % 1) * gruppen.length)].push(l);
+  const hoch = lb.form === 'haengend' ? 1.6 : 1, sxz = (sx + sz) / 2;
+  const syK = Math.max(sy, sxz * (NADEL.has(typ) ? 0.8 : 0.55));   // nie platt (Nadelbäume fast rund)
+  for (const gr of gruppen) {
+    if (!gr.length) continue;
+    const m = [0, 0, 0]; let gmax = 0;
+    for (const l of gr) { m[0] += l.pos[0] / gr.length; m[1] += l.pos[1] / gr.length; m[2] += l.pos[2] / gr.length; }
+    for (const l of gr) gmax = Math.max(gmax, Math.hypot(l.pos[0] - m[0], l.pos[2] - m[2]) + l.groesse);
+    gmax = Math.min(gmax, (gr.reduce((x, l) => x + l.groesse, 0) / gr.length) * 1.7);   // Klumpen nicht breiter als ~1.7 Knoten
+    const gy = gr.reduce((x, l) => x + l.groesse, 0) / gr.length;
+    const g = new THREE.IcosahedronGeometry(1, 0);
+    const pp = g.attributes.position, nn = g.attributes.normal, f = farbe(liste[Math.floor(r() * liste.length)]);
+    const col = new Float32Array(pp.count * 3), wnd = new Float32Array(pp.count).fill(Math.min(1, gr[0].wind + 0.1));
+    const versatz = new Map();
     for (let i = 0; i < pp.count; i++) {
-      const y = pp.getY(i), k = 0.85 + r() * 0.3;                 // Ecken einzeln verbeulen
-      pp.setXYZ(i, pp.getX(i) * k * l.groesse * sx * 1.25 + l.pos[0], (y * k * sy * hoch * 0.72 - (hoch - 1) * 0.6) * l.groesse * 1.2 + l.pos[1], pp.getZ(i) * k * l.groesse * sz * 1.25 + l.pos[2]);
-      const c = abdunkeln(f, (0.5 + 0.35 * (y / mehr * 0.5 + 0.5)) * (0.85 + 0.3 * r()));   // dunkler wie die nahe Krone (Eigenschatten)
+      const x = pp.getX(i), y = pp.getY(i), z = pp.getZ(i), key = `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`;
+      if (!versatz.has(key)) versatz.set(key, 0.82 + r() * 0.3);   // gleiche Ecke → gleiche Beule (keine Risse)
+      const k = versatz.get(key);
+      pp.setXYZ(i, m[0] + x * k * gmax * 1.05, m[1] + (y * k * syK * hoch - (hoch - 1) * 0.5) * gy * 1.15 + gy * 0.15, m[2] + z * k * gmax * 1.05);
+      const c = abdunkeln(f, (0.6 + 0.4 * (y * 0.5 + 0.5)) * (0.92 + 0.16 * r()));   // unten dunkler (Eigenschatten)
       col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2];
+      const n = norm([x, y * 0.8 + 0.35, z]);        // weich: Normale von der Klumpen-Mitte nach außen (keine Facetten)
+      nn.setXYZ(i, n[0], n[1], n[2]);
     }
-    g.deleteAttribute('uv'); g.computeVertexNormals();
+    g.deleteAttribute('uv');
     g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setAttribute('wind', new THREE.BufferAttribute(wnd, 1));
     geos.push(g);
   }
