@@ -2,7 +2,7 @@
 
 Erfundener Planet (Standard R = 100 km) vom Orbit bis zum Boden, zu Fuß begehbar, mit Geologie, Klima, Wetter, Natur und Graben.
 Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Sprungmarken `?ort=orbit|berg|kueste|boden|himmel|fluss|ufer|see|vulkan|krater|wald|biom0…9|gestein0…4`
-· Testschalter `?test=1` (kein Spielstand), `?hunger=0.2`, `?tasche=voll`, `?herstellen=offen`, `?bautest=1`, `?tiere=test|aus`, `?ueberleben=aus`, `?wetter=regen|schnee|gewitter|nebel|sturm|klar`, `?uhr=19` (Ortszeit), `?seed=`, `?r=` (km), `?neu=1`.
+· Testschalter `?test=1` (kein Spielstand), `?hunger=0.2`, `?tasche=voll`, `?herstellen=offen`, `?bautest=1`, `?tiere=test|aus`, `?ueberleben=aus`, `?schmiedetest=1`, `?gleiter=1&flug=1` (300 m) / `&flug=800`, `?tagebuch=offen|aus`, `?feldtest=1`, `?wetter=regen|schnee|gewitter|nebel|sturm|klar`, `?uhr=19` (Ortszeit), `?seed=`, `?r=` (km), `?neu=1`.
 
 ## Module (`js/`, reine Logik ohne THREE wo möglich → Tests in `tests/erde-*.test.mjs`)
 | Datei | Aufgabe |
@@ -23,6 +23,9 @@ Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Sprungmarken `?ort=o
 | `ueberleben.js` (+ `-regeln`) | Leben, Hunger, Durst, Körperwärme (Wetter, Nässe, Kleidung, Feuer, Dach), Essen, Trinken, Tod/Aufwachen, Lava |
 | `herstellen.js` (+ `-daten`) | Herstellen-Fenster (engine `rezepte`), Stationen Lagerfeuer/Werkbank, Kleidung tragen |
 | `bauen.js` (+ `-regeln`, `bauteile.js`) | Bau-Modus: Fundament, Wand, Dach, Treppe, Lagerfeuer, Werkbank – einrasten, Kosten, Abreißen |
+| `gleiter.js` (+ `-physik`) | Gleiter: Flugphysik (Gleitzahl 9), Thermik über sonnigen Hängen und Kratern, Hangwind, Landung/Absturz, Fallschaden, Vario |
+| `tagebuch.js` (+ `-daten`) | Ziele für die ersten Stunden (Feuer, Speer, Jagd, Hütte, Feld, Gleiter, Eisen) + Entdeckungen (Biome, Vulkan, Meer) |
+| Schmiede (in `bauen*`, `herstellen-daten`) | Schmelzofen, Amboss; Holzkohle, Kupfer-/Eisenbarren, Kupfer-/Eisenwerkzeug – Stufen: Granit/Basalt ab Kupfer, Gold ab Eisen |
 | `spielerfigur.js` | sichtbare Figur in der 3.-Person-Ansicht (Menü Ansicht „1./3. Person“, `?person=1`, `?figur=ritter`, `?koerper=organisch`) |
 | `wolken.js`, `vulkan-rauch.js` | Wolkendecke nach Wetter/Wind (`?wolken=aus`), Rauchsäulen über den Kratern |
 | `tiere.js` (+ `-regeln`) | Wild je Biom (Reh, Hase, Keiler, Wolf), Flucht/Angriff, Jagen → Fleisch, Fell, Knochen |
