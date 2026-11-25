@@ -7,7 +7,7 @@ import { createPlanetHoehe } from './planet-hoehe.js';
 import { berechneGeologie, GESTEIN_NAME, GESTEIN_FARBE } from './geologie.js';
 import { biom, BIOM_NAME, tempAm, waldDichte, bodenFarbe } from './klima.js';
 import { streuKacheln, streueKachel, streuStufe, STREU_ARTEN, STRIDE } from './natur-streu.js';
-import { createNatur } from './natur.js';
+import { createNatur, ZIEL_HOEHE } from './natur.js';
 import { createMond } from '../../../engine/render/mond.js';
 import { createEingriffe } from './eingriffe.js';
 import { createZeitWetter } from './zeit-wetter.js';
@@ -952,9 +952,10 @@ if (P.get('zeige')) setTimeout(() => {
   }
   if (!best) return;
   const auf = best.clone().normalize(), seite = new THREE.Vector3(0.3, 1, 0.2).cross(auf).normalize();
-  cam.copy(best).addScaledVector(seite, 1.6).addScaledVector(auf, 1.8);
+  const baum = ZIEL_HOEHE[P.get('zeige')];          // Bäume: aus Abstand ansehen (ganzer Baum im Bild)
+  cam.copy(best).addScaledVector(seite, baum ? baum * 0.75 : 1.6).addScaledVector(auf, baum ? 1.7 : 1.8);
   vorn.copy(best).sub(cam).projectOnPlane(auf).normalize();
-  neigung = -0.75;
+  neigung = baum ? 0.32 : -0.75;
 }, 9000);
 if (P.get('uhr')) zw.stelleOrtszeit([cam.x / cam.length(), cam.y / cam.length(), cam.z / cam.length()], +P.get('uhr'));
 requestAnimationFrame(bild);

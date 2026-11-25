@@ -129,6 +129,7 @@
 | ratte | `engine/models/kreaturen/ratte.js` | Low-Poly-Riesenratte als Horden-Gegner: liefert zwei Lauf-Bild-Geometrien (Vertexfarben) für InstancedMesh | entwurf |
 | reh | `engine/models/kreaturen/reh.js` | Low-Poly-Reh (Wild, scheu): schlanker Rumpf, langer Hals, große Ohren, weißer Spiegel, Bock mit kleinem Gehörn; zwei Lauf-Bild-Geometrien (Vertexfarben) für InstancedMesh | entwurf |
 | wolf | `engine/models/kreaturen/wolf.js` | Low-Poly-Wolf als Horden-Gegner (und Boss-Wolf per Skala): zwei Lauf-Bild-Geometrien (Vertexfarben) für InstancedMesh | entwurf |
+| astbaum | `engine/models/natur/astbaum.js` | Baum mit sichtbaren Ästen, feinen Zweigen und echten Blättern (Blatt-Büschel statt Kugel-Kronen) als EINE Geometrie mit weichen Normalen, Vertexfarben + Wind | entwurf |
 | baum-arten | `engine/models/natur/baum-arten.js` | Reine Parameter-Daten der Baumarten (Wuchs, Verzweigung, Laubform, Farben, Jahreszeiten) für baum-skelett/baum | entwurf |
 | baum-skelett | `engine/models/natur/baum-skelett.js` | Ast-Skelett eines Baums aus Art-Parametern + Seed: rekursive Verzweigung mit Tropismus, Krümmung, Verjüngung, Laub-Knoten und Nadel-Etagen (reine Logik) | entwurf |
 | baum | `engine/models/natur/baum.js` | Prozedurale Low-Poly-Bäume (14 Arten) als EINE Geometrie mit Vertexfarben + Wind-Attribut; Jahreszeit, Alter, Detailstufe | entwurf |
@@ -273,6 +274,7 @@
 | adapter | kollision, wege-lage, worldgen-adapter |
 | adaptiv | qualitaet |
 | aendern | welt-aenderung |
+| aeste | astbaum |
 | affix | beute |
 | agave | pflanze-wueste |
 | agent | module-register |
@@ -323,7 +325,7 @@
 | bau | bau-basis, bau-pruefung, bau-teile, bau-dorf-teile, gebaeude-pruefen, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau, bau-instanzen |
 | bauen | welt-aenderung |
 | baukasten | modul-kern, spiel |
-| baum | klettern, baum-arten, baum-skelett, baum, laub-klumpen, natur-assets, natur-basis, naturfundus, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum |
+| baum | klettern, astbaum, baum-arten, baum-skelett, baum, laub-klumpen, natur-assets, natur-basis, naturfundus, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum |
 | baumstumpf | totholz |
 | beben | grosszauber-riss, grosszauber-wand, grosszauber-welle, grosszauber, grosszauber-mesh |
 | bedrohung | bedrohung |
@@ -339,6 +341,7 @@
 | bewohner | modul-bewohner |
 | bildzeit | qualitaet |
 | biome | terrain-farben, terrain-mesh, worldgen-biomes, worldgen-query |
+| blaetter | astbaum |
 | blatt | laub-klumpen, laub-karten |
 | blick | character-anim-blick, character-parts-gesicht |
 | blinzeln | character-anim-blick, character-parts-gesicht |
@@ -582,7 +585,7 @@
 | lager | behaelter, gegner-lager, modul-gegner |
 | lagerfeuer | bau-licht, licht-pool |
 | laterne | bau-licht, character-ausruestung, licht-pool |
-| laub | laub-klumpen, pflanze-unterwuchs, riesenbaum-krone, gauss-saat, gauss-wolke, laub-karten, modul-riesenwald |
+| laub | astbaum, laub-klumpen, pflanze-unterwuchs, riesenbaum-krone, gauss-saat, gauss-wolke, laub-karten, modul-riesenwald |
 | laufen | character-animator, character-gang |
 | lava | grosszauber-riss, grosszauber-riss-ansicht |
 | leben | entitaeten, kampf-werte, kampf, modul-entitaeten, hud |
@@ -597,7 +600,7 @@
 | localStorage | speicher |
 | lock-on | follow-camera, ziel-wahl, modul-spieler |
 | locken | character-parts-haar, figur-haar |
-| lod | character-lod, laub-klumpen, modul-bewohner, modul-riesenwald, modul-welt, riesenwald-teile, chunk-strom, fern-wald |
+| lod | character-lod, astbaum, laub-klumpen, modul-bewohner, modul-riesenwald, modul-welt, riesenwald-teile, chunk-strom, fern-wald |
 | logik | pflanze-formen |
 | look | character-look, figur-material, psx, splat-look, figur-editor |
 | loop | schleife |
@@ -644,10 +647,11 @@
 | nachschwingen | character-sekundaer |
 | nacht | kronen-lichtkarte, licht-pool, mond, modul-dorf, modul-himmel, himmel-stand, himmel |
 | nachwachsen | rohstoffe |
+| nadeln | astbaum |
 | nahkampf | nahkampf-daten, nahkampf, modul-kampf |
 | namensschild | modul-bewohner, figur-schild |
 | nass | element-reaktionen |
-| natur | baum-arten, baum-skelett, baum, fels-basis, fels-form, fels, landschaftsgruppen, laub-klumpen, natur-assets, natur-basis, naturfundus, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-unterwuchs, pflanze-wueste, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum, totholz-form, totholz, laub-karten, natur-material, scatter-mesh |
+| natur | astbaum, baum-arten, baum-skelett, baum, fels-basis, fels-form, fels, landschaftsgruppen, laub-klumpen, natur-assets, natur-basis, naturfundus, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-unterwuchs, pflanze-wueste, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum, totholz-form, totholz, laub-karten, natur-material, scatter-mesh |
 | nebel | modul-himmel, himmel, wetter |
 | netz | entitaeten, sdf-netz, riesenbaum-netz, gauss-saat, worldgen-wege |
 | netzwerk | schnappschuss-puffer |
@@ -698,7 +702,7 @@
 | priority-flood | worldgen-hydrology |
 | profil | welt-plan-formen |
 | protokoll | befehle, chat |
-| prozedural | noise, baum-skelett, baum, fels-form, fels, natur-assets, natur-basis, riesenbaum-form, totholz, gauss-saat, worldgen |
+| prozedural | noise, astbaum, baum-skelett, baum, fels-form, fels, natur-assets, natur-basis, riesenbaum-form, totholz, gauss-saat, worldgen |
 | pruefung | bau-pruefung, gebaeude-pruefen |
 | ps1 | psx |
 | psx | psx |
@@ -927,7 +931,7 @@
 | whittaker | worldgen-biomes |
 | wild | hase, reh |
 | wildschwein | keiler |
-| wind | grosszauber-sturm, baum, natur-basis, pflanze-basis, pflanze-boden, pflanze-busch, pflanze-unterwuchs, grosszauber-sturm-ansicht, laub-karten, natur-material, gras-feld, scatter-mesh, wetter |
+| wind | grosszauber-sturm, astbaum, baum, natur-basis, pflanze-basis, pflanze-boden, pflanze-busch, pflanze-unterwuchs, grosszauber-sturm-ansicht, laub-karten, natur-material, gras-feld, scatter-mesh, wetter |
 | wirbel | grosszauber-sturm |
 | wirkbalken | kampf-leiste |
 | wirkzeit | faehigkeiten |
@@ -960,6 +964,7 @@
 | zustand | element-reaktionen, zustaende |
 | zustandsautomat | character-brain |
 | zutaten | rezepte |
+| zweige | astbaum |
 | ärmel | figur-kleidung-oben |
 
 ## Module
@@ -3135,6 +3140,22 @@ const hm = createHordeMesh({ modelle: { wolf: wolf.frames }, max: 60 });
 
 Genutzt von: erde · Tags: wolf, kreatur, gegner, horde, boss, lowpoly, instancing, modell · THREE: ja
 
+### astbaum · `engine/models/natur/astbaum.js` · v1.0.0 · entwurf
+Baum mit sichtbaren Ästen, feinen Zweigen und echten Blättern (Blatt-Büschel statt Kugel-Kronen) als EINE Geometrie mit weichen Normalen, Vertexfarben + Wind
+
+- `ASTBAUM_ARTEN [typ…]`
+- `kannAstbaum(typ) -> bool`
+- `baueAstbaum(typ, seed, { detail 0|1|2, jahreszeit, dichte, blattGroesse }) -> { geometrie, hoehe, radius, stammRadius, kroneMitte, kroneRadius }`
+- `baueAstbaumFern(typ, seed, { jahreszeit }) -> geometrie (~45 Dreiecke: Stamm + bis zu 5 Laub-Klumpen an den Hauptästen, für große Entfernung)`
+
+```js
+import { baueAstbaum } from '../../engine/models/natur/astbaum.js';
+const { geometrie } = baueAstbaum('eiche', 7, { detail: 2 });   // nah: Zweige + ~500 Blatt-Büschel
+// Material: weich (kein flatShading), side: DoubleSide, Normalen NICHT umdrehen (Krone wird von außen beleuchtet)
+```
+
+Genutzt von: erde · Tags: natur, baum, aeste, zweige, blaetter, laub, nadeln, lod, wind, prozedural · THREE: ja
+
 ### baum-arten · `engine/models/natur/baum-arten.js` · v1.0.0 · entwurf
 Reine Parameter-Daten der Baumarten (Wuchs, Verzweigung, Laubform, Farben, Jahreszeiten) für baum-skelett/baum
 
@@ -3177,7 +3198,7 @@ const { geometrie, hoehe } = erzeuge('birke', 7, { detail: 1, jahreszeit: 'herbs
 szene.add(new THREE.Mesh(geometrie, standardMaterial()));
 ```
 
-Genutzt von: natur · Tags: natur, baum, wald, vegetation, lowpoly, prozedural, wind, jahreszeit · THREE: ja
+Genutzt von: erde, natur · Tags: natur, baum, wald, vegetation, lowpoly, prozedural, wind, jahreszeit · THREE: ja
 
 ### fels-basis · `engine/models/natur/fels-basis.js` · v1.0.0 · neu
 Kleine Helfer für Felsen/Totholz: Dreiecke mit Flächenfarben sammeln → nicht-indizierte BufferGeometry (position, normal, color, wind=0), Farb-Mischen

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Baum-Galerie – Astbäume</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #9fb4c4; overflow: hidden; font: 14px system-ui, sans-serif; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #leiste { position: fixed; left: 8px; right: 8px; bottom: 10px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  #leiste button { padding: 9px 12px; border: 0; border-radius: 10px; background: #1d2a33cc; color: #eef; font: inherit; }
+  #leiste button.an { background: #c79a3a; color: #111; }
+  #info { position: fixed; left: 10px; top: 10px; color: #102; background: #ffffffaa; padding: 6px 9px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<div id="info">Baum-Galerie</div>
+<div id="leiste"></div>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
+</script>
+<script type="module">
+// Galerie der Astbäume (engine/models/natur/astbaum.js) – von links: fern, alt (Kugel-Krone), nah (Detail 2), mittel (Detail 1, wie im Labor).
+// ?art=eiche  ?zeit=herbst|winter  ?dreh=0 (Kamera steht)  ?nah=1 (Kamera dicht an der Krone)
+import * as THREE from 'three';
+import { baueAstbaum, baueAstbaumFern, ASTBAUM_ARTEN } from '../../engine/models/natur/astbaum.js';
+import { erzeuge } from '../../engine/models/natur/baum.js';
+import { ZIEL_HOEHE } from './js/natur.js';
+
+const P = new URLSearchParams(location.search);
+let art = P.get('art') || 'eiche';
+const zeit = P.get('zeit') || 'sommer';
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.prepend(renderer.domElement);
+const szene = new THREE.Scene();
+szene.background = new THREE.Color(0x9fb4c4); szene.fog = new THREE.Fog(0x9fb4c4, 60, 220);
+const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 500);
+szene.add(new THREE.HemisphereLight(0xcfe0ff, 0x4a5a3a, 1.1));
+const sonne = new THREE.DirectionalLight(0xfff1d6, 2.6);
+sonne.position.set(30, 45, 20); sonne.castShadow = true;
+sonne.shadow.mapSize.set(2048, 2048); Object.assign(sonne.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, far: 150 });
+szene.add(sonne);
+const boden = new THREE.Mesh(new THREE.CircleGeometry(120, 48).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x5d6b3c, roughness: 1 }));
+boden.receiveShadow = true; szene.add(boden);
+
+// gleiches Material wie im Erde-Labor (weich, beidseitig, Normalen nicht umdrehen) + Streulicht
+const weich = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide });
+weich.onBeforeCompile = (sh) => {
+  sh.fragmentShader = sh.fragmentShader
+    .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * 0.28;')
+    .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal *= faceDirection;');
+};
+const alt = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.9 });
+alt.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * 0.28;'); };
+
+const baeume = new THREE.Group(); szene.add(baeume);
+let H = 16;
+function zeige() {
+  for (const m of [...baeume.children]) { baeume.remove(m); m.geometry.dispose(); }
+  H = ZIEL_HOEHE[art] || 14;
+  let dreiecke = [];
+  const stelle = (geo, mat, x) => {
+    geo.computeBoundingBox(); const s = H / geo.boundingBox.max.y; geo.scale(s, s, s);
+    const m = new THREE.Mesh(geo, mat); m.position.x = x; m.castShadow = m.receiveShadow = true; baeume.add(m);
+    dreiecke.push(Math.round(geo.attributes.position.count / 3));
+  };
+  stelle(baueAstbaum(art, 31, { detail: 2, jahreszeit: zeit }).geometrie, weich, 0);
+  stelle(baueAstbaum(art, 31, { detail: 1, jahreszeit: zeit }).geometrie, weich, H * 1.1);
+  stelle(erzeuge(art, 31, { detail: 1, jahreszeit: zeit }).geometrie, alt, -H * 1.1);
+  stelle(baueAstbaumFern(art, 31, { jahreszeit: zeit }), alt, -H * 2.2);
+  document.getElementById('info').textContent = `${art} · ${H} m · links alt ${dreiecke[2]} △ · Mitte nah ${dreiecke[0]} △ · rechts mittel ${dreiecke[1]} △ · ganz links fern ${dreiecke[3]} △`;
+  for (const b of document.querySelectorAll('#leiste button')) b.classList.toggle('an', b.textContent === art);
+}
+for (const a of ASTBAUM_ARTEN) {
+  const b = document.createElement('button'); b.textContent = a;
+  b.onclick = () => { art = a; zeige(); };
+  document.getElementById('leiste').append(b);
+}
+zeige();
+
+let winkel = 0.6, ziehen = null;
+renderer.domElement.addEventListener('pointerdown', (e) => { ziehen = e.clientX; });
+addEventListener('pointerup', () => { ziehen = null; });
+addEventListener('pointermove', (e) => { if (ziehen !== null) { winkel -= (e.clientX - ziehen) * 0.008; ziehen = e.clientX; } });
+const uhr = new THREE.Clock();
+function bild() {
+  const w = innerWidth, h = innerHeight;
+  if (renderer.domElement.width !== Math.floor(w * renderer.getPixelRatio())) { renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+  if (P.get('dreh') !== '0' && ziehen === null) winkel += uhr.getDelta() * 0.12; else uhr.getDelta();
+  const nah = P.get('nah') === '1', d = nah ? H * 0.75 : H * (w < h ? 3.4 : 2.1);
+  cam.position.set(Math.sin(winkel) * d, nah ? H * 0.45 : H * 0.42, Math.cos(winkel) * d);
+  cam.lookAt(0, H * (nah ? 0.62 : 0.48), 0);
+  renderer.render(szene, cam);
+  requestAnimationFrame(bild);
+}
+bild();
+</script>
+</body>
+</html>
