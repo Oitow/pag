@@ -790,6 +790,7 @@ function bild() {
   if (tasten.has('ShiftLeft') || tasten.has('KeyQ')) hoch -= 1;
   if (vor || seit || hoch) auto = null;
   const altPos = cam.clone();
+  let kleben = 0;   // Bergab-Klebedistanz (m): >0 nur, wenn man zu Fuß am Boden lief und nicht springt
   if (gehen && erw.bewegung(dt, { vor, seit, hoch, tempo: 2 ** (+tempoEl.value) })) {
     // ein Modul (z. B. Gleiter) bewegt den Spieler selbst; Boden-Grenze unten gilt weiter
   } else if (gehen) {
@@ -798,6 +799,7 @@ function bild() {
     const schritt = tmp.set(0, 0, 0).addScaledVector(vorn, vor).addScaledVector(rechts, seit);
     if (l > 1) schritt.multiplyScalar(1 / l);
     cam.addScaledVector(schritt, tempo * dt);
+    if (amBoden && !schwimmt && hoch <= 0) kleben = 0.6 + tempo * dt * Math.min(l, 1) * 1.5;
     if (hoch > 0 && (amBoden || schwimmt)) { fallV = schwimmt ? 2.5 : SPRUNG; amBoden = false; }
     fallV -= G_ERDE * dt;
     cam.addScaledVector(oben, fallV * dt);
@@ -832,6 +834,7 @@ function bild() {
   const lc = cam.length();
   if (lc < minR) { cam.setLength(minR); if (fallV < 0) fallV = 0; amBoden = true; }
   else if (lc > maxR) cam.setLength(maxR);
+  else if (gehen && kleben > 0 && !schwimmt && lc > minR + 0.05 && lc <= minR + kleben) { cam.setLength(minR); fallV = 0; amBoden = true; }   // bergab am Boden bleiben statt hüpfen
   else if (gehen && lc > minR + 0.05) amBoden = false;
   if (gehen && schwimmt && fallV < 0) fallV = Math.max(fallV, -1);
   hoeheBoden = cam.length() - R - g2;
