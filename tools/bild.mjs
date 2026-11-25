@@ -9,6 +9,7 @@ import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { findeOrt } from './orte.mjs';
+import { freierPort } from './freier-port.mjs';
 
 const { chromium } = createRequire(import.meta.url)('playwright');
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -22,7 +23,7 @@ const pfad = ort ? `${ort.dir}index.html` : ziel;
 const name = opt('name', path.basename(path.dirname(pfad)) + (args.includes('--hoch') ? '-hoch' : ''));
 const THREE_LOKAL = path.join(ROOT, 'node_modules', 'three');
 
-const port = 8900 + Math.floor(Math.random() * 90);
+const port = await freierPort();
 const srv = spawn('python3', ['-m', 'http.server', String(port), '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
 await new Promise(r => setTimeout(r, 700));
 const chrome = process.env.PAG_CHROME || (fs.existsSync(chromium.executablePath()) ? undefined : '/usr/bin/google-chrome');

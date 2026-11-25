@@ -1,7 +1,20 @@
-// Mond für lokale Landschaften und Szenen mit Floating Origin.
+/**
+ * @modul    mond
+ * @zweck    Mond mit Kratertextur, Phase aus dem Sonnenwinkel und Mondlicht mit Schatten (für Szenen mit Floating Origin)
+ * @api      createMond(scene, { abstand=900, seed=37, schattenweite=24, nachtseite='dunkel'|'durchsichtig' }) -> { update({ kamera, richtung, sonne, oben?, nacht?, anker?, sichtbar? }), dispose() }
+ * @beispiel
+ *   import { createMond } from '../../engine/render/mond.js';
+ *   const mond = createMond(scene, { nachtseite: 'durchsichtig' });
+ *   mond.update({ kamera: camera.position, richtung: mondDir, sonne: sonnenDir, nacht: 1 });
+ * @tags     himmel, mond, licht, nacht, schatten
+ * @version  1.1.0
+ * @status   entwurf
+ * @three    ja
+ */
 // Alle Richtungen im Weltsystem; anker und kamera im aktuellen Render-Koordinatensystem.
+// nachtseite: 'dunkel' = schwach bläuliche Nachtseite (deckend), 'durchsichtig' = nur die beleuchtete Sichel (tagsüber keine Scheibe).
 import * as THREE from 'three';
-import { rng } from '../../engine/core/rng.js';
+import { rng } from '../core/rng.js';
 
 function mondOberflaeche(seed) {
   const zufall = rng(seed);
@@ -39,11 +52,12 @@ function mondOberflaeche(seed) {
   return karte;
 }
 
-export function createMond(scene, { abstand = 900, seed = 37, schattenweite = 24 } = {}) {
+export function createMond(scene, { abstand = 900, seed = 37, schattenweite = 24, nachtseite = 'dunkel' } = {}) {
   const karte = mondOberflaeche(seed);
   const uniforms = { karte: { value: karte }, sonne: { value: new THREE.Vector3() } };
+  const durch = nachtseite === 'durchsichtig';
   const material = new THREE.ShaderMaterial({
-    uniforms, depthWrite: false, transparent: true,
+    uniforms, depthWrite: false, transparent: durch, defines: durch ? { DURCHSICHTIG: 1 } : {},
     vertexShader: `varying vec2 vUV;
 varying vec3 vNormal;
 #include <common>
@@ -63,9 +77,12 @@ void main() {
   #include <logdepthbuf_fragment>
   float licht = max(0., dot(normalize(vNormal), sonne));
   float grund = texture2D(karte, vUV).r;
-  // Nachtseite durchsichtig: tagsüber keine schwarze Scheibe am Himmel, nachts nur die beleuchtete Sichel
   float hell = sqrt(licht);
+#ifdef DURCHSICHTIG
   gl_FragColor = vec4(grund * vec3(1.,.965,.87) * hell, clamp(hell * 1.6, 0., 1.));
+#else
+  gl_FragColor = vec4(grund * (vec3(.025,.032,.045) + vec3(1.,.965,.87) * hell), 1.);
+#endif
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }`,

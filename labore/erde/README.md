@@ -1,8 +1,8 @@
 # 🌍 Erde-Labor
 
 Erfundener Planet (Standard R = 100 km) vom Orbit bis zum Boden, zu Fuß begehbar, mit Geologie, Klima, Wetter, Natur und Graben.
-Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Sprungmarken `?ort=orbit|berg|kueste|boden|fluss|see|vulkan|wald|biom0…9`
-· Testschalter `?test=1` (kein Spielstand), `?wetter=regen|schnee|gewitter|nebel|sturm|klar`, `?uhr=19` (Ortszeit), `?seed=`, `?r=` (km), `?neu=1`.
+Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Sprungmarken `?ort=orbit|berg|kueste|boden|himmel|fluss|ufer|see|vulkan|krater|wald|biom0…9|gestein0…4`
+· Testschalter `?test=1` (kein Spielstand), `?hunger=0.2`, `?tasche=voll`, `?herstellen=offen`, `?bautest=1`, `?tiere=test|aus`, `?ueberleben=aus`, `?schmiedetest=1`, `?gleiter=1&flug=1` (300 m) / `&flug=800`, `?tagebuch=offen|aus`, `?feldtest=1`, `?wetter=regen|schnee|gewitter|nebel|sturm|klar`, `?uhr=19` (Ortszeit), `?seed=`, `?r=` (km), `?neu=1`.
 
 ## Module (`js/`, reine Logik ohne THREE wo möglich → Tests in `tests/erde-*.test.mjs`)
 | Datei | Aufgabe |
@@ -19,15 +19,25 @@ Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Sprungmarken `?ort=o
 | `natur-streu.js` → `natur.js` | Natur je 80-m-Kachel streuen (Worker) → InstancedMesh, Wind, nah/mittel/fern |
 | `zeit-wetter.js` | Uhr (engine `zeit`), Wetter (engine `wetter`), Regen/Schnee (engine `niederschlag`) auf der Kugel |
 | `planet.js` | Seite: Steuerung, Kamera, Himmel, Sonnenschatten, Mond, Grafik-Stufe, HUD, Karte |
+| `erweiterungen.js` | Andock-Stelle für Spiel-Module (Vertrag oben in der Datei); Plan: `docs/plaene/ERDE-UEBERLEBEN.md` |
+| `ueberleben.js` (+ `-regeln`) | Leben, Hunger, Durst, Körperwärme (Wetter, Nässe, Kleidung, Feuer, Dach), Essen, Trinken, Tod/Aufwachen, Lava |
+| `herstellen.js` (+ `-daten`) | Herstellen-Fenster (engine `rezepte`), Stationen Lagerfeuer/Werkbank, Kleidung tragen |
+| `bauen.js` (+ `-regeln`, `bauteile.js`) | Bau-Modus: Fundament, Wand, Dach, Treppe, Lagerfeuer, Werkbank – einrasten, Kosten, Abreißen |
+| `gleiter.js` (+ `-physik`) | Gleiter: Flugphysik (Gleitzahl 9), Thermik über sonnigen Hängen und Kratern, Hangwind, Landung/Absturz, Fallschaden, Vario |
+| `tagebuch.js` (+ `-daten`) | Ziele für die ersten Stunden (Feuer, Speer, Jagd, Hütte, Feld, Gleiter, Eisen) + Entdeckungen (Biome, Vulkan, Meer) |
+| Schmiede (in `bauen*`, `herstellen-daten`) | Schmelzofen, Amboss; Holzkohle, Kupfer-/Eisenbarren, Kupfer-/Eisenwerkzeug – Stufen: Granit/Basalt ab Kupfer, Gold ab Eisen |
+| `spielerfigur.js` | sichtbare Figur in der 3.-Person-Ansicht (Menü Ansicht „1./3. Person“, `?person=1`, `?figur=ritter`, `?koerper=organisch`) |
+| `wolken.js`, `vulkan-rauch.js` | Wolkendecke nach Wetter/Wind (`?wolken=aus`), Rauchsäulen über den Kratern |
+| `tiere.js` (+ `-regeln`) | Wild je Biom (Reh, Hase, Keiler, Wolf), Flucht/Angriff, Jagen → Fleisch, Fell, Knochen |
 
-Mitbenutzt aus `labore/naturstimmungen` (Codex): `gruppen.js` (Wollgras, Pilzholz, Flechtenbank) und `mond.js` (Mond + Mondlicht-Schatten),
-aus `labore/gigantwelt/js/fundmodelle.mjs` (Codex): Fundstücke Erzbrocken, Ammonit, Quarzdruse – liegen nach Gestein halb im Boden.
+Aus der Engine (geteilt mit Naturstimmungen/Gigantwelt): `engine/models/natur/naturfundus.js`, `landschaftsgruppen.js` (Wollgras, Pilzholz,
+Flechtenbank), `fundmodelle.js` (Erzbrocken, Ammonit, Quarzdruse – liegen nach Gestein halb im Boden), `engine/render/mond.js` (`nachtseite: 'durchsichtig'`).
 Testschalter `?ort=gestein0…4` (je Gesteinsart), `?zeige=<art>` (vor das nächste Stück dieser Art stellen).
 Grafik-Stufe Hoch/Mittel/Niedrig (Knopf, gespeichert): Schatten, Sichtweite der Natur, Geländedetail, Auflösung. Das HUD zeigt,
 welche Natur-Arten die meisten Dreiecke kosten.
 
 ## Assets – Vertrag (für jede KI, die daran arbeitet)
-- Quellen: `naturfundus/naturfundus.mjs` (`baueNaturAsset(art, seed)` → Mesh), `../naturstimmungen/gruppen.js` (`baueGruppe(art, seed)`)
+- Quellen: `engine/models/natur/naturfundus.js` (`baueNaturAsset(art, seed)` → Mesh), `engine/models/natur/landschaftsgruppen.js` (`baueGruppe(art, seed)`)
   und `engine/models/natur/natur-assets.js`.
 - Ursprung am Fußpunkt, **+Y = oben**, Maße in Metern, eine Geometrie mit Vertexfarben (optional Attribut `wind` 0…1).
 - **Größe egal**: `natur.js` bringt Bäume u. a. auf `ZIEL_HOEHE` (m). Neue Zielhöhe → dort eintragen.

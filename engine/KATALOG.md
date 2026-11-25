@@ -123,9 +123,11 @@
 | figur-kleidung | `engine/models/character/figur-kleidung.js` | Kleidung der organischen Figur als SDF-Körper über der Anatomie: Oberteil mit Ärmeln, Hose/Rock/Robe, Gürtel + Tasche, Schuhe – je Stil aus character-look | entwurf |
 | figur-koerper-kopf | `engine/models/character/figur-koerper-kopf.js` | Hals und Kopf der organischen Figur als SDF-Körper: Schädel, Kiefer/Kinn, Wangenknochen, Brauenbogen, Augenhöhlen (passend zu den starren Augäpfeln), Nase, Ohren (Mund = Mimik-Mesh) | entwurf |
 | figur-koerper | `engine/models/character/figur-koerper.js` | Anatomie der organischen Figur als SDF-Körper: Rumpf (Brustkorb, Taille, Bauch, Becken, Gesäß, Trapez, Schultermuskeln), Arme, Hände mit Daumen (Griff am Sockel umschlossen), Beine, Füße mit flacher Sohle; Hals + Kopf in figur-koerper-kopf | entwurf |
+| hase | `engine/models/kreaturen/hase.js` | Low-Poly-Feldhase (kleines Wild): runder Rumpf, kräftige Hinterläufe, lange Ohren mit schwarzen Spitzen, weiße Blume; zwei Sprung-Bild-Geometrien (Vertexfarben) für InstancedMesh | entwurf |
 | irrlicht | `engine/models/kreaturen/irrlicht.js` | Low-Poly-Irrlicht (Moorgeist): hell leuchtender Kern, Halo und wehende Schleier; zwei Schwebe-Bild-Geometrien (Vertexfarben) | entwurf |
 | keiler | `engine/models/kreaturen/keiler.js` | Low-Poly-Keiler (Wildschwein) als Horden-Gegner: massig, Borstenkamm, Hauer; zwei Lauf-Bild-Geometrien (Vertexfarben) | entwurf |
 | ratte | `engine/models/kreaturen/ratte.js` | Low-Poly-Riesenratte als Horden-Gegner: liefert zwei Lauf-Bild-Geometrien (Vertexfarben) für InstancedMesh | entwurf |
+| reh | `engine/models/kreaturen/reh.js` | Low-Poly-Reh (Wild, scheu): schlanker Rumpf, langer Hals, große Ohren, weißer Spiegel, Bock mit kleinem Gehörn; zwei Lauf-Bild-Geometrien (Vertexfarben) für InstancedMesh | entwurf |
 | wolf | `engine/models/kreaturen/wolf.js` | Low-Poly-Wolf als Horden-Gegner (und Boss-Wolf per Skala): zwei Lauf-Bild-Geometrien (Vertexfarben) für InstancedMesh | entwurf |
 | baum-arten | `engine/models/natur/baum-arten.js` | Reine Parameter-Daten der Baumarten (Wuchs, Verzweigung, Laubform, Farben, Jahreszeiten) für baum-skelett/baum | entwurf |
 | baum-skelett | `engine/models/natur/baum-skelett.js` | Ast-Skelett eines Baums aus Art-Parametern + Seed: rekursive Verzweigung mit Tropismus, Krümmung, Verjüngung, Laub-Knoten und Nadel-Etagen (reine Logik) | entwurf |
@@ -133,9 +135,12 @@
 | fels-basis | `engine/models/natur/fels-basis.js` | Kleine Helfer für Felsen/Totholz: Dreiecke mit Flächenfarben sammeln → nicht-indizierte BufferGeometry (position, normal, color, wind=0), Farb-Mischen | neu |
 | fels-form | `engine/models/natur/fels-form.js` | Reine Fels-Grundform (ohne THREE): Ico- oder Säulen-Netz, verformt mit fBm/Grat, planare Bruchkanten, Schichtung, Erosion oben, flacher Boden | neu |
 | fels | `engine/models/natur/fels.js` | Prozedurale Low-Poly-Felsen (Vertrag NATUR-ASSETS): fels, felsbrocken, findling, geroell, felsplatte, felsnadel – mit Gesteinsfarben, Schichtung, Moos, Schnee | neu |
+| fundmodelle | `engine/models/natur/fundmodelle.js` | Fundstücke als reine Dreieckslisten: Erzbrocken, Ammonit, Quarzdruse (lineare RGB-Vertexfarben, Meter) | entwurf |
+| landschaftsgruppen | `engine/models/natur/landschaftsgruppen.js` | Verbundene Kleinformen als ein Mesh: Wollgras, Pilzholz, Flechtenbank (für Instancing) | entwurf |
 | laub-klumpen | `engine/models/natur/laub-klumpen.js` | Dichtes Laub als Blatt-Karten-Klumpen (rein, ohne THREE): je Kronen-Büschel viele Karten in einem abgeflachten Ellipsoid, Kern dunkel, Rand hell; ausdünnen (LOD) und in Weltkoordinaten sammeln | entwurf |
 | natur-assets | `engine/models/natur/natur-assets.js` | Registry der Natur-Generatoren (Bäume, Felsen, Totholz, Büsche, Bodendecker, Wüste, Urwald-Unterwuchs): Typname → Generator, Asset bauen, Varianten-Cache mit gemeinsamen Geometrien | entwurf |
 | natur-basis | `engine/models/natur/natur-basis.js` | Gemeinsame Helfer für Natur-Assets: Dreiecke sammeln → nicht-indizierte Geometrie (position/normal/color/wind), Farben, Fake-AO, Schnee, Ast-Röhre, Laub-Blob, Kegel-Lage, Wedel | entwurf |
+| naturfundus | `engine/models/natur/naturfundus.js` | Kleiner Naturfundus: Fichte, Birke, Felsblöcke, Uferpflanzen, Steinpilz, Fische – je ein Mesh mit Vertexfarben, Fußpunkt im Ursprung, Meter | entwurf |
 | pflanze-basis | `engine/models/natur/pflanze-basis.js` | Sammler für Pflanzen-Geometrie: Dreiecke (ein-/zweiseitig, nach außen ausgerichtet), Bänder, Rohre, verformte Laubballen → EINE BufferGeometry mit position, normal, color, wind | entwurf |
 | pflanze-blume | `engine/models/natur/pflanze-blume.js` | Bauteile für Bodendecker: Blume (Stängel + Blüte je Sorte: Stern, Schale, Glocke, Pompon, Ähre) und Pilze (Fliegenpilz, Steinpilz, Hexenring) in einen Pflanzen-Sammler | entwurf |
 | pflanze-boden | `engine/models/natur/pflanze-boden.js` | Prozedurale Low-Poly-Bodendecker: farn (gefiederte Wedel), grasbueschel (Halm-Fächer), blume (Sorten per Seed), pilz (Fliegenpilz/Steinpilz/Hexenring), schilf (Halme + Rohrkolben), seerose (liegt auf y≈0) | entwurf |
@@ -164,6 +169,7 @@
 | laub-karten | `engine/render/laub-karten.js` | Dichtes Laub als EIN instanziertes Mesh aus Blatt-Karten (zur Kamera gedreht): Blatt-Silhouette prozedural im Fragment-Shader (keine Textur), Alpha-Test bzw. alphaToCoverage, Richtungslicht mit Durchscheinen zur Sonne, dunkler Kern, Wind, exp²-Nebel + eigener Höhendunst | entwurf |
 | licht-pool | `engine/render/licht-pool.js` | Wenige echte PointLights, die sich die nächsten Lichtquellen zum Fokus greifen (Lagerfeuer bevorzugt), weich ein-/ausblenden, Feuer flackert, Laternen tags aus | entwurf |
 | mesh-builder | `engine/render/mesh-builder.js` | Low-Poly-Modelle aus Primitiven (Box, Kugel, Zylinder …) mit Vertexfarben zu EINER Geometrie verschmelzen; Farbvariation pro Dreieck per Seed | entwurf |
+| mond | `engine/render/mond.js` | Mond mit Kratertextur, Phase aus dem Sonnenwinkel und Mondlicht mit Schatten (für Szenen mit Floating Origin) | entwurf |
 | natur-material | `engine/render/natur-material.js` | Gemeinsames Material für Natur-Assets: MeshStandardMaterial (Vertexfarben, flatShading) mit Wind-Schwingen im Vertex-Shader über das Attribut 'wind' (0 starr … 1 voll); Phase je Instanz aus der Weltposition; passendes Schatten-Material; optional Ausblenden ab Kamera-Entfernung | entwurf |
 | niederschlag | `engine/render/niederschlag.js` | Regen/Schnee als ein Points-Objekt um die Kamera; Bewegung komplett im Vertex-Shader (kein CPU-Aufwand je Partikel) | entwurf |
 | psx | `engine/render/psx.js` | PS1-Look für eine ganze Szene (aus Viniland übernommen): Eckpunkte rasten auf ein grobes Bildraster (Wackeln), wenige Farbstufen mit Bayer-Dithering, grobe Pixel (kleine interne Auflösung, hart hochskaliert), Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen) – live an/aus ohne Neu-Kompilieren | entwurf |
@@ -284,7 +290,7 @@
 | ao | boden-anpassung |
 | arbeit | character-clips-mehr |
 | art | baum-arten |
-| asset | bau-basis, bau-pruefung, bau-dorf-teile, gebaeude-pruefen, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau |
+| asset | bau-basis, bau-pruefung, bau-dorf-teile, gebaeude-pruefen, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau, fundmodelle, landschaftsgruppen, naturfundus |
 | ast | totholz-form, totholz, riesenwald-teile |
 | astar | worldgen-path |
 | attrappe | fake-dom |
@@ -317,7 +323,7 @@
 | bau | bau-basis, bau-pruefung, bau-teile, bau-dorf-teile, gebaeude-pruefen, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau, bau-instanzen |
 | bauen | welt-aenderung |
 | baukasten | modul-kern, spiel |
-| baum | klettern, baum-arten, baum-skelett, baum, laub-klumpen, natur-assets, natur-basis, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum |
+| baum | klettern, baum-arten, baum-skelett, baum, laub-klumpen, natur-assets, natur-basis, naturfundus, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum |
 | baumstumpf | totholz |
 | beben | grosszauber-riss, grosszauber-wand, grosszauber-welle, grosszauber, grosszauber-mesh |
 | bedrohung | bedrohung |
@@ -397,6 +403,7 @@
 | erosion | worldgen-erosion |
 | erschoepft | ausdauer |
 | erstellen | figur-editor |
+| erz | fundmodelle |
 | esse | schmiede |
 | event | ereignisse |
 | export | speicher |
@@ -410,7 +417,7 @@
 | fbm | worldgen-height |
 | feder | character-sekundaer |
 | felder | modul-dorf |
-| fels | grosszauber-wand, klettern, fels-basis, fels-form, fels, natur-assets, grosszauber-wand-ansicht |
+| fels | grosszauber-wand, klettern, fels-basis, fels-form, fels, natur-assets, naturfundus, grosszauber-wand-ansicht |
 | felsen | scatter-mesh, welt-streu, worldgen-vegetation |
 | fenster | bau-teile, oberflaeche-fenster, menue |
 | fern | character-lod, fern-wald |
@@ -420,6 +427,7 @@
 | feuerstelle | stationen |
 | figur | follow-camera, character-motor-tuning, character-motor, character, move-input, character-anim-blick, character-anim-hang, character-anim-idle, character-anim-zustand, character-animator, character-ausruestung, character-clips-mehr, character-clips-zauber, character-clips, character-gang, character-lod, character-look, character-model, character-parts-basis, character-parts-becken, character-parts-gesicht, character-parts-haar, character-parts-hut, character-parts-kopf, character-parts-ruecken, character-parts-torso, character-parts-zubehoer, character-parts, character-pose, character-reaktion, character-rig, character-sekundaer, figur-form, figur-haar, figur-haut, figur-kleidung-basis, figur-kleidung-oben, figur-kleidung-unten, figur-kleidung, figur-koerper-kopf, figur-koerper, figur-material, modul-spieler, figur-editor, figur-schild, wege-lage, worldgen-adapter |
 | first-person | follow-camera |
+| fisch | naturfundus |
 | flackern | licht-pool |
 | flechte | riesenbaum-krone |
 | fleck | zauber-anzeige |
@@ -429,9 +437,11 @@
 | folgen | follow-camera |
 | form | sdf, figur-form, pflanze-formen, riesenbaum-form, worldgen-shape |
 | fortschritt | aufgaben, progression, modul-fortschritt |
+| fossil | fundmodelle |
 | fps | schleife, qualitaet |
 | frisur | character-parts-haar, character-parts-kopf, figur-haar |
 | fuesse | character-anim-hang, character-gang |
+| fund | fundmodelle |
 | funken | zauber-effekte |
 | fuss | figur-koerper |
 | fähigkeit | faehigkeiten-daten, faehigkeiten, klassen-daten, zauber, modul-kampf |
@@ -465,11 +475,12 @@
 | glanz | wasser-glanz |
 | gleiten | character-motor, character-anim-zustand |
 | glut | grosszauber-riss-ansicht |
-| graben | grosszauber-riss, welt-aenderung |
+| graben | grosszauber-riss, fundmodelle, welt-aenderung |
 | grading | psx |
 | gras | pflanze-boden, gras-feld |
 | groesse | riesenbaum |
 | großzauber | grosszauber-riss, grosszauber-sturm, grosszauber-wand, grosszauber-welle, grosszauber, grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht, modul-zauber, zauber-gross |
+| gruppe | landschaftsgruppen |
 | gürtel | character-parts-becken, figur-kleidung-unten, figur-kleidung |
 | haar | character-parts-haar, character-parts-kopf, character-sekundaer, figur-haar |
 | halm | pflanze-formen |
@@ -480,6 +491,7 @@
 | hand | hand, figur-koerper |
 | handy | touch-stick, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, qualitaet, modul-kampf, modul-oberflaeche, modul-zauber, chat, figur-editor, menue, minikarte, zauber-leiste |
 | hang | klettern, character-anim-hang |
+| hase | hase |
 | hash | rng |
 | haus | haus |
 | haut | figur-haut |
@@ -489,7 +501,7 @@
 | herde | character-gruppe |
 | herstellen | rezepte, stationen |
 | hilfen | character-parts-basis |
-| himmel | modul-himmel, himmel-stand, himmel |
+| himmel | mond, modul-himmel, himmel-stand, himmel |
 | hindernis | grosszauber-wand, kollision |
 | hinweis | interaktion, hud |
 | hoehe | welt-regionen, worldgen-height, worldgen-query |
@@ -513,7 +525,7 @@
 | insel | worldgen-presets, worldgen-shape, worldgen |
 | instanced | character-lod |
 | instancedmesh | bau-instanzen, horde-mesh |
-| instancing | keiler, ratte, wolf, grosszauber-wand-ansicht, horde-mesh, fern-wald |
+| instancing | hase, keiler, ratte, reh, wolf, grosszauber-wand-ansicht, horde-mesh, fern-wald |
 | instanzen | laub-klumpen, bau-instanzen, natur-material, gras-feld, scatter-mesh |
 | instanziert | gauss-wolke, laub-karten |
 | interaktion | interaktion, tueren |
@@ -521,6 +533,7 @@
 | interpolation | math, schnappschuss-puffer |
 | inventar | behaelter, hand, inventar, rezepte, welt-dinge, modul-fortschritt, modul-oberflaeche, oberflaeche-fenster, inventar-ansicht |
 | irrlicht | irrlicht |
+| jagd | hase, reh |
 | jahreszeit | zeit, baum |
 | joystick | move-input, touch-stick |
 | kachel | welt-streu |
@@ -546,6 +559,7 @@
 | klang | klang |
 | klasse | klassen-daten, progression, modul-kampf |
 | kleidung | character-parts-becken, character-parts-torso, character-parts, figur-form, figur-kleidung-basis, figur-kleidung-oben, figur-kleidung-unten, figur-kleidung |
+| klein | hase |
 | klettern | ausdauer, klettern, modul-spieler |
 | klima | wetter, worldgen-biomes, worldgen-climate |
 | knoepfe | touch-stick |
@@ -555,9 +569,9 @@
 | kommando | befehle |
 | kopf | character-anim-blick, character-parts-haar, character-parts-hut, character-parts-kopf, figur-koerper-kopf |
 | korb | character-ausruestung |
-| kreatur | irrlicht, keiler, ratte, wolf |
+| kreatur | hase, irrlicht, keiler, ratte, reh, wolf |
 | krieger | klassen-daten |
-| kristall | tempel |
+| kristall | tempel, fundmodelle |
 | krit | kampf-werte |
 | krone | character-parts-hut, character-parts-kopf, laub-klumpen, riesenbaum-krone, laub-karten |
 | kronen | kronen-lichtkarte |
@@ -578,7 +592,7 @@
 | leistung | qualitaet |
 | leucht | bau-licht, bau-instanzen |
 | leuchten | irrlicht |
-| licht | bau-licht, kronen-lichtkarte, licht-pool, modul-dorf, himmel-stand, himmel |
+| licht | bau-licht, kronen-lichtkarte, licht-pool, mond, modul-dorf, himmel-stand, himmel |
 | lichtstrahlen | kronen-lichtkarte |
 | localStorage | speicher |
 | lock-on | follow-camera, ziel-wahl, modul-spieler |
@@ -588,7 +602,7 @@
 | look | character-look, figur-material, psx, splat-look, figur-editor |
 | loop | schleife |
 | loot | beute |
-| lowpoly | bau-teile, bau-dorf-teile, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau, character-parts, irrlicht, keiler, ratte, wolf, baum, fels-form, fels, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-unterwuchs, pflanze-wueste, totholz-form, totholz, mesh-builder |
+| lowpoly | bau-teile, bau-dorf-teile, haus, bau-licht, bau-markt, mauer, schmiede, taverne, tempel, bau-uebung, bau-vorrat, wachturm, bau-wegbau, character-parts, hase, irrlicht, keiler, ratte, reh, wolf, baum, fels-form, fels, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-unterwuchs, pflanze-wueste, totholz-form, totholz, mesh-builder |
 | magie | element-reaktionen, grosszauber-riss, grosszauber-sturm, grosszauber-welle, grosszauber, zauber-daten, zauber, character-clips-zauber, zauber-effekte, modul-zauber |
 | magier | klassen-daten |
 | maler | splat-look |
@@ -616,24 +630,24 @@
 | mittelalter | bau-dorf-teile, bau-markt, bau-vorrat, bau-wegbau |
 | mmo | entitaeten, bedrohung, befehle, beute, boss, faehigkeiten-daten, faehigkeiten, gegenstaende-daten, gegner-lager, grosszauber-wand, grosszauber-welle, grosszauber, kampf-werte, kampf, klassen-daten, nahkampf-daten, nahkampf, progression, zustaende, character-lod, modul-dorf, modul-entitaeten, modul-fortschritt, modul-gegner, modul-oberflaeche, modul-welt, oberflaeche-fenster, spiel, chat, kampf-leiste, minikarte, ziel-rahmen, welt-regionen |
 | mobil | grosszauber-riss-ansicht, grosszauber-welle-ansicht |
-| modell | sdf-netz, sdf, character-model, irrlicht, keiler, ratte, wolf, mesh-builder |
+| modell | sdf-netz, sdf, character-model, hase, irrlicht, keiler, ratte, reh, wolf, mesh-builder |
 | modul | modul-kern, modul-bewohner, modul-dorf, modul-entitaeten, modul-fortschritt, modul-gegner, modul-himmel, modul-kampf, modul-oberflaeche, modul-riesenwald, modul-spieler, modul-tutorial, modul-welt, modul-zauber, module-register, module, spiel |
-| mond | modul-himmel, himmel-stand, himmel |
+| mond | mond, modul-himmel, himmel-stand, himmel |
 | monokel | character-parts-zubehoer |
 | monster | horde, horde-mesh |
-| moor | irrlicht |
+| moor | irrlicht, landschaftsgruppen |
 | moos | pflanze-unterwuchs, riesenbaum-netz, gauss-saat, gauss-wolke |
 | motor | klettern, character-anim-zustand |
 | nachbarn | raum-gitter |
 | nachbearbeitung | splat-look |
 | nachricht | ereignisse |
 | nachschwingen | character-sekundaer |
-| nacht | kronen-lichtkarte, licht-pool, modul-dorf, modul-himmel, himmel-stand, himmel |
+| nacht | kronen-lichtkarte, licht-pool, mond, modul-dorf, modul-himmel, himmel-stand, himmel |
 | nachwachsen | rohstoffe |
 | nahkampf | nahkampf-daten, nahkampf, modul-kampf |
 | namensschild | modul-bewohner, figur-schild |
 | nass | element-reaktionen |
-| natur | baum-arten, baum-skelett, baum, fels-basis, fels-form, fels, laub-klumpen, natur-assets, natur-basis, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-unterwuchs, pflanze-wueste, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum, totholz-form, totholz, laub-karten, natur-material, scatter-mesh |
+| natur | baum-arten, baum-skelett, baum, fels-basis, fels-form, fels, landschaftsgruppen, laub-klumpen, natur-assets, natur-basis, naturfundus, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-unterwuchs, pflanze-wueste, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum, totholz-form, totholz, laub-karten, natur-material, scatter-mesh |
 | nebel | modul-himmel, himmel, wetter |
 | netz | entitaeten, sdf-netz, riesenbaum-netz, gauss-saat, worldgen-wege |
 | netzwerk | schnappschuss-puffer |
@@ -661,7 +675,7 @@
 | persistenz | speicher |
 | pfad | character-steering, welt-plan, worldgen-path, worldgen-wege |
 | pfeil | aufgaben-anzeige |
-| pflanze | pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-unterwuchs, pflanze-wueste |
+| pflanze | landschaftsgruppen, naturfundus, pflanze-basis, pflanze-blume, pflanze-boden, pflanze-busch, pflanze-formen, pflanze-unterwuchs, pflanze-wueste |
 | phasen | boss |
 | physik | character-motor, koerper, kollision |
 | pilz | pflanze-blume, pflanze-boden |
@@ -707,6 +721,7 @@
 | regionen | modul-welt, welt-regionen |
 | register | register, module-register, module |
 | registry | natur-assets |
+| reh | reh |
 | reichweite | faehigkeiten, interaktion |
 | render | grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht, kronen-lichtkarte, laub-karten, natur-material, gras-feld |
 | render-target | kronen-lichtkarte |
@@ -742,7 +757,7 @@
 | saum | figur-kleidung-basis |
 | schaden | kampf-werte, kampf, modul-entitaeten, treffer-zahlen |
 | schal | character-parts-zubehoer |
-| schatten | kronen-lichtkarte, qualitaet, modul-himmel, riesenwald-teile, himmel |
+| schatten | kronen-lichtkarte, mond, qualitaet, modul-himmel, riesenwald-teile, himmel |
 | schaum | fluss-mesh, wasser-glanz |
 | schild | character-ausruestung, ziel-rahmen |
 | schilf | pflanze-boden |
@@ -847,6 +862,7 @@
 | testfeld | module-register, module |
 | third-person | follow-camera |
 | tiefe | gauss-sortierung |
+| tier | hase, reh |
 | toast | hud |
 | tod | character-reaktion |
 | tor | tueren, mauer |
@@ -865,7 +881,7 @@
 | turban | character-parts-hut |
 | turm | tempel |
 | tutorial | aufgaben, modul-tutorial, tutorial-daten, aufgaben-anzeige, welt-plan |
-| ufer | terrain-farben, wasser-glanz |
+| ufer | landschaftsgruppen, terrain-farben, wasser-glanz |
 | uhr | zeit, modul-himmel |
 | ui | modul-oberflaeche, oberflaeche-fenster, aufgaben-anzeige, chat, figur-editor, figur-schild, hud, inventar-ansicht, kampf-leiste, menue, minikarte, treffer-zahlen, zauber-leiste, ziel-rahmen |
 | umfallen | character-reaktion |
@@ -909,6 +925,7 @@
 | werkzeug | hand, rohstoffe, character-ausruestung |
 | wetter | niederschlag, modul-himmel, himmel-stand, wetter |
 | whittaker | worldgen-biomes |
+| wild | hase, reh |
 | wildschwein | keiler |
 | wind | grosszauber-sturm, baum, natur-basis, pflanze-basis, pflanze-boden, pflanze-busch, pflanze-unterwuchs, grosszauber-sturm-ansicht, laub-karten, natur-material, gras-feld, scatter-mesh, wetter |
 | wirbel | grosszauber-sturm |
@@ -1089,7 +1106,7 @@ const n = createNoise2D(42);
 const hoehe = fbm2(n, x * 0.01, y * 0.01, 5);
 ```
 
-Genutzt von: daemmerwald, figuren · Tags: rauschen, noise, terrain, welt, prozedural · THREE: nein
+Genutzt von: daemmerwald, erde, figuren · Tags: rauschen, noise, terrain, welt, prozedural · THREE: nein
 
 ### raum-gitter · `engine/core/raum-gitter.js` · v1.0.0 · entwurf
 Räumliches Raster (Spatial Hash in x/z) für bewegliche Dinge: Einträge mit id setzen/verschieben/entfernen und schnell alle im Umkreis finden – Grundlage für Kollision, Interaktion, Sinne und Sichtbereiche (Mehrspieler)
@@ -1143,7 +1160,7 @@ const r = rng(hashSeed('insel', 42));
 const baum = pick(r, ['eiche', 'tanne']);
 ```
 
-Genutzt von: daemmerwald, enklave, figuren, handwerk, natur · Tags: zufall, seed, hash, welt · THREE: nein
+Genutzt von: daemmerwald, enklave, erde, figuren, gigantwelt, handwerk, natur, naturstimmungen · Tags: zufall, seed, hash, welt · THREE: nein
 
 ### schleife · `engine/core/schleife.js` · v1.0.0 · entwurf
 Spielschleife mit variablem oder festem Zeitschritt, dt-Begrenzung, FPS-Anzeige und Tab-Pause
@@ -1233,7 +1250,7 @@ uhr.on('tag', (tag) => console.log('Neuer Tag', tag));
 uhr.update(dt); // je Bild, dt in echten Sekunden
 ```
 
-Genutzt von: daemmerwald, enklave, handwerk · Tags: zeit, tageszeit, jahreszeit, kalender, uhr, speichern · THREE: nein
+Genutzt von: daemmerwald, enklave, erde, handwerk · Tags: zeit, tageszeit, jahreszeit, kalender, uhr, speichern · THREE: nein
 
 ### aufgaben · `engine/gameplay/aufgaben.js` · v1.1.0 · entwurf
 Aufgaben-/Tutorial-Logik: Schritte (gehe-zu, sprich-mit, sammle, besiege, benutze, warte), Fortschritt, Signale, Speicherstand; reine Daten, serialisierbar
@@ -1250,7 +1267,7 @@ a.update(dt, { x: spieler.x, z: spieler.z }); // gehe-zu, warte, sammle (über z
 anzeige.setze(a.aktuell());
 ```
 
-Genutzt von: enklave · Tags: aufgabe, tutorial, quest, schritt, fortschritt, gameplay · THREE: nein
+Genutzt von: enklave, erde · Tags: aufgabe, tutorial, quest, schritt, fortschritt, gameplay · THREE: nein
 
 ### ausdauer · `engine/gameplay/ausdauer.js` · v1.0.0 · entwurf
 Ausdauer für Sprint, Rolle/Dash, Schwimmen, Klettern, Springen: Kosten-Tabelle als Daten, Erholung nach Verzögerung, Erschöpft-Zustand (gesperrte Aktionen bis zur Schwelle)
@@ -1784,7 +1801,7 @@ inv.nimm('holz', 5); inv.zaehle('holz');
 const sicher = JSON.stringify(inv.zustand());
 ```
 
-Genutzt von: enklave, handwerk · Tags: inventar, gegenstand, stapel, gameplay, speichern · THREE: nein
+Genutzt von: enklave, erde, handwerk · Tags: inventar, gegenstand, stapel, gameplay, speichern · THREE: nein
 
 ### kampf-werte · `engine/gameplay/kampf-werte.js` · v1.0.0 · entwurf
 Kämpfer (Leben, Schild, Haltung, Werte, Mods) und reine Schadensformel mit Rüstung, Krit, Parade, Block
@@ -1943,7 +1960,7 @@ const p = rezepte.pruefe('axt', inventar);          // { ok: false, grund: 'zuta
 if (p.ok) rezepte.stelleHer('axt', inventar);       // nimmt Zutaten, legt die Axt ins Inventar
 ```
 
-Genutzt von: handwerk · Tags: rezept, herstellen, crafting, werkbank, zutaten, inventar, gameplay · THREE: nein
+Genutzt von: erde, handwerk · Tags: rezept, herstellen, crafting, werkbank, zutaten, inventar, gameplay · THREE: nein
 Rezept: { id, name, zutaten {id: anzahl}, ergebnis {id, anzahl, daten?}, werkzeug [id oder Tag, wird nicht verbraucht],
         station (Text oder null), dauer (Sekunden, nur Angabe fürs Spiel) }.
 grund: null | 'unbekannt' | 'station' | 'werkzeug' | 'zutaten' | 'platz' (nur bei stelleHer, dann bleibt das Inventar unverändert).
@@ -2266,7 +2283,7 @@ import { createLagerfeuer } from '../../engine/models/bau/licht.js';
 const feuer = createLagerfeuer({ seed: 5 });   // feuer.leucht = Flammen, feuer.anker.licht = PointLight-Vorlage
 ```
 
-Genutzt von: daemmerwald, enklave · Tags: bau, licht, laterne, fackel, lagerfeuer, leucht, asset, lowpoly · THREE: ja
+Genutzt von: daemmerwald, enklave, erde · Tags: bau, licht, laterne, fackel, lagerfeuer, leucht, asset, lowpoly · THREE: ja
 
 ### bau-markt · `engine/models/bau/markt.js` · v1.0.0 · entwurf
 Marktplatz-Kleinkram als Low-Poly-Asset: Marktstand mit Stoffdach (4 Farben), Brunnen mit Holzdach, Sitzbank
@@ -2459,7 +2476,7 @@ anim.treffer({ x: 0, z: -1 }, 0.7);              // Stoß von vorn (Figur-Raum),
 anim.blickZuPunkt(spieler.zustand.pos);           // Kopf + Augen folgen (braucht zustand.pos/yaw)
 ```
 
-Genutzt von: – · Tags: figur, charakter, animation, gang, laufen, schwimmen, springen, aktion, clip, npc, spieler · THREE: nein
+Genutzt von: erde · Tags: figur, charakter, animation, gang, laufen, schwimmen, springen, aktion, clip, npc, spieler · THREE: nein
 
 ### character-ausruestung · `engine/models/character/character-ausruestung.js` · v1.0.0 · entwurf
 Low-Poly-Gegenstände für Figuren-Sockel (Schwert, Dolch, Axt, Hammer, Hacke, Schaufel, Speer, Stab, Zauberstab, Schild, Bogen, Fackel, Laterne, Korb, Becher, Buch): je ein Mesh + optional Leucht-Mesh, passend ausgerichtet für model.befestigen(sockel, obj)
@@ -2593,7 +2610,7 @@ const held = createLook({ ...VORLAGEN.wanderer, haar: { farbe: '#c8a040' }, bril
 const npc = randomLook(hashSeed('dorf', 7));   // gleicher Seed → gleicher Look
 ```
 
-Genutzt von: daemmerwald, enklave, erlenwacht, figuren, handwerk · Tags: figur, charakter, aussehen, look, spieler, npc, avatar, editor, speichern, accessoires, mimik · THREE: nein
+Genutzt von: daemmerwald, enklave, erde, erlenwacht, figuren, handwerk · Tags: figur, charakter, aussehen, look, spieler, npc, avatar, editor, speichern, accessoires, mimik · THREE: nein
 1.1: neue Stile (Haar, Bart, Oberteil, Hose, Schuhe, Kopfbedeckung, Umhang), neue Teile brille/schal/schmuck,
    Körper schultern/muskeln, Feld ausdruck (Grund-Mimik), neue Vorlagen. Alte Spielstände bleiben gültig
    (fehlende Felder → Standard; erste Einträge in STILE und Körper-Standards unverändert).
@@ -2611,7 +2628,7 @@ figur.befestigen('handR', schwert);
 figur.setLook({ kopfbedeckung: { stil: 'krone' } });   // Rig-Gruppen & Befestigtes bleiben erhalten
 ```
 
-Genutzt von: erlenwacht · Tags: figur, charakter, modell, mesh, spieler, npc, avatar, editor, ausrüstung, mimik, gesicht · THREE: ja
+Genutzt von: erde, erlenwacht · Tags: figur, charakter, modell, mesh, spieler, npc, avatar, editor, ausrüstung, mimik, gesicht · THREE: ja
 1.3 (additiv): opts.koerper = 'organisch' → ein glatter, gehäuteter Körper aus SDF (figur-haut: Anatomie + Kleidung + Haar in einem Netz,
    biegt weich an den Gelenken); Kopfbedeckung, Umhang, Rucksack, Zubehör, Augen, Brille, Ohrringe bleiben starre Teile. opts.zelle = Feinheit (m).
    modell.koerper = 'organisch' | 'bloecke'; modell.setKoerper(art) schaltet live um.
@@ -3033,6 +3050,20 @@ Alle Punkte im Knochen-Raum über ctx.P (Bindungs-Pose = A-Pose): Gliedmaßen h�
 Reihenfolge: Rumpf → Kopf → Beine → Arme. Gliedmaßen verschmelzen nur an Hüfte/Schulter mit dem Rumpf (kleines glatt).
 Kinder (L.koerper.groesse < 1) werden rundlicher und weicher, Muskeln (L.koerper.muskeln) formen Brust, Schultern, Arme, Waden.
 
+### hase · `engine/models/kreaturen/hase.js` · v1.0.0 · entwurf
+Low-Poly-Feldhase (kleines Wild): runder Rumpf, kräftige Hinterläufe, lange Ohren mit schwarzen Spitzen, weiße Blume; zwei Sprung-Bild-Geometrien (Vertexfarben) für InstancedMesh
+
+- `createHase({ seed, fell, bauch, dunkel, laenge }) -> { frames:[geoBild0, geoBild1], laenge, hoehe, breite, dispose() }`
+
+```js
+import { createHase } from '../../engine/models/kreaturen/hase.js';
+const hase = createHase({ seed: 2 });
+const hm = createHordeMesh({ modelle: { hase: hase.frames }, max: 40 });
+// Nase nach +Z, Pfoten auf y = 0; ≈ 0.6 m lang, Ohrspitzen ≈ 0.5 m; Bild 0 = geduckt, Bild 1 = gestreckt im Sprung
+```
+
+Genutzt von: erde · Tags: hase, wild, kreatur, jagd, tier, klein, lowpoly, instancing, modell · THREE: ja
+
 ### irrlicht · `engine/models/kreaturen/irrlicht.js` · v1.0.0 · entwurf
 Low-Poly-Irrlicht (Moorgeist): hell leuchtender Kern, Halo und wehende Schleier; zwei Schwebe-Bild-Geometrien (Vertexfarben)
 
@@ -3059,7 +3090,7 @@ const hm = createHordeMesh({ modelle: { keiler: keiler.frames }, max: 40 });
 // Rüssel nach +Z, Hufe auf y = 0; ≈ 1.4 m lang, 0.95 m hoch
 ```
 
-Genutzt von: – · Tags: keiler, wildschwein, kreatur, gegner, horde, lowpoly, instancing, modell · THREE: ja
+Genutzt von: erde · Tags: keiler, wildschwein, kreatur, gegner, horde, lowpoly, instancing, modell · THREE: ja
 
 ### ratte · `engine/models/kreaturen/ratte.js` · v1.0.0 · entwurf
 Low-Poly-Riesenratte als Horden-Gegner: liefert zwei Lauf-Bild-Geometrien (Vertexfarben) für InstancedMesh
@@ -3076,6 +3107,20 @@ const bilder = ratte.frames.map((g) => new THREE.InstancedMesh(g, standardMateri
 
 Genutzt von: enklave, figuren · Tags: ratte, kreatur, gegner, horde, lowpoly, instancing, modell · THREE: ja
 
+### reh · `engine/models/kreaturen/reh.js` · v1.0.0 · entwurf
+Low-Poly-Reh (Wild, scheu): schlanker Rumpf, langer Hals, große Ohren, weißer Spiegel, Bock mit kleinem Gehörn; zwei Lauf-Bild-Geometrien (Vertexfarben) für InstancedMesh
+
+- `createReh({ seed, fell, bauch, dunkel, spiegel, bock, laenge }) -> { frames:[geoBild0, geoBild1], laenge, hoehe, breite, dispose() }`
+
+```js
+import { createReh } from '../../engine/models/kreaturen/reh.js';
+const reh = createReh({ seed: 4 });
+const hm = createHordeMesh({ modelle: { reh: reh.frames }, max: 30 });
+// Nase nach +Z, Hufe auf y = 0, Ursprung unter der Rumpfmitte; ≈ 1.15 m lang, 0.75 m Schulterhöhe, Kopf ≈ 1.05 m
+```
+
+Genutzt von: erde · Tags: reh, wild, kreatur, jagd, tier, lowpoly, instancing, modell · THREE: ja
+
 ### wolf · `engine/models/kreaturen/wolf.js` · v1.0.0 · entwurf
 Low-Poly-Wolf als Horden-Gegner (und Boss-Wolf per Skala): zwei Lauf-Bild-Geometrien (Vertexfarben) für InstancedMesh
 
@@ -3088,7 +3133,7 @@ const hm = createHordeMesh({ modelle: { wolf: wolf.frames }, max: 60 });
 // Nase nach +Z, Pfoten auf y = 0, Ursprung unter der Rumpfmitte, Rute nach −Z; ≈ 1.3 m lang, 0.8 m Schulterhöhe
 ```
 
-Genutzt von: – · Tags: wolf, kreatur, gegner, horde, boss, lowpoly, instancing, modell · THREE: ja
+Genutzt von: erde · Tags: wolf, kreatur, gegner, horde, boss, lowpoly, instancing, modell · THREE: ja
 
 ### baum-arten · `engine/models/natur/baum-arten.js` · v1.0.0 · entwurf
 Reine Parameter-Daten der Baumarten (Wuchs, Verzweigung, Laubform, Farben, Jahreszeiten) für baum-skelett/baum
@@ -3183,6 +3228,28 @@ scene.add(new THREE.Mesh(geometrie, standardMaterial()));
 
 Genutzt von: daemmerwald · Tags: natur, fels, stein, geroell, prozedural, lowpoly, vertexfarben · THREE: ja
 
+### fundmodelle · `engine/models/natur/fundmodelle.js` · v1.0.0 · entwurf
+Fundstücke als reine Dreieckslisten: Erzbrocken, Ammonit, Quarzdruse (lineare RGB-Vertexfarben, Meter)
+
+- `baueFundmodell(art, seed=1) -> { positions:number[], colors:number[] }`
+
+```js
+import { baueFundmodell } from '../../engine/models/natur/fundmodelle.js'; const { positions, colors } = baueFundmodell('ammonit', 3);
+```
+
+Genutzt von: erde, gigantwelt · Tags: fund, erz, fossil, kristall, graben, asset · THREE: nein
+
+### landschaftsgruppen · `engine/models/natur/landschaftsgruppen.js` · v1.0.0 · entwurf
+Verbundene Kleinformen als ein Mesh: Wollgras, Pilzholz, Flechtenbank (für Instancing)
+
+- `baueGruppe(art, seed) -> THREE.Mesh`
+
+```js
+import { baueGruppe } from '../../engine/models/natur/landschaftsgruppen.js'; const m = baueGruppe('wollgras', 7);
+```
+
+Genutzt von: erde, naturstimmungen · Tags: natur, pflanze, gruppe, asset, ufer, moor · THREE: ja
+
 ### laub-klumpen · `engine/models/natur/laub-klumpen.js` · v1.0.0 · entwurf
 Dichtes Laub als Blatt-Karten-Klumpen (rein, ohne THREE): je Kronen-Büschel viele Karten in einem abgeflachten Ellipsoid, Kern dunkel, Rand hell; ausdünnen (LOD) und in Weltkoordinaten sammeln
 
@@ -3219,7 +3286,7 @@ const { geometrie, hoehe } = cache.holen('eiche', 2);   // gleiche Geometrie bei
 cache.dispose();
 ```
 
-Genutzt von: daemmerwald, enklave, figuren, handwerk, natur · Tags: natur, vegetation, baum, fels, busch, registry, cache, varianten, prozedural · THREE: ja
+Genutzt von: daemmerwald, enklave, erde, figuren, handwerk, natur · Tags: natur, vegetation, baum, fels, busch, registry, cache, varianten, prozedural · THREE: ja
 
 ### natur-basis · `engine/models/natur/natur-basis.js` · v1.0.0 · entwurf
 Gemeinsame Helfer für Natur-Assets: Dreiecke sammeln → nicht-indizierte Geometrie (position/normal/color/wind), Farben, Fake-AO, Schnee, Ast-Röhre, Laub-Blob, Kegel-Lage, Wedel
@@ -3243,6 +3310,18 @@ const geo = t.geometrie();   // BufferGeometry mit position, normal, color, wind
 ```
 
 Genutzt von: – · Tags: natur, baum, geometrie, lowpoly, vertexfarben, wind, merge, prozedural · THREE: ja
+
+### naturfundus · `engine/models/natur/naturfundus.js` · v1.0.0 · entwurf
+Kleiner Naturfundus: Fichte, Birke, Felsblöcke, Uferpflanzen, Steinpilz, Fische – je ein Mesh mit Vertexfarben, Fußpunkt im Ursprung, Meter
+
+- `arten`
+- `baueNaturAsset(art, seed=1) -> THREE.Mesh (Aufrufer gibt Geometrie + Material frei)`
+
+```js
+import { baueNaturAsset } from '../../engine/models/natur/naturfundus.js'; const m = baueNaturAsset('fichte', 3);
+```
+
+Genutzt von: erde, naturstimmungen · Tags: natur, baum, fels, pflanze, fisch, asset · THREE: ja
 
 ### pflanze-basis · `engine/models/natur/pflanze-basis.js` · v1.0.0 · entwurf
 Sammler für Pflanzen-Geometrie: Dreiecke (ein-/zweiseitig, nach außen ausgerichtet), Bänder, Rohre, verformte Laubballen → EINE BufferGeometry mit position, normal, color, wind
@@ -3679,7 +3758,20 @@ b.box(0.6, 0.4, 1.0, '#d9772b', { y: 0.5 }).sphere(0.25, 0xffffff, { y: 0.8, z: 
 szene.add(b.mesh());   // THREE.Mesh mit standardMaterial()
 ```
 
-Genutzt von: enklave, figuren · Tags: mesh, geometrie, lowpoly, vertexfarben, modell, primitive, merge · THREE: ja
+Genutzt von: enklave, erde, figuren · Tags: mesh, geometrie, lowpoly, vertexfarben, modell, primitive, merge · THREE: ja
+
+### mond · `engine/render/mond.js` · v1.1.0 · entwurf
+Mond mit Kratertextur, Phase aus dem Sonnenwinkel und Mondlicht mit Schatten (für Szenen mit Floating Origin)
+
+- `createMond(scene, { abstand=900, seed=37, schattenweite=24, nachtseite='dunkel'|'durchsichtig' }) -> { update({ kamera, richtung, sonne, oben?, nacht?, anker?, sichtbar? }), dispose() }`
+
+```js
+import { createMond } from '../../engine/render/mond.js';
+const mond = createMond(scene, { nachtseite: 'durchsichtig' });
+mond.update({ kamera: camera.position, richtung: mondDir, sonne: sonnenDir, nacht: 1 });
+```
+
+Genutzt von: erde, naturstimmungen · Tags: himmel, mond, licht, nacht, schatten · THREE: ja
 
 ### natur-material · `engine/render/natur-material.js` · v1.0.0 · entwurf
 Gemeinsames Material für Natur-Assets: MeshStandardMaterial (Vertexfarben, flatShading) mit Wind-Schwingen im Vertex-Shader über das Attribut 'wind' (0 starr … 1 voll); Phase je Instanz aus der Weltposition; passendes Schatten-Material; optional Ausblenden ab Kamera-Entfernung
@@ -3709,7 +3801,7 @@ scene.add(ns.objekt);
 ns.update(dt, { kamera, regen: wetter.regen, schnee: wetter.schnee, wind: wetter.wind, windRichtung: wetter.windRichtung });
 ```
 
-Genutzt von: handwerk · Tags: wetter, regen, schnee, partikel, shader · THREE: ja
+Genutzt von: erde, handwerk · Tags: wetter, regen, schnee, partikel, shader · THREE: ja
 
 ### psx · `engine/render/psx.js` · v1.2.0 · entwurf
 PS1-Look für eine ganze Szene (aus Viniland übernommen): Eckpunkte rasten auf ein grobes Bildraster (Wackeln), wenige Farbstufen mit Bayer-Dithering, grobe Pixel (kleine interne Auflösung, hart hochskaliert), Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen) – live an/aus ohne Neu-Kompilieren
@@ -4677,7 +4769,7 @@ w.blitzUpdate(dtEchtSekunden);                               // nur für den Bli
 if (w.regen > 0.1) { … }
 ```
 
-Genutzt von: handwerk · Tags: wetter, regen, schnee, nebel, wind, gewitter, klima, seed · THREE: nein
+Genutzt von: erde, handwerk · Tags: wetter, regen, schnee, nebel, wind, gewitter, klima, seed · THREE: nein
 
 ### worldgen-adapter · `engine/world/worldgen/worldgen-adapter.js` · v1.2.0 · entwurf
 Welt-Adapter für Figuren, Kamera und Spiele: macht aus einer erzeugten Welt (normierte Höhe, Gitter) eine Welt in Metern mit bodenHoehe, wasserHoehe und hindernisse (Baumstämme, Felsen) – passt zum Vertrag in docs/plaene/FIGUREN-SYSTEM.md

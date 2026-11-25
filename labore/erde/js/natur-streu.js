@@ -3,7 +3,7 @@
 // ein festes Raster von Kandidaten (4 m), fragt dort den Planeten (Höhe, Wasser, Klima, Gestein) und entscheidet, was wächst.
 // Bäume und Pflanzen je Biom; Gras-Büschel dazwischen (Höhe aus den Nachbarn gemittelt, spart Abfragen).
 // Gleicher Seed + gleiche Kachel → gleiche Natur (wichtig für später: Mehrspieler, Speichern, Abholzen).
-// Quellen: Naturfundus (labore/erde/naturfundus) für fichte, birke, granitblock, schiefer, rohrkolben, seerose, steinpilz, Fische;
+// Quellen: Naturfundus (engine/models/natur/naturfundus.js) für fichte, birke, granitblock, schiefer, rohrkolben, seerose, steinpilz, Fische;
 // alles andere aus engine/models/natur (natur-assets). Welche Quelle → natur.js.
 import { kachelUV, kachelMitte, wuerfelZuKugel } from './planet-baum.js';
 import { rng, hashSeed } from '../../../engine/core/rng.js';
@@ -107,6 +107,7 @@ export function streueKachel(k, planet) {
   for (let j = 0; j < M; j++) for (let i = 0; i < M; i++) {
     const c = j * M + i, p = P[c];
     const nassTief = p.wasser - p.h;                      // > 0: unter Wasser
+    if (p.vulkan > 0.55) { if (p.lava < 0.05 && z() < 0.04 * (1 - p.vulkan)) setze(c, A.geroell, 0.6 + z()); continue; } // Vulkangipfel: kahl
     const hl = hAt(i - 1, j), hr = hAt(i + 1, j), hu = hAt(i, j - 1), ho = hAt(i, j + 1);
     const steil = Math.hypot(hr - hl, ho - hu) / (zelle * 2); // tan(Neigung)
     let amSee = false;

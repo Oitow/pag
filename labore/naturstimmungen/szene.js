@@ -1,9 +1,9 @@
 import * as T from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { rng } from '../../engine/core/rng.js';
-import { baueNaturAsset } from '../erde/naturfundus/naturfundus.mjs';
-import { baueGruppe } from './gruppen.js';
-import { createMond } from './mond.js';
+import { baueNaturAsset } from '../../engine/models/natur/naturfundus.js';
+import { baueGruppe } from '../../engine/models/natur/landschaftsgruppen.js';
+import { createMond } from '../../engine/render/mond.js';
 
 const canvas=document.querySelector('canvas'), renderer=new T.WebGLRenderer({canvas,antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));

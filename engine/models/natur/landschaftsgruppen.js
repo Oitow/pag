@@ -1,7 +1,18 @@
+/**
+ * @modul    landschaftsgruppen
+ * @zweck    Verbundene Kleinformen als ein Mesh: Wollgras, Pilzholz, Flechtenbank (für Instancing)
+ * @api      baueGruppe(art, seed) -> THREE.Mesh
+ * @beispiel
+ *   import { baueGruppe } from '../../engine/models/natur/landschaftsgruppen.js'; const m = baueGruppe('wollgras', 7);
+ * @tags     natur, pflanze, gruppe, asset, ufer, moor
+ * @version  1.0.0
+ * @status   entwurf
+ * @three    ja
+ */
 // Verbundene Kleinformen in Metern. Ein Mesh pro Gruppe, auch für Instancing.
 import * as T from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { rng } from '../../engine/core/rng.js';
+import { rng } from '../../core/rng.js';
 
 export function baueGruppe(art, seed) {
   const z = rng(seed), teile = [];

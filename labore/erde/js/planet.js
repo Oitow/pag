@@ -8,7 +8,7 @@ import { berechneGeologie, GESTEIN_NAME, GESTEIN_FARBE } from './geologie.js';
 import { biom, BIOM_NAME, tempAm, waldDichte, bodenFarbe } from './klima.js';
 import { streuKacheln, streueKachel, streuStufe, STREU_ARTEN, STRIDE } from './natur-streu.js';
 import { createNatur } from './natur.js';
-import { createMond } from '../../naturstimmungen/mond.js';
+import { createMond } from '../../../engine/render/mond.js';
 import { createEingriffe } from './eingriffe.js';
 import { createZeitWetter } from './zeit-wetter.js';
 import { createAktionen, gegenstandName, GRAB_RADIUS } from './aktionen.js';
@@ -21,6 +21,10 @@ import { waehleKacheln, maxStufeFuer } from './planet-baum.js';
 import { baueKachel, ZELLEN } from './kachel-bau.js';
 import { createKachelStrom } from './kachel-strom.js';
 import { laenge } from './mass.js';
+import { createErweiterungen } from './erweiterungen.js';
+import { createVulkanRauch } from './vulkan-rauch.js';
+import { createWolken } from './wolken.js';
+import { WERKZEUGE } from './herstellen-daten.js';
 
 const P = new URLSearchParams(location.search);
 const SEED = +(P.get('seed') || 7);
@@ -74,25 +78,27 @@ const bodenMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness:
 const wasserU = { wZeit: { value: 0 }, wasserCam: { value: new THREE.Vector3() }, wHimmel: { value: new THREE.Color() } };
 bodenMat.onBeforeCompile = (sh) => {
   Object.assign(sh.uniforms, wasserU);
-  sh.vertexShader = 'attribute float nass;\nuniform vec3 wasserCam;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.vertexShader
-    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvNass = nass;\nvWelt = (modelMatrix * vec4(position, 1.0)).xyz + wasserCam;\nvObenW = normalize(vWelt);');
-  sh.fragmentShader = 'uniform float wZeit;\nuniform vec3 wHimmel;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.fragmentShader
-    .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.12, vNass);')
+  sh.vertexShader = 'attribute float nass;\nattribute vec3 land;\nvarying vec3 vLand;\nuniform vec3 wasserCam;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.vertexShader
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvNass = nass;\nvLand = land;\nvWelt = (modelMatrix * vec4(position, 1.0)).xyz + wasserCam;\nvObenW = normalize(vWelt);');
+  sh.fragmentShader = 'uniform float wZeit;\nuniform vec3 wHimmel;\nvarying vec3 vLand;\nvarying float vNass;\nfloat wT;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.fragmentShader
+    .replace('#include <color_fragment>', '#include <color_fragment>\nwT = smoothstep(0.82, 0.98, vNass);\ndiffuseColor.rgb = mix(vLand, diffuseColor.rgb, wT);')
+    .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.12, wT);')
     .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
-if (vNass > 0.01) {
+if (wT > 0.01) {
   vec3 p = vWelt * 0.45; float t = wZeit;
   vec3 st = vec3(sin(p.x * 1.1 + t * 1.3) + 0.6 * sin((p.y + p.z) * 2.3 - t * 1.7),
                  sin(p.y * 0.9 - t * 1.1) + 0.6 * sin((p.z - p.x) * 2.1 + t * 1.5),
                  sin(p.z * 1.0 + t * 0.9) + 0.6 * sin((p.x + p.y) * 1.9 + t * 1.2));
   st -= vObenW * dot(st, vObenW);                       // nur in der Wasserebene kippen
   float nahW = 1.0 - smoothstep(25.0, 220.0, length(vViewPosition));   // fern: keine Wellen (sonst Gittermuster)
-  vec3 nW = normalize(vObenW + st * 0.07 * vNass * nahW);
+  vec3 nW = normalize(vObenW + st * 0.07 * wT * nahW);
   normal = normalize((viewMatrix * vec4(nW, 0.0)).xyz);
 }`)
     .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-if (vNass > 0.01) {
+totalEmissiveRadiance += diffuseColor.rgb * smoothstep(0.72, 0.9, diffuseColor.r - diffuseColor.b) * 1.6; // Lava glüht
+if (wT > 0.01) {
   float fr = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 4.0);
-  totalEmissiveRadiance += wHimmel * fr * 0.55 * vNass;
+  totalEmissiveRadiance += wHimmel * fr * 0.55 * wT;
 }`);
 };
 bodenMat.customProgramCacheKey = () => 'erde-boden-wasser';
@@ -118,7 +124,7 @@ void main() {
   float d = length(mv.xyz);
   vAlpha = smoothstep(uNah, uNah + 60.0, d);                  // nah stehen die echten Bäume
   float px = groesse * uPixel / max(d, 1.0);
-  vAlpha *= clamp(px / 1.5, 0.0, 1.0);                        // winzig: blass statt flimmern
+  vAlpha *= smoothstep(1.2, 3.0, px);                         // unter ~2 px ausblenden: sonst dunkle Krümel von hoch oben
   gl_PointSize = vAlpha < 0.01 ? 0.0 : clamp(px, 1.5, 64.0);
   vFarbe = farbe; vArt = art; vNebel = d;
   gl_Position = projectionMatrix * mv;
@@ -152,6 +158,7 @@ function erzeuge(d) {
   geo.setAttribute('normal', new THREE.BufferAttribute(d.nor, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(d.col, 3, true));
   geo.setAttribute('nass', new THREE.BufferAttribute(d.nass, 1, true));
+  geo.setAttribute('land', new THREE.BufferAttribute(d.land, 3, true));
   geo.setIndex(new THREE.BufferAttribute(d.idx, 1));
   geo.computeBoundingSphere();
   const m = new THREE.Mesh(geo, stufenFarben ? stufenMat[d.L] : bodenMat);
@@ -245,11 +252,12 @@ const zw = createZeitWetter({ seed: SEED, zustand: stand?.zeit });
 const inventar = createInventar({ plaetze: 30, stapel: 999 });
 if (stand?.inventar) inventar.lade(stand.inventar);
 else for (const w of ['axt', 'schaufel', 'spitzhacke']) inventar.gib(w, 1);
-let speicherT = null;
+let speicherT = null, erw = null;
 function speichern() {
+  if (P.get('test')) return;   // ?test=1: kein Spielstand
   clearTimeout(speicherT);
   speicherT = setTimeout(() => {
-    try { localStorage.setItem(SPEICHER, JSON.stringify({ eingriffe: eingriffe.zustand(), inventar: inventar.zustand(), zeit: zw.zustand() })); } catch { /* voll/privat */ }
+    try { localStorage.setItem(SPEICHER, JSON.stringify({ eingriffe: eingriffe.zustand(), inventar: inventar.zustand(), zeit: zw.zustand(), erw: erw?.zustand() })); } catch { /* voll/privat */ }
   }, 800);
 }
 /** Kachel vom Eingriff e betroffen? (Mitte näher als halbe Diagonale + Radius) */
@@ -349,7 +357,7 @@ const orte = (() => {
   return { ...biomOrte, wald: D(wald),
     berg: D(berg), kueste: D(kueste), fluss: D(fluss >= 0 ? fluss : kueste),
     flussAb: D(fluss >= 0 ? ab[ab[ab[fluss]] >= 0 ? ab[fluss] : fluss] : kueste),
-    see: D(see >= 0 ? see : kueste), vulkan: new THREE.Vector3(...v.d),
+    see: D(see >= 0 ? see : kueste), vulkan: new THREE.Vector3(...v.d), kraterWeg: (v.rad || 0.035) * R * 0.32,
   };
 })();
 // Sonne so stellen, dass am Ort Vormittag ist (später: echte Tageszeit)
@@ -364,8 +372,8 @@ function schattenZiel(s) {
   sonne.target.position.copy(sZiel);
   sonne.position.copy(sZiel).addScaledVector(s, 300);
 }
-// Mond (labore/naturstimmungen/mond.js): umkreist den Planeten in 29,5 Tagen, Phase aus dem Winkel zur Sonne
-const mond = createMond(scene, { abstand: 3000, schattenweite: 30 });
+// Mond (engine/render/mond.js): umkreist den Planeten in 29,5 Tagen, Phase aus dem Winkel zur Sonne
+const mond = createMond(scene, { abstand: 3000, schattenweite: 30, nachtseite: 'durchsichtig' });
 const mondDir = new THREE.Vector3();
 function mondRichtung(s, uhr) {
   const a = 2 * Math.PI * ((uhr.tag + uhr.stunde / 24) / 29.5 + 0.5);   // Tag 1 ≈ Vollmond
@@ -387,13 +395,16 @@ const ORTE = {
   berg:   { ziel: 'berg', h: 7000, nei: -18, blick: 'berg', weg: 12000 },
   kueste: { ziel: 'kueste', h: 400, nei: -12, blick: 'berg' },
   boden:  { ziel: 'kueste', h: 1.8, nei: -3, blick: 'berg' },
+  himmel: { ziel: 'kueste', h: 1.8, nei: 40, blick: 'berg' },
   fluss:  { ziel: 'fluss', h: 60, nei: -14, blick: 'flussAb', weg: 150 },
+  ufer:   { ziel: 'fluss', h: 1.8, nei: -8, blick: 'fluss', weg: 35, gehen: true },
   see:    { ziel: 'see', h: 250, nei: -10, blick: 'see', weg: 2500 },
   vulkan: { ziel: 'vulkan', h: 2500, nei: -8, blick: 'vulkan', weg: 9000 },
+  krater: { ziel: 'vulkan', h: 1500, nei: -55, blick: 'vulkan', weg: orte.kraterWeg },
   wald:   { ziel: 'wald', h: 1.8, nei: 2, blick: 'berg', gehen: true },
 };
 const BIOM_ORTE = Object.keys(orte).filter((k) => k.startsWith('biom'));
-for (const k of Object.keys(orte).filter((k) => k.startsWith('gestein'))) ORTE[k] = { ziel: k, h: 1.8, nei: -12, blick: 'berg', gehen: true };
+for (const k of Object.keys(orte).filter((k) => k.startsWith('gestein'))) ORTE[k] = { ziel: k, h: 1.8, nei: -6, blick: 'berg', gehen: true, weg: 3 };
 for (const k of BIOM_ORTE) ORTE[k] = { ziel: k, h: 1.8, nei: 2, blick: 'berg', gehen: true };
 let biomWahl = -1;
 document.getElementById('bBiom').onclick = (e) => {
@@ -401,6 +412,7 @@ document.getElementById('bBiom').onclick = (e) => {
   setzeOrt(BIOM_ORTE[biomWahl]);
   e.currentTarget.textContent = '▸ ' + BIOM_NAME[+BIOM_ORTE[biomWahl].slice(4)];
 };
+let heimat = orte.kueste.clone().normalize();   // Aufwach-Platz nach dem Tod (letzter Sprung zu Fuß)
 function setzeOrt(name) {
   const o = ORTE[name] || ORTE.orbit;
   const d = orte[o.ziel].clone().normalize();
@@ -409,6 +421,7 @@ function setzeOrt(name) {
     d.applyAxisAngle(quer, o.weg / R);
   }
   cam.copy(d).multiplyScalar(R + boden(d) + o.h);
+  if (o.gehen) heimat.copy(d);
   sonneZu(d);
   oben.copy(d);
   vorn.copy(orte[o.blick]).multiplyScalar(R).sub(cam).projectOnPlane(oben);
@@ -432,8 +445,42 @@ function setzeGehen(an) {
 }
 bGehen.onclick = () => { setzeGehen(!gehen); if (gehen) { const d = cam.clone().normalize(); cam.copy(d).multiplyScalar(R + boden(d) + AUGE); } };
 
+// ---------- Erweiterungen (Überleben, Bauen, Tiere, Herstellen): Vertrag in erweiterungen.js ----------
+const anker = new THREE.Group();
+scene.add(anker);
+const rauch = createVulkanRauch(anker, { vulkane: geo.vulkane, planet, R });
+const wolkenDecke = P.get('wolken') === 'aus' ? null : createWolken(scene, { R });
+const erwWelt = {
+  THREE, scene, R, seed: SEED, anker, cam, oben, vorn, blick, planet, inventar, zw, natur, eingriffe, dienste: {},
+  bodenHoehe: (d) => boden(d),
+  bodenPunkt(d, out = new THREE.Vector3()) {
+    out.copy(d).normalize();
+    const pr = planet.probe(out.x, out.y, out.z, 0.5);
+    return out.multiplyScalar(R + Math.max(pr.h, pr.wasser));
+  },
+  spieler: () => ({ gehen, schwimmt, amBoden, fallV }),
+  ansicht: () => (MENUE.person === 1 ? 1 : 3),
+  setzeFall: (v) => { fallV = v; },
+  drehe: (w) => { vorn.applyAxisAngle(oben, w); },   // Blick um die Ortsnormale drehen (Bogenmaß, + = links)
+  melde: (t, gut = true) => melde(t, gut),
+  speichern: () => speichern(),
+  // nach dem Tod: zurück zum Startplatz (Ort beim Start bzw. letzter Sprung), zu Fuß
+  aufwachen() {
+    const d = heimat.clone();
+    cam.copy(d).multiplyScalar(R + boden(d) + AUGE); fallV = 0;
+    if (!gehen) setzeGehen(true);
+  },
+  knopf(id, text, onklick) {
+    const el = document.createElement('div');
+    el.className = 'b'; el.id = id; el.textContent = text;
+    el.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); onklick(); });
+    document.getElementById('aktionen').appendChild(el);
+    return el;
+  },
+};
+erw = createErweiterungen(erwWelt, stand?.erw);
+
 // ---------- Aktionen zu Fuß: Blickstrahl findet Natur-Stück oder Boden ----------
-const WERKZEUGE = new Set(['axt', 'schaufel', 'spitzhacke', 'eisenhacke']);
 let invText = '';
 function inventarText() {
   const z = new Map();
@@ -462,6 +509,8 @@ function melde(text, gut = true) {
 function handle(was) {
   if (!gehen) { melde('Erst „Gehen“ – dann graben, fällen, bauen', false); return; }
   const z = zielSuchen();
+  const re = erw.aktion(was, z);
+  if (re) { melde(re.text, re.ok); invText = inventarText(); speichern(); return; }
   if (!z) { melde('Nichts in Reichweite', false); return; }
   let r;
   if (was === 'nehmen') r = z.art === 'natur' ? aktionen.nehmen(z.o) : { ok: false, text: 'Hier ist nichts zum Nehmen – graben?' };
@@ -503,6 +552,8 @@ setInterval(speichern, 15000); // Uhr/Wetter ab und zu sichern
 const MENUE = (() => { try { return JSON.parse(localStorage.getItem('erde-menue') || 'null'); } catch { return null; } })()
   || { auf: !(navigator.maxTouchPoints > 0 || innerWidth < 700), groesse: 1, info: innerWidth < 640 ? 'kurz' : 'voll' };
 const menueEl = document.getElementById('menue'), hudEl = document.getElementById('hud');
+if (P.get('person')) MENUE.person = +P.get('person') === 1 ? 1 : 3;
+else if (MENUE.person == null) MENUE.person = 3;
 function menueSichern() { try { localStorage.setItem('erde-menue', JSON.stringify(MENUE)); } catch { /* egal */ } }
 function menueZeigen() {
   menueEl.classList.toggle('auf', MENUE.auf);
@@ -515,6 +566,8 @@ function menueZeigen() {
 document.getElementById('bMenue').onclick = () => { MENUE.auf = !MENUE.auf; menueZeigen(); menueSichern(); };
 document.getElementById('bKleiner').onclick = () => { MENUE.groesse = Math.max(0.7, +(MENUE.groesse - 0.1).toFixed(2)); menueZeigen(); menueSichern(); };
 document.getElementById('bGroesser').onclick = () => { MENUE.groesse = Math.min(1.5, +(MENUE.groesse + 0.1).toFixed(2)); menueZeigen(); menueSichern(); };
+document.getElementById('bPerson').textContent = MENUE.person === 1 ? '1. Person' : '3. Person';
+document.getElementById('bPerson').onclick = (e) => { MENUE.person = MENUE.person === 1 ? 3 : 1; e.target.textContent = MENUE.person === 1 ? '1. Person' : '3. Person'; menueSichern(); };
 document.getElementById('bInfo').onclick = () => { const s = ['voll', 'kurz', 'aus']; MENUE.info = s[(s.indexOf(MENUE.info) + 1) % 3]; menueZeigen(); menueSichern(); };
 // Auf dem Handy schließt das Menü nach einem Ortssprung (Blick frei)
 menueEl.addEventListener('click', (e) => { if (e.target.closest('.raster') && innerWidth < 700 && /^b(All|Berg|Kueste|Boden|Fluss|See|Vulkan|Wald|Orbit)$/.test(e.target.id)) { MENUE.auf = false; menueZeigen(); menueSichern(); } });
@@ -673,6 +726,7 @@ function karteMarker() {
 // ---------- Schleife ----------
 const hud = document.getElementById('hud');
 const nullPunkt = new THREE.Vector3();
+const kamOff = new THREE.Vector3(), kamAbs = new THREE.Vector3(), kamZiel = new THREE.Vector3();
 const grau = new THREE.Color(), abend = new THREE.Color(1, 0.55, 0.3);
 const blau = new THREE.Color(0x8fbfea), nacht = new THREE.Color(0x0a1020), schwarz = new THREE.Color(0x01030a), himmel = new THREE.Color();
 let alt = performance.now(), fpsT = 0, fpsN = 0, fps = 0, wahlT = 1, info = { angezeigt: 0, gebaut: 0, laufend: 0, offen: 0 };
@@ -723,7 +777,9 @@ function bild() {
   if (tasten.has('ShiftLeft') || tasten.has('KeyQ')) hoch -= 1;
   if (vor || seit || hoch) auto = null;
   const altPos = cam.clone();
-  if (gehen) {
+  if (gehen && erw.bewegung(dt, { vor, seit, hoch, tempo: 2 ** (+tempoEl.value) })) {
+    // ein Modul (z. B. Gleiter) bewegt den Spieler selbst; Boden-Grenze unten gilt weiter
+  } else if (gehen) {
     // waagerecht laufen (Blick hoch/runter ändert die Richtung nicht), Sprung mit ▲/Leertaste
     const l = Math.hypot(vor, seit);
     const schritt = tmp.set(0, 0, 0).addScaledVector(vorn, vor).addScaledVector(rechts, seit);
@@ -733,7 +789,7 @@ function bild() {
     fallV -= G_ERDE * dt;
     cam.addScaledVector(oben, fallV * dt);
     // Kollision mit Stämmen und Felsen (waagerecht hinausschieben)
-    for (const h of natur.naheHindernisse()) {
+    for (const h of [...natur.naheHindernisse(), ...(erwWelt.dienste.bau?.hindernisse?.(cam, 12) ?? [])]) {
       tmp.set(cam.x - h.x, cam.y - h.y, cam.z - h.z);
       const hoehe = tmp.dot(oben);
       if (hoehe > 12 || hoehe < -2) continue;
@@ -756,9 +812,10 @@ function bild() {
   // Nie unter den Boden (Augenhöhe 1,7 m), nie zu weit weg. Zu Fuß: im tiefen Wasser schwimmen (Kopf über Wasser).
   oben.copy(cam).normalize();
   const pr = planet.probe(oben.x, oben.y, oben.z, 0.5);
-  const g2 = Math.max(0, pr.h, pr.wasser);
-  schwimmt = gehen && pr.wasser > pr.h + AUGE - 0.3;
-  const minR = R + (schwimmt ? pr.wasser + 0.3 : Math.max(pr.h, pr.wasser) + AUGE), maxR = R + 3e7;
+  const bau = gehen ? (erwWelt.dienste.bau?.bodenUnter?.(cam) ?? null) : null;   // Fundament, Boden, Treppe
+  const g2 = Math.max(0, pr.h, pr.wasser, bau ?? -Infinity);
+  schwimmt = gehen && bau === null && pr.wasser > pr.h + AUGE - 0.3 && cam.length() < R + pr.wasser + AUGE + 0.5;   // nicht hoch in der Luft über dem Meer
+  const minR = R + (schwimmt ? pr.wasser + 0.3 : Math.max(pr.h, pr.wasser, bau ?? -Infinity) + AUGE), maxR = R + 3e7;
   const lc = cam.length();
   if (lc < minR) { cam.setLength(minR); if (fallV < 0) fallV = 0; amBoden = true; }
   else if (lc > maxR) cam.setLength(maxR);
@@ -786,9 +843,21 @@ function bild() {
     m.position.set(c[0] - cam.x, c[1] - cam.y, c[2] - cam.z);
   }
   atmo.position.set(-cam.x, -cam.y, -cam.z);
+  anker.position.set(-cam.x, -cam.y, -cam.z);
+  erw.update(dt);
   camera.position.set(0, 0, 0);
   camera.up.copy(oben);
-  camera.lookAt(blick);
+  if (gehen && MENUE.person !== 1) {
+    // 3. Person: Kamera hinter und etwas über der Figur (über die rechte Schulter), nie im Boden
+    const fliegt = !!erwWelt.dienste.gleiter?.fliegt?.();   // im Gleiter weiter weg, damit Schirm + Figur ins Bild passen
+    kamOff.copy(blick).multiplyScalar(fliegt ? -9 : -4.6).addScaledVector(oben, fliegt ? 2.2 : 1.0).addScaledVector(rechts, fliegt ? 0 : 0.6);
+    kamAbs.copy(cam).add(kamOff);
+    const kd = tmp.copy(kamAbs).normalize(), kp = planet.probe(kd.x, kd.y, kd.z, 0.5);
+    const unter = R + Math.max(kp.h, kp.wasser) + 0.4 - kamAbs.length();
+    if (unter > 0) kamOff.addScaledVector(oben, unter);
+    camera.position.copy(kamOff);
+    camera.lookAt(kamZiel.copy(blick).multiplyScalar(12).addScaledVector(oben, fliegt ? 1.2 : -0.6));
+  } else camera.lookAt(blick);
 
   // Zeit & Wetter (Klima vom Ort, alle 0,3 s erneuert)
   zw.update(dt, oben, klimaHier);
@@ -829,6 +898,8 @@ function bild() {
   wasserU.wZeit.value = jetzt / 1000;
   wasserU.wasserCam.value.copy(cam);
   wasserU.wHimmel.value.copy(himmel).lerp(blau, 0.3);
+  rauch.update(dt, zw.windWelt, fernU.uPixel.value, fernU.uLicht.value);
+  wolkenDecke?.update(dt, { cam, wetter: W, windWelt: zw.windWelt, sonne: SONNE, tag, licht: fernU.uLicht.value, himmel, raum });
   renderer.info.reset();
   renderer.render(scene, camera);
   zw.zeichne(renderer, camera);
@@ -844,12 +915,12 @@ function bild() {
   const zeitText = zw.text(oben);
   const kompakt = MENUE.info === 'kurz';
   hud.textContent = kompakt ?
-    `${ortText}\n${zeitText}\n` + (gehen ? `${invText}\n` : '') +
+    `${ortText}\n${zeitText}\n` + (gehen ? `${invText}\n` + erw.hud().map((z) => z + '\n').join('') : '') +
     `Höhe ${laenge(Math.max(0, hoeheBoden))} · Boden ${laenge(Math.max(0, g2))} · ${Math.round(tempoAnzeige * 3.6)} km/h\n` +
     `${fps.toFixed(0)} fps · ${r.triangles.toLocaleString('de-DE')} Dreiecke · Natur ${natur.info.anzahl}` :
     `Hier        ${ortText}\n` +
     `Zeit        ${zeitText} · Tempo ${zw.tempo}×\n` +
-    (gehen ? `Boden       ${bodenText}\nWächst      ${waechstText}\nTasche      ${invText}\n` : '') +
+    (gehen ? `Boden       ${bodenText}\nWächst      ${waechstText}\nTasche      ${invText}\n` + erw.hud().map((z) => z + '\n').join('') : '') +
     `Höhe        ${laenge(Math.max(0, hoeheBoden))} über Boden\n` +
     `Meereshöhe  ${laenge(Math.max(0, g2))} Boden · ${laenge(Math.max(0, ueberMeer))} Kamera\n` +
     `Tempo       ${Math.round(tempoAnzeige * 3.6).toLocaleString('de-DE')} km/h\n` +

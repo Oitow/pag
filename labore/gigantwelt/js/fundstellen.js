@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { hashSeed, rng } from '../../../engine/core/rng.js';
 import { heightAt } from './welt.js';
-import { baueFundmodell } from './fundmodelle.mjs';
+import { baueFundmodell } from '../../../engine/models/natur/fundmodelle.js';
 
-// Pro 24-m-Zelle ein Erzzeiger und ein Fund zwei Meter daneben.
-// Nur die neun benachbarten Zellen sind aktiv. Die Geometrie liegt fest
+// Etwa jede dritte 24-m-Zelle hat eine Fundstelle: ein Erzzeiger an der Oberfläche und ein Fund zwei Meter daneben.
+// Aktiv sind die Zellen im Umkreis von RING Zellen (5×5 = 120 m), damit nichts sichtbar aufploppt. Die Geometrie liegt fest
 // im Boden: Der vorhandene Tiefentest macht abgegrabene Teile sichtbar.
+const ZELLE = 24, RING = 2, CHANCE = 0.32, MAX = (2 * RING + 1) ** 2;
+
 export function createFundstellen(K) {
   const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.84 });
   const typen = ['erzbrocken', 'ammonit', 'quarzdruse'];
@@ -15,7 +17,7 @@ export function createFundstellen(K) {
     geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     geo.computeVertexNormals();
-    const mesh = new THREE.InstancedMesh(geo, material, 9);
+    const mesh = new THREE.InstancedMesh(geo, material, MAX);
     mesh.count = 0;
     K.scene.add(mesh);
     return mesh;
@@ -31,16 +33,17 @@ export function createFundstellen(K) {
     mesh.setMatrixAt(mesh.count++, pose.matrix);
   }
   function update(x, z) {
-    const cx = Math.floor(x / 24), cz = Math.floor(z / 24);
+    const cx = Math.floor(x / ZELLE), cz = Math.floor(z / ZELLE);
     if (letzterX === cx && letzterZ === cz) return;
     letzterX = cx;
     letzterZ = cz;
     for (const mesh of gruppen) mesh.count = 0;
-    for (let i = cx - 1; i <= cx + 1; i++) {
-      for (let j = cz - 1; j <= cz + 1; j++) {
+    for (let i = cx - RING; i <= cx + RING; i++) {
+      for (let j = cz - RING; j <= cz + RING; j++) {
         const r = rng(hashSeed('fundstelle', i, j));
-        const fx = (i + 0.2 + r() * 0.6) * 24;
-        const fz = (j + 0.2 + r() * 0.6) * 24;
+        if (r() > CHANCE) continue;
+        const fx = (i + 0.2 + r() * 0.6) * ZELLE;
+        const fz = (j + 0.2 + r() * 0.6) * ZELLE;
         const winkel = r() * 2 * Math.PI;
         setze(0, fx, fz, 0.15, winkel, 1.4);
         setze(r() < 0.5 ? 1 : 2, fx + 2, fz, 0.9 + r() * 0.35, winkel, 1.2);
