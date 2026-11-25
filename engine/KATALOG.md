@@ -3571,10 +3571,10 @@ Teil: { id, typ, variante = 0, x, z, winkel (Drehung um Y; lokal +z zeigt nach (
 Welt = (x + lx·cos w + lz·sin w, z − lx·sin w + lz·cos w). Kasten-bx/bz der Assets sind HALBE Maße (wie in world/kollision).
 Anker-Eintrag: { teilId, typ, art (Anker-Name, bei station deren art), x, y, z, winkel, daten (Original-Anker) }.
 
-### baum-impostor · `engine/render/baum-impostor.js` · v1.1.0 · entwurf
+### baum-impostor · `engine/render/baum-impostor.js` · v1.2.0 · entwurf
 Ferne Bäume als „Foto“ des echten Modells: jede Art wird beim Start aus N Richtungen und 2 Höhen (seitlich, 40° von oben) in einen Atlas (Farbe + Normale) gerendert und fern als EIN Quad (2 Dreiecke) gezeigt, das sich zur Kamera dreht; Licht aus der gebackenen Normale → sieht aus wie der nahe Baum, kostet fast nichts
 
-- `createBaumImpostor({ renderer, baeume: [{ art, geometrie }], richtungen = 8, px = 128, streulicht = 0.28, alphaTest = 0.42 }) (Instanz-Attribut `ueber` optional, engine/render/ueberblenden) -> { material, geometrie(art) -> BufferGeometry (Quad, für InstancedMesh), hat(art), dispose() }`
+- `createBaumImpostor({ renderer, baeume: [{ art, geometrie }], richtungen = 8, px = 128, streulicht = 0.28, alphaTest = 0.42, spalten = 1, zone = false }) (Instanz-Attribut `ueber` optional, engine/render/ueberblenden, mit Option zone das Attribut `ueberZone` und Abstand im Shader, mit Option spalten liegen Einträge nebeneinander im Atlas, z. B. Varianten – `art` ist nur ein Schlüssel) -> { material, geometrie(art) -> BufferGeometry (Quad, für InstancedMesh), hat(art), dispose() }`
 
 ```js
 import { createBaumImpostor } from '../../engine/render/baum-impostor.js';
@@ -3897,12 +3897,16 @@ splat.aufloesung(innerWidth, innerHeight);                       // auch bei 're
 
 Genutzt von: enklave · Tags: splat, gaussian, gauss, look, stil, nachbearbeitung, postprocessing, maler, shader · THREE: ja
 
-### ueberblenden · `engine/render/ueberblenden.js` · v1.0.0 · entwurf
+### ueberblenden · `engine/render/ueberblenden.js` · v1.1.0 · entwurf
 Weiches Überblenden zwischen Detailstufen (LOD) per Bildschirm-Raster: zwei Stufen zeichnen sich mit Gegen-Vergleich auf dasselbe 4×4-Raster → keine Lücke, kein Doppel, kein Ploppen; je Instanz ein Wert `ueber`
 
 - `UEBER_VERT_KOPF, UEBER_VERT (in main: vUeber = ueber), UEBER_FRAG_KOPF, UEBER_FRAG (discard)`
 - `ueberWert(f, rolle) -> Zahl (rolle 'ein' | 'aus')`
-- `ueberAnteil(ab, grenze, breite) -> f 0…1`
+- `ueberAnteil(ab, grenze, breite) -> f 0…1
+        GPU-Variante (Abstand je Bild im Shader → weich auch zwischen zwei CPU-Neuaufbauten): UEBER_ZONE_VERT_KOPF (statt UEBER_VERT_KOPF, Attribut vec3 `ueberZone`),
+        in main: vUeber = ueberZoneWert(abstand)`
+- `ueberZone(grenze, breite, rolle) -> [g, b, r]`
+- `ueberZoneWert(abstand, zone) -> Zahl (wie im Shader, < 0 = ganz weg)`
 
 ```js
 import { UEBER_VERT_KOPF, UEBER_VERT, UEBER_FRAG_KOPF, UEBER_FRAG, ueberWert, ueberAnteil } from '../../engine/render/ueberblenden.js';

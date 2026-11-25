@@ -13,7 +13,7 @@ import { baueFundmodell } from '../../../engine/models/natur/fundmodelle.js';
 import { createAssetCache } from '../../../engine/models/natur/natur-assets.js';
 import { baueAstbaum, baueAstbaumFern, kannAstbaum } from '../../../engine/models/natur/astbaum.js';
 import { createBaumImpostor } from '../../../engine/render/baum-impostor.js';
-import { UEBER_VERT_KOPF, UEBER_VERT, UEBER_FRAG_KOPF, UEBER_FRAG, ueberAnteil, ueberWert } from '../../../engine/render/ueberblenden.js';
+import { UEBER_ZONE_VERT_KOPF, UEBER_FRAG_KOPF, UEBER_FRAG, ueberZone } from '../../../engine/render/ueberblenden.js';
 import { STREU_ARTEN, STRIDE } from './natur-streu.js';
 
 const FUNDUS = new Set(['fichte', 'birke', 'granitblock', 'schiefer', 'rohrkolben', 'seerose', 'steinpilz', 'forelle', 'barsch']);
@@ -101,12 +101,13 @@ const KOPF = `
 uniform float kwZeit, kwStaerke, kwWeite;
 uniform vec3 kwRicht, kwCam;
 attribute float wind;
-` + UEBER_VERT_KOPF;
+` + UEBER_ZONE_VERT_KOPF;
 const KOERPER = `
 #include <begin_vertex>
-` + UEBER_VERT + `{
+{
   mat4 kwM = modelMatrix * instanceMatrix;
   vec3 kwBasis = kwM[3].xyz;                       // Lage relativ zur Kamera (Floating Origin)
+  vUeber = ueberZoneWert(length(kwBasis));         // LOD-Überblenden aus dem echten Abstand, jedes Bild neu
   if (wind > 0.0 && kwStaerke > 0.0) {
     float kwW = wind * wind;
     float kwT = kwZeit + dot(kwBasis + kwCam, vec3(0.173, 0.291, 0.211));
@@ -121,8 +122,15 @@ const KOERPER = `
     transformed += vec3(0.6, 0.35, 0.6) * (0.035 * kwStaerke * kwW * sin(kwZeit * 9.0 + dot(position, vec3(5.1, 3.7, 4.3))));
   }
   if (kwWeite > 0.0) transformed *= 1.0 - smoothstep(kwWeite * 0.75, kwWeite, length(kwBasis));
+  if (vUeber < 0.0) transformed = vec3(0.0);       // Stufe hier ganz ausgeblendet: nichts zeichnen
 }
 `;
+
+const NEU_AB = 7;   // m Kamerabewegung bis zum Neuaufbau der Instanzen
+// Halbe Breite der Überblend-Zone: schmal (gleiche Form in allen Stufen) → man steht kaum je im halb durchsichtigen Raster
+const ZONE = (grenze) => Math.max(1.5, grenze * 0.05);
+const KEINE = [0, 0, 0];   // ueberZone: immer sichtbar
+const strHash = (t) => { let h = 2166136261; for (let i = 0; i < t.length; i++) h = Math.imul(h ^ t.charCodeAt(i), 16777619); return h >>> 0; };
 
 /** istWeg(kachelKey, index) → true: Stück wurde entfernt (gefällt, abgebaut, ausgegraben). */
 export function createNatur(scene, { istWeg = () => false, renderer = null } = {}) {
@@ -136,7 +144,7 @@ export function createNatur(scene, { istWeg = () => false, renderer = null } = {
     const schl = weich ? 'w' + weite : weite;
     if (materialien.has(schl)) return materialien.get(schl);
     const tiefe = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
-    tiefe.customProgramCacheKey = () => 'kugelwind-tiefe-' + weite;
+    tiefe.customProgramCacheKey = () => 'kugelwind-tiefe2-' + weite;
     const m = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: !weich, roughness: 0.9, metalness: 0, side: weich ? THREE.DoubleSide : THREE.FrontSide });
     m.tiefe = tiefe;
     m.userData.weite = weite;
@@ -144,6 +152,7 @@ export function createNatur(scene, { istWeg = () => false, renderer = null } = {
     tiefe.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, wind, m.userData.u);
       sh.vertexShader = KOPF + sh.vertexShader.replace('#include <begin_vertex>', KOERPER);
+      sh.fragmentShader = UEBER_FRAG_KOPF + sh.fragmentShader.replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n' + UEBER_FRAG);
     };
     m.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, wind, m.userData.u);
@@ -159,7 +168,7 @@ export function createNatur(scene, { istWeg = () => false, renderer = null } = {
   };
 
   const engine = createAssetCache({ varianten: 3, detail: 1, seed: 17 });
-  const engineGrob = createAssetCache({ varianten: 1, detail: 0, seed: 17 });
+  const engineGrob = createAssetCache({ varianten: 3, detail: 0, seed: 17 });   // gleiche Varianten wie nah → gleiche Form in jeder Stufe
   const aufZiel = (art, geo) => { // auf Zielhöhe bringen (einmal, an der Geometrie) → Faktor
     geo.computeBoundingBox();
     const h = geo.boundingBox.max.y, s0 = ZIEL_HOEHE[art] && h > 0.01 ? ZIEL_HOEHE[art] / h : 1;
@@ -200,26 +209,37 @@ export function createNatur(scene, { istWeg = () => false, renderer = null } = {
       if (v === 0) cfg.s0 = s0;
       erste ??= geo;
       const weite = BAUM.has(art) && cfg.fern ? 0 : cfg.nah;
-      NAH[art].push({ art, geo, mat: material(weite, AST(art)), mesh: null, n: 0, kap: 0 });
+      NAH[art].push({ art, geo, mat: material(weite, AST(art)), mesh: null, n: 0, kap: 0, stufe: 'nah' });
     }
     toepfe.push(...NAH[art]);
+    // Jede Stufe hat dieselben Varianten (gleicher Seed, gleiche Fülle) → ein Baum behält beim Näherkommen seine Form
+    const ast = AST(art), V = cfg.varianten;
     if (cfg.mittel) {
-      const ast = AST(art);
-      const g = ast ? baueAstbaum(art, 31, { detail: 1, dichte: 1.25 }).geometrie : engineGrob.holen(art, 0).geometrie;
-      aufZiel(art, g);
-      MITTEL_T[art] = { art, geo: g, mat: material(0, ast), mesh: null, n: 0, kap: 0 };
-      toepfe.push(MITTEL_T[art]);
+      MITTEL_T[art] = [];
+      for (let v = 0; v < V; v++) {
+        const g = ast ? baueAstbaum(art, 31 + v * 977, { detail: 1, dichte: VOLL[v % 3] }).geometrie : engineGrob.holen(art, v).geometrie;
+        aufZiel(art, g);
+        MITTEL_T[art].push({ art, geo: g, mat: material(0, ast), mesh: null, n: 0, kap: 0, stufe: 'mittel' });
+      }
+      toepfe.push(...MITTEL_T[art]);
     }
     if (cfg.weit) {   // Zwischenstufe: Astgerüst + grobe Blätter (statt gleich Klumpen)
-      const g = baueAstbaum(art, 31, { detail: 0, dichte: 1.25 }).geometrie;
-      aufZiel(art, g);
-      WEIT_T[art] = { art, geo: g, mat: material(0, true), mesh: null, n: 0, kap: 0 };
-      toepfe.push(WEIT_T[art]);
+      WEIT_T[art] = [];
+      for (let v = 0; v < V; v++) {
+        const g = baueAstbaum(art, 31 + v * 977, { detail: 0, dichte: VOLL[v % 3] }).geometrie;
+        aufZiel(art, g);
+        WEIT_T[art].push({ art, geo: g, mat: material(0, true), mesh: null, n: 0, kap: 0, stufe: 'weit' });
+      }
+      toepfe.push(...WEIT_T[art]);
     }
-    if (cfg.fern && AST(art)) {   // Fern-Form aus demselben Astgerüst, auf die Höhe des nahen Baums
-      const g = baueAstbaumFern(art, 31); g.scale(cfg.s0, cfg.s0, cfg.s0);
-      FERN[art] = { art, geo: g, mat: material(cfg.fern, true), mesh: null, n: 0, kap: 0 }; toepfe.push(FERN[art]);
-    } else if (cfg.fern) { FERN[art] = { art, geo: fernForm(art, erste), mat: material(cfg.fern), mesh: null, n: 0, kap: 0 }; toepfe.push(FERN[art]); }
+    if (cfg.fern && ast) {   // Fern-Form aus demselben Astgerüst, auf die Höhe des nahen Baums (nur ohne Impostor)
+      FERN[art] = [];
+      for (let v = 0; v < V; v++) {
+        const g = baueAstbaumFern(art, 31 + v * 977); g.scale(cfg.s0, cfg.s0, cfg.s0);
+        FERN[art].push({ art, geo: g, mat: material(cfg.fern, true), mesh: null, n: 0, kap: 0, stufe: 'fern' });
+      }
+      toepfe.push(...FERN[art]);
+    } else if (cfg.fern) { FERN[art] = [{ art, geo: fernForm(art, erste), mat: material(cfg.fern), mesh: null, n: 0, kap: 0, stufe: 'fern' }]; toepfe.push(...FERN[art]); }
     // Kollisionsradius bei Skala 1 (Geh-Modus): Fundus von Hand, Engine aus dem Asset
     cfg.kolli = ({ fichte: 0.22, birke: 0.16, granitblock: 0.85, schiefer: 0.8 }[art] ?? (FUNDUS.has(art) ? 0 : cfg.stamm || 0)) * cfg.s0;
     cfg.hoehe = erste.boundingBox ? erste.boundingBox.max.y : 1;
@@ -227,20 +247,21 @@ export function createNatur(scene, { istWeg = () => false, renderer = null } = {
     CFG[art] = cfg;
   }
   // Ferne Bäume (alle Arten): „Foto“ des nahen Modells aus 8 Richtungen → ein Quad je Baum (engine/render/baum-impostor)
+  // Je Variante ein eigenes Foto (Spalten im Atlas) → der ferne Baum ist derselbe wie der nahe
   let impostor = null;
   if (renderer) {
-    const liste = STREU_ARTEN.filter((art) => BAUM.has(art) && FERN[art]).map((art) => {
-      const geo = NAH[art][1 % NAH[art].length].geo;
-      if (!geo.attributes.normal) geo.computeVertexNormals();
-      return { art, geometrie: geo };
-    });
+    const liste = [];
+    for (const art of STREU_ARTEN) {
+      if (!BAUM.has(art) || !FERN[art]) continue;
+      NAH[art].forEach((t, v) => { if (!t.geo.attributes.normal) t.geo.computeVertexNormals(); liste.push({ art: art + '#' + v, geometrie: t.geo }); });
+    }
     if (liste.length) {
-      impostor = createBaumImpostor({ renderer, baeume: liste });
-      for (const { art } of liste) {
-        const alt = FERN[art], i = toepfe.indexOf(alt);
-        alt.geo.dispose();
-        FERN[art] = { art, geo: impostor.geometrie(art), mat: impostor.material, mesh: null, n: 0, kap: 0, impostor: true };
-        toepfe[i] = FERN[art];
+      impostor = createBaumImpostor({ renderer, baeume: liste, spalten: 3, px: 96, zone: true });
+      for (const art of Object.keys(FERN)) {
+        if (!impostor.hat(art + '#0')) continue;
+        for (const alt of FERN[art]) { alt.geo.dispose(); toepfe.splice(toepfe.indexOf(alt), 1); }
+        FERN[art] = NAH[art].map((_, v) => ({ art, geo: impostor.geometrie(art + '#' + v), mat: impostor.material, mesh: null, n: 0, kap: 0, impostor: true, stufe: 'fern' }));
+        toepfe.push(...FERN[art]);
       }
     }
   }
@@ -259,17 +280,18 @@ export function createNatur(scene, { istWeg = () => false, renderer = null } = {
     if (t.mesh && t.kap >= n) return;
     if (t.mesh) { gruppe.remove(t.mesh); t.mesh.dispose(); }
     t.kap = Math.max(32, 1 << Math.ceil(Math.log2(n + 1)));
-    if (STUFEN[t.art]) { t.ueber = new THREE.InstancedBufferAttribute(new Float32Array(t.kap), 1); t.ueber.setUsage(THREE.DynamicDrawUsage); t.geo.setAttribute('ueber', t.ueber); }
+    if (STUFEN[t.art]) { t.ueber = new THREE.InstancedBufferAttribute(new Float32Array(t.kap * 3), 3); t.ueber.setUsage(THREE.DynamicDrawUsage); t.geo.setAttribute('ueberZone', t.ueber); }
     t.mesh = new THREE.InstancedMesh(t.geo, t.mat, t.kap);
     t.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     t.mesh.setColorAt(0, new THREE.Color(1, 1, 1));
     t.mesh.frustumCulled = false;
     t.mesh.receiveShadow = true;
-    t.mesh.castShadow = WIRFT(t.art) && t !== FERN[t.art] && t !== MITTEL_T[t.art] && !t.impostor;   // nur Nahes wirft (Schattenkasten ±40 m)
+    t.mesh.castShadow = WIRFT(t.art) && (!t.stufe || t.stufe === 'nah');   // nur Nahes wirft (Schattenkasten ±40 m)
     if (t.mat.tiefe) t.mesh.customDepthMaterial = t.mat.tiefe;
     gruppe.add(t.mesh);
   };
 
+  const kachelHash = new Map();
   const anker = new THREE.Vector3(), letzteKamera = new THREE.Vector3(1e12, 0, 0);
   const teuer = new Map(); // Art → Dreiecke (fürs HUD: wo geht die Leistung hin?)
   let schmutzig = true, fische = [], hindernisse = [], nahe = [], dreiecke = 0, anzahl = 0;
@@ -287,64 +309,65 @@ export function createNatur(scene, { istWeg = () => false, renderer = null } = {
     return m4.compose(pos, q, skal);
   }
 
-  /** Neu aufbauen, wenn neue Streu-Kacheln da sind oder die Kamera > 12 m weiter ist. kacheln = [{mitte, daten, anzahl}]. */
+  /** Neu aufbauen, wenn neue Streu-Kacheln da sind oder die Kamera > NEU_AB m weiter ist. kacheln = [{mitte, daten, anzahl}]. */
   function update(cam, kacheln, zeit, aktiv) {
     gruppe.visible = aktiv;
     if (!aktiv) return;
     wind.kwZeit.value = zeit;
     wind.kwCam.value.copy(cam);
-    if (schmutzig || cam.distanceTo(letzteKamera) > 12) {
+    if (schmutzig || cam.distanceTo(letzteKamera) > NEU_AB) {
       schmutzig = false;
       letzteKamera.copy(cam);
       anker.copy(cam);
       for (const t of toepfe) t.n = 0;
       const wahl = [];
       fische = []; hindernisse = []; nahe = [];
-      let idx = 0;
+      const M = (NEU_AB + 1) / weiteF;   // so weit kann die Kamera bis zum nächsten Neuaufbau laufen → beide Stufen schon bereit
       for (const k of kacheln) {
         const d = k.daten, [mx, my, mz] = k.mitte;
-        for (let i = 0; i < k.anzahl; i++, idx++) {
+        let kh = kachelHash.get(k.key);
+        if (kh === undefined) { kh = strHash(String(k.key)); kachelHash.set(k.key, kh); }
+        for (let i = 0; i < k.anzahl; i++) {
           if (istWeg(k.key, i)) continue;
           const o = i * STRIDE, art = STREU_ARTEN[d[o]], cfg = CFG[art];
           const ax = mx + d[o + 1], ay = my + d[o + 2], az = mz + d[o + 3];
           const ab = Math.hypot(ax - cam.x, ay - cam.y, az - cam.z) / weiteF;
+          // Fester Zufall je Stück (Kachel + Nummer): Variante und Ausdünnen ändern sich nicht, wenn andere Kacheln dazukommen
+          const zuf = (Math.imul(kh ^ Math.imul(i + 1, 0x9e3779b1), 0x85ebca6b) >>> 0) / 4294967296;
+          const v = Math.floor(zuf * 977) % cfg.varianten;
           if (ab < 60) {
             const id = k.key + '#' + i;
             const sk = d[o + 4];
             nahe.push({ id, art, x: ax, y: ay, z: az, s: sk, fest: cfg.kolli > 0, h: cfg.hoehe * sk,
               r: BAUM.has(art) ? Math.max(0.45, cfg.kolli * sk * 1.6) : Math.max(0.25, cfg.groesse * sk) });
           }
-          let t = null;
           const st = STUFEN[art];
-          if (st) {   // Bäume: Stufe wählen, an den Grenzen weich überblenden (beide Stufen, Gegen-Raster)
-            let k = 0;
-            while (k < st.length && ab >= st[k].bis) k++;
-            if (k >= st.length) continue;
-            if (st[k].pot === FERN[art] && ab >= 230 && idx % 2 !== 0) continue;   // ganz weit: jeder zweite reicht
-            const hier = st[k].pot === NAH[art] ? NAH[art][idx % cfg.varianten] : st[k].pot;
-            const unten = k > 0 ? st[k - 1].bis : 0, bu = Math.max(3, unten * 0.12), bo = Math.max(3, st[k].bis * 0.12);
-            let wert = 0;
-            if (k > 0 && ab < unten + bu) {
-              const f = ueberAnteil(ab, unten, bu), vor = st[k - 1].pot === NAH[art] ? NAH[art][idx % cfg.varianten] : st[k - 1].pot;
-              wert = ueberWert(f, 'ein');
-              const w2 = ueberWert(f, 'aus');
-              if (w2 !== 0) { vor.n++; wahl.push(vor, ax, ay, az, o, d, w2); }
-            } else if (k < st.length - 1 && ab > st[k].bis - bo) {
-              const f = ueberAnteil(ab, st[k].bis, bo), nach = st[k + 1].pot;
-              wert = ueberWert(f, 'aus');
-              const w2 = ueberWert(f, 'ein');
-              if (w2 !== 0 && f > 0.001) { nach.n++; wahl.push(nach, ax, ay, az, o, d, w2); }
+          if (st) {   // Bäume: jede Stufe, deren Sichtbereich (± Überblend-Zone) erreichbar ist; der Shader blendet nach echtem Abstand
+            const letzte = st.length - 1;
+            if (ab >= st[letzte].bis) continue;
+            for (let s = 0; s <= letzte; s++) {
+              const lo = s > 0 ? st[s - 1].bis : 0, hi = st[s].bis;
+              const bl = s > 0 ? ZONE(lo) : 0, bh = s < letzte ? ZONE(hi) : 0;
+              if (s > 0 && ab < lo - bl - M) continue;
+              if (s < letzte && ab > hi + bh + M) continue;
+              if (s === letzte && ab >= 230 && zuf < 0.5) continue;   // ganz weit: jeder zweite reicht
+              let zone = KEINE;
+              const unten = s > 0 && ab < lo + bl + M, oben = s < letzte && ab > hi - bh - M;
+              if (unten && (!oben || ab - lo < hi - ab)) zone = ueberZone(lo * weiteF, bl * weiteF, 'ein');
+              else if (oben) zone = ueberZone(hi * weiteF, bh * weiteF, 'aus');
+              const t = st[s].pot[v % st[s].pot.length];
+              t.n++;
+              wahl.push(t, ax, ay, az, o, d, zone);
             }
-            hier.n++;
-            wahl.push(hier, ax, ay, az, o, d, wert);
             if (cfg.kolli && ab < 60) hindernisse.push({ x: ax, y: ay, z: az, r: cfg.kolli * d[o + 4] });
             continue;
           }
-          if (ab < cfg.nah) t = NAH[art][idx % cfg.varianten];
-          else if (ab < cfg.fern && (ab < 140 || idx % (ab < 230 ? 2 : 3) === 0)) t = FERN[art]; // weit weg: jeder zweite/dritte reicht
+          let t = null;
+          if (ab < cfg.nah) t = NAH[art][v];
+          else if (FERN[art] && ab < cfg.fern && (ab < 140 || zuf < (ab < 230 ? 0.5 : 0.34))) t = FERN[art][v % FERN[art].length]; // weit weg: jeder zweite/dritte reicht
           if (!t) continue;
           t.n++;
-          wahl.push(t, ax, ay, az, o, d, 0);
+          wahl.push(t, ax, ay, az, o, d, KEINE);
           if (cfg.kolli && ab < 60) hindernisse.push({ x: ax, y: ay, z: az, r: cfg.kolli * d[o + 4] });
         }
       }
@@ -353,7 +376,7 @@ export function createNatur(scene, { istWeg = () => false, renderer = null } = {
       for (let w = 0; w < wahl.length; w += 7) {
         const t = wahl[w], ax = wahl[w + 1], ay = wahl[w + 2], az = wahl[w + 3], o = wahl[w + 4], d = wahl[w + 5];
         const i = t.mesh.count++;
-        if (t.ueber) t.ueber.array[i] = wahl[w + 6];
+        if (t.ueber) t.ueber.array.set(wahl[w + 6], i * 3);
         t.mesh.setMatrixAt(i, lage(ax, ay, az, d[o + 5], d[o + 4]));
         t.mesh.setColorAt(i, farbe.setRGB(d[o + 6], d[o + 7], d[o + 8]));
         if (FISCH.has(t.art)) fische.push({ t, i, ax, ay, az, dreh: d[o + 5], s: d[o + 4] });
@@ -407,7 +430,7 @@ export function createNatur(scene, { istWeg = () => false, renderer = null } = {
   function setzeWind(staerke, richtung) { wind.kwStaerke.value = staerke; wind.kwRicht.value.copy(richtung); }
 
   function dispose() {
-    for (const t of toepfe) { if (t.mesh) { gruppe.remove(t.mesh); t.mesh.dispose(); } if (FUNDUS.has(t.art) || GRUPPEN.has(t.art) || FUNDE.has(t.art) || t === FERN[t.art]) t.geo.dispose(); }
+    for (const t of toepfe) { if (t.mesh) { gruppe.remove(t.mesh); t.mesh.dispose(); } if (!t.impostor && (FUNDUS.has(t.art) || GRUPPEN.has(t.art) || FUNDE.has(t.art) || AST(t.art) || t.stufe === 'fern')) t.geo.dispose(); }
     engine.dispose(); engineGrob.dispose(); impostor?.dispose();
     for (const m of materialien.values()) { m.tiefe.dispose(); m.dispose(); }
     scene.remove(gruppe);
