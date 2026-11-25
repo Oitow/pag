@@ -21,7 +21,8 @@
 //   planet       probe(x,y,z,s) → { h, wasser, … } und oberflaeche(x,y,z,s) → m über R (x,y,z = Einheitsrichtung)
 //   bodenPunkt(dir, out?)       → absoluter Punkt auf Boden/Wasser in Richtung dir; bodenHoehe(dir) → m über R
 //   ansicht()    → 1 | 3 (Ich-Sicht oder Kamera hinter der Figur)
-//   spieler()    → { gehen, schwimmt, amBoden, fallV }, setzeFall(v) (senkrechte Geschwindigkeit m/s beim Zurückgeben)
+//   spieler()    → { gehen, schwimmt, amBoden, fallV }, setzeFall(v) (senkrechte Geschwindigkeit m/s beim Zurückgeben),
+//                drehe(w) (Blick um die Ortsnormale drehen, Bogenmaß, + = links)
 //   inventar (engine/gameplay/inventar), zw (Uhr, Wetter, tJetzt °C), natur, eingriffe
 //   melde(text, gut), knopf(id, text, onklick) → Element in der Aktionsleiste, speichern()
 //   dienste      {} – gemeinsames Brett der Module

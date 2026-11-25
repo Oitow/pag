@@ -161,6 +161,7 @@ export function createGleiter(welt) {
     // Kurs: Blickrichtung, Stick seitlich lenkt davon weg in die Kurve
     rechts.crossVectors(welt.vorn, welt.oben).normalize();
     const a = Math.max(-1, Math.min(1, e.seit || 0)) * KURVE;
+    welt.drehe?.(-a * 1.1 * dt);   // Blick dreht in die Kurve mit (sonst lenkt nur der Blick)
     kurs.copy(welt.vorn).multiplyScalar(Math.cos(a)).addScaledVector(rechts, Math.sin(a));
     schritt(f, dt, { R, vor: e.vor || 0, kurs: arr(kurs), wind: arr(windV), auf });
     welt.cam.set(f.p[0], f.p[1], f.p[2]);

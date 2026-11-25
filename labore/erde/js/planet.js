@@ -461,6 +461,7 @@ const erwWelt = {
   spieler: () => ({ gehen, schwimmt, amBoden, fallV }),
   ansicht: () => (MENUE.person === 1 ? 1 : 3),
   setzeFall: (v) => { fallV = v; },
+  drehe: (w) => { vorn.applyAxisAngle(oben, w); },   // Blick um die Ortsnormale drehen (Bogenmaß, + = links)
   melde: (t, gut = true) => melde(t, gut),
   speichern: () => speichern(),
   // nach dem Tod: zurück zum Startplatz (Ort beim Start bzw. letzter Sprung), zu Fuß
