@@ -19,7 +19,9 @@ export { NAME as gegenstandName };
  * planet = createPlanetHoehe (mit eingriffe), eingriffe = createEingriffe, natur = createNatur (finde),
  * inventar = createInventar, seed, beiEingriff(e) = Gelände neu bauen + an Worker schicken, beiEntfernen() = Natur neu aufbauen.
  */
-export function createAktionen({ planet, eingriffe, natur, inventar, seed = 1, beiEingriff = () => {}, beiEntfernen = () => {} }) {
+export const VOXEL_GRAB_R = 0.85, VOXEL_AUF_R = 0.75;
+/** voxel = createVoxelErde (optional): dann gräbt man in Blickrichtung (Gruben, Tunnel) statt das Höhenfeld abzusenken. */
+export function createAktionen({ planet, eingriffe, natur, inventar, seed = 1, voxel = null, beiVoxel = () => {}, beiEingriff = () => {}, beiEntfernen = () => {} }) {
   const R = planet.radius;
   // axt = Stufe 0…3 (0 = keine), hacke = Stufe 0…4 (Stein 2, Kupfer 3, Eisen 4) – Tabellen in herstellen-daten.js
   const hat = (id) => inventar.hat(id, 1);
@@ -52,7 +54,8 @@ export function createAktionen({ planet, eingriffe, natur, inventar, seed = 1, b
     return o;
   }
 
-  function graben(p) {
+  function graben(p, blickR = null) {
+    if (voxel && blickR) return grabenVoxel(p, blickR);
     const o = naturImWeg(p);
     if (o && (o.r > 0.5 || o.art === 'granitblock')) return { ok: false, text: `Erst ${o.art} wegräumen` };
     const u = untergrund(p);
@@ -69,9 +72,36 @@ export function createAktionen({ planet, eingriffe, natur, inventar, seed = 1, b
     return { ok: true, text };
   }
 
-  function bauen(p) {
+  /** Graben in Blickrichtung: Kugel aus dem Voxel-Boden, Stoff = was dort wirklich liegt (Schichten, Gestein). */
+  function grabenVoxel(p, richtung) {
+    const o = naturImWeg(p);
+    if (o && (o.r > 0.5 || o.art === 'granitblock')) return { ok: false, text: `Erst ${o.art} wegräumen` };
+    const u = untergrund(p), tiefe = voxel.tiefe(p);
+    const stoff = voxel.stoffAm(p, richtung) ?? stoffInTiefe(u.schichten, tiefe + 0.25);
+    const hacke = werkzeug().hacke;
+    const g = grabung(stoff, [p.x, p.y, p.z], tiefe, hacke, seed);
+    if (!g.ok) return { ok: false, text: `${NAME(stoff)}: ${STOFFE[stoff] ? hackeName(STOFFE[stoff].haerte) + ' nötig' : g.grund}` };
+    if (o) { eingriffe.entferne(o.id); beiEntfernen(); }
+    voxel.eingriff('weg', { x: p.x + richtung.x * 0.35, y: p.y + richtung.y * 0.35, z: p.z + richtung.z * 0.35 }, VOXEL_GRAB_R);
+    beiVoxel();
+    inventar.gib(g.stoff, g.menge);
+    let text = `+${g.menge} ${NAME(g.stoff)}` + (tiefe > 1.5 ? ` · ${tiefe.toFixed(1)} m tief` : '');
+    if (g.fund && (FUND_STUFE[g.fund] || 0) > hacke) text += ` · ${NAME(g.fund)} im Fels – ${hackeName(FUND_STUFE[g.fund])} nötig`;
+    else if (g.fund) { inventar.gib(g.fund, 1); text += ` · Fund: ${NAME(g.fund)}!`; }
+    return { ok: true, text };
+  }
+
+  function bauen(p, blickR = null) {
     const stoff = BAUSTOFFE.find((s) => inventar.hat(s, 1));
     if (!stoff) return { ok: false, text: 'Nichts zum Aufschütten (erst graben)' };
+    if (voxel && blickR) {   // vor die getroffene Fläche setzen (Richtung Spieler)
+      inventar.nimm(stoff, 1);
+      const o = natur.finde(p, GRAB_RADIUS * 0.5);
+      if (o && o.r <= 0.5) { eingriffe.entferne(o.id); beiEntfernen(); }
+      voxel.eingriff('fest', { x: p.x - blickR.x * 0.45, y: p.y - blickR.y * 0.45, z: p.z - blickR.z * 0.45 }, VOXEL_AUF_R, stoff);
+      beiVoxel();
+      return { ok: true, text: `−1 ${NAME(stoff)} aufgeschüttet` };
+    }
     const d = richtung(p);
     inventar.nimm(stoff, 1);
     const o = natur.finde(p, GRAB_RADIUS * 0.5);

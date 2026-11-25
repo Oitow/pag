@@ -11,6 +11,7 @@ import { createNatur, ZIEL_HOEHE } from './natur.js';
 import { installiereDunst, aktualisiereDunst, DUNST_GLSL } from './dunst.js';
 import { createMond } from '../../../engine/render/mond.js';
 import { createEingriffe } from './eingriffe.js';
+import { createVoxelErde, LOCH_MAX } from './voxel-erde.js';
 import { createZeitWetter } from './zeit-wetter.js';
 import { createAktionen, gegenstandName, GRAB_RADIUS } from './aktionen.js';
 import { waechstHier } from './wachstum.js';
@@ -84,19 +85,34 @@ float bRausch(vec3 p, float f) {
 }
 `;
 const bodenMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
+// Loch-Maske: in Voxel-Säulen (Grabstellen) wird das Höhenfeld ausgeschnitten – Mitte/Achsen kommen kamerarelativ aus voxel-erde.js
+const LOCH_GLSL = `uniform vec4 uLochM[${LOCH_MAX}]; uniform vec4 uLochA[${LOCH_MAX}]; uniform vec4 uLochB[${LOCH_MAX}]; uniform int uLochN;
+varying vec3 vRelW;
+bool imLoch(vec3 p) {
+  for (int i = 0; i < ${LOCH_MAX}; i++) {
+    if (i >= uLochN) break;
+    vec3 q = p - uLochM[i].xyz;
+    if (abs(dot(q, uLochA[i].xyz)) < 1.0 && abs(dot(q, uLochB[i].xyz)) < 1.0 && dot(q, q) < 3600.0) return true;
+  }
+  return false;
+}
+`;
 // Wasser: glatt (Sonnenglanz), wandernde Wellen in der Normalen, Himmel spiegelt sich im flachen Blickwinkel (Fresnel).
 // Weltlage = Kachellage relativ zur Kamera + Kamera (wasserCam) → Wellen bleiben beim Fliegen am Ort.
 // bodenVers = Kameralage modulo 1024 m und Kamera-Radius modulo Schicht-Periode – in JS (double) gerechnet, sonst wackelt das Muster (float32 bei 1e5 m ≈ 1 cm)
 const SCHICHT_PER = Math.PI * 2 * 20 / 11;
-const wasserU = { wZeit: { value: 0 }, wasserCam: { value: new THREE.Vector3() }, wHimmel: { value: new THREE.Color() }, bodenVers: { value: new THREE.Vector4() } };
+const wasserU = { wZeit: { value: 0 }, wasserCam: { value: new THREE.Vector3() }, wHimmel: { value: new THREE.Color() }, bodenVers: { value: new THREE.Vector4() }, uFuell: { value: 0 } };
 bodenMat.onBeforeCompile = (sh) => {
   Object.assign(sh.uniforms, wasserU);
-  sh.vertexShader = 'attribute float nass;\nattribute vec3 land;\nvarying vec3 vLand;\nuniform vec3 wasserCam;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.vertexShader
-    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvNass = nass;\nvLand = land;\nvWelt = (modelMatrix * vec4(position, 1.0)).xyz + wasserCam;\nvObenW = normalize(vWelt);');
-  sh.fragmentShader = 'uniform float wZeit;\nuniform vec3 wHimmel;\nvarying vec3 vLand;\nvarying float vNass;\nfloat wT;\nfloat wSchaum;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\nuniform vec3 wasserCam;\nuniform vec4 bodenVers;\n' + BODEN_RAUSCHEN + sh.fragmentShader
+  sh.vertexShader = 'attribute float nass;\nattribute vec3 land;\nvarying vec3 vLand;\nuniform vec3 wasserCam;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\nvarying vec3 vRelW;\n' + sh.vertexShader
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvNass = nass;\nvLand = land;\nvRelW = (modelMatrix * vec4(position, 1.0)).xyz;\nvWelt = vRelW + wasserCam;\nvObenW = normalize(vWelt);');
+  sh.fragmentShader = 'uniform float wZeit;\nuniform vec3 wHimmel;\nvarying vec3 vLand;\nvarying float vNass;\nfloat wT;\nfloat wSchaum;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\nuniform vec3 wasserCam;\nuniform vec4 bodenVers;\nuniform float uFuell;\n' + LOCH_GLSL + BODEN_RAUSCHEN + sh.fragmentShader
     // vNass = Wassertiefe (0.5 = Uferlinie, ±3.2 m): flaches Wasser klar (Grund scheint durch), Schaumsaum, nasser Sand
     .replace('#include <color_fragment>', `#include <color_fragment>
 wT = smoothstep(0.497, 0.51, vNass);
+#ifndef VOXEL
+if (wT < 0.5 && imLoch(vRelW)) discard;   // Grabstelle: hier zeigen die Voxel den Boden (Wasserfläche bleibt)
+#endif
 float wKlar = 1.0 - smoothstep(0.505, 0.62, vNass);
 vec3 wFarbe = mix(diffuseColor.rgb, mix(vLand, diffuseColor.rgb * vec3(0.75, 1.05, 1.08), 0.5), wKlar);
 diffuseColor.rgb = mix(vLand, wFarbe, wT);
@@ -162,12 +178,29 @@ if (wT > 0.01) {
 }`)
     .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
 totalEmissiveRadiance += diffuseColor.rgb * smoothstep(0.72, 0.9, diffuseColor.r - diffuseColor.b) * 1.6; // Lava glüht
+#ifdef VOXEL
+totalEmissiveRadiance += diffuseColor.rgb * uFuell;   // Streulicht in Gruben/Tunneln (sonst schwarz) – Schichten bleiben lesbar
+#endif
 if (wT > 0.01) {
   float fr = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 4.0);
   totalEmissiveRadiance += wHimmel * fr * 0.55 * wT;
 }`);
 };
-bodenMat.customProgramCacheKey = () => 'erde-boden-wasser-detail2';
+bodenMat.customProgramCacheKey = () => 'erde-boden-wasser-detail3';
+// Schattenbild der Kacheln: dieselbe Loch-Maske (sonst wirft der unsichtbare alte Boden Schatten in die Grube)
+const bodenTiefe = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+bodenTiefe.onBeforeCompile = (sh) => {
+  Object.assign(sh.uniforms, wasserU);
+  sh.vertexShader = 'varying vec3 vRelW;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvRelW = (modelMatrix * vec4(position, 1.0)).xyz;');
+  sh.fragmentShader = LOCH_GLSL + sh.fragmentShader.replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (imLoch(vRelW)) discard;');
+};
+bodenTiefe.customProgramCacheKey = () => 'erde-boden-tiefe-loch';
+// Voxel-Meshes (Grabstellen): gleiches Bodenmaterial (Licht, Körnung, Farben) ohne Loch-Maske, beidseitig
+const voxelMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, side: THREE.DoubleSide });
+voxelMat.defines = { VOXEL: 1 };
+voxelMat.shadowSide = THREE.BackSide;   // Schattenbild aus den Rückseiten: kein Selbstschatten-Flimmern (Akne) auf der Grabfläche
+voxelMat.onBeforeCompile = bodenMat.onBeforeCompile;
+voxelMat.customProgramCacheKey = () => 'erde-boden-voxel';
 const stufenMat = []; // Debug: jede Stufe eigene Farbe
 for (let i = 0; i <= MAX_STUFE; i++) stufenMat.push(new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL((i * 0.13) % 1, 0.6, 0.55), roughness: 1 }));
 let stufenFarben = false;
@@ -230,6 +263,7 @@ function erzeuge(d) {
   geo.computeBoundingSphere();
   const m = new THREE.Mesh(geo, stufenFarben ? stufenMat[d.L] : bodenMat);
   m.receiveShadow = true;
+  m.customDepthMaterial = bodenTiefe;
   m.castShadow = d.L >= MAX_STUFE - 2;   // nur feine Kacheln nahe am Spieler werfen Schatten (Böschungen, Grubenränder)
   m.userData = { mitte: d.mitte, L: d.L };
   m.visible = false;
@@ -261,11 +295,13 @@ function starteWorker() {
       const w = new Worker(new URL('./kachel-worker.js', import.meta.url), { type: 'module' });
       w.offen = new Map();
       w.onmessage = (e) => {
+        if (e.data.typ === 'voxel') { voxel.fertig(e.data); return; }
         if (e.data.typ === 'streu') { w.offen.delete('s:' + e.data.key); streuFertig(e.data); return; }
         w.offen.delete(e.data.key); bauMs += e.data.ms; bauN++; strom.fertigGebaut(e.data.key, e.data);
       };
       w.onerror = () => { // Worker kaputt → seine Aufträge in den Hauptthread
         worker = worker.filter((x) => x !== w);
+        voxel?.verloren();
         for (const [key, k] of w.offen) (key.startsWith('s:') ? streuQueue : hauptQueue).push(k);
         w.terminate();
       };
@@ -324,7 +360,7 @@ function speichern() {
   if (P.get('test')) return;   // ?test=1: kein Spielstand
   clearTimeout(speicherT);
   speicherT = setTimeout(() => {
-    try { localStorage.setItem(SPEICHER, JSON.stringify({ eingriffe: eingriffe.zustand(), inventar: inventar.zustand(), zeit: zw.zustand(), erw: erw?.zustand() })); } catch { /* voll/privat */ }
+    try { localStorage.setItem(SPEICHER, JSON.stringify({ eingriffe: eingriffe.zustand(), voxel: voxel.zustand(), inventar: inventar.zustand(), zeit: zw.zustand(), erw: erw?.zustand() })); } catch { /* voll/privat */ }
   }, 800);
 }
 /** Kachel vom Eingriff e betroffen? (Mitte näher als halbe Diagonale + Radius) */
@@ -333,8 +369,17 @@ function betroffen(k, e) {
   const cos = d[0] * e.d[0] + d[1] * e.d[1] + d[2] * e.d[2];
   return Math.acos(Math.min(1, cos)) * R < kante * 0.8 + e.r + 1;
 }
+// ---------- Voxel-Nahzone: Gruben, Tunnel (docs/plaene/ERDE-FUNDAMENT.md) ----------
+const voxelGruppe = new THREE.Group();
+scene.add(voxelGruppe);
+const voxel = createVoxelErde({
+  THREE, planet, gruppe: voxelGruppe, material: voxelMat, zustand: stand?.voxel,
+  sende(job) { if (!worker.length) return false; worker[wi++ % worker.length].postMessage(job); return true; },
+});
+Object.assign(wasserU, voxel.uniforms);
 const aktionen = createAktionen({
-  planet, eingriffe, natur, inventar, seed: SEED,
+  planet, eingriffe, natur, inventar, seed: SEED, voxel,
+  beiVoxel: () => speichern(),
   beiEingriff: (e) => { for (const w of worker) w.postMessage({ art: 'eingriff', e }); strom.erneuere((k) => betroffen(k, e)); speichern(); },
   beiEntfernen: () => { natur.neu(); speichern(); },
 });
@@ -558,15 +603,14 @@ function inventarText() {
 const zielP = new THREE.Vector3();
 /** Was liegt im Blick (bis 7 m)? → { art: 'natur', o } | { art: 'boden', p } | null */
 function zielSuchen() {
-  for (let t = 0.4; t <= 7; t += 0.15) {
+  const treffer = voxel.strahl(cam, blick, 7);   // Voxel in Grabstellen, sonst Höhenfeld
+  const bis = treffer ? treffer.p.distanceTo(cam) : 7;
+  for (let t = 0.4; t <= bis; t += 0.15) {
     zielP.copy(cam).addScaledVector(blick, t);
     const o = natur.finde(zielP, 0.05);
     if (o) return { art: 'natur', o, p: zielP.clone() };
-    tmp.copy(zielP).normalize();
-    const pr = planet.probe(tmp.x, tmp.y, tmp.z, 0.5);
-    if (zielP.length() - R <= Math.max(pr.h, pr.wasser)) return { art: 'boden', p: tmp.clone().multiplyScalar(R + pr.h) };
   }
-  return null;
+  return treffer ? { art: 'boden', p: treffer.p, richtung: blick.clone() } : null;
 }
 const meldungEl = document.getElementById('meldung'), zielEl = document.getElementById('ziel');
 let meldungT = null;
@@ -582,8 +626,8 @@ function handle(was) {
   if (!z) { melde('Nichts in Reichweite', false); return; }
   let r;
   if (was === 'nehmen') r = z.art === 'natur' ? aktionen.nehmen(z.o) : { ok: false, text: 'Hier ist nichts zum Nehmen – graben?' };
-  else if (was === 'graben') r = z.art === 'natur' ? aktionen.nehmen(z.o) : aktionen.graben(z.p);
-  else r = aktionen.bauen(z.art === 'boden' ? z.p : z.p);
+  else if (was === 'graben') r = z.art === 'natur' ? aktionen.nehmen(z.o) : aktionen.graben(z.p, z.richtung);
+  else r = aktionen.bauen(z.p, z.richtung ?? blick.clone());
   melde(r.text, r.ok);
   invText = inventarText();
 }
@@ -874,6 +918,8 @@ function bild() {
       const d = tmp.length(), r = h.r + 0.3;
       if (d < r && d > 1e-4) cam.addScaledVector(tmp, (r - d) / d);
     }
+    // Grabstellen: Tunnelwände schieben, Decke stoppt den Sprung
+    if (voxel.schiebe(cam, oben, AUGE).decke && fallV > 0) fallV = 0;
   } else {
     const schritt = tmp.set(0, 0, 0).addScaledVector(blick, vor).addScaledVector(rechts, seit).addScaledVector(oben, hoch);
     cam.addScaledVector(schritt, tempo * dt);
@@ -890,9 +936,11 @@ function bild() {
   oben.copy(cam).normalize();
   const pr = planet.probe(oben.x, oben.y, oben.z, 0.5);
   const bau = gehen ? (erwWelt.dienste.bau?.bodenUnter?.(cam) ?? null) : null;   // Fundament, Boden, Treppe
-  const g2 = Math.max(0, pr.h, pr.wasser, bau ?? -Infinity);
-  schwimmt = gehen && bau === null && pr.wasser > pr.h + AUGE - 0.3 && cam.length() < R + pr.wasser + AUGE + 0.5;   // nicht hoch in der Luft über dem Meer
-  const minR = R + (schwimmt ? pr.wasser + 0.3 : Math.max(pr.h, pr.wasser, bau ?? -Infinity) + AUGE), maxR = R + 3e7;
+  const vb = voxel.boden(cam, AUGE);   // in einer Grabstelle: Boden aus Voxeln (Grube, Tunnel), sonst null
+  const hG = vb ?? pr.h;
+  const g2 = Math.max(vb === null ? 0 : -Infinity, hG, pr.wasser, bau ?? -Infinity);
+  schwimmt = gehen && bau === null && pr.wasser > hG + AUGE - 0.3 && cam.length() < R + pr.wasser + AUGE + 0.5;   // nicht hoch in der Luft über dem Meer
+  const minR = R + (schwimmt ? pr.wasser + 0.3 : Math.max(hG, pr.wasser, bau ?? -Infinity) + AUGE), maxR = R + 3e7;
   const lc = cam.length();
   if (lc < minR) { cam.setLength(minR); if (fallV < 0) fallV = 0; amBoden = true; }
   else if (lc > maxR) cam.setLength(maxR);
@@ -916,6 +964,7 @@ function bild() {
   if (wahlT === 0 && naturAn) streuen(streuKacheln([cam.x, cam.y, cam.z], R, STREU_L, STREU_RADIUS));
   if (!worker.length) hauptBau(geladen ? 8 : 30);
   natur.update(cam, naturAn ? [...streuDa.values()] : [], jetzt / 1000, naturAn);
+  voxel.update(cam);
 
   // Floating Origin: Kamera im Ursprung, Welt verschoben
   for (const m of strom.sichtbar()) {
@@ -942,7 +991,17 @@ function bild() {
       const kd = tmp.copy(kamAbs).normalize(), kp = planet.probe(kd.x, kd.y, kd.z, 0.5);
       unter = Math.max(unter, R + Math.max(kp.h, kp.wasser) + 0.4 - kamAbs.length());
     }
-    if (unter > 0) kamOff.addScaledVector(oben, unter);
+    // In Grabstellen (Grube, Tunnel): Strahl vom Kopf zur Wunschkamera, bei Fels davor stehen bleiben – nicht hochheben
+    if (voxel.fest(cam.x, cam.y, cam.z) !== null) {
+      let frei = 1;
+      for (let f = 0.05; f <= 1.001; f += 0.05) {
+        kamAbs.copy(cam).addScaledVector(kamOff, f);
+        let hart = voxel.fest(kamAbs.x, kamAbs.y, kamAbs.z);
+        if (hart === null) { const kd = tmp.copy(kamAbs).normalize(), kp = planet.probe(kd.x, kd.y, kd.z, 0.5); hart = kamAbs.length() < R + Math.max(kp.h, kp.wasser) + 0.2; }
+        if (hart) { frei = f - 0.1; break; }
+      }
+      kamOff.multiplyScalar(Math.max(0.04, frei));
+    } else if (unter > 0) kamOff.addScaledVector(oben, unter);
     camera.position.copy(kamOff);
     camera.lookAt(kamZiel.copy(blick).multiplyScalar(12).addScaledVector(oben, fliegt ? 1.2 : -0.6));
   } else {
@@ -986,6 +1045,7 @@ function bild() {
   atmo.visible = ueberMeer > ATMO * 0.6;
   himmelLicht.position.copy(oben);
   himmelLicht.intensity = 0.12 + (0.5 * tag * (1 - 0.3 * wolken) + blitz) * (1 - raum);
+  wasserU.uFuell.value = 0.05 + 0.3 * tag * (1 - 0.3 * wolken);
   // Schatten nur nah am Boden und wenn die Sonne scheint; Wolken machen sie weich/blass
   const schattenAn = GRAFIK[grafik].schatten && hoeheBoden < 300 && hs > -0.03 && !stufenFarben;
   sonne.shadow.intensity = schattenAn ? 0.85 * (1 - 0.75 * wolken) : 0;
@@ -1066,5 +1126,19 @@ if (P.get('zeige')) setTimeout(() => {
   vorn.copy(best).sub(cam).projectOnPlane(auf).normalize();
   neigung = baum ? 0.32 : -0.75;
 }, 9000);
+// Testschalter ?grabtest=1 (an den Rand einer 4-m-Grube mit Tunnel stellen) | 2 (im Tunnel stehen): Voxel-Graben ansehen
+if (P.get('grabtest')) {
+  const auf = cam.clone().normalize(), v = vorn.clone();
+  const bei = (vor, tief) => { const d = auf.clone().multiplyScalar(R).addScaledVector(v, vor).normalize(); return d.multiplyScalar(R + boden(d) - tief); };
+  for (let t = 0; t <= 4; t += 0.5) voxel.eingriff('weg', bei(7, t), 1.4);                 // Grube
+  for (let w = 0; w <= 12; w += 0.5) voxel.eingriff('weg', bei(7 + w, 3.2), 1.25);       // Tunnel vom Grubenboden
+  setzeGehen(true);
+  const stelle = () => {
+    if (P.get('grabtest') === '2') { cam.copy(bei(9.5, 3.2 + 1.25 - 0.1)); neigung = -0.1; }
+    else { cam.copy(bei(3.2, -AUGE)); neigung = -0.55; }
+    if (voxel.info().saeulen < 2) setTimeout(stelle, 400);   // erst wenn die Voxel stehen, sonst hebt der alte Boden einen heraus
+  };
+  stelle();
+}
 if (P.get('uhr')) zw.stelleOrtszeit([cam.x / cam.length(), cam.y / cam.length(), cam.z / cam.length()], +P.get('uhr'));
 requestAnimationFrame(bild);
