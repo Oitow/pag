@@ -8,6 +8,7 @@ import { berechneGeologie, GESTEIN_NAME, GESTEIN_FARBE } from './geologie.js';
 import { biom, BIOM_NAME, tempAm, waldDichte, bodenFarbe } from './klima.js';
 import { streuKacheln, streueKachel, streuStufe, STREU_ARTEN, STRIDE } from './natur-streu.js';
 import { createNatur, ZIEL_HOEHE } from './natur.js';
+import { installiereDunst, aktualisiereDunst, DUNST_GLSL } from './dunst.js';
 import { createMond } from '../../../engine/render/mond.js';
 import { createEingriffe } from './eingriffe.js';
 import { createZeitWetter } from './zeit-wetter.js';
@@ -70,6 +71,7 @@ sonne.shadow.bias = -0.0004;
 sonne.shadow.normalBias = 0.06;
 const himmelLicht = new THREE.HemisphereLight(0xa8ccff, 0x3b3424, 0.7);
 scene.add(sonne, sonne.target, himmelLicht, new THREE.AmbientLight(0x404858, 0.25));
+installiereDunst(); // vor dem ersten Material: Nebel-Bausteine ersetzen
 scene.fog = new THREE.FogExp2(0x9cc4ec, 0);
 
 // Nahdetail des Bodens: Wertrauschen, Zellen modulo Periode (1024 m * Frequenz) → kein Sprung, wenn die Kamera die Wrap-Grenze quert
@@ -166,13 +168,13 @@ let stufenFarben = false;
 const welt = new THREE.Group();
 scene.add(welt);
 // ---------- Fernwald: Bäume als Punkte (Silhouette im Shader), hängen an ihrer Gelände-Kachel ----------
-const fernU = { uPixel: { value: 600 }, uNah: { value: 270 }, uLicht: { value: new THREE.Color(1, 1, 1) }, uNebelDichte: { value: 0 }, uNebelFarbe: { value: new THREE.Color() } };
+const fernU = { uPixel: { value: 600 }, uNah: { value: 270 }, uLicht: { value: new THREE.Color(1, 1, 1) }, uNebelDichte: { value: 0 }, uNebelFarbe: { value: new THREE.Color() }, uSonneV: { value: new THREE.Vector3(0, 1, 0) }, uSonneFarbe: { value: new THREE.Color() } };
 const fernMat = new THREE.ShaderMaterial({
   uniforms: fernU,
   vertexShader: `
 attribute float groesse; attribute float art; attribute vec3 farbe;
 uniform float uPixel, uNah;
-varying vec3 vFarbe; varying float vArt, vAlpha, vNebel;
+varying vec3 vFarbe, vRicht; varying float vArt, vAlpha, vNebel;
 #include <common>
 #include <logdepthbuf_pars_vertex>
 void main() {
@@ -182,14 +184,15 @@ void main() {
   float px = groesse * uPixel / max(d, 1.0);
   vAlpha *= smoothstep(1.2, 3.0, px);                         // unter ~2 px ausblenden: sonst dunkle Krümel von hoch oben
   gl_PointSize = vAlpha < 0.01 ? 0.0 : clamp(px, 1.5, 64.0);
-  vFarbe = farbe; vArt = art; vNebel = d;
+  vFarbe = farbe; vArt = art; vNebel = d; vRicht = mv.xyz;
   gl_Position = projectionMatrix * mv;
   #include <logdepthbuf_vertex>
 }`,
   fragmentShader: `
-uniform vec3 uLicht, uNebelFarbe; uniform float uNebelDichte;
-varying vec3 vFarbe; varying float vArt, vAlpha, vNebel;
+uniform vec3 uLicht, uNebelFarbe, uSonneV, uSonneFarbe; uniform float uNebelDichte;
+varying vec3 vFarbe, vRicht; varying float vArt, vAlpha, vNebel;
 #include <logdepthbuf_pars_fragment>
+${DUNST_GLSL}
 void main() {
   vec2 p = gl_PointCoord; p.y = 1.0 - p.y;                    // 0 unten … 1 oben
   float x = abs(p.x - 0.5), hell;
@@ -204,7 +207,7 @@ void main() {
   #include <logdepthbuf_fragment>
   vec3 c = vFarbe * hell * uLicht;
   float nebel = 1.0 - exp(-uNebelDichte * uNebelDichte * vNebel * vNebel);
-  gl_FragColor = vec4(mix(c, uNebelFarbe, nebel), 1.0);
+  gl_FragColor = vec4(mix(c, uNebelFarbe + dunstGlanz(vRicht, uSonneV, uSonneFarbe, nebel), nebel), 1.0);
   if (vAlpha < 0.5 && fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) > vAlpha * 2.0) discard; // weiches Einblenden ohne Sortieren
 }`,
 });
@@ -785,6 +788,11 @@ function karteMarker() {
 const hud = document.getElementById('hud');
 const nullPunkt = new THREE.Vector3();
 const kamOff = new THREE.Vector3(), kamAbs = new THREE.Vector3(), kamZiel = new THREE.Vector3();
+// Kamera-Lebendigkeit (nur Darstellung, die Physik-Position `cam` bleibt unberührt)
+const WACKELN = P.get('wackeln') !== 'aus';
+const FOV_BASIS = 65;
+let wackelPhase = 0, wackelAmp = 0, landeAmp = 0, landeT = 1, fovExtra = 0, kamGlatt = null;
+const daempf = (rate, dt) => 1 - Math.exp(-rate * dt);   // bildratenunabhängige Glättung
 const grau = new THREE.Color(), abend = new THREE.Color(1, 0.55, 0.3);
 const blau = new THREE.Color(0x8fbfea), nacht = new THREE.Color(0x0a1020), schwarz = new THREE.Color(0x01030a), himmel = new THREE.Color();
 let alt = performance.now(), fpsT = 0, fpsN = 0, fps = 0, wahlT = 1, info = { angezeigt: 0, gebaut: 0, laufend: 0, offen: 0 };
@@ -835,6 +843,7 @@ function bild() {
   if (tasten.has('ShiftLeft') || tasten.has('KeyQ')) hoch -= 1;
   if (vor || seit || hoch) auto = null;
   const altPos = cam.clone();
+  const fallVAnfang = fallV, warAmBoden = amBoden;
   let kleben = 0;   // Bergab-Klebedistanz (m): >0 nur, wenn man zu Fuß am Boden lief und nicht springt
   if (gehen && erw.bewegung(dt, { vor, seit, hoch, tempo: 2 ** (+tempoEl.value) })) {
     // ein Modul (z. B. Gleiter) bewegt den Spieler selbst; Boden-Grenze unten gilt weiter
@@ -883,6 +892,8 @@ function bild() {
   else if (gehen && lc > minR + 0.05) amBoden = false;
   if (gehen && schwimmt && fallV < 0) fallV = Math.max(fallV, -1);
   hoeheBoden = cam.length() - R - g2;
+  // Landestoß: Aufprallgeschwindigkeit merken (nur wenn man vorher in der Luft war)
+  if (gehen && amBoden && !warAmBoden && !schwimmt && fallVAnfang < -3.5) { landeAmp = Math.min(0.28, -fallVAnfang * 0.014); landeT = 0; }
   tempoAnzeige = THREE.MathUtils.lerp(tempoAnzeige, cam.distanceTo(altPos) / Math.max(dt, 1e-3), 0.1);
 
   // Kacheln wählen (10× pro Sekunde reicht)
@@ -912,13 +923,39 @@ function bild() {
     // 3. Person: Kamera hinter und etwas über der Figur (über die rechte Schulter), nie im Boden
     const fliegt = !!erwWelt.dienste.gleiter?.fliegt?.();   // im Gleiter weiter weg, damit Schirm + Figur ins Bild passen
     kamOff.copy(blick).multiplyScalar(fliegt ? -9 : -4.6).addScaledVector(oben, fliegt ? 2.2 : 1.0).addScaledVector(rechts, fliegt ? 0 : 0.6);
-    kamAbs.copy(cam).add(kamOff);
-    const kd = tmp.copy(kamAbs).normalize(), kp = planet.probe(kd.x, kd.y, kd.z, 0.5);
-    const unter = R + Math.max(kp.h, kp.wasser) + 0.4 - kamAbs.length();
+    // weich nachziehen (Wunschversatz → geglätteter Versatz); bei Sprüngen (Ortswechsel, Modus) sofort
+    if (!kamGlatt || kamGlatt.distanceTo(kamOff) > 6) kamGlatt = (kamGlatt ?? new THREE.Vector3()).copy(kamOff);
+    else kamGlatt.lerp(kamOff, daempf(9, dt));
+    kamOff.copy(kamGlatt);
+    // Boden-Abstand an Kamera und Mitte zwischen Kamera und Figur prüfen (Hang: Kamera nicht in den Berg)
+    let unter = 0;
+    for (const f of [1, 0.5]) {
+      kamAbs.copy(cam).addScaledVector(kamOff, f);
+      const kd = tmp.copy(kamAbs).normalize(), kp = planet.probe(kd.x, kd.y, kd.z, 0.5);
+      unter = Math.max(unter, R + Math.max(kp.h, kp.wasser) + 0.4 - kamAbs.length());
+    }
     if (unter > 0) kamOff.addScaledVector(oben, unter);
     camera.position.copy(kamOff);
     camera.lookAt(kamZiel.copy(blick).multiplyScalar(12).addScaledVector(oben, fliegt ? 1.2 : -0.6));
-  } else camera.lookAt(blick);
+  } else {
+    kamGlatt = null;
+    // 1. Person: Kopfwippen beim Gehen am Boden + Landestoß, nur als Darstellungsversatz
+    const gleitet = !!erwWelt.dienste.gleiter?.fliegt?.();
+    const laeuft = WACKELN && gehen && amBoden && !schwimmt && !gleitet && !auto;
+    const v = Math.min(tempoAnzeige, GEH_TEMPO * 2.5);
+    wackelAmp += ((laeuft && v > 0.6 ? 1 : 0) - wackelAmp) * daempf(8, dt);
+    wackelPhase += dt * v * 1.9;   // ≈ 2 Schritte/s bei Gehtempo
+    landeT = Math.min(1, landeT + dt / 0.25);
+    const dip = WACKELN ? -landeAmp * Math.sin(Math.PI * landeT) * (1 - landeT) * 1.6 : 0;
+    const bobY = Math.sin(wackelPhase * 2) * 0.035 * wackelAmp, bobX = Math.sin(wackelPhase) * 0.02 * wackelAmp;
+    camera.position.set(0, 0, 0).addScaledVector(oben, bobY + dip).addScaledVector(rechts, bobX);
+    camera.lookAt(tmp.copy(blick).add(camera.position));
+  }
+  // Blickfeld: schneller Gleitflug / Sprint weitet leicht, sonst normal
+  const gl = !!erwWelt.dienste.gleiter?.fliegt?.();
+  const fovZiel = !gehen ? 0 : gl ? 9 * THREE.MathUtils.smoothstep(tempoAnzeige, 14, 40) : 7 * THREE.MathUtils.smoothstep(tempoAnzeige, GEH_TEMPO * 1.25, GEH_TEMPO * 2);
+  fovExtra += (fovZiel - fovExtra) * daempf(3, dt);
+  if (Math.abs(camera.fov - (FOV_BASIS + fovExtra)) > 0.01) { camera.fov = FOV_BASIS + fovExtra; camera.updateProjectionMatrix(); }
 
   // Zeit & Wetter (Klima vom Ort, alle 0,3 s erneuert)
   zw.update(dt, oben, klimaHier);
@@ -934,8 +971,7 @@ function bild() {
   himmel.copy(nacht).lerp(blau, tag).lerp(grau.setRGB(0.55, 0.6, 0.65).multiplyScalar(0.25 + 0.75 * tag), wolken * 0.85).lerp(schwarz, raum);
   himmel.r += blitz * 0.5; himmel.g += blitz * 0.5; himmel.b += blitz * 0.55;
   scene.background = himmel;
-  scene.fog.color.copy(himmel);
-  scene.fog.density = (1 - raum) * (2.6 / (R * 0.35) + W.nebel * 0.006 + (W.regen + W.schnee) * 0.0012);
+  aktualisiereDunst({ fog: scene.fog, himmel, hs, tag, raum, hoehe: hoeheBoden, W, R });
   // Sonne: Stand aus der Uhr, abends rötlich, Wolken dämpfen
   sonne.intensity = 2.4 * THREE.MathUtils.smoothstep(hs, -0.03, 0.12) * (1 - 0.7 * wolken) + blitz * 2;
   sonne.color.setRGB(1, 0.95, 0.86).lerp(abend, (1 - THREE.MathUtils.smoothstep(hs, 0.02, 0.3)) * 0.8);
@@ -955,7 +991,9 @@ function bild() {
   const lichtStaerke = 0.3 + 0.85 * THREE.MathUtils.smoothstep(hs, -0.05, 0.25) * (1 - 0.5 * wolken) + 0.1 * (1 - tag);
   fernU.uLicht.value.copy(sonne.color).multiplyScalar(lichtStaerke);
   fernU.uNebelDichte.value = scene.fog.density;
-  fernU.uNebelFarbe.value.copy(scene.fog.color);
+  fernU.uNebelFarbe.value.copy(scene.fog.color).convertLinearToSRGB(); // Punkt-Shader gibt ohne Farbraum-Baustein aus
+  fernU.uSonneV.value.copy(SONNE).transformDirection(camera.matrixWorldInverse);
+  fernU.uSonneFarbe.value.copy(sonne.color).multiplyScalar(sonne.intensity);
   wasserU.wZeit.value = jetzt / 1000;
   wasserU.wasserCam.value.copy(cam);
   wasserU.wHimmel.value.copy(himmel).lerp(blau, 0.3);

@@ -156,7 +156,7 @@
 | totholz-form | `engine/models/natur/totholz-form.js` | Reine Röhren-Geometrie (ohne THREE) für Totholz/Äste: Ringe entlang eines Pfads, Enden zu/Spitze/Jahresring-Scheibe, Markierung je Dreieck | neu |
 | totholz | `engine/models/natur/totholz.js` | Prozedurales Low-Poly-Totholz (Vertrag NATUR-ASSETS): baumstumpf (Jahresringe, Wurzelansätze), liegenderStamm (Aststummel), ast | neu |
 | bau-instanzen | `engine/render/bau-instanzen.js` | Bau-Teile (Häuser, Laternen, Brunnen …) als InstancedMesh je typ#variante, ein gemeinsames Leucht-Mesh, Kollisions-Körper und Anker in Weltlage | entwurf |
-| baum-impostor | `engine/render/baum-impostor.js` | Ferne Bäume als „Foto“ des echten Modells: jede Art wird beim Start aus N Richtungen in einen Atlas (Farbe + Normale) gerendert und fern als EIN Quad (2 Dreiecke) gezeigt, das sich zur Kamera dreht; Licht aus der gebackenen Normale → sieht aus wie der nahe Baum, kostet fast nichts | entwurf |
+| baum-impostor | `engine/render/baum-impostor.js` | Ferne Bäume als „Foto“ des echten Modells: jede Art wird beim Start aus N Richtungen und 2 Höhen (seitlich, 40° von oben) in einen Atlas (Farbe + Normale) gerendert und fern als EIN Quad (2 Dreiecke) gezeigt, das sich zur Kamera dreht; Licht aus der gebackenen Normale → sieht aus wie der nahe Baum, kostet fast nichts | entwurf |
 | figur-material | `engine/render/figur-material.js` | Weiches Figuren-Material: Standard-Material mit Randlicht (Fresnel), aufgehellter Schattenseite und kräftigeren Farben – Figuren heben sich vom Gelände ab | entwurf |
 | gauss-saat | `engine/render/gauss-saat.js` | Prozedurale Gauß-Splats erzeugen: wachsender Daten-Sammler, Quaternion aus einer Normalen und flächengleiche Aussaat flacher Scheiben auf einem Dreiecksnetz (Moos, Flechten, Laub) | entwurf |
 | gauss-sortierung | `engine/render/gauss-sortierung.js` | Tiefen-Sortierung für Gauß-Splats: 16-Bit-Zähl-Sortierung entlang der Blickrichtung (hinten→vorn), ohne Allokation je Aufruf – 120 k Splats in ~1–3 ms | entwurf |
@@ -177,6 +177,7 @@
 | psx | `engine/render/psx.js` | PS1-Look für eine ganze Szene (aus Viniland übernommen): Eckpunkte rasten auf ein grobes Bildraster (Wackeln), wenige Farbstufen mit Bayer-Dithering, grobe Pixel (kleine interne Auflösung, hart hochskaliert), Stimmung (Kontrast, Sättigung, Tönung, Vignette je Ansicht/Splitscreen) – live an/aus ohne Neu-Kompilieren | entwurf |
 | qualitaet | `engine/render/qualitaet.js` | Automatische Qualitätsstufe nach Bildzeit (Handy-Schutz): wird es langsam, sinken Pixelverhältnis, Schattenkarte, Partikel und Schadens-Zahlen; wird es lange schnell, steigen sie wieder – mit Hysterese, reine Logik (das Spiel wendet die Werte an) | entwurf |
 | splat-look | `engine/render/splat-look.js` | Gaussian-Splat-Look für eine fertige Szene: das Bild wird klein gerendert und als zehntausende weiche, längliche Gauß-Flecken neu gemalt (entlang der Kanten ausgerichtet, nah größer als fern) – Stil-Experiment, keine echten 3D-Splats | entwurf |
+| ueberblenden | `engine/render/ueberblenden.js` | Weiches Überblenden zwischen Detailstufen (LOD) per Bildschirm-Raster: zwei Stufen zeichnen sich mit Gegen-Vergleich auf dasselbe 4×4-Raster → keine Lücke, kein Doppel, kein Ploppen; je Instanz ein Wert `ueber` | entwurf |
 | zauber-effekte | `engine/render/zauber-effekte.js` | Leichte Zauber-Effekte fürs Handy: ein Partikel-Points-Objekt (Funken, Schweife), leuchtende Geschoss-Kugeln, Schockwellen-Ringe, Blitze, Erdstacheln, Schutz-Aura, Meteor-Sturz – alles aus Pools | entwurf |
 | modul-bewohner | `engine/spiel/modul-bewohner.js` | Spiel-Modul 'bewohner': 6–10 Siedler an welt.ort('siedlung') mit Tagesablauf (character-brain, Stunde aus himmel.uhr), Namensschildern, Entität je Bewohner (Team freund), Treffer/Tod-Reaktion, LOD (ferne NPCs seltener, ganz ferne eingefroren) | entwurf |
 | modul-dorf | `engine/spiel/modul-dorf.js` | Spiel-Modul 'dorf': Startdorf Erlenwacht am Ort 'siedlung' – Plan (world/dorf-plan) + Gebäude/Kleinkram (models/bau) als Instanzen mit Kollision (render/bau-instanzen), Licht in der Nacht (render/licht-pool), Platz + Gassen als Boden, Felder voller Beete, Brücke über den Erlbach, Treffpunkt-Stationen (Brunnen, Schrein, Anschlagbrett, Amboss, Lagerfeuer) für Tutorial und Spieler | entwurf |
@@ -373,6 +374,7 @@
 | clip | character-animator, character-clips-mehr, character-clips-zauber, character-clips |
 | controller | character-motor, character |
 | crafting | rezepte, stationen |
+| crossfade | ueberblenden |
 | dach | bau-teile |
 | daemmerwald | laub-klumpen, riesenbaum-form, riesenbaum-krone, riesenbaum-netz, riesenbaum, modul-riesenwald, riesenwald-plan |
 | dampf | element-reaktionen, zauber-anzeige |
@@ -383,6 +385,7 @@
 | detailstufen | chunk-strom |
 | deterministisch | nahkampf, welt-streu |
 | dialog | modul-tutorial, tutorial-daten, figur-schild, menue |
+| dither | ueberblenden |
 | dithering | psx |
 | dom | fake-dom, chat, figur-editor, menue, treffer-zahlen |
 | dorf | bau-dorf-teile, bau-instanzen, modul-dorf, dorf-plan-kern, dorf-plan, worldgen-sites, worldgen-wege |
@@ -532,7 +535,7 @@
 | instanced | character-lod |
 | instancedmesh | bau-instanzen, horde-mesh |
 | instancing | hase, keiler, ratte, reh, wolf, grosszauber-wand-ansicht, horde-mesh, fern-wald |
-| instanzen | laub-klumpen, bau-instanzen, natur-material, gras-feld, scatter-mesh |
+| instanzen | laub-klumpen, bau-instanzen, natur-material, ueberblenden, gras-feld, scatter-mesh |
 | instanziert | gauss-wolke, laub-karten |
 | interaktion | interaktion, tueren |
 | interest | modul-gegner |
@@ -603,7 +606,7 @@
 | localStorage | speicher |
 | lock-on | follow-camera, ziel-wahl, modul-spieler |
 | locken | character-parts-haar, figur-haar |
-| lod | character-lod, astbaum, laub-klumpen, baum-impostor, modul-bewohner, modul-riesenwald, modul-welt, riesenwald-teile, chunk-strom, fern-wald |
+| lod | character-lod, astbaum, laub-klumpen, baum-impostor, ueberblenden, modul-bewohner, modul-riesenwald, modul-welt, riesenwald-teile, chunk-strom, fern-wald |
 | logik | pflanze-formen |
 | look | character-look, figur-material, psx, splat-look, figur-editor |
 | loop | schleife |
@@ -730,7 +733,7 @@
 | registry | natur-assets |
 | reh | reh |
 | reichweite | faehigkeiten, interaktion |
-| render | baum-impostor, grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht, kronen-lichtkarte, laub-karten, natur-material, gras-feld |
+| render | baum-impostor, grosszauber-mesh, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-wand-ansicht, grosszauber-welle-ansicht, kronen-lichtkarte, laub-karten, natur-material, ueberblenden, gras-feld |
 | render-target | kronen-lichtkarte |
 | renderer | spiel |
 | rendern | horde-mesh |
@@ -795,7 +798,7 @@
 | sekundaer | character-sekundaer |
 | seltenheit | beute, gegenstaende-daten |
 | server | befehle |
-| shader | figur-material, gauss-wolke, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-welle-ansicht, laub-karten, natur-material, niederschlag, psx, splat-look, zauber-effekte, fluss-mesh, himmel, wasser-glanz |
+| shader | figur-material, gauss-wolke, grosszauber-riss-ansicht, grosszauber-sturm-ansicht, grosszauber-welle-ansicht, laub-karten, natur-material, niederschlag, psx, splat-look, ueberblenden, zauber-effekte, fluss-mesh, himmel, wasser-glanz |
 | sicht | character-sinne |
 | siedlung | modul-bewohner, modul-dorf, dorf-plan |
 | skelett | character-rig, baum-skelett |
@@ -888,6 +891,7 @@
 | turban | character-parts-hut |
 | turm | tempel |
 | tutorial | aufgaben, modul-tutorial, tutorial-daten, aufgaben-anzeige, welt-plan |
+| ueberblenden | ueberblenden |
 | ufer | landschaftsgruppen, terrain-farben, wasser-glanz |
 | uhr | zeit, modul-himmel |
 | ui | modul-oberflaeche, oberflaeche-fenster, aufgaben-anzeige, chat, figur-editor, figur-schild, hud, inventar-ansicht, kampf-leiste, menue, minikarte, treffer-zahlen, zauber-leiste, ziel-rahmen |
@@ -986,7 +990,7 @@ klang.spiele('wumms', { staerke: 1.5, tonhoehe: 0.8 });
 klang.dauerton('laden', { staerke: 0.4, tonhoehe: 1.3 }); // jedes Bild; null = aus
 ```
 
-Genutzt von: enklave, figuren · Tags: audio, klang, sound, zauber, kampf, synth, webaudio · THREE: nein
+Genutzt von: enklave, erde, figuren · Tags: audio, klang, sound, zauber, kampf, synth, webaudio · THREE: nein
 
 ### follow-camera · `engine/camera/follow-camera.js` · v1.1.0 · entwurf
 Third-Person-Orbitkamera: weiches Folgen (vertikal träger), Kollision entlang des Sichtstrahls (Boden + Hindernisse, sanftes Zurückfahren), Auto-Ausrichtung, Sprint-FOV, Zoom, Schütteln, weiches Lock-On mit Zielwechsel, Erste-Person beim Reinzoomen, Presets (nah/weit/Schulter), Kamerafahrten
@@ -3567,10 +3571,10 @@ Teil: { id, typ, variante = 0, x, z, winkel (Drehung um Y; lokal +z zeigt nach (
 Welt = (x + lx·cos w + lz·sin w, z − lx·sin w + lz·cos w). Kasten-bx/bz der Assets sind HALBE Maße (wie in world/kollision).
 Anker-Eintrag: { teilId, typ, art (Anker-Name, bei station deren art), x, y, z, winkel, daten (Original-Anker) }.
 
-### baum-impostor · `engine/render/baum-impostor.js` · v1.0.0 · entwurf
-Ferne Bäume als „Foto“ des echten Modells: jede Art wird beim Start aus N Richtungen in einen Atlas (Farbe + Normale) gerendert und fern als EIN Quad (2 Dreiecke) gezeigt, das sich zur Kamera dreht; Licht aus der gebackenen Normale → sieht aus wie der nahe Baum, kostet fast nichts
+### baum-impostor · `engine/render/baum-impostor.js` · v1.1.0 · entwurf
+Ferne Bäume als „Foto“ des echten Modells: jede Art wird beim Start aus N Richtungen und 2 Höhen (seitlich, 40° von oben) in einen Atlas (Farbe + Normale) gerendert und fern als EIN Quad (2 Dreiecke) gezeigt, das sich zur Kamera dreht; Licht aus der gebackenen Normale → sieht aus wie der nahe Baum, kostet fast nichts
 
-- `createBaumImpostor({ renderer, baeume: [{ art, geometrie }], richtungen = 8, px = 128, streulicht = 0.28, alphaTest = 0.42 }) -> { material, geometrie(art) -> BufferGeometry (Quad, für InstancedMesh), hat(art), dispose() }`
+- `createBaumImpostor({ renderer, baeume: [{ art, geometrie }], richtungen = 8, px = 128, streulicht = 0.28, alphaTest = 0.42 }) (Instanz-Attribut `ueber` optional, engine/render/ueberblenden) -> { material, geometrie(art) -> BufferGeometry (Quad, für InstancedMesh), hat(art), dispose() }`
 
 ```js
 import { createBaumImpostor } from '../../engine/render/baum-impostor.js';
@@ -3892,6 +3896,21 @@ splat.aufloesung(innerWidth, innerHeight);                       // auch bei 're
 ```
 
 Genutzt von: enklave · Tags: splat, gaussian, gauss, look, stil, nachbearbeitung, postprocessing, maler, shader · THREE: ja
+
+### ueberblenden · `engine/render/ueberblenden.js` · v1.0.0 · entwurf
+Weiches Überblenden zwischen Detailstufen (LOD) per Bildschirm-Raster: zwei Stufen zeichnen sich mit Gegen-Vergleich auf dasselbe 4×4-Raster → keine Lücke, kein Doppel, kein Ploppen; je Instanz ein Wert `ueber`
+
+- `UEBER_VERT_KOPF, UEBER_VERT (in main: vUeber = ueber), UEBER_FRAG_KOPF, UEBER_FRAG (discard)`
+- `ueberWert(f, rolle) -> Zahl (rolle 'ein' | 'aus')`
+- `ueberAnteil(ab, grenze, breite) -> f 0…1`
+
+```js
+import { UEBER_VERT_KOPF, UEBER_VERT, UEBER_FRAG_KOPF, UEBER_FRAG, ueberWert, ueberAnteil } from '../../engine/render/ueberblenden.js';
+const f = ueberAnteil(abstand, 90, 12);           // 0 = innen (nahe Stufe), 1 = außen (ferne Stufe)
+nah.setAttribute… ueberWert(f, 'aus'); fern … ueberWert(f, 'ein');   // 0 = ganz sichtbar
+```
+
+Genutzt von: erde · Tags: render, lod, ueberblenden, dither, crossfade, instanzen, shader · THREE: nein
 
 ### zauber-effekte · `engine/render/zauber-effekte.js` · v1.1.0 · entwurf
 Leichte Zauber-Effekte fürs Handy: ein Partikel-Points-Objekt (Funken, Schweife), leuchtende Geschoss-Kugeln, Schockwellen-Ringe, Blitze, Erdstacheln, Schutz-Aura, Meteor-Sturz – alles aus Pools
