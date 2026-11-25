@@ -70,7 +70,7 @@ function zeige() {
   stelle(baueAstbaum(art, 31, { detail: 2, jahreszeit: zeit }).geometrie, weich, 0);
   stelle(baueAstbaum(art, 31, { detail: 1, jahreszeit: zeit }).geometrie, weich, H * 1.1);
   stelle(erzeuge(art, 31, { detail: 1, jahreszeit: zeit }).geometrie, alt, -H * 1.1);
-  stelle(baueAstbaumFern(art, 31, { jahreszeit: zeit }), alt, -H * 2.2);
+  stelle(baueAstbaumFern(art, 31, { jahreszeit: zeit }), weich, -H * 2.2);
   document.getElementById('info').textContent = `${art} · ${H} m · links alt ${dreiecke[2]} △ · Mitte nah ${dreiecke[0]} △ · rechts mittel ${dreiecke[1]} △ · ganz links fern ${dreiecke[3]} △`;
   for (const b of document.querySelectorAll('#leiste button')) b.classList.toggle('an', b.textContent === art);
 }

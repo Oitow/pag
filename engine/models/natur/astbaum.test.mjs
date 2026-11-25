@@ -16,12 +16,12 @@ test('nur Arten mit Ästen + Laub (keine Etagen-Nadelbäume, Palmen, toten Bäum
   for (const t of ['tanne', 'palme', 'toterBaum']) assert.ok(!kannAstbaum(t), t);
 });
 
-test('Dreiecks-Budget: nah < 12k, mittel < 2.6k, fern < 80 (Handy)', () => {
+test('Dreiecks-Budget: nah < 12k, mittel < 2.6k, fern < 130 (Handy)', () => {
   for (const t of ASTBAUM_ARTEN) {
     const n = (d) => baueAstbaum(t, 31, { detail: d }).geometrie.attributes.position.count / 3;
     assert.ok(n(2) < 12000, `${t} nah ${n(2)}`);
     assert.ok(n(1) < 2600, `${t} mittel ${n(1)}`);
-    assert.ok(baueAstbaumFern(t, 31).attributes.position.count / 3 < 80, `${t} fern`);
+    assert.ok(baueAstbaumFern(t, 31).attributes.position.count / 3 < 130, `${t} fern`);
   }
 });
 

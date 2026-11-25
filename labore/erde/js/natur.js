@@ -37,7 +37,7 @@ function sicht(art) {
   // Bäume: nah volles Asset, mittel (nur Engine) Detailstufe 0, fern schlanke Form
   if (art === 'fichte') return { nah: 70, mittel: 0, fern: 320, varianten: 3 };
   if (art === 'birke') return { nah: 30, mittel: 0, fern: 320, varianten: 3 };
-  if (AST(art)) return { nah: 16, mittel: 45, fern: 320, varianten: 3 };   // Astbaum: nah ~5k, mittel ~1.3k, fern ~250 Dreiecke
+  if (AST(art)) return { nah: 25, mittel: 50, weit: 90, fern: 320, varianten: 3 };   // Astbaum: nah ~5k, mittel ~1.5k, weit ~450, fern ~110 Dreiecke (× Grafik-Stufe)
   if (BAUM.has(art)) return { nah: 22, mittel: 65, fern: 320, varianten: 3 };
   if (art === 'grasbueschel') return { nah: 30, fern: 0, varianten: 3 };
   if (KLEIN.has(art)) return { nah: 45, fern: 0, varianten: 2 };
@@ -162,7 +162,7 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
     if (s0 !== 1) { geo.scale(s0, s0, s0); geo.computeBoundingBox(); }
     return s0;
   };
-  const MITTEL_T = {};
+  const MITTEL_T = {}, WEIT_T = {};
   const toepfe = []; // { art, geo, mat, mesh, n, kap }
   const NAH = {}, FERN = {}, CFG = {};
   for (const art of STREU_ARTEN) {
@@ -206,9 +206,15 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
       MITTEL_T[art] = { art, geo: g, mat: material(0, ast), mesh: null, n: 0, kap: 0 };
       toepfe.push(MITTEL_T[art]);
     }
+    if (cfg.weit) {   // Zwischenstufe: Astgerüst + grobe Blätter (statt gleich Klumpen)
+      const g = baueAstbaum(art, 31, { detail: 0 }).geometrie;
+      aufZiel(art, g);
+      WEIT_T[art] = { art, geo: g, mat: material(0, true), mesh: null, n: 0, kap: 0 };
+      toepfe.push(WEIT_T[art]);
+    }
     if (cfg.fern && AST(art)) {   // Fern-Form aus demselben Astgerüst, auf die Höhe des nahen Baums
       const g = baueAstbaumFern(art, 31); g.scale(cfg.s0, cfg.s0, cfg.s0);
-      FERN[art] = { art, geo: g, mat: material(cfg.fern), mesh: null, n: 0, kap: 0 }; toepfe.push(FERN[art]);
+      FERN[art] = { art, geo: g, mat: material(cfg.fern, true), mesh: null, n: 0, kap: 0 }; toepfe.push(FERN[art]);
     } else if (cfg.fern) { FERN[art] = { art, geo: fernForm(art, erste), mat: material(cfg.fern), mesh: null, n: 0, kap: 0 }; toepfe.push(FERN[art]); }
     // Kollisionsradius bei Skala 1 (Geh-Modus): Fundus von Hand, Engine aus dem Asset
     cfg.kolli = ({ fichte: 0.22, birke: 0.16, granitblock: 0.85, schiefer: 0.8 }[art] ?? (FUNDUS.has(art) ? 0 : cfg.stamm || 0)) * cfg.s0;
@@ -277,7 +283,8 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
           let t = null;
           if (ab < cfg.nah) t = NAH[art][idx % cfg.varianten];
           else if (ab < cfg.mittel) t = MITTEL_T[art];
-          else if (ab < cfg.fern && (ab < 180 || idx % 2 === 0)) t = FERN[art]; // weit weg: jeder zweite reicht
+          else if (ab < cfg.weit) t = WEIT_T[art];
+          else if (ab < cfg.fern && (ab < 140 || idx % (ab < 230 ? 2 : 3) === 0)) t = FERN[art]; // weit weg: jeder zweite/dritte reicht
           if (!t) continue;
           t.n++;
           wahl.push(t, ax, ay, az, o, d);
