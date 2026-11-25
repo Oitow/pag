@@ -11,9 +11,12 @@ import { baueNaturAsset } from '../../../engine/models/natur/naturfundus.js';
 import { baueGruppe } from '../../../engine/models/natur/landschaftsgruppen.js';
 import { baueFundmodell } from '../../../engine/models/natur/fundmodelle.js';
 import { createAssetCache } from '../../../engine/models/natur/natur-assets.js';
+import { baueAstbaum, baueAstbaumFern, kannAstbaum } from '../../../engine/models/natur/astbaum.js';
 import { STREU_ARTEN, STRIDE } from './natur-streu.js';
 
 const FUNDUS = new Set(['fichte', 'birke', 'granitblock', 'schiefer', 'rohrkolben', 'seerose', 'steinpilz', 'forelle', 'barsch']);
+// Astbäume (engine astbaum): echte Äste + Blätter; Fichte/Birke kommen weiter aus dem Naturfundus
+const AST = (art) => kannAstbaum(art) && !FUNDUS.has(art);
 const GRUPPEN = new Set(['wollgras', 'pilzholz', 'flechtenbank']);   // engine/models/natur/landschaftsgruppen.js
 const FUNDE = new Set(['erzbrocken', 'ammonit', 'quarzdruse']);       // engine/models/natur/fundmodelle.js
 // Werfen Schatten (Gras, Moos, Blumen u. ä. nicht – kostet viel, sieht man kaum)
@@ -34,6 +37,7 @@ function sicht(art) {
   // Bäume: nah volles Asset, mittel (nur Engine) Detailstufe 0, fern schlanke Form
   if (art === 'fichte') return { nah: 70, mittel: 0, fern: 320, varianten: 3 };
   if (art === 'birke') return { nah: 30, mittel: 0, fern: 320, varianten: 3 };
+  if (AST(art)) return { nah: 16, mittel: 45, fern: 320, varianten: 3 };   // Astbaum: nah ~5k, mittel ~1.3k, fern ~250 Dreiecke
   if (BAUM.has(art)) return { nah: 22, mittel: 65, fern: 320, varianten: 3 };
   if (art === 'grasbueschel') return { nah: 30, fern: 0, varianten: 3 };
   if (KLEIN.has(art)) return { nah: 45, fern: 0, varianten: 2 };
@@ -124,12 +128,15 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
   const wind = { kwZeit: { value: 0 }, kwStaerke: { value: 1 }, kwRicht: { value: new THREE.Vector3(1, 0.3, 0.6).normalize() }, kwCam: { value: new THREE.Vector3() } };
   let weiteF = 1; // Grafik-Stufe: Sichtweiten der Natur × weiteF
   const materialien = new Map(); // weite → Material (+ .tiefe für den Schatten: gleicher Wind, gleiches Ausblenden)
-  const material = (weite) => {
-    if (materialien.has(weite)) return materialien.get(weite);
+  // weich = Astbaum: runde Normalen, Blätter beidseitig, Normalen nicht umdrehen (Krone von außen beleuchtet)
+  const material = (weite, weich = false) => {
+    const schl = weich ? 'w' + weite : weite;
+    if (materialien.has(schl)) return materialien.get(schl);
     const tiefe = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
     tiefe.customProgramCacheKey = () => 'kugelwind-tiefe-' + weite;
-    const m = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.9, metalness: 0 });
+    const m = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: !weich, roughness: 0.9, metalness: 0, side: weich ? THREE.DoubleSide : THREE.FrontSide });
     m.tiefe = tiefe;
+    m.userData.weite = weite;
     m.userData.u = { kwWeite: { value: weite * weiteF } };
     tiefe.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, wind, m.userData.u);
@@ -140,9 +147,10 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
       sh.vertexShader = KOPF + sh.vertexShader.replace('#include <begin_vertex>', KOERPER);
       // Streulicht durch Laub und vom Boden: Schatten- und Rückseiten nicht schwarz
       sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * 0.28;');
+      if (weich) sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal *= faceDirection;');
     };
-    m.customProgramCacheKey = () => 'kugelwind-' + weite;
-    materialien.set(weite, m);
+    m.customProgramCacheKey = () => 'kugelwind-' + schl;
+    materialien.set(schl, m);
     return m;
   };
 
@@ -174,6 +182,11 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
         const m = (GRUPPEN.has(art) ? baueGruppe : baueNaturAsset)(art, 11 + v * 977);
         m.material.dispose(); geo = mitWind(m.geometry, art);
       }
+      else if (AST(art)) {   // Äste, Zweige, Blätter statt Kugel-Kronen
+        const a = baueAstbaum(art, 31 + v * 977, { detail: 2 });
+        geo = a.geometrie;
+        if (v === 0) cfg.stamm = a.stammRadius;
+      }
       else {
         const a = engine.holen(art, v);
         geo = a.geometrie;
@@ -183,16 +196,20 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
       if (v === 0) cfg.s0 = s0;
       erste ??= geo;
       const weite = BAUM.has(art) && cfg.fern ? 0 : cfg.nah;
-      NAH[art].push({ art, geo, mat: material(weite), mesh: null, n: 0, kap: 0 });
+      NAH[art].push({ art, geo, mat: material(weite, AST(art)), mesh: null, n: 0, kap: 0 });
     }
     toepfe.push(...NAH[art]);
     if (cfg.mittel) {
-      const g = engineGrob.holen(art, 0).geometrie;
+      const ast = AST(art);
+      const g = ast ? baueAstbaum(art, 31, { detail: 1 }).geometrie : engineGrob.holen(art, 0).geometrie;
       aufZiel(art, g);
-      MITTEL_T[art] = { art, geo: g, mat: material(0), mesh: null, n: 0, kap: 0 };
+      MITTEL_T[art] = { art, geo: g, mat: material(0, ast), mesh: null, n: 0, kap: 0 };
       toepfe.push(MITTEL_T[art]);
     }
-    if (cfg.fern) { FERN[art] = { art, geo: fernForm(art, erste), mat: material(cfg.fern), mesh: null, n: 0, kap: 0 }; toepfe.push(FERN[art]); }
+    if (cfg.fern && AST(art)) {   // Fern-Form aus demselben Astgerüst, auf die Höhe des nahen Baums
+      const g = baueAstbaumFern(art, 31); g.scale(cfg.s0, cfg.s0, cfg.s0);
+      FERN[art] = { art, geo: g, mat: material(cfg.fern), mesh: null, n: 0, kap: 0 }; toepfe.push(FERN[art]);
+    } else if (cfg.fern) { FERN[art] = { art, geo: fernForm(art, erste), mat: material(cfg.fern), mesh: null, n: 0, kap: 0 }; toepfe.push(FERN[art]); }
     // Kollisionsradius bei Skala 1 (Geh-Modus): Fundus von Hand, Engine aus dem Asset
     cfg.kolli = ({ fichte: 0.22, birke: 0.16, granitblock: 0.85, schiefer: 0.8 }[art] ?? (FUNDUS.has(art) ? 0 : cfg.stamm || 0)) * cfg.s0;
     cfg.hoehe = erste.boundingBox ? erste.boundingBox.max.y : 1;
@@ -331,7 +348,7 @@ export function createNatur(scene, { istWeg = () => false } = {}) {
   }
 
   /** Sichtweiten-Faktor (Grafik-Stufe), 0.5 … 1 */
-  function setzeWeite(f) { weiteF = f; schmutzig = true; for (const [w, m] of materialien) { if (m.userData.u) m.userData.u.kwWeite.value = w * f; } }
+  function setzeWeite(f) { weiteF = f; schmutzig = true; for (const m of materialien.values()) { if (m.userData.u) m.userData.u.kwWeite.value = m.userData.weite * f; } }
   return { update, naheHindernisse, finde, setzeWind, setzeWeite, neu: () => { schmutzig = true; }, dispose, get info() {
     const top = [...teuer].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([a, n]) => `${a} ${Math.round(n / 1000)}k`).join(', ');
     return { anzahl, dreiecke: Math.round(dreiecke), top };

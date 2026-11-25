@@ -9,6 +9,7 @@
 | Figurenlabor | Codex | character-lab-parcours | 23.11.2026 | Bewegung, Parcours und Übungsgegner |
 | Figur organisch (figur-form, figur-haut, figur-koerper, figur-kleidung, figur-haar, Galerie im Figurenlabor) | Claude (+2 Agents) | `claude/figur-organisch` | 23.11. | Figuren aus einem glatten SDF-Körper mit Skinning statt Klötzen |
 | welt, riesenwald-Boden, dorf (neu), tutorial | Claude (Weltgen + 5 Agents) | `claude/welt-startdorf` | 23.11. | Startdorf Erlenwacht, Bäche, Gras, Dorf-Assets, Licht, Dorf-Tutorial – Plan `docs/plaene/WELT-STARTDORF.md` |
+| Wildgrund/Erde: Astbäume (`engine/models/natur/astbaum.js`, `labore/erde/js/natur.js`, Baum-Galerie) | Claude | `claude/erde-baeume-aeste` | 25.11. | Bäume mit echten Ästen, Zweigen, Blättern statt Kugel-Kronen; danach Wasser/Küste, Bodendetail, Licht |
 | Erde-Labor (`labore/erde`) + geteilte Natur-Assets/Mond nach `engine/` | Claude (+ Agents) | `claude/erde-aufraeumen`, danach `claude/erde-*` | 24.11. | Spiel-Module auf dem Planeten: Überleben, Herstellen, Bauen, Tiere, Gleiter, Schmiede, Tagebuch, Figur (fertig auf `claude/erde-nacht`), Felder (läuft) |
 
 ## Geteilte Dateien (nur beim Zusammenführen ändern)
