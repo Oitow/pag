@@ -224,6 +224,8 @@ export function createBauen(welt) {
 
   // ---------- Dienste ----------
   const dienste = {
+    /** Lagerfeuer (absolute Punkte, Kopien) im Umkreis r um p – für Zierrat wie glühen.js. */
+    feuerPunkte(p, r = 40) { return alleFeuer().filter((f) => f.w.distanceTo(p) <= r).map((f) => f.w.clone()); },
     waermeBei(p) {
       let w = 0;
       for (const f of alleFeuer()) { const d = f.w.distanceTo(p); w = Math.max(w, d <= 4 ? 25 : d < 8 ? 25 * (8 - d) / 4 : 0); }
