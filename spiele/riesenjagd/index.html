@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Riesenjagd</title>
+<meta name="description" content="Riesenjagd: mit Seil-Haken durch einen Urwald aus hundert Meter hohen Bäumen schwingen und Trolle und Zyklopen erklettern – PS2-Stimmung im Browser.">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a201f; color: #e8e4d8; font: 14px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+  #oben { position: fixed; top: max(8px, env(safe-area-inset-top)); right: max(8px, env(safe-area-inset-right)); z-index: 6; }
+  #oben a { color: #e8e4d8; text-decoration: none; background: rgba(16,20,18,.6); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 6px 10px; min-height: 40px; display: grid; place-items: center; }
+  #werte { position: fixed; left: max(10px, env(safe-area-inset-left)); top: max(10px, env(safe-area-inset-top)); z-index: 5; width: min(42vw, 200px); pointer-events: none; }
+  .leiste { height: 9px; margin-bottom: 5px; background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.14); border-radius: 2px; overflow: hidden; }
+  .leiste i { display: block; height: 100%; transform-origin: left; transition: transform .12s linear; }
+  #hp { background: linear-gradient(#c8463a, #7a2a22); }
+  #gas { background: linear-gradient(#d8e0e0, #8a9898); }
+  #ausdauer { background: linear-gradient(#e0b850, #8a6a24); }
+  .klein { font-size: 10px; letter-spacing: .12em; opacity: .7; margin: 0 0 1px; text-transform: uppercase; }
+  #mana { margin-top: 6px; font-size: 11px; display: flex; gap: 6px; align-items: center; }
+  #mana .leiste { flex: 1; margin: 0; height: 6px; }
+  #manaB { background: #ffb070; }
+  #boss { position: fixed; left: 50%; top: max(14px, env(safe-area-inset-top)); transform: translateX(-50%); width: min(60vw, 420px); z-index: 5; text-align: center; pointer-events: none; }
+  #boss[hidden] { display: none; }
+  #bossName { font: 400 13px Georgia, serif; letter-spacing: .22em; text-transform: uppercase; text-shadow: 0 1px 6px #000; margin-bottom: 3px; }
+  #boss .leiste { height: 8px; }
+  #bossHp { background: linear-gradient(#d8a050, #7a4a1a); }
+  #kreuz { position: fixed; left: 50%; top: 44%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border: 2px solid rgba(255,255,255,.35); border-radius: 50%; z-index: 4; pointer-events: none; }
+  #kreuz.baum { border-color: rgba(240,240,220,.9); }
+  #kreuz.riese { border-color: #ffa24a; }
+  #kreuz.aus { display: none; }
+  #marke { position: fixed; width: 22px; height: 22px; margin: -11px 0 0 -11px; z-index: 4; pointer-events: none; border: 2px solid #f0ecd8; transform: rotate(45deg); }
+  #marke.riese { border-color: #ffa24a; }
+  #marke[hidden] { display: none; }
+  #hinweis { position: fixed; left: 50%; top: calc(max(14px, env(safe-area-inset-top)) + 46px); transform: translateX(-50%); max-width: 88vw; text-align: center; z-index: 5; pointer-events: none;
+    padding: 8px 14px; border-radius: 10px; background: rgba(14,16,14,.6); font-size: 14px; text-shadow: 0 1px 4px #000; }
+  #hinweis[hidden] { display: none; }
+  #zahlen { position: fixed; inset: 0; pointer-events: none; z-index: 4; }
+  .zahl { position: absolute; left: 0; top: 0; font: 700 16px Georgia, serif; text-shadow: 0 2px 4px #000, 0 0 10px rgba(0,0,0,.6); white-space: nowrap; }
+  .zahl.gross { font-size: 24px; letter-spacing: .04em; }
+  #rot { position: fixed; inset: 0; pointer-events: none; z-index: 3; opacity: 0; background: radial-gradient(ellipse at center, transparent 45%, rgba(140,10,0,.9)); }
+  #info { position: fixed; left: 8px; bottom: max(6px, env(safe-area-inset-bottom)); padding: 3px 8px; font-size: 11px; color: #c8d2cc; background: rgba(16,22,22,.55); border-radius: 8px; pointer-events: none; z-index: 2; }
+  #info:empty { display: none; }
+  #lade { position: fixed; inset: 0; display: grid; place-items: center; background: #141a19; font: 300 1.1rem Georgia, serif; z-index: 30; text-align: center; letter-spacing: .1em; }
+  #lade small { display: block; opacity: .6; margin-top: 6px; font: .8rem system-ui; letter-spacing: 0; }
+  #lade[hidden], #fehler[hidden] { display: none; }
+  #fehler { position: fixed; left: 8px; right: 8px; top: 120px; padding: 10px; background: #5a1f1f; border-radius: 8px; white-space: pre-wrap; font: 12px monospace; z-index: 40; }
+  #titel { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; pointer-events: none; z-index: 20; opacity: 0; transition: opacity 1.6s ease; background: radial-gradient(ellipse, rgba(0,0,0,.15), rgba(0,0,0,.55)); }
+  #titel.an { opacity: 1; }
+  #titel b { display: block; font: 300 clamp(2rem, 9vw, 4rem)/1.05 Georgia, "Times New Roman", serif; letter-spacing: .22em; text-shadow: 0 2px 18px rgba(0,0,0,.8); }
+  #titel span { display: block; margin-top: 12px; opacity: .8; letter-spacing: .1em; text-shadow: 0 1px 8px rgba(0,0,0,.8); }
+  #titel small { display: block; margin-top: 18px; opacity: .6; font-size: 12px; letter-spacing: .02em; }
+  @media (max-aspect-ratio: 1/1) { #boss { top: calc(max(10px, env(safe-area-inset-top)) + 112px); width: 80vw; } #hinweis { top: calc(max(10px, env(safe-area-inset-top)) + 150px); } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="rot"></div>
+<div id="werte">
+  <p class="klein">Leben</p><div class="leiste"><i id="hp"></i></div>
+  <p class="klein">Gas</p><div class="leiste"><i id="gas"></i></div>
+  <p class="klein">Ausdauer</p><div class="leiste"><i id="ausdauer"></i></div>
+  <div id="mana">☄<div class="leiste"><i id="manaB"></i></div></div>
+</div>
+<div id="boss" hidden><div id="bossName"></div><div class="leiste"><i id="bossHp"></i></div></div>
+<div id="kreuz" class="leer"></div>
+<div id="marke" hidden></div>
+<div id="zahlen"></div>
+<div id="hinweis" hidden></div>
+<div id="oben"><a id="back" href="../../">← Spiele</a></div>
+<div id="info"></div>
+<div id="titel"><div><b>RIESENJAGD</b><span>Der Wald der Riesen</span><small>PC: WASD · Maus · E Haken · F Angriff · R Sternenfall · Leertaste Springen/Lösen · Umschalt Rennen</small></div></div>
+<div id="lade">Die Riesen erwachen …<small>Bäume wachsen, Nebel zieht auf</small></div>
+<div id="fehler" hidden></div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -996,7 +996,7 @@ klang.spiele('wumms', { staerke: 1.5, tonhoehe: 0.8 });
 klang.dauerton('laden', { staerke: 0.4, tonhoehe: 1.3 }); // jedes Bild; null = aus
 ```
 
-Genutzt von: enklave, erde, figuren · Tags: audio, klang, sound, zauber, kampf, synth, webaudio · THREE: nein
+Genutzt von: enklave, erde, figuren, riesenjagd · Tags: audio, klang, sound, zauber, kampf, synth, webaudio · THREE: nein
 
 ### follow-camera · `engine/camera/follow-camera.js` · v1.1.0 · entwurf
 Third-Person-Orbitkamera: weiches Folgen (vertikal träger), Kollision entlang des Sichtstrahls (Boden + Hindernisse, sanftes Zurückfahren), Auto-Ausrichtung, Sprint-FOV, Zoom, Schütteln, weiches Lock-On mit Zielwechsel, Erste-Person beim Reinzoomen, Presets (nah/weit/Schulter), Kamerafahrten
@@ -1015,7 +1015,7 @@ cam.setPreset('schulter'); cam.fahrt({ pos: { x: 5, y: 8, z: 5 }, blick: turm, d
 renderer.render(szene, cam.kamera);
 ```
 
-Genutzt von: daemmerwald, enklave, figuren, handwerk · Tags: kamera, third-person, first-person, orbit, folgen, zoom, figur, lock-on, schuetteln, kollision, kamerafahrt, preset · THREE: ja
+Genutzt von: daemmerwald, enklave, figuren, handwerk, riesenjagd · Tags: kamera, third-person, first-person, orbit, folgen, zoom, figur, lock-on, schuetteln, kollision, kamerafahrt, preset · THREE: ja
 
 ### ziel-wahl · `engine/camera/ziel-wahl.js` · v1.0.0 · entwurf
 Lock-On-Ziel auswählen: bestes Ziel vor der Figur (Winkel + Abstand) oder nächstes Ziel links/rechts vom aktuellen (Ziel wechseln)
@@ -1124,7 +1124,7 @@ const n = createNoise2D(42);
 const hoehe = fbm2(n, x * 0.01, y * 0.01, 5);
 ```
 
-Genutzt von: daemmerwald, erde, figuren · Tags: rauschen, noise, terrain, welt, prozedural · THREE: nein
+Genutzt von: daemmerwald, erde, figuren, riesenjagd · Tags: rauschen, noise, terrain, welt, prozedural · THREE: nein
 
 ### raum-gitter · `engine/core/raum-gitter.js` · v1.0.0 · entwurf
 Räumliches Raster (Spatial Hash in x/z) für bewegliche Dinge: Einträge mit id setzen/verschieben/entfernen und schnell alle im Umkreis finden – Grundlage für Kollision, Interaktion, Sinne und Sichtbereiche (Mehrspieler)
@@ -1178,7 +1178,7 @@ const r = rng(hashSeed('insel', 42));
 const baum = pick(r, ['eiche', 'tanne']);
 ```
 
-Genutzt von: daemmerwald, enklave, erde, figuren, gigantwelt, handwerk, natur, naturstimmungen · Tags: zufall, seed, hash, welt · THREE: nein
+Genutzt von: daemmerwald, enklave, erde, figuren, gigantwelt, handwerk, natur, naturstimmungen, riesenjagd · Tags: zufall, seed, hash, welt · THREE: nein
 
 ### schleife · `engine/core/schleife.js` · v1.0.0 · entwurf
 Spielschleife mit variablem oder festem Zeitschritt, dt-Begrenzung, FPS-Anzeige und Tab-Pause
@@ -2173,7 +2173,7 @@ const ein2 = createMoveInput({ aktionen: ['rollen', 'interagieren'], belegung: {
 figur.update(dt, zuAbsicht(ein2.lesen(), kamera.blickYaw()));   // alle Aktions-Flags (rollen …) gehen mit zum Motor
 ```
 
-Genutzt von: daemmerwald, enklave, figuren, handwerk · Tags: eingabe, tastatur, maus, touch, gamepad, joystick, figur, steuerung · THREE: nein
+Genutzt von: daemmerwald, enklave, figuren, handwerk, riesenjagd · Tags: eingabe, tastatur, maus, touch, gamepad, joystick, figur, steuerung · THREE: nein
 
 ### touch-stick · `engine/input/touch-stick.js` · v1.1.1 · entwurf
 Touch-Steuerung fürs Handy: dynamischer virtueller Joystick (linke Hälfte), Kamera-Wischen + Pinch-Zoom (rechte Hälfte), runde Aktionsknöpfe unten rechts
@@ -2189,7 +2189,7 @@ beiKnopf: (name, unten) => console.log(name, unten), beiErstemTouch: () => t.zei
 const { dx, dy, zoom } = t.nimmKamera();   // Pixel bzw. ln(Abstandsverhältnis) seit dem letzten Aufruf
 ```
 
-Genutzt von: – · Tags: eingabe, touch, joystick, handy, knoepfe, pinch, zoom · THREE: nein
+Genutzt von: riesenjagd · Tags: eingabe, touch, joystick, handy, knoepfe, pinch, zoom · THREE: nein
 
 ### bau-basis · `engine/models/bau/bau-basis.js` · v1.0.0 · entwurf
 Gemeinsame Farben und Helfer für Bau-Assets: lokale Kollisions-Körper, Asset-Ergebnis mit dispose
@@ -2494,7 +2494,7 @@ anim.treffer({ x: 0, z: -1 }, 0.7);              // Stoß von vorn (Figur-Raum),
 anim.blickZuPunkt(spieler.zustand.pos);           // Kopf + Augen folgen (braucht zustand.pos/yaw)
 ```
 
-Genutzt von: erde · Tags: figur, charakter, animation, gang, laufen, schwimmen, springen, aktion, clip, npc, spieler · THREE: nein
+Genutzt von: erde, riesenjagd · Tags: figur, charakter, animation, gang, laufen, schwimmen, springen, aktion, clip, npc, spieler · THREE: nein
 
 ### character-ausruestung · `engine/models/character/character-ausruestung.js` · v1.0.0 · entwurf
 Low-Poly-Gegenstände für Figuren-Sockel (Schwert, Dolch, Axt, Hammer, Hacke, Schaufel, Speer, Stab, Zauberstab, Schild, Bogen, Fackel, Laterne, Korb, Becher, Buch): je ein Mesh + optional Leucht-Mesh, passend ausgerichtet für model.befestigen(sockel, obj)
@@ -2513,7 +2513,7 @@ figur.befestigen('handL', createAusruestung('schild', { sockel: 'handL', farbe: 
 const fackel = createAusruestung('fackel'); licht.position.copy(fackel.userData.lichtPunkt); fackel.add(licht);
 ```
 
-Genutzt von: figuren, handwerk · Tags: figur, charakter, ausrüstung, waffe, werkzeug, schwert, axt, schild, bogen, fackel, laterne, korb, sockel · THREE: ja
+Genutzt von: figuren, handwerk, riesenjagd · Tags: figur, charakter, ausrüstung, waffe, werkzeug, schwert, axt, schild, bogen, fackel, laterne, korb, sockel · THREE: ja
 Gegenstand-Raum: Griffpunkt im Ursprung, Längsachse +Y, „vorn“ (Schneide, Schildfläche, Bogenbauch) +Z.
 Ausrichtung je Sockel (Hand-Raum: Arm hängt nach −Y, Daumen +Z):
 halt 'vorn' (Waffen, Werkzeug): +Y → +Z der Hand (Arm hängt: zeigt nach vorn; Arm vorgestreckt: zeigt nach oben)
@@ -2628,7 +2628,7 @@ const held = createLook({ ...VORLAGEN.wanderer, haar: { farbe: '#c8a040' }, bril
 const npc = randomLook(hashSeed('dorf', 7));   // gleicher Seed → gleicher Look
 ```
 
-Genutzt von: daemmerwald, enklave, erde, erlenwacht, figuren, handwerk · Tags: figur, charakter, aussehen, look, spieler, npc, avatar, editor, speichern, accessoires, mimik · THREE: nein
+Genutzt von: daemmerwald, enklave, erde, erlenwacht, figuren, handwerk, riesenjagd · Tags: figur, charakter, aussehen, look, spieler, npc, avatar, editor, speichern, accessoires, mimik · THREE: nein
 1.1: neue Stile (Haar, Bart, Oberteil, Hose, Schuhe, Kopfbedeckung, Umhang), neue Teile brille/schal/schmuck,
    Körper schultern/muskeln, Feld ausdruck (Grund-Mimik), neue Vorlagen. Alte Spielstände bleiben gültig
    (fehlende Felder → Standard; erste Einträge in STILE und Körper-Standards unverändert).
@@ -2646,7 +2646,7 @@ figur.befestigen('handR', schwert);
 figur.setLook({ kopfbedeckung: { stil: 'krone' } });   // Rig-Gruppen & Befestigtes bleiben erhalten
 ```
 
-Genutzt von: erde, erlenwacht · Tags: figur, charakter, modell, mesh, spieler, npc, avatar, editor, ausrüstung, mimik, gesicht · THREE: ja
+Genutzt von: erde, erlenwacht, riesenjagd · Tags: figur, charakter, modell, mesh, spieler, npc, avatar, editor, ausrüstung, mimik, gesicht · THREE: ja
 1.3 (additiv): opts.koerper = 'organisch' → ein glatter, gehäuteter Körper aus SDF (figur-haut: Anatomie + Kleidung + Haar in einem Netz,
    biegt weich an den Gelenken); Kopfbedeckung, Umhang, Rucksack, Zubehör, Augen, Brille, Ohrringe bleiben starre Teile. opts.zelle = Feinheit (m).
    modell.koerper = 'organisch' | 'bloecke'; modell.setKoerper(art) schaltet live um.
@@ -3211,7 +3211,7 @@ const { geometrie, hoehe } = erzeuge('birke', 7, { detail: 1, jahreszeit: 'herbs
 szene.add(new THREE.Mesh(geometrie, standardMaterial()));
 ```
 
-Genutzt von: erde, natur · Tags: natur, baum, wald, vegetation, lowpoly, prozedural, wind, jahreszeit · THREE: ja
+Genutzt von: erde, natur, riesenjagd · Tags: natur, baum, wald, vegetation, lowpoly, prozedural, wind, jahreszeit · THREE: ja
 
 ### fels-basis · `engine/models/natur/fels-basis.js` · v1.0.0 · neu
 Kleine Helfer für Felsen/Totholz: Dreiecke mit Flächenfarben sammeln → nicht-indizierte BufferGeometry (position, normal, color, wind=0), Farb-Mischen
@@ -3260,7 +3260,7 @@ const { geometrie } = erzeuge('felsbrocken', 42, { gestein: 'granit', moos: 0.4 
 scene.add(new THREE.Mesh(geometrie, standardMaterial()));
 ```
 
-Genutzt von: daemmerwald · Tags: natur, fels, stein, geroell, prozedural, lowpoly, vertexfarben · THREE: ja
+Genutzt von: daemmerwald, riesenjagd · Tags: natur, fels, stein, geroell, prozedural, lowpoly, vertexfarben · THREE: ja
 
 ### fundmodelle · `engine/models/natur/fundmodelle.js` · v1.0.0 · entwurf
 Fundstücke als reine Dreieckslisten: Erzbrocken, Ammonit, Quarzdruse (lineare RGB-Vertexfarben, Meter)
@@ -3529,7 +3529,7 @@ const wolke = createGaussWolke(); wolke.fuege(baum.splats); szene.add(wolke.mesh
 baum.kollision.hoehenkarte.hoeheBei(9, 2);      // lokal zum Baumfuß; NaN = blanker Boden
 ```
 
-Genutzt von: daemmerwald, natur · Tags: natur, baum, riesenbaum, urwald, wald, sdf, splats, gauss, wurzel, groesse, daemmerwald · THREE: ja
+Genutzt von: daemmerwald, natur, riesenjagd · Tags: natur, baum, riesenbaum, urwald, wald, sdf, splats, gauss, wurzel, groesse, daemmerwald · THREE: ja
 
 ### totholz-form · `engine/models/natur/totholz-form.js` · v1.0.0 · neu
 Reine Röhren-Geometrie (ohne THREE) für Totholz/Äste: Ringe entlang eines Pfads, Enden zu/Spitze/Jahresring-Scheibe, Markierung je Dreieck
@@ -3650,7 +3650,7 @@ wolke.setze({ nebelFarbe: szene.fog.color, nebelDichte: szene.fog.density, licht
 // je Bild VOR renderer.render: wolke.update(kamera, zeit, canvas.width, canvas.height);
 ```
 
-Genutzt von: daemmerwald, natur · Tags: splat, gauss, gaussian, 3dgs, wolke, instanziert, shader, transparenz, moos, laub, dunst · THREE: ja
+Genutzt von: daemmerwald, natur, riesenjagd · Tags: splat, gauss, gaussian, 3dgs, wolke, instanziert, shader, transparenz, moos, laub, dunst · THREE: ja
 
 ### grosszauber-mesh · `engine/render/grosszauber-mesh.js` · v1.0.0 · entwurf
 Zeichnet laufende Großzauber (gameplay/grosszauber): je Wirkung eine Ansicht aus einer Ansichts-Fabrik je Art, legt sie an und räumt sie ab, sobald die Wirkung endet
@@ -3867,7 +3867,7 @@ psx.aufloesung(renderer, innerWidth, innerHeight);    // statt renderer.setSize 
 psx.setze({ an: false });                             // Vergleich: normaler Look (danach wieder psx.aufloesung(…))
 ```
 
-Genutzt von: enklave, figuren, handwerk · Tags: psx, ps1, retro, look, shader, dithering, pixel, vertex-snap, splitscreen, stimmung, grading · THREE: ja
+Genutzt von: enklave, figuren, handwerk, riesenjagd · Tags: psx, ps1, retro, look, shader, dithering, pixel, vertex-snap, splitscreen, stimmung, grading · THREE: ja
 
 ### qualitaet · `engine/render/qualitaet.js` · v1.0.0 · entwurf
 Automatische Qualitätsstufe nach Bildzeit (Handy-Schutz): wird es langsam, sinken Pixelverhältnis, Schattenkarte, Partikel und Schadens-Zahlen; wird es lange schnell, steigen sie wieder – mit Hysterese, reine Logik (das Spiel wendet die Werte an)
