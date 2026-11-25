@@ -1267,7 +1267,7 @@ a.update(dt, { x: spieler.x, z: spieler.z }); // gehe-zu, warte, sammle (über z
 anzeige.setze(a.aktuell());
 ```
 
-Genutzt von: enklave · Tags: aufgabe, tutorial, quest, schritt, fortschritt, gameplay · THREE: nein
+Genutzt von: enklave, erde · Tags: aufgabe, tutorial, quest, schritt, fortschritt, gameplay · THREE: nein
 
 ### ausdauer · `engine/gameplay/ausdauer.js` · v1.0.0 · entwurf
 Ausdauer für Sprint, Rolle/Dash, Schwimmen, Klettern, Springen: Kosten-Tabelle als Daten, Erholung nach Verzögerung, Erschöpft-Zustand (gesperrte Aktionen bis zur Schwelle)
@@ -2476,7 +2476,7 @@ anim.treffer({ x: 0, z: -1 }, 0.7);              // Stoß von vorn (Figur-Raum),
 anim.blickZuPunkt(spieler.zustand.pos);           // Kopf + Augen folgen (braucht zustand.pos/yaw)
 ```
 
-Genutzt von: – · Tags: figur, charakter, animation, gang, laufen, schwimmen, springen, aktion, clip, npc, spieler · THREE: nein
+Genutzt von: erde · Tags: figur, charakter, animation, gang, laufen, schwimmen, springen, aktion, clip, npc, spieler · THREE: nein
 
 ### character-ausruestung · `engine/models/character/character-ausruestung.js` · v1.0.0 · entwurf
 Low-Poly-Gegenstände für Figuren-Sockel (Schwert, Dolch, Axt, Hammer, Hacke, Schaufel, Speer, Stab, Zauberstab, Schild, Bogen, Fackel, Laterne, Korb, Becher, Buch): je ein Mesh + optional Leucht-Mesh, passend ausgerichtet für model.befestigen(sockel, obj)
@@ -2610,7 +2610,7 @@ const held = createLook({ ...VORLAGEN.wanderer, haar: { farbe: '#c8a040' }, bril
 const npc = randomLook(hashSeed('dorf', 7));   // gleicher Seed → gleicher Look
 ```
 
-Genutzt von: daemmerwald, enklave, erlenwacht, figuren, handwerk · Tags: figur, charakter, aussehen, look, spieler, npc, avatar, editor, speichern, accessoires, mimik · THREE: nein
+Genutzt von: daemmerwald, enklave, erde, erlenwacht, figuren, handwerk · Tags: figur, charakter, aussehen, look, spieler, npc, avatar, editor, speichern, accessoires, mimik · THREE: nein
 1.1: neue Stile (Haar, Bart, Oberteil, Hose, Schuhe, Kopfbedeckung, Umhang), neue Teile brille/schal/schmuck,
    Körper schultern/muskeln, Feld ausdruck (Grund-Mimik), neue Vorlagen. Alte Spielstände bleiben gültig
    (fehlende Felder → Standard; erste Einträge in STILE und Körper-Standards unverändert).
@@ -2628,7 +2628,7 @@ figur.befestigen('handR', schwert);
 figur.setLook({ kopfbedeckung: { stil: 'krone' } });   // Rig-Gruppen & Befestigtes bleiben erhalten
 ```
 
-Genutzt von: erlenwacht · Tags: figur, charakter, modell, mesh, spieler, npc, avatar, editor, ausrüstung, mimik, gesicht · THREE: ja
+Genutzt von: erde, erlenwacht · Tags: figur, charakter, modell, mesh, spieler, npc, avatar, editor, ausrüstung, mimik, gesicht · THREE: ja
 1.3 (additiv): opts.koerper = 'organisch' → ein glatter, gehäuteter Körper aus SDF (figur-haut: Anatomie + Kleidung + Haar in einem Netz,
    biegt weich an den Gelenken); Kopfbedeckung, Umhang, Rucksack, Zubehör, Augen, Brille, Ohrringe bleiben starre Teile. opts.zelle = Feinheit (m).
    modell.koerper = 'organisch' | 'bloecke'; modell.setKoerper(art) schaltet live um.

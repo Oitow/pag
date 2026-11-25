@@ -14,7 +14,7 @@ export const NAMEN = {
   feuerstein: 'Feuerstein', kohle: 'Kohle', eisenerz: 'Eisenerz', kupfererz: 'Kupfererz', gold: 'Gold',
   // Fortschritt Stein → Kupfer → Eisen
   holzkohle: 'Holzkohle', kupferbarren: 'Kupferbarren', eisenbarren: 'Eisenbarren', naegel: 'Nägel',
-  kupferaxt: 'Kupfer-Axt', kupferhacke: 'Kupfer-Spitzhacke', eisenaxt: 'Eisen-Axt', eisenspeer: 'Eisenspeer',
+  gleiter: 'Gleiter', kupferaxt: 'Kupfer-Axt', kupferhacke: 'Kupfer-Spitzhacke', eisenaxt: 'Eisen-Axt', eisenspeer: 'Eisenspeer',
   schmelzofen: 'Schmelzofen', amboss: 'Amboss', eisentuer: 'Verstärkte Tür',
 };
 
@@ -44,6 +44,7 @@ export const REZEPTE = {
   kupferhacke:   { gruppe: 'werkzeug', zutaten: { kupferbarren: 3, holz: 2 }, ergebnis: 'kupferhacke', station: 'schmiede' },
   eisenaxt:      { gruppe: 'werkzeug', zutaten: { eisenbarren: 2, holz: 2 }, ergebnis: 'eisenaxt', station: 'schmiede' },
   eisenhacke:    { gruppe: 'werkzeug', zutaten: { eisenbarren: 3, holz: 2 }, ergebnis: 'eisenhacke', station: 'schmiede' },
+  gleiter:       { gruppe: 'werkzeug', zutaten: { fell: 4, stoecke: 6, seil: 2 }, ergebnis: 'gleiter', station: 'werkbank' },
   eisenspeer:    { gruppe: 'werkzeug', zutaten: { eisenbarren: 1, stoecke: 2 }, ergebnis: 'eisenspeer', station: 'schmiede' },
   // Schmelzen: Holzkohle am Feuer (Ofen ergiebiger), Erz + Brennstoff im Schmelzofen, Nägel am Amboss
   holzkohle:     { gruppe: 'metall', zutaten: { holz: 3 }, ergebnis: 'holzkohle', station: 'lagerfeuer' },
@@ -88,6 +89,8 @@ export function zwischenprodukte(rezepte = REZEPTE) {
 export const HACKE = { schaufel: 1, spitzhacke: 2, kupferhacke: 3, eisenhacke: 4 };
 /** Axt-Stufe: 1 Stein-Axt, 2 Kupfer, 3 Eisen (mehr Holz je Baum, siehe ernte.js). */
 export const AXT = { axt: 1, kupferaxt: 2, eisenaxt: 3 };
+/** Werkzeuge & Ausrüstung: nicht als Vorrat im Tasche-HUD, gehen beim Tod nicht verloren. */
+export const WERKZEUGE = new Set([...Object.keys(HACKE), ...Object.keys(AXT), 'speer', 'eisenspeer', 'bogen', 'gleiter', 'fellmantel', 'fellstiefel']);
 /** Funde beim Graben, die eine bessere Spitzhacke brauchen (sonst bleiben sie im Fels): Eisenerz ab Kupfer, Gold ab Eisen. */
 export const FUND_STUFE = { eisenerz: 3, gold: 4 };
 const HACKE_NAME = ['Hände', 'Schaufel', 'Spitzhacke', 'Kupfer-Spitzhacke', 'Eisen-Spitzhacke'];

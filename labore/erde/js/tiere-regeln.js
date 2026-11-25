@@ -99,7 +99,10 @@ export function entscheide(art, { abstand, nacht = false, gereizt = false, leben
 
 /** Waffe aus dem Inventar (hat(id) → bool): Speer > Axt > Faust. */
 export function waffe(hat) {
+  if (hat('eisenspeer')) return { id: 'eisenspeer', name: 'Eisenspeer', schaden: 5, reichweite: 4.5 };
   if (hat('speer')) return { id: 'speer', name: 'Speer', schaden: 3, reichweite: 4 };
+  if (hat('eisenaxt')) return { id: 'eisenaxt', name: 'Eisen-Axt', schaden: 3.5, reichweite: 3 };
+  if (hat('kupferaxt')) return { id: 'kupferaxt', name: 'Kupfer-Axt', schaden: 2.5, reichweite: 3 };
   if (hat('axt')) return { id: 'axt', name: 'Axt', schaden: 2, reichweite: 3 };
   return { id: 'faust', name: 'Faust', schaden: 1, reichweite: 3 };
 }

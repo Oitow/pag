@@ -24,6 +24,7 @@ import { laenge } from './mass.js';
 import { createErweiterungen } from './erweiterungen.js';
 import { createVulkanRauch } from './vulkan-rauch.js';
 import { createWolken } from './wolken.js';
+import { WERKZEUGE } from './herstellen-daten.js';
 
 const P = new URLSearchParams(location.search);
 const SEED = +(P.get('seed') || 7);
@@ -479,7 +480,6 @@ const erwWelt = {
 erw = createErweiterungen(erwWelt, stand?.erw);
 
 // ---------- Aktionen zu Fuß: Blickstrahl findet Natur-Stück oder Boden ----------
-const WERKZEUGE = new Set(['axt', 'schaufel', 'spitzhacke', 'eisenhacke']);
 let invText = '';
 function inventarText() {
   const z = new Map();
@@ -813,7 +813,7 @@ function bild() {
   const pr = planet.probe(oben.x, oben.y, oben.z, 0.5);
   const bau = gehen ? (erwWelt.dienste.bau?.bodenUnter?.(cam) ?? null) : null;   // Fundament, Boden, Treppe
   const g2 = Math.max(0, pr.h, pr.wasser, bau ?? -Infinity);
-  schwimmt = gehen && bau === null && pr.wasser > pr.h + AUGE - 0.3;
+  schwimmt = gehen && bau === null && pr.wasser > pr.h + AUGE - 0.3 && cam.length() < R + pr.wasser + AUGE + 0.5;   // nicht hoch in der Luft über dem Meer
   const minR = R + (schwimmt ? pr.wasser + 0.3 : Math.max(pr.h, pr.wasser, bau ?? -Infinity) + AUGE), maxR = R + 3e7;
   const lc = cam.length();
   if (lc < minR) { cam.setLength(minR); if (fallV < 0) fallV = 0; amBoden = true; }
@@ -848,13 +848,14 @@ function bild() {
   camera.up.copy(oben);
   if (gehen && MENUE.person !== 1) {
     // 3. Person: Kamera hinter und etwas über der Figur (über die rechte Schulter), nie im Boden
-    kamOff.copy(blick).multiplyScalar(-4.6).addScaledVector(oben, 1.0).addScaledVector(rechts, 0.6);
+    const fliegt = !!erwWelt.dienste.gleiter?.fliegt?.();   // im Gleiter weiter weg, damit Schirm + Figur ins Bild passen
+    kamOff.copy(blick).multiplyScalar(fliegt ? -9 : -4.6).addScaledVector(oben, fliegt ? 2.2 : 1.0).addScaledVector(rechts, fliegt ? 0 : 0.6);
     kamAbs.copy(cam).add(kamOff);
     const kd = tmp.copy(kamAbs).normalize(), kp = planet.probe(kd.x, kd.y, kd.z, 0.5);
     const unter = R + Math.max(kp.h, kp.wasser) + 0.4 - kamAbs.length();
     if (unter > 0) kamOff.addScaledVector(oben, unter);
     camera.position.copy(kamOff);
-    camera.lookAt(kamZiel.copy(blick).multiplyScalar(12).addScaledVector(oben, -0.6));
+    camera.lookAt(kamZiel.copy(blick).multiplyScalar(12).addScaledVector(oben, fliegt ? 1.2 : -0.6));
   } else camera.lookAt(blick);
 
   // Zeit & Wetter (Klima vom Ort, alle 0,3 s erneuert)

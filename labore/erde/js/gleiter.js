@@ -117,6 +117,8 @@ export function createGleiter(welt) {
     vario.dataset.auf = auf.toFixed(2);
   }
 
+  welt.dienste.gleiter = { fliegt: () => offen };   // für Kamera (3. Person), Figur, Tagebuch
+
   // ---------- Kappe über dem Kopf (Low-Poly, 9 m Spannweite) ----------
   const kappe = baueKappe(THREE);
   kappe.visible = false;

@@ -7,7 +7,8 @@ export const HUNGER_STUNDEN = 48;   // satt → leer in ~2 Spieltagen
 export const DURST_STUNDEN = 24;    // getrunken → leer in ~1 Spieltag
 export const KOMFORT = 12;          // ab dieser gefühlten Temperatur (°C) kühlt der Körper nicht aus
 export const HITZE = 34;            // darüber doppelter Durst
-export const WERKZEUGE = new Set(['axt', 'schaufel', 'spitzhacke', 'eisenhacke']);
+export { WERKZEUGE } from './herstellen-daten.js';
+import { WERKZEUGE } from './herstellen-daten.js';
 
 // Essen: satt/wasser = Anteil (0…1) der Leiste, heil = Lebenspunkte, risiko = Wahrscheinlichkeit, dass einem übel wird
 export const ESSEN = {
