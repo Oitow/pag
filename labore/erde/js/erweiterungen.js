@@ -35,9 +35,10 @@ import { createGleiter } from './gleiter.js';
 import { createFelder } from './felder.js';
 import { createTagebuch } from './tagebuch.js';
 import { createSpielerfigur } from './spielerfigur.js';
+import { createGluehen } from './gluehen.js';
 
 // Reihenfolge = Reihenfolge bei aktion(): wer zuerst kommt, darf zuerst übernehmen
-const LISTE = [createTiere, createBauen, createFelder, createHerstellen, createUeberleben, createGleiter, createTagebuch, createSpielerfigur];
+const LISTE = [createTiere, createBauen, createFelder, createHerstellen, createUeberleben, createGleiter, createTagebuch, createSpielerfigur, createGluehen];
 
 export function createErweiterungen(welt, stand = {}) {
   const module = [];
