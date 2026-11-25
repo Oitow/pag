@@ -1,6 +1,7 @@
 // Spielerfigur (3. Person): Engine-Figur (character-model + character-animator) an den Füßen des Spielers,
 // aufrecht zur Ortsnormale, Blick in Laufrichtung. Sichtbar nur in der 3.-Person-Ansicht (welt.ansicht() === 3) und zu Fuß.
-// Figur-Aussehen: ?figur=wanderer|ritter|baeuerin|… (engine character-look VORLAGEN), ?koerper=organisch (glatter SDF-Körper).
+// Figur-Aussehen: ?figur=wanderer|ritter|baeuerin|… (engine character-look VORLAGEN). Körper standardmäßig glatt (SDF, ein Netz –
+// ~35 Draw-Calls weniger als die Blöcke), ?koerper=bloecke für den alten Klötzchen-Körper.
 import * as THREE from 'three';
 import { createCharacterModel } from '../../../engine/models/character/character-model.js';
 import { createAnimator } from '../../../engine/models/character/character-animator.js';
@@ -11,7 +12,7 @@ const AUGE = 1.7;
 export function createSpielerfigur(welt) {
   const P = new URLSearchParams(globalThis.location?.search || '');
   const look = VORLAGEN[P.get('figur')] || VORLAGEN.wanderer;
-  const modell = createCharacterModel({ look, seed: 7, schatten: true, mimik: true, koerper: P.get('koerper') === 'organisch' ? 'organisch' : undefined });
+  const modell = createCharacterModel({ look, seed: 7, schatten: true, mimik: true, koerper: P.get('koerper') === 'bloecke' ? 'bloecke' : 'organisch' });
   const anim = createAnimator(modell, { seed: 7, hang: false });
   // Werkzeug in der rechten Hand: Axt (Stiel + Kopf), nur wenn eine in der Tasche ist
   const axt = new THREE.Group();

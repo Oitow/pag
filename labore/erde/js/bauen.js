@@ -104,7 +104,7 @@ export function createBauen(welt) {
   }
   function feuerBild(dt) {
     const fs = alleFeuer();
-    feuerSlots(fs.length);
+    if (fs.length) feuerSlots(MAX_LICHT);   // alle Lichter auf einmal anlegen: nur EIN Shader-Neuübersetzen statt eines je Feuer
     for (const f of fs) f.d = f.w.distanceToSquared(cam);
     fs.sort((a, b) => a.d - b.d);
     for (const pl of plaetze) for (const f of pl.feuer) if (f.k.flackern) {   // Flammen flackern (Höhe je Feuer eigene Phase)

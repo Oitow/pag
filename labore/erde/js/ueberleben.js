@@ -53,8 +53,11 @@ export function createUeberleben(welt) {
     const wie = { Kälte: 'erfroren', Hunger: 'verhungert', Durst: 'verdurstet' }[letzterGrund] || 'gestorben';
     welt.melde(`💀 Du bist ${wie}${letzterGrund && !['Kälte', 'Hunger', 'Durst'].includes(letzterGrund) ? ` (${letzterGrund})` : ''} …`, false);
   }
+  let imVerlust = false;   // während die Tasche halbiert wird, gilt man noch als tot (Tagebuch zählt das nicht als Essen)
   function aufwachen() {
+    imVerlust = true;
     for (const { id, anzahl } of todVerlust(welt.inventar.plaetze)) welt.inventar.nimm(id, anzahl);
+    imVerlust = false;
     wiederbeleben(z);
     welt.aufwachen?.();                       // zurück zum Startplatz (planet.js), sonst stirbt man am selben Ort gleich wieder
     welt.melde('Du wachst auf – die Hälfte der Tasche ist weg', false);
@@ -82,7 +85,7 @@ export function createUeberleben(welt) {
     schaden, heile,
     iss: (id) => !!esse(id)?.ok,
     get leben() { return z.leben; },
-    get tot() { return ohnmacht > 0; },
+    get tot() { return ohnmacht > 0 || imVerlust; },
   };
 
   const knopf = welt.knopf('aEssen', '🍖 Essen', () => {

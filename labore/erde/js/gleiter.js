@@ -253,7 +253,7 @@ export function createGleiter(welt) {
     get offen() { return offen; },
     dispose() {
       abmelden?.(); knopf?.remove(); vario.remove();
-      welt.anker.remove(kappe); kappe.traverse((k) => { k.geometry?.dispose(); k.material?.dispose(); });
+      delete welt.dienste.gleiter; welt.anker.remove(kappe); kappe.traverse((k) => { k.geometry?.dispose(); k.material?.dispose(); });
     },
   };
 }
