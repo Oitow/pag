@@ -1,14 +1,17 @@
-<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PAG – Spiele</title><style>body{font-family:system-ui,sans-serif;background:#14161c;color:#eee;margin:0;padding:20px}h1{text-align:center;margin-bottom:4px}p.u{text-align:center;opacity:.6;margin:0 0 10px;font-size:.9em}.g{display:grid;gap:12px;max-width:520px;margin:auto}a{display:block;background:#222632;border-radius:16px;padding:16px;text-decoration:none;color:inherit;box-shadow:0 3px 10px #0006}a.gross{background:#2b2a22;border:1px solid #e0b56a55}a b{font-size:1.25em;display:block;margin-bottom:4px}a span{opacity:.7}h2{max-width:520px;margin:26px auto 10px;font-size:1.05em;opacity:.85}h2 small{opacity:.6;font-weight:normal}</style></head><body>
-<h1>🎮 PAG</h1>
-<p class="u">Module → Testfeld → Spiel</p>
-<h2>🏰 Das Spiel</h2><div class="g">
-<a class="gross" href="erlenwacht/"><b>🏰 Erlenwacht</b><span>Das MMO: Held erstellen, Klassen, Stufen, Beute, Tutorial, Boss – nur fertige Module</span></a>
-</div>
-<h2>🧪 Testfeld <small>– alle Module zusammen</small></h2><div class="g">
-<a href="testfeld/"><b>🧪 Testfeld</b><span>Alles an, ohne Titel. Oben 🧪 antippen: einzelnes Modul wählen, Orte anspringen</span></a>
-</div>
-<h2>🔬 Labore <small>– Bausteine einzeln</small></h2><div class="g">
-<a href="labore/figuren/"><b>🧍 Figuren</b><span>Aussehen, Animationen, Kampf, Zauber, Horden</span></a>
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAG · Projektübersicht</title>
+<style>
+*{box-sizing:border-box}html{color-scheme:dark}body{margin:auto;max-width:66rem;padding:clamp(1rem,4vw,3rem);background:#101917;color:#eff5ec;font:1rem/1.55 system-ui,sans-serif}h1{font-size:clamp(2rem,6vw,4rem);line-height:1.05;margin:.4em 0}h2{margin:2em 0 .5em}h2 small{display:block;font-size:.9rem;font-weight:400;color:#bdccc0}a{color:#b8edce;text-underline-offset:.2em}a:focus-visible{outline:3px solid #ffc980;outline-offset:3px}nav{display:flex;flex-wrap:wrap;gap:.5rem 1.25rem;margin:1em 0}nav a{padding:.35em 0}.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:.7rem}.g a{display:grid;align-content:start;gap:.3rem;border:1px solid #465d51;border-radius:.7rem;background:#1c2923;padding:1rem;text-decoration:none}.g a:hover{background:#273c30}.g span{color:#cad6cc}.gross{border-color:#c9a569!important}li{margin:.5em 0}footer{margin-top:2em}
+</style></head><body>
+<header><h1>PAG · Projektübersicht</h1><nav aria-label="Bereiche"><a href="#spiel">Erlenwacht</a><a href="#testfeld">Testfeld</a><a href="#labore">Labore</a><a href="#spiele">Weitere Spiele</a></nav></header>
+<main><section><h2>Stand &amp; Änderungen</h2><nav aria-label="Projekt auf GitHub"><a href="https://github.com/Oitow/pag/blob/main/docs/STAND.md">Projektstand</a><a href="https://github.com/Oitow/pag/blob/main/docs/ARBEIT.md">Wer arbeitet woran?</a><a href="https://github.com/Oitow/pag/commits/main/">Letzte Änderungen</a><a href="https://github.com/Oitow/pag/pulls">Offene Pull Requests</a><a href="https://github.com/Oitow/pag/blob/main/engine/KATALOG.md">Engine-Katalog</a></nav>
+<div id="verlauf"></div></section>
+<section id="spiel"><h2>🏰 Das Spiel</h2><div class="g"><a class="gross" href="erlenwacht/"><b>🏰 Erlenwacht</b><span>Das MMO: Held erstellen, Klassen, Stufen, Beute, Tutorial, Boss – nur fertige Module</span></a></div></section>
+<section id="testfeld"><h2>🧪 Testfeld <small>– alle Module zusammen</small></h2><div class="g"><a href="testfeld/"><b>🧪 Testfeld</b><span>Alles an, ohne Titel. Oben 🧪 antippen: einzelnes Modul wählen, Orte anspringen</span></a></div></section>
+<section id="labore"><h2>🔬 Labore <small>– Bausteine einzeln</small></h2><div class="g"><a href="labore/figuren/"><b>🧍 Figuren</b><span>Aussehen, Animationen, Kampf, Zauber, Horden</span></a>
 <a href="labore/natur/"><b>🌳 Natur</b><span>Bäume, Felsen, Pflanzen, Riesenbaum</span></a>
 <a href="labore/welt/"><b>🗺 Welt</b><span>Weltgenerator: Presets, Seed, Flüsse, Chunks</span></a>
 <a href="labore/handwerk/"><b>🔨 Handwerk</b><span>Dorf, Herstellen, Bäume fällen, Graben, Truhen (früher Testwelt)</span></a>
@@ -17,9 +20,8 @@
 <a href="labore/erde/"><b>🌍 Erde</b><span>Planet in echter Größe: Orbit bis Boden, Geologie, Klima, Wetter, Graben</span></a>
 <a href="labore/gigantwelt/"><b>⛰ Gigantwelt</b><span>Riesige Welt, Voxel-Graben, Bäume fällen, Fundstellen</span></a>
 <a href="labore/naturstimmungen/"><b>🌾 Naturstimmungen</b><span>Schilfufer, Waldgrund, Schieferhang, Mondlicht</span></a>
-</div>
-<h2>🎮 Weitere Spiele</h2><div class="g">
-<a href="spiele/planet/"><b>🪐 Planet – Tierfänger</b><span>Kugel-Planet erkunden, Tiere fangen, neue Biome erreichen</span></a>
+<a href="labore/enklave/galerie.html"><b>Enklave · Bau-Galerie</b><span>Gebäude einzeln ansehen</span></a></div></section>
+<section id="spiele"><h2>🎮 Weitere Spiele</h2><div class="g"><a href="spiele/planet/"><b>🪐 Planet – Tierfänger</b><span>Kugel-Planet erkunden, Tiere fangen, neue Biome erreichen</span></a>
 <a href="spiele/viniland/"><b>🛶 Viniland</b><span>Insel, Bäume fällen, 10 Tiere, 2-Spieler-Splitscreen</span></a>
 <a href="spiele/voxel-tiere/welt.html"><b>🌍 Tier-Welt</b><span>Alle Voxel-Tiere in einer Welt</span></a>
 <a href="spiele/voxel-tiere/"><b>🐾 Voxel-Tiere einzeln</b><span>Jedes Tier für sich</span></a>
@@ -27,5 +29,24 @@
 <a href="spiele/autobattler/"><b>⚔️ Tier-Autobattler</b><span>6er-Teams aus Voxel-Tieren kämpfen automatisch</span></a>
 <a href="spiele/siedlung/"><b>🏘️ Siedlung</b><span>Aufbauspiel mit prozeduraler Welt</span></a>
 <a href="spiele/wurzelwerk/"><b>🌳 Wurzelwerk</b><span>Baum-Roguelite</span></a>
-<a href="spiele/mix-lab/"><b>🎛 Mix Lab</b><span>Beat-Producer mit synthetischen Klängen</span></a>
-</div></body></html>
+<a href="spiele/mix-lab/"><b>🎛 Mix Lab</b><span>Beat-Producer mit synthetischen Klängen</span></a></div></section>
+</main><footer><a href="https://github.com/Oitow/pag">Repository öffnen</a></footer>
+<script>
+async function zeigeAenderungen() {
+  try {
+    const antwort = await fetch('https://api.github.com/repos/Oitow/pag/commits?sha=main&per_page=3');
+    if (!antwort.ok) return;
+    const liste = document.createElement('ul');
+    for (const {sha, commit} of await antwort.json()) {
+      const link = document.createElement('a');
+      link.href = 'https://github.com/Oitow/pag/commit/' + encodeURIComponent(sha);
+      link.textContent = new Date(commit.committer.date).toLocaleDateString('de-DE') + ' · ' + commit.message.split('\n')[0];
+      const eintrag = document.createElement('li');
+      eintrag.append(link);
+      liste.append(eintrag);
+    }
+    document.querySelector('#verlauf').append(liste);
+  } catch { /* Die direkten GitHub-Links sind auch ohne API verfügbar. */ }
+}
+zeigeAenderungen();
+</script></body></html>
