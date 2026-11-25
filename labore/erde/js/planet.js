@@ -72,6 +72,15 @@ const himmelLicht = new THREE.HemisphereLight(0xa8ccff, 0x3b3424, 0.7);
 scene.add(sonne, sonne.target, himmelLicht, new THREE.AmbientLight(0x404858, 0.25));
 scene.fog = new THREE.FogExp2(0x9cc4ec, 0);
 
+// Nahdetail des Bodens: Wertrauschen, Zellen modulo Periode (1024 m * Frequenz) → kein Sprung, wenn die Kamera die Wrap-Grenze quert
+const BODEN_RAUSCHEN = `
+float bHash(vec3 c, float per) { vec3 q = fract(mod(c, per) * 0.1031); q += dot(q, q.zyx + 31.32); return fract((q.x + q.y) * q.z); }
+float bRausch(vec3 p, float f) {
+  vec3 x = p * f, i = floor(x), u = x - i; u = u * u * (3.0 - 2.0 * u); float per = 1024.0 * f;
+  return mix(mix(mix(bHash(i, per), bHash(i + vec3(1,0,0), per), u.x), mix(bHash(i + vec3(0,1,0), per), bHash(i + vec3(1,1,0), per), u.x), u.y),
+             mix(mix(bHash(i + vec3(0,0,1), per), bHash(i + vec3(1,0,1), per), u.x), mix(bHash(i + vec3(0,1,1), per), bHash(i + vec3(1,1,1), per), u.x), u.y), u.z);
+}
+`;
 const bodenMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
 // Wasser: glatt (Sonnenglanz), wandernde Wellen in der Normalen, Himmel spiegelt sich im flachen Blickwinkel (Fresnel).
 // Weltlage = Kachellage relativ zur Kamera + Kamera (wasserCam) → Wellen bleiben beim Fliegen am Ort.
@@ -80,7 +89,7 @@ bodenMat.onBeforeCompile = (sh) => {
   Object.assign(sh.uniforms, wasserU);
   sh.vertexShader = 'attribute float nass;\nattribute vec3 land;\nvarying vec3 vLand;\nuniform vec3 wasserCam;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.vertexShader
     .replace('#include <begin_vertex>', '#include <begin_vertex>\nvNass = nass;\nvLand = land;\nvWelt = (modelMatrix * vec4(position, 1.0)).xyz + wasserCam;\nvObenW = normalize(vWelt);');
-  sh.fragmentShader = 'uniform float wZeit;\nuniform vec3 wHimmel;\nvarying vec3 vLand;\nvarying float vNass;\nfloat wT;\nfloat wSchaum;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.fragmentShader
+  sh.fragmentShader = 'uniform float wZeit;\nuniform vec3 wHimmel;\nvarying vec3 vLand;\nvarying float vNass;\nfloat wT;\nfloat wSchaum;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\nuniform vec3 wasserCam;\n' + BODEN_RAUSCHEN + sh.fragmentShader
     // vNass = Wassertiefe (0.5 = Uferlinie, ±3.2 m): flaches Wasser klar (Grund scheint durch), Schaumsaum, nasser Sand
     .replace('#include <color_fragment>', `#include <color_fragment>
 wT = smoothstep(0.497, 0.51, vNass);
@@ -105,6 +114,42 @@ if (wT > 0.01) {
   vec3 nW = normalize(vObenW + st * 0.07 * wT * nahW);
   normal = normalize((viewMatrix * vec4(nW, 0.0)).xyz);
 }`)
+    .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+{ // Nahdetail Land: Körnung, Grasflecken, Steine, Schichten am Hang, Bump – nur nah (<45 m), nie auf Wasser/Schaum/Lava
+  float bD = length(vViewPosition);
+  float bNah = (1.0 - smoothstep(14.0, 45.0, bD)) * (1.0 - wT) * (1.0 - wSchaum) * (1.0 - smoothstep(0.55, 0.72, diffuseColor.r - diffuseColor.b));
+  if (bNah > 0.01) {
+    // kamerarelative Weltlage (klein, genau) + Kameralage modulo 1024 m (Uniform, exakt) → keine Blockbildung bei ~1e5 m
+    vec3 bP = transpose(mat3(viewMatrix)) * (-vViewPosition) + mod(wasserCam, 1024.0);
+    float n1 = bRausch(bP, 0.5), n2 = bRausch(bP, 2.0), n3 = bRausch(bP, 8.0);
+    float bKorn = 1.0 - smoothstep(4.0, 16.0, bD);
+    float n4 = bKorn > 0.01 ? bRausch(bP, 32.0) : 0.5;
+    vec3 c = diffuseColor.rgb;
+    float sat = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
+    float gras = smoothstep(0.0, 0.05, c.g - max(c.r, c.b));
+    float fels = 1.0 - smoothstep(0.05, 0.16, sat);
+    float hoehe = n2 * 0.55 + n3 * 0.3 + n4 * 0.15 * bKorn;
+    float fleck = (n1 - 0.5) * 0.3 + (n2 - 0.5) * 0.28 + (n3 - 0.5) * 0.2 + (n4 - 0.5) * 0.22 * bKorn;
+    c *= 1.0 + fleck;
+    c = mix(c, c * vec3(1.18, 1.08, 0.66), gras * smoothstep(0.5, 0.72, n1) * 0.8);   // trockene Grasflecken
+    c = mix(c, c * vec3(0.78, 0.95, 0.8), gras * smoothstep(0.55, 0.3, n2) * 0.6);    // dunkle Büschel
+    float stein = smoothstep(0.68, 0.74, n3 * 0.7 + n2 * 0.3 + 0.04) * (1.0 - gras * 0.7);
+    c = mix(c, vec3(dot(c, vec3(0.33))) * vec3(1.15, 1.1, 1.0) * (0.8 + 0.5 * n4), stein * (0.25 + 0.5 * fels));   // Kiesel
+    hoehe += stein * 0.5;
+    // steile Hänge: Gesteinsschichten (konzentrisch zum Planeten = waagrecht), grauer
+    float bSteil = 1.0 - dot(normalize(transpose(mat3(viewMatrix)) * normal), vObenW);
+    float fHang = smoothstep(0.12, 0.32, bSteil);
+    float schicht = 0.5 + 0.5 * sin(length(vWelt) * 11.0 + 4.0 * n1 + 2.0 * n2);
+    c = mix(c, mix(c, vec3(dot(c, vec3(0.33))) * vec3(1.05, 0.98, 0.9), 0.55) * (0.72 + 0.5 * schicht), fHang);
+    diffuseColor.rgb = mix(diffuseColor.rgb, c, bNah);
+    // Bump: Höhenfeld (cm) per Bildschirmableitung in die Normale
+    vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition);
+    vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx); float det = dot(dpx, r1);
+    float hs = (0.07 + 0.08 * fHang * schicht) * bNah;
+    vec2 dh = vec2(dFdx(hoehe), dFdy(hoehe)) * hs;
+    normal = normalize(abs(det) * normal - sign(det) * (dh.x * r1 + dh.y * r2));
+  }
+}`)
     .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
 totalEmissiveRadiance += diffuseColor.rgb * smoothstep(0.72, 0.9, diffuseColor.r - diffuseColor.b) * 1.6; // Lava glüht
 if (wT > 0.01) {
@@ -112,7 +157,7 @@ if (wT > 0.01) {
   totalEmissiveRadiance += wHimmel * fr * 0.55 * wT;
 }`);
 };
-bodenMat.customProgramCacheKey = () => 'erde-boden-wasser';
+bodenMat.customProgramCacheKey = () => 'erde-boden-wasser-detail';
 const stufenMat = []; // Debug: jede Stufe eigene Farbe
 for (let i = 0; i <= MAX_STUFE; i++) stufenMat.push(new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL((i * 0.13) % 1, 0.6, 0.55), roughness: 1 }));
 let stufenFarben = false;
