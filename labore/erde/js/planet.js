@@ -86,12 +86,14 @@ float bRausch(vec3 p, float f) {
 const bodenMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
 // Wasser: glatt (Sonnenglanz), wandernde Wellen in der Normalen, Himmel spiegelt sich im flachen Blickwinkel (Fresnel).
 // Weltlage = Kachellage relativ zur Kamera + Kamera (wasserCam) → Wellen bleiben beim Fliegen am Ort.
-const wasserU = { wZeit: { value: 0 }, wasserCam: { value: new THREE.Vector3() }, wHimmel: { value: new THREE.Color() } };
+// bodenVers = Kameralage modulo 1024 m und Kamera-Radius modulo Schicht-Periode – in JS (double) gerechnet, sonst wackelt das Muster (float32 bei 1e5 m ≈ 1 cm)
+const SCHICHT_PER = Math.PI * 2 * 20 / 11;
+const wasserU = { wZeit: { value: 0 }, wasserCam: { value: new THREE.Vector3() }, wHimmel: { value: new THREE.Color() }, bodenVers: { value: new THREE.Vector4() } };
 bodenMat.onBeforeCompile = (sh) => {
   Object.assign(sh.uniforms, wasserU);
   sh.vertexShader = 'attribute float nass;\nattribute vec3 land;\nvarying vec3 vLand;\nuniform vec3 wasserCam;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\n' + sh.vertexShader
     .replace('#include <begin_vertex>', '#include <begin_vertex>\nvNass = nass;\nvLand = land;\nvWelt = (modelMatrix * vec4(position, 1.0)).xyz + wasserCam;\nvObenW = normalize(vWelt);');
-  sh.fragmentShader = 'uniform float wZeit;\nuniform vec3 wHimmel;\nvarying vec3 vLand;\nvarying float vNass;\nfloat wT;\nfloat wSchaum;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\nuniform vec3 wasserCam;\n' + BODEN_RAUSCHEN + sh.fragmentShader
+  sh.fragmentShader = 'uniform float wZeit;\nuniform vec3 wHimmel;\nvarying vec3 vLand;\nvarying float vNass;\nfloat wT;\nfloat wSchaum;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\nuniform vec3 wasserCam;\nuniform vec4 bodenVers;\n' + BODEN_RAUSCHEN + sh.fragmentShader
     // vNass = Wassertiefe (0.5 = Uferlinie, ±3.2 m): flaches Wasser klar (Grund scheint durch), Schaumsaum, nasser Sand
     .replace('#include <color_fragment>', `#include <color_fragment>
 wT = smoothstep(0.497, 0.51, vNass);
@@ -119,12 +121,18 @@ if (wT > 0.01) {
     .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 { // Nahdetail Land: Körnung, Grasflecken, Steine, Schichten am Hang, Bump – nur nah (<45 m), nie auf Wasser/Schaum/Lava
   float bD = length(vViewPosition);
+  // kamerarelative Weltlage (klein, genau) + Versatz aus JS → kein Wackeln beim Laufen
+  vec3 bRel = transpose(mat3(viewMatrix)) * (-vViewPosition);
+  vec3 bP = bRel + bodenVers.xyz;
+  // Pixelgröße am Boden (m): feine Oktaven ausblenden, sobald ihre Zellen kleiner als ~1 Pixel werden (sonst Flimmern)
+  vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition);
+  float bPix = max(length(dpx), length(dpy));
+  float bAA2 = 1.0 - smoothstep(0.3, 0.8, bPix * 2.0), bAA8 = 1.0 - smoothstep(0.3, 0.8, bPix * 8.0), bAA32 = 1.0 - smoothstep(0.3, 0.8, bPix * 32.0);
   float bNah = (1.0 - smoothstep(14.0, 45.0, bD)) * (1.0 - wT) * (1.0 - wSchaum) * (1.0 - smoothstep(0.55, 0.72, diffuseColor.r - diffuseColor.b));
   if (bNah > 0.01) {
-    // kamerarelative Weltlage (klein, genau) + Kameralage modulo 1024 m (Uniform, exakt) → keine Blockbildung bei ~1e5 m
-    vec3 bP = transpose(mat3(viewMatrix)) * (-vViewPosition) + mod(wasserCam, 1024.0);
-    float n1 = bRausch(bP, 0.5), n2 = bRausch(bP, 2.0), n3 = bRausch(bP, 8.0);
-    float bKorn = 1.0 - smoothstep(4.0, 16.0, bD);
+    float n1 = bRausch(bP, 0.5);
+    float n2 = mix(0.5, bRausch(bP, 2.0), bAA2), n3 = mix(0.5, bRausch(bP, 8.0), bAA8);
+    float bKorn = (1.0 - smoothstep(4.0, 16.0, bD)) * bAA32;
     float n4 = bKorn > 0.01 ? bRausch(bP, 32.0) : 0.5;
     vec3 c = diffuseColor.rgb;
     float sat = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
@@ -135,17 +143,17 @@ if (wT > 0.01) {
     c *= 1.0 + fleck;
     c = mix(c, c * vec3(1.18, 1.08, 0.66), gras * smoothstep(0.5, 0.72, n1) * 0.8);   // trockene Grasflecken
     c = mix(c, c * vec3(0.78, 0.95, 0.8), gras * smoothstep(0.55, 0.3, n2) * 0.6);    // dunkle Büschel
-    float stein = smoothstep(0.68, 0.74, n3 * 0.7 + n2 * 0.3 + 0.04) * (1.0 - gras * 0.7);
+    float sW = 0.03 + bPix * 0.6;   // Kieselrand je nach Pixelgröße weicher → keine flimmernden Pixel-Linien
+    float stein = smoothstep(0.71 - sW, 0.71 + sW, n3 * 0.7 + n2 * 0.3 + 0.04) * (1.0 - gras * 0.7) * bAA8;
     c = mix(c, vec3(dot(c, vec3(0.33))) * vec3(1.15, 1.1, 1.0) * (0.8 + 0.5 * n4), stein * (0.25 + 0.5 * fels));   // Kiesel
-    hoehe += stein * 0.5;
+    hoehe += stein * 0.3;
     // steile Hänge: Gesteinsschichten (konzentrisch zum Planeten = waagrecht), grauer
     float bSteil = 1.0 - dot(normalize(transpose(mat3(viewMatrix)) * normal), vObenW);
     float fHang = smoothstep(0.12, 0.32, bSteil);
-    float schicht = 0.5 + 0.5 * sin(length(vWelt) * 11.0 + 4.0 * n1 + 2.0 * n2);
+    float schicht = 0.5 + 0.5 * sin((dot(bRel, vObenW) + bodenVers.w) * 11.0 + 4.0 * n1 + 2.0 * n2);
     c = mix(c, mix(c, vec3(dot(c, vec3(0.33))) * vec3(1.05, 0.98, 0.9), 0.55) * (0.72 + 0.5 * schicht), fHang);
     diffuseColor.rgb = mix(diffuseColor.rgb, c, bNah);
     // Bump: Höhenfeld (cm) per Bildschirmableitung in die Normale
-    vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition);
     vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx); float det = dot(dpx, r1);
     float hs = (0.07 + 0.08 * fHang * schicht) * bNah;
     vec2 dh = vec2(dFdx(hoehe), dFdy(hoehe)) * hs;
@@ -159,7 +167,7 @@ if (wT > 0.01) {
   totalEmissiveRadiance += wHimmel * fr * 0.55 * wT;
 }`);
 };
-bodenMat.customProgramCacheKey = () => 'erde-boden-wasser-detail';
+bodenMat.customProgramCacheKey = () => 'erde-boden-wasser-detail2';
 const stufenMat = []; // Debug: jede Stufe eigene Farbe
 for (let i = 0; i <= MAX_STUFE; i++) stufenMat.push(new THREE.MeshStandardMaterial({ color: new THREE.Color().setHSL((i * 0.13) % 1, 0.6, 0.55), roughness: 1 }));
 let stufenFarben = false;
@@ -996,6 +1004,8 @@ function bild() {
   fernU.uSonneFarbe.value.copy(sonne.color).multiplyScalar(sonne.intensity);
   wasserU.wZeit.value = jetzt / 1000;
   wasserU.wasserCam.value.copy(cam);
+  { const md = (a, p) => ((a % p) + p) % p;
+    wasserU.bodenVers.value.set(md(cam.x, 1024), md(cam.y, 1024), md(cam.z, 1024), md(Math.hypot(cam.x, cam.y, cam.z), SCHICHT_PER)); }
   wasserU.wHimmel.value.copy(himmel).lerp(blau, 0.3);
   rauch.update(dt, zw.windWelt, fernU.uPixel.value, fernU.uLicht.value);
   wolkenDecke?.update(dt, { cam, wetter: W, windWelt: zw.windWelt, sonne: SONNE, tag, licht: fernU.uLicht.value, himmel, raum });
