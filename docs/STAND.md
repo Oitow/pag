@@ -3,6 +3,7 @@
 > Wird von `/ende` überschrieben und von `/start` gelesen. Höchstens 35 Zeilen. Dauerhafte Festlegungen: `docs/ENTSCHEIDUNGEN.md`.
 
 ## Zuletzt gemacht
+- **Wildgrund Graben neu (26.11. abends)**: Graben/Aufschütten als feines Höhenfeld (`labore/erde/js/graben-feld.js`, 0,2 m, Gruben mit flachem Boden und ~60°-Wänden) statt Voxel-Säulen – keine Nähte/Stufen, keine Loch-Maske, Kacheln an Grabstellen 1 Stufe feiner; steile Wände nicht hochlaufbar; alte Voxel-Gruben werden übernommen (Tunnel nicht), Voxel nur `?voxel=1`. Gras: breitere, gefächerte Halme, ~20 % weniger Dreiecke, 3 statt ~25 Hash-Rechnungen je Ecke
 - **Wildgrund Sicht + Gras (26.11. nachmittags)**: kein Dunst-Schleier mehr bei klarem Wetter (Luftperspektive gedeckelt, Nebel nur bei Wetter), Ruckeln beim Hinunterfliegen behoben (Natur rechnete bei jedem Neuaufbau alle Stücke aufs Netz um; Bergschatten jedes Bild neu), Gras-Teppich auf der GPU (`labore/erde/js/gras-teppich.js`, Regler „Gras“), Boden unter Gras grüner, filmische Tonwerte (ACES), Himmelslicht in Himmelsfarbe
 - **Wildgrund Boden (26.11. mittags)**: Natur sitzt jetzt genau auf dem gezeichneten Gelände-Netz (`labore/erde/js/boden-netz.js`, nichts steckt mehr im Boden/schwebt), Bodentextur neu (an die Welt geheftet statt an die Kamera → rutscht nicht mehr, keine Wurm-Linien, Fels-Schichten auf jede Entfernung), Graben/Aufschütten räumt Gras im Umkreis mit weg
 - **Wildgrund Welt-Fundament (26.11.)**: Bergschatten (`labore/erde/js/fernschatten.js`, ±1,6 km), Gelände-AO, Grafik-Stufen Niedrig/Mittel/Hoch/Ultra + Fenster „Grafik ⚙“ mit Einzelreglern, Wasser-Kräusel; Topografie: Tafelberge/Schluchten, Küstenklippen, Kare, Felsbänder, Schutthalden (`?ort=tafel`)
@@ -16,6 +17,7 @@
 - Vorher: Erlenwacht wird ein MMO (Klassen, Stufen, Beute, Gegner + Boss, Tutorial, Chat/Menü, Welt v2), siehe `docs/plaene/ERLENWACHT-MMO-PLAN.md`
 
 ## Läuft / kaputt
+- Erde Graben 26.11.: Erde-Tests grün, Bilder Grube (quer/hoch) ohne Konsolenfehler. NICHT geprüft: echtes Handy (Bildrate beim Graben, Ruckler beim ersten Schlag in einen neuen 19-m-Fleck ~20–40 ms), Tunnel gibt es vorerst nicht
 - Erde Gras 26.11.: Erde-Tests grün, Bilder Wiese/Ufer/Küste ohne Konsolenfehler. NICHT geprüft: echte Bildrate am Handy (Gras Mittel ≈ 150k, Hoch ≈ 700k Dreiecke max.), Fliegen von oben nach unten am echten Gerät
 - Erde-Welt 26.11.: Tests grün, Bilder (Küste/Mittel, Fluss/Hoch) ohne Konsolenfehler. NICHT geprüft: echtes Handy (Bildrate mit Bergschatten), Ultra-Stufe, Stufenkanten der Tafelberge beim LOD-Wechsel (können ~10 m springen)
 - Erde: Bilder aller neuen Teile angesehen, `tests/erde-*` grün, Smoke ok. NICHT geprüft: echtes Handy (Bildrate mit Tieren/Wolken/Bauteilen, Touch in Bau-Leiste/Fenstern), lange Spielsitzung am Stück

@@ -21,7 +21,9 @@ export { NAME as gegenstandName };
  */
 export const VOXEL_GRAB_R = 0.85, VOXEL_AUF_R = 0.75;
 /** voxel = createVoxelErde (optional): dann gräbt man in Blickrichtung (Gruben, Tunnel) statt das Höhenfeld abzusenken. */
-export function createAktionen({ planet, eingriffe, natur, inventar, seed = 1, voxel = null, beiVoxel = () => {}, beiEingriff = () => {}, beiEntfernen = () => {} }) {
+/** feld = createGrabFeld (graben-feld.js): Graben/Aufschütten als feines Höhenfeld (Standard). beiFeld({ op, betroffen }) = an Worker schicken + Kacheln neu bauen. */
+export const FELD_R = 0.95, FELD_TIEFE = 0.45;
+export function createAktionen({ planet, eingriffe, natur, inventar, seed = 1, voxel = null, feld = null, beiVoxel = () => {}, beiFeld = () => {}, beiEingriff = () => {}, beiEntfernen = () => {} }) {
   const R = planet.radius;
   // axt = Stufe 0…3 (0 = keine), hacke = Stufe 0…4 (Stein 2, Kupfer 3, Eisen 4) – Tabellen in herstellen-daten.js
   const hat = (id) => inventar.hat(id, 1);
@@ -62,6 +64,7 @@ export function createAktionen({ planet, eingriffe, natur, inventar, seed = 1, v
   }
 
   function graben(p, blickR = null) {
+    if (feld) return grabenFeld(p, 'weg');
     if (voxel && blickR) return grabenVoxel(p, blickR);
     const o = naturImWeg(p);
     if (o && (o.r > 0.5 || o.art === 'granitblock')) return { ok: false, text: `Erst ${o.art} wegräumen` };
@@ -78,6 +81,35 @@ export function createAktionen({ planet, eingriffe, natur, inventar, seed = 1, v
     if (g.fund && (FUND_STUFE[g.fund] || 0) > hacke) text += ` · ${NAME(g.fund)} im Fels – ${hackeName(FUND_STUFE[g.fund])} nötig`;
     else if (g.fund) { inventar.gib(g.fund, 1); text += ` · Fund: ${NAME(g.fund)}!`; }
     return { ok: true, text };
+  }
+
+  /** Feines Höhenfeld: Grube mit flachem Boden (je Schlag ~0,45 m tiefer) bzw. Hügel. Stoff = Schicht in dieser Tiefe. */
+  function grabenFeld(p, typ, stoff = null) {
+    const d = richtung(p);
+    const jetzt = feld.hoehe(d[0], d[1], d[2]);
+    if (typ === 'weg') {
+      const o = naturImWeg(p);
+      if (o && (o.r > 0.5 || o.art === 'granitblock')) return { ok: false, text: `Erst ${o.art} wegräumen` };
+      const u = untergrund(p);
+      const hacke = werkzeug().hacke;
+      const g = grabung(u.stoff, [p.x, p.y, p.z], u.tiefe, hacke, seed);
+      if (!g.ok) return { ok: false, text: `${NAME(u.stoff)}: ${STOFFE[u.stoff] ? hackeName(STOFFE[u.stoff].haerte) + ' nötig' : g.grund}` };
+      if (o) { eingriffe.entferne(o.id); beiEntfernen(); }
+      raeumeKleines(p, FELD_R + 0.4);
+      // Ziel: unter dem Treffer UND unter der Mitte – an einer Grubenwand gräbt man so seitlich weiter
+      const hp = Math.hypot(p.x, p.y, p.z) - R;
+      beiFeld(feld.setze({ typ, d, r: FELD_R, ziel: Math.min(hp, jetzt) - FELD_TIEFE }));
+      inventar.gib(g.stoff, g.menge);
+      let text = `+${g.menge} ${NAME(g.stoff)}` + (u.tiefe > 1.5 ? ` · ${u.tiefe.toFixed(1)} m tief` : '');
+      if (g.fund && (FUND_STUFE[g.fund] || 0) > hacke) text += ` · ${NAME(g.fund)} im Fels – ${hackeName(FUND_STUFE[g.fund])} nötig`;
+      else if (g.fund) { inventar.gib(g.fund, 1); text += ` · Fund: ${NAME(g.fund)}!`; }
+      return { ok: true, text };
+    }
+    const o = natur.finde(p, FELD_R * 0.6);
+    if (o && o.r <= 0.5) { eingriffe.entferne(o.id); beiEntfernen(); }
+    raeumeKleines(p, FELD_R + 0.3);
+    beiFeld(feld.setze({ typ, d, r: FELD_R, ziel: jetzt + FELD_TIEFE }));
+    return { ok: true, text: `−1 ${NAME(stoff)} aufgeschüttet` };
   }
 
   /** Graben in Blickrichtung: Kugel aus dem Voxel-Boden, Stoff = was dort wirklich liegt (Schichten, Gestein). */
@@ -103,6 +135,7 @@ export function createAktionen({ planet, eingriffe, natur, inventar, seed = 1, v
   function bauen(p, blickR = null) {
     const stoff = BAUSTOFFE.find((s) => inventar.hat(s, 1));
     if (!stoff) return { ok: false, text: 'Nichts zum Aufschütten (erst graben)' };
+    if (feld) { inventar.nimm(stoff, 1); return grabenFeld(p, 'fest', stoff); }
     if (voxel && blickR) {   // vor die getroffene Fläche setzen (Richtung Spieler)
       inventar.nimm(stoff, 1);
       const o = natur.finde(p, GRAB_RADIUS * 0.5);

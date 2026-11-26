@@ -4,12 +4,20 @@ import { createPlanetHoehe } from './planet-hoehe.js';
 import { baueKachel } from './kachel-bau.js';
 import { streueKachel } from './natur-streu.js';
 import { createEingriffe } from './eingriffe.js';
+import { createGrabFeld } from './graben-feld.js';
 import { createVoxelBauer, voxelTransfer } from './voxel-erde.js';
 
 let planet = null, voxel = null;
 self.onmessage = (e) => {
   const m = e.data;
-  if (m.art === 'planet') { planet = createPlanetHoehe({ ...m.opts, eingriffe: createEingriffe({ radius: m.opts.radius, zustand: m.eingriffe }) }); return; }
+  if (m.art === 'planet') {
+    // Graben-Feld: gleiche Ops wie im Hauptthread → gleiches feines Höhenfeld
+    const feld = createGrabFeld({ radius: m.opts.radius, basis: (x, y, z) => { const p = planet.probe(x, y, z, 1); return p.h - p.feld; } });
+    planet = createPlanetHoehe({ ...m.opts, eingriffe: createEingriffe({ radius: m.opts.radius, zustand: m.eingriffe }), feld });
+    feld.lade(m.feld);
+    return;
+  }
+  if (m.art === 'feld') { planet.feld.stempel(m.op); return; }   // Graben im feinen Höhenfeld vom Hauptthread
   if (m.art === 'eingriff') { planet.eingriffe.uebernimm(m.e); return; } // Graben/Aufschütten vom Hauptthread
   if (m.art === 'bau') {
     const t0 = performance.now();

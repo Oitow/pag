@@ -55,7 +55,8 @@ export function enthaelt(k1, k2) {
  *       hBoden (m, Geländehöhe unter der Kamera: Kachelmitten liegen auf dieser Höhe statt auf Meereshöhe –
  *       sonst bekäme man auf Hochebenen nie die feinste Stufe)
  */
-export function waehleKacheln(p, { R, maxStufe, teilung = 1.8, maxBerg = 4500, hBoden = 0 }) {
+// fein(k) → true: Kachel darf noch 1 Stufe feiner werden (Grabstellen: ~0,3 m Punktabstand nah an der Kamera)
+export function waehleKacheln(p, { R, maxStufe, teilung = 1.8, maxBerg = 4500, hBoden = 0, fein = null }) {
   const lp = Math.hypot(p[0], p[1], p[2]);
   const pd = [p[0] / lp, p[1] / lp, p[2] / lp];
   // Horizont: bis wohin sieht man? Großzügig, damit Berge hinter der Kante nicht fehlen.
@@ -71,7 +72,7 @@ export function waehleKacheln(p, { R, maxStufe, teilung = 1.8, maxBerg = 4500, h
     const verdeckt = Math.acos(Math.max(-1, Math.min(1, cosW))) > hor + winkelKachel;
     const rb = R + hBoden;
     const dist = Math.hypot(d[0] * rb - p[0], d[1] * rb - p[1], d[2] * rb - p[2]);
-    if (!verdeckt && k.L < maxStufe && dist < teilung * kante) {
+    if (!verdeckt && dist < teilung * kante && (k.L < maxStufe || (fein && k.L < maxStufe + 1 && fein(k)))) {
       for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++)
         stapel.push({ f: k.f, L: k.L + 1, ix: k.ix * 2 + i, iy: k.iy * 2 + j });
     } else {
