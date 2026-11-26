@@ -1,0 +1,1201 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Tree Lab · prozedurale Bäume</title>
+<!-- Three.js fest auf 0.170.0 gepinnt (wie im ganzen Repo) -->
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+<style>
+:root{--bg:rgba(16,22,20,.86);--fg:#eef3ec;--dim:#a9b7ab;--acc:#ffd27a;--line:rgba(255,255,255,.13)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#9fc3e0;color:var(--fg);font:13px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+.box{background:var(--bg);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(5px)}
+#top{position:fixed;top:max(8px,env(safe-area-inset-top));left:8px;right:8px;display:flex;gap:6px;align-items:center;pointer-events:none;z-index:5}
+#top>*{pointer-events:auto}
+button{font:inherit;color:var(--fg);background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:8px;padding:7px 10px;cursor:pointer}
+button.on{background:var(--acc);color:#1a1a10;border-color:var(--acc);font-weight:600}
+button:active{transform:translateY(1px)}
+.sp{flex:1}
+#stats{position:fixed;left:8px;top:calc(max(8px,env(safe-area-inset-top)) + 42px);margin:0;padding:6px 8px;font:11px/1.35 ui-monospace,Menlo,Consolas,monospace;white-space:pre;z-index:4;pointer-events:none}
+#panel{position:fixed;z-index:6;overflow:auto;padding:4px 10px 12px;overscroll-behavior:contain;touch-action:pan-y}
+@media (min-aspect-ratio:1/1){#panel{top:calc(max(8px,env(safe-area-inset-top)) + 42px);right:8px;bottom:8px;width:330px}}
+@media (max-aspect-ratio:1/1){#panel{left:6px;right:6px;bottom:max(6px,env(safe-area-inset-bottom));max-height:46vh}}
+#panel.zu{display:none}
+details{border-bottom:1px solid var(--line);padding:4px 0}
+summary{cursor:pointer;font-weight:600;padding:6px 0;color:var(--acc);list-style:none}
+summary::before{content:"▸ ";color:var(--dim)}details[open] summary::before{content:"▾ "}
+.row{display:grid;grid-template-columns:1fr auto;gap:2px 8px;margin:6px 0}
+.row b{font-weight:500;color:var(--acc);font-variant-numeric:tabular-nums}
+.row input[type=range]{grid-column:1/3;width:100%;accent-color:var(--acc);height:22px}
+.btns{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0}
+.chk{display:flex;gap:8px;align-items:center;margin:7px 0}
+.chk input{width:18px;height:18px;accent-color:var(--acc)}
+select,input[type=number]{font:inherit;color:var(--fg);background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:7px;padding:5px}
+input[type=number]{width:96px}
+.klein{color:var(--dim);font-size:11px}
+table{border-collapse:collapse;width:100%;font:10.5px/1.3 ui-monospace,Menlo,monospace;margin-top:6px}
+td,th{border-bottom:1px solid var(--line);padding:3px 2px;text-align:right}th{color:var(--dim);font-weight:500}td:first-child,th:first-child{text-align:left}
+#joy{position:fixed;left:18px;bottom:calc(18px + env(safe-area-inset-bottom));width:120px;height:120px;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:rgba(0,0,0,.15);z-index:3;display:none;touch-action:none}
+#knob{position:absolute;left:38px;top:38px;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.45)}
+#busy{position:fixed;left:50%;top:calc(max(8px,env(safe-area-inset-top)) + 44px);transform:translateX(-50%);padding:6px 12px;z-index:7;display:none;font-weight:600}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);max-width:92vw;padding:8px 12px;z-index:8;display:none}
+#toast textarea{width:80vw;max-width:520px;height:110px;font:11px ui-monospace,monospace;background:#0b100e;color:#dfe;border:1px solid var(--line)}
+#hilfe{position:fixed;right:10px;bottom:10px;padding:5px 8px;z-index:2;font-size:11px;color:var(--dim)}
+@media (max-aspect-ratio:1/1){#hilfe{display:none}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="top">
+  <button id="vSpec" class="on">🌳 Exemplar</button><button id="vWald">🌲 Wald</button>
+  <span class="sp"></span>
+  <button id="bStats" class="on" title="Messwerte">📊</button><button id="bPanel">⚙ Regler</button>
+</div>
+<pre id="stats" class="box"></pre>
+<div id="panel" class="box zu"></div>
+<div id="joy"><div id="knob"></div></div>
+<div id="busy" class="box"></div>
+<div id="toast" class="box"></div>
+<div id="hilfe" class="box"></div>
+
+<script type="module">
+/* =====================================================================================
+   TREE LAB – prozedurale, spieltaugliche Bäume (Three.js 0.170.0, WebGL2)
+   Aufbau dieser Datei (bewusst getrennt, damit man Teile ins Spiel übernehmen kann):
+     1. KERN        – Zufall/Rauschen, Arten, Skelett (Asthierarchie), Alter, Geometrie   (kein DOM)
+     2. LOOK        – prozedurale Texturen + Materialien (Wind, Durchscheinen, LOD-Dither)
+     3. WALD        – Varianten-Bibliothek, Platzierung, Instancing, LOD, Impostor-Atlas
+     4. API         – window.TreeLab (createTree, createForest, update, dispose)
+     5. DEMO        – Szene, Kamera, Bedienfeld, Messanzeige, Messfahrt
+   API-Kurzbeispiel (siehe auch README.md im Ordner):
+     const tree = TreeLab.createTree({ species:'oak', seed:7, age:0.8 }, { style:'natural' });
+     scene.add(tree.object);
+     const forest = TreeLab.createForest({ renderer, scene, count:2000, tree:{ species:'pine', seed:3 } });
+     await forest.ready;
+     // pro Frame:  TreeLab.update(dt, camera, sunDir); forest.update(camera);
+     // aufräumen:  tree.dispose(); forest.dispose();
+   ===================================================================================== */
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ============================== 1. KERN ============================== */
+const V3 = THREE.Vector3, UP = new V3(0, 1, 0), XA = new V3(1, 0, 0), D = Math.PI / 180;
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+function rngFrom(seed) { let a = (seed >>> 0) || 1; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function hash2(a, b) { let h = (Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul((b | 0) + 0x165667b1, 0x85ebca6b)) >>> 0; h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d) >>> 0; h ^= h >>> 12; h = Math.imul(h, 0x297a2d39) >>> 0; h ^= h >>> 15; return h >>> 0; }
+const lat = (i, j, k, s) => hash2(hash2(hash2(i, j), k), s) / 4294967296;
+const sm = t => t * t * (3 - 2 * t);
+function vnoise3(x, y, z, s = 0) {
+  const i = Math.floor(x), j = Math.floor(y), k = Math.floor(z), fx = sm(x - i), fy = sm(y - j), fz = sm(z - k), L = (a, b, t) => a + (b - a) * t;
+  return L(L(L(lat(i, j, k, s), lat(i + 1, j, k, s), fx), L(lat(i, j + 1, k, s), lat(i + 1, j + 1, k, s), fx), fy),
+           L(L(lat(i, j, k + 1, s), lat(i + 1, j, k + 1, s), fx), L(lat(i, j + 1, k + 1, s), lat(i + 1, j + 1, k + 1, s), fx), fy), fz);
+}
+const fbm2 = (x, z, s, o = 3) => { let v = 0, a = 0.5, n = 0; for (let i = 0; i < o; i++) { v += a * vnoise3(x, 0.5, z, s + i * 13); n += a; a *= 0.5; x *= 2.03; z *= 2.03; } return v / n; };
+// kachelbares 2D-Rauschen für Texturen (Periode px × py Gitterzellen)
+function pn2(x, y, px, py, s) {
+  const i = Math.floor(x), j = Math.floor(y), fx = sm(x - i), fy = sm(y - j), m = (a, p) => ((a % p) + p) % p;
+  const a = lat(m(i, px), m(j, py), 0, s), b = lat(m(i + 1, px), m(j, py), 0, s), c = lat(m(i, px), m(j + 1, py), 0, s), d = lat(m(i + 1, px), m(j + 1, py), 0, s);
+  return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+}
+function pfbm(u, v, fx, fy, oct, s) { let sum = 0, amp = 0.5, n = 0; for (let o = 0; o < oct; o++) { sum += amp * pn2(u * fx, v * fy, fx, fy, s + o * 17); n += amp; amp *= 0.5; fx *= 2; fy *= 2; } return sum / n; }
+function basis(d) { const a = Math.abs(d.y) < 0.9 ? UP : XA; const u = new V3().crossVectors(d, a).normalize(); return [u, new V3().crossVectors(d, u)]; }
+function rotOut(d, phi, ang) { const [u, v] = basis(d); const p = u.multiplyScalar(Math.cos(phi)).addScaledVector(v, Math.sin(phi)); return d.clone().multiplyScalar(Math.cos(ang)).addScaledVector(p, Math.sin(ang)).normalize(); }
+
+/* Arten. Längen in Metern, Mensch = 1,8 m.
+   lv[ebene]: seg = Segmentlänge, wander = Richtungsrauschen, kink = Knick-Chance, trop = Licht/Schwerkraft (+ nach oben), rad = Ringsegmente
+   grow = Wachstumsdauer je Ebene (Anteil am Leben), tipR/K/pipe = Röhrenmodell (Leonardo-Regel) für die Dicke */
+const SPECIES = {
+  oak: {
+    label: 'Eiche', H: 17, years: 180, tipR: 0.0042, K: 5.2, pipe: 2.0, flare: 0.95, lobes: 7, trunkTaper: 0.3, maxLevel: 3, prune: 0,
+    lv: [{ seg: 0.3, wander: 0.035, kink: 0, trop: 0.02, rad: 18 }, { seg: 0.5, wander: 0.16, kink: 0.3, kinkAmt: 0.5, trop: 0.028, rad: 11 },
+         { seg: 0.32, wander: 0.24, kink: 0.22, kinkAmt: 0.35, trop: -0.012, rad: 6 }, { seg: 0.2, wander: 0.3, kink: 0, trop: 0.05, rad: 3 }],
+    grow: [0.22, 0.36, 0.28, 0.16], delay: [0, 0.01, 0.015, 0.015], wind: [0.006, 0.05, 0.09, 0.07],
+    leafMin: 2, leafAlong: false, spray: 0.1, card: 0.78, cardUp: 0.25, droop: 0, gap: 0.34, gapScale: 0.42, fold: 0.14, asym: 0.3,
+    trunk: (r, H) => H * (0.28 + 0.1 * r()),
+    spawn(b, r, H, S, out) {
+      if (b.level === 0) {
+        const nSide = 1 + Math.floor(r() * 2.6);
+        for (let i = 0; i < nSide; i++) out.push({ t: 0.55 + 0.35 * r(), phi: r() * 6.283, ang: (64 + 16 * r()) * D, len: H * (0.46 + 0.16 * r()), kind: 'limb' });
+        const nL = 3 + (r() < 0.55 ? 1 : 0) + (r() < 0.2 ? 1 : 0), ph0 = r() * 6.283;
+        for (let i = 0; i < nL; i++) out.push({ t: 1, phi: ph0 + i * 6.283 / nL + (r() - 0.5) * 0.7, ang: (30 + 28 * r()) * D, len: H * (0.5 + 0.15 * r()), kind: 'leader' });
+      } else if (b.level === 1) {
+        const n = Math.round((8 + 5 * r()) * S.dens * (b.len / (0.55 * H)));
+        for (let i = 0; i < n; i++) { const t = 0.12 + 0.88 * (i + 0.3 + 0.4 * r()) / n; out.push({ t, phi: i * 2.4 + r(), ang: (40 + 30 * r()) * D, len: b.len * (0.4 + 0.15 * r()) * (1 - 0.45 * t) }); }
+      } else if (b.level === 2) {
+        const n = Math.round((6 + 5 * r()) * S.dens * Math.min(1.6, b.len / 2.2));
+        for (let i = 0; i < n; i++) { const t = 0.18 + 0.82 * (i + 0.3 + 0.4 * r()) / n; out.push({ t, phi: i * 2.4 + r(), ang: (38 + 26 * r()) * D, len: Math.min(1.8, 0.5 + b.len * 0.32 * (1 - 0.3 * t)) * (0.8 + 0.4 * r()) }); }
+      }
+    }
+  },
+  birch: {
+    label: 'Birke', H: 16, years: 80, tipR: 0.0032, K: 4.2, pipe: 2.0, flare: 0.35, lobes: 4, trunkTaper: 0.6, maxLevel: 3, prune: 0.33,
+    lv: [{ seg: 0.4, wander: 0.02, kink: 0, trop: 0.012, rad: 12 }, { seg: 0.4, wander: 0.1, kink: 0.1, kinkAmt: 0.25, trop: -0.035, rad: 7 },
+         { seg: 0.28, wander: 0.14, kink: 0, trop: -0.09, rad: 4 }, { seg: 0.18, wander: 0.12, kink: 0, trop: -0.22, rad: 3 }],
+    grow: [0.36, 0.3, 0.22, 0.14], delay: [0, 0.01, 0.01, 0.01], wind: [0.012, 0.08, 0.13, 0.07],
+    leafMin: 2, leafAlong: false, spray: 0.09, card: 0.55, cardUp: -0.1, droop: 0.55, gap: 0.3, gapScale: 0.5, fold: 0.08, asym: 0.12,
+    trunk: (r, H) => H * 0.97,
+    spawn(b, r, H, S, out) {
+      if (b.level === 0) {
+        const n = Math.round(24 * S.dens);
+        for (let i = 0; i < n; i++) { const t = 0.26 + 0.71 * (i + 0.5 * r()) / n; const prof = Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0.02, (t - 0.2) / 0.86))), 0.8) + 0.08; out.push({ t, phi: i * 2.4 + 0.3 * r(), ang: (32 + 18 * r()) * D, len: H * 0.3 * prof * (0.8 + 0.4 * r()), kind: 'limb' }); }
+      } else if (b.level === 1) {
+        const n = Math.round((5 + 3 * r()) * S.dens * Math.min(1.5, b.len / 3));
+        for (let i = 0; i < n; i++) { const t = 0.22 + 0.78 * (i + 0.4 * r()) / n; out.push({ t, phi: i * 2.4 + r(), ang: (30 + 25 * r()) * D, len: b.len * (0.4 + 0.15 * r()) * (1 - 0.45 * t) }); }
+      } else if (b.level === 2) {
+        const n = Math.round((3 + 3 * r()) * S.dens);
+        for (let i = 0; i < n; i++) { const t = 0.3 + 0.7 * (i + 0.4 * r()) / n; out.push({ t, phi: i * 2.4 + r(), ang: (20 + 20 * r()) * D, len: 0.45 + 0.5 * r() }); }
+      }
+    }
+  },
+  pine: {
+    label: 'Kiefer', H: 20, years: 120, tipR: 0.0045, K: 4.6, pipe: 2.0, flare: 0.5, lobes: 5, trunkTaper: 0.8, maxLevel: 2, prune: 0.3,
+    lv: [{ seg: 0.4, wander: 0.012, kink: 0, trop: 0.01, rad: 12 }, { seg: 0.35, wander: 0.06, kink: 0.08, kinkAmt: 0.2, trop: 0.004, rad: 6 },
+         { seg: 0.25, wander: 0.1, kink: 0, trop: 0.035, rad: 3 }],
+    grow: [0.62, 0.3, 0.18], delay: [0, 0.01, 0.01], wind: [0.009, 0.05, 0.07, 0.03],
+    leafMin: 1, leafAlong: true, spray: 0.09, card: 0.85, cardUp: 0.1, droop: 0, gap: 0.25, gapScale: 0.6, fold: 0.05, asym: 0.05,
+    trunk: (r, H) => H,
+    spawn(b, r, H, S, out) {
+      if (b.level === 0) {
+        let h = 1.0 + 0.4 * r();
+        while (h < b.len * 0.97) {
+          const t = h / b.len, n = Math.max(3, Math.round((4 + 2 * r()) * Math.min(1.3, S.dens))), ph = r() * 6.283;
+          const L = (0.5 + H * 0.33 * Math.pow(1 - t, 0.9)) * (0.85 + 0.3 * r()), up = t > 0.85 ? (t - 0.85) * 160 : 0;
+          for (let i = 0; i < n; i++) out.push({ t, phi: ph + i * 6.283 / n + (r() - 0.5) * 0.5, ang: (78 + 18 * r() - up) * D, len: L * (0.85 + 0.3 * r()), kind: 'whorl' });
+          h += 0.55 + 0.3 * r();
+        }
+      } else if (b.level === 1) {
+        const n = Math.round(b.len / 0.26 * S.dens);
+        for (let i = 0; i < n; i++) { const t = 0.15 + 0.85 * (i + 0.4 * r()) / Math.max(1, n); out.push({ t, phi: (i % 2 ? 0 : Math.PI) + (r() - 0.5) * 0.5, ang: (40 + 20 * r()) * D, len: (0.2 + b.len * 0.3 * (1 - 0.65 * t)) * (0.8 + 0.4 * r()) }); }
+      }
+    }
+  }
+};
+/* Stile ändern Geometrie, Laub, Shading und Textur – nie das Skelett (gleicher Seed = gleicher Baum in jedem Stil). */
+const STYLES = {
+  natural:   { label: 'Naturalistisch', rad: 1, ringStride: 1, card: 1, cardN: 1, fold: 1, girth: 1, quad: false, L3: true },
+  painterly: { label: 'Malerisch', rad: 0.8, ringStride: 1, card: 1.6, cardN: 0.42, fold: 1.6, girth: 1.15, quad: false, L3: true },
+  ps2:       { label: 'PS2 Low-Poly', rad: 0.42, ringStride: 2, card: 2.3, cardN: 0.18, fold: 0, girth: 1.1, quad: true, L3: false }
+};
+const DEFAULT_TREE = { species: 'oak', seed: 1337, age: 1, height: null, girth: 1, spread: 1, dens: 1, foliage: 1 };
+
+function sampleCurve(b, s) {
+  const n = b.pts.length - 1; s = clamp(s, 0, b.len); const fi = Math.min(n - 1e-6, s / b.seg), i = Math.floor(fi), f = fi - i;
+  const p = b.pts[i].clone().lerp(b.pts[i + 1], f);
+  const d = b.tans[i + 1].clone().lerp(b.tans[Math.min(n, i + 2)], f).normalize();
+  return { p, d };
+}
+
+/** Skelett erzeugen – unabhängig vom Alter. Jeder Ast hat einen eigenen Seed (aus dem Elternast) und eine Geburtszeit. */
+function generateSkeleton(spKey, S) {
+  const sp = SPECIES[spKey], H = S.height || sp.H, branches = [];
+  const bias = new V3(1, 0, 0.25).normalize();         // Lichtseite (Lichtung) → leicht asymmetrische Krone
+  const root = { level: 0, seed: hash2(S.seed, 991), start: new V3(0, -0.35, 0), dir: new V3(0, 1, 0), len: sp.trunk(rngFrom(hash2(S.seed, 5)), H) + 0.35, parent: null, t: 0, birth: 0, kind: 'trunk' };
+  const q = [root];
+  for (let qi = 0; qi < q.length; qi++) {
+    const b = q[qi]; b.id = branches.length; branches.push(b);
+    const r = rngFrom(b.seed), L = sp.lv[b.level];
+    const nSeg = Math.max(2, Math.ceil(b.len / L.seg)), seg = b.len / nSeg;
+    const p = b.start.clone(), d = b.dir.clone(), pts = [p.clone()], tans = [d.clone()];
+    for (let i = 0; i < nSeg; i++) {
+      const w = L.wander; d.x += (r() - 0.5) * 2 * w; d.y += (r() - 0.5) * w; d.z += (r() - 0.5) * 2 * w;
+      if (L.kink && r() < L.kink) { d.x += (r() - 0.5) * 2 * L.kinkAmt; d.z += (r() - 0.5) * 2 * L.kinkAmt; d.y += (r() - 0.5) * L.kinkAmt; }
+      d.y += L.trop * (b.level >= 2 ? 1 + i / nSeg : 1);
+      d.normalize(); p.addScaledVector(d, seg); pts.push(p.clone()); tans.push(d.clone());
+    }
+    b.pts = pts; b.tans = tans; b.seg = seg; b.cum = pts.map((_, i) => i * seg);
+    b.phase = r() * 6.283; b.grow = sp.grow[b.level]; b.children = []; b.deadR = sp.tipR * (2 + r() * 1.5);
+    if (b.level < sp.maxLevel) {
+      const specs = []; sp.spawn(b, r, H, S, specs);
+      specs.forEach((c, i) => {
+        const at = sampleCurve(b, c.t * b.len), dir = rotOut(at.d, c.phi, c.ang);
+        const hd = new V3(dir.x, 0, dir.z), hl = hd.length(); let len = c.len;
+        if (b.level + 1 <= 2 && hl > 0.01) { hd.divideScalar(hl); len *= 1 + sp.asym * hd.dot(bias); len *= 1 + (S.spread - 1) * hl; }
+        const ch = { level: b.level + 1, seed: hash2(b.seed, i + 1), start: at.p.clone(), dir, len: Math.max(0.08, len), parent: b, t: c.t, kind: c.kind || '',
+                     birth: b.birth + b.grow * c.t + sp.delay[b.level + 1] };
+        b.children.push(ch); q.push(ch);
+      });
+    }
+  }
+  let maxEnd = 0; for (const b of branches) maxEnd = Math.max(maxEnd, b.birth + b.grow);
+  const k = 0.985 / maxEnd; for (const b of branches) { b.birth *= k; b.grow *= k; }
+  return { sp, spKey, S, branches, H };
+}
+
+/** Alter anwenden: welche Äste existieren, wie lang sind sie, wie dick (Röhrenmodell). Bestehende Äste behalten Form + Seed. */
+function resolveAge(sk, A) {
+  const { sp, branches } = sk, trunk = branches[0]; sk.A = A;
+  for (const b of branches) {
+    const p = b.parent;
+    b.ex = A > b.birth && (!p || (p.ex && !p.dead)); b.dead = false;
+    if (!b.ex) { b.cl = 0; continue; }
+    b.f = Math.min(1, (A - b.birth) / b.grow); b.cl = Math.max(0.03, b.len * b.f);
+    if (b.level === 1 && sp.prune) {   // untere Äste sterben ab (Kiefer/Birke putzen sich selbst)
+      const pr = trunk.cl * sp.prune * sstep(0.3, 1, A);
+      if (b.start.y < pr) { b.dead = true; b.cl = Math.min(b.cl, 0.25 + 0.35 * ((b.seed % 1000) / 1000)); }
+    }
+  }
+  const e = sp.pipe;
+  for (let i = branches.length - 1; i >= 0; i--) {
+    const b = branches[i]; if (!b.ex) continue;
+    b.kids = b.children.filter(c => c.ex && !c.dead).map(c => ({ s: c.t * b.len, re: Math.pow(c.rb, e) }));
+    let sum = Math.pow(sp.tipR, e); for (const k of b.kids) sum += k.re;
+    b.rb = b.dead ? b.deadR : Math.pow(sum, 1 / e);
+  }
+  return sk;
+}
+function radiusAt(sp, b, s) {
+  if (b.dead) return b.deadR * (1 - 0.5 * s / Math.max(0.05, b.cl));
+  const e = sp.pipe; let sum = Math.pow(sp.tipR, e), last = 0;
+  for (const k of b.kids) { sum += k.re * clamp((k.s - s) / 0.6 + 0.5, 0, 1); if (k.s > last) last = k.s; }
+  let r = Math.pow(sum, 1 / e);
+  if (s > last && b.cl > last) r *= 1 - 0.5 * Math.pow((s - last) / (b.cl - last), 1.6);
+  if (b.level === 0) r *= 1 + sp.trunkTaper * 0.5 * (1 - s / b.cl);
+  return r;
+}
+function windAt(sp, b, s) {
+  if (b.level === 0) return [0, 0];
+  const f = Math.min(1, s / Math.max(b.cl, 0.05)), own = (b.level === 1 ? sp.wind[1] : sp.wind[2]) * 0.15 * Math.pow(f, 1.5) * b.cl;
+  return b.level === 1 ? [own, 0] : [b.wb[0], b.wb[1] + own];
+}
+function crownBounds(sk) {
+  const box = new THREE.Box3(); let any = false;
+  for (const b of sk.branches) {
+    if (!b.ex || b.dead || b.level < 1) continue;
+    for (let i = 0; i < b.pts.length; i++) if (b.cum[i] <= b.cl) { box.expandByPoint(b.pts[i]); any = true; }
+    box.expandByPoint(sampleCurve(b, b.cl).p);
+  }
+  if (!any) { const t = sk.branches[0]; box.expandByPoint(sampleCurve(t, t.cl * 0.4).p); box.expandByPoint(sampleCurve(t, t.cl).p); box.expandScalar(0.3); }
+  const c = box.getCenter(new V3()), rv = box.getSize(new V3()).multiplyScalar(0.5).max(new V3(0.5, 0.5, 0.5));
+  return { c, rv, box };
+}
+const HEX = [[-0.1, 0], [0.1, 0], [0.5, 0.38], [0.42, 0.97], [-0.42, 0.97], [-0.5, 0.38]];   // eng an die Blattgruppe geschnitten → weniger Overdraw
+const QUAD = [[-0.5, 0], [0.5, 0], [0.5, 1], [-0.5, 1]];
+function makeGeo(P, N, UV, C, WW, WP, I) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
+  g.setAttribute('aWindW', new THREE.Float32BufferAttribute(WW, 4)); g.setAttribute('aWindP', new THREE.Float32BufferAttribute(WP, 3));
+  g.setIndex(I); g.computeBoundingBox(); g.computeBoundingSphere(); return g;
+}
+
+/** Geometrie bauen. o = { style, lod: 0 (voll) | 1 (Mitteldistanz), detail: Laub-Detail 0.3–1 } */
+function buildTree(sk, o) {
+  const { sp, branches, H, S } = sk, st = STYLES[o.style] || STYLES.natural, lod = o.lod | 0, detail = o.detail ?? 1, A = sk.A;
+  const M = sp.K * S.girth * (0.72 + 0.28 * A) * st.girth, paint = o.style === 'painterly';
+  for (const b of branches) {             // Wind-Gewichte: Kinder erben Phase + Auslenkung ihres Elternasts → kohärente Bewegung
+    if (!b.ex) continue;
+    if (!b.parent) { b.wb = [0, 0]; b.p1 = 0; b.p2 = 0; }
+    for (const c of b.children) { if (!c.ex) continue; c.wb = windAt(sp, b, c.t * b.len); c.p1 = b.level === 0 ? c.phase : b.p1; c.p2 = b.level <= 1 ? c.phase : b.p2; c.parR = radiusAt(sp, b, c.t * b.len) * M; }
+  }
+  // ---- Rinde: Röhren mit Parallel-Transport-Rahmen, UV v folgt dem Ast (Maserung entlang des Asts) ----
+  const P = [], N = [], UV = [], C = [], WW = [], WP = [], I = [];
+  let vtx = 0, tris = 0; const B = new V3(), dv = new V3();
+  for (const b of branches) {
+    if (!b.ex) continue;
+    if (b.level >= 3 && (lod > 0 || !st.L3)) continue;
+    const rBase = radiusAt(sp, b, 0) * M;
+    if (lod > 0 && b.level >= 2 && rBase < 0.09) continue;
+    let rad = Math.max(3, Math.round(sp.lv[b.level].rad * st.rad * (lod ? 0.5 : 1))); if (rBase < 0.012) rad = 3;
+    const ss = [], stride = st.ringStride * (lod ? 2 : 1);
+    for (let i = 0; i < b.cum.length; i += stride) if (b.cum[i] < b.cl) ss.push(b.cum[i]);
+    if (b.level === 0 && lod === 0) for (const x of [0.12, 0.25, 0.4, 0.6, 0.85, 1.15, 1.6]) if (x + 0.35 < b.cl) ss.push(x + 0.35);
+    if (b.level > 0 && lod === 0 && b.cl > 0.2) ss.push(Math.min(b.cl * 0.5, (b.parR || 0.05) * 1.2));
+    ss.push(b.cl); ss.sort((a, c) => a - c);
+    const ring = ss.filter((s, i) => i === 0 || s - ss[i - 1] > 0.015);
+    const uRep = Math.max(1, Math.round(2 * Math.PI * rBase / 0.5)), vScale = 1 / (2 * Math.PI * rBase / uRep * 2);
+    let Nn = null; const start = vtx;
+    for (const s of ring) {
+      const at = sampleCurve(b, s), T = at.d;
+      if (!Nn) Nn = basis(T)[0].clone(); else Nn.addScaledVector(T, -Nn.dot(T)).normalize();
+      B.crossVectors(T, Nn);
+      let r = radiusAt(sp, b, s) * M;
+      if (b.level > 0 && !b.dead) r *= 1 + 0.35 * Math.exp(-s / ((b.parR || 0.05) * 1.4 + 0.02));   // Astkragen am Ansatz
+      const y = at.p.y, fl = b.level === 0 ? sp.flare * Math.exp(-Math.max(0, y) / (0.055 * H)) : 0;
+      let cr = 1, cg = 1, cb = 1;
+      const ao = b.level === 0 ? 0.5 + 0.5 * sstep(-0.3, 1.8, y) : 0.92 - 0.07 * b.level;
+      if (sk.spKey === 'pine' && b.level === 0) { const k = sstep(0.35 * H, 0.65 * H, y); cr = 1 + 0.4 * k; cg = 1 - 0.12 * k; cb = 1 - 0.4 * k; }
+      if (sk.spKey === 'birch' && b.level >= 2) { cr = 0.5; cg = 0.38; cb = 0.33; }
+      if (sk.spKey === 'birch' && b.level === 1) { const k = sstep(0.1, 0.6, s / b.cl); cr = 1 - 0.5 * k; cg = 1 - 0.6 * k; cb = 1 - 0.65 * k; }
+      if (b.dead) { cr = cg = cb = 0.62; }
+      if (paint) { cr *= 1.02; cg *= 0.95; cb *= 1.05; }
+      const w = windAt(sp, b, s), w0 = sp.wind[0] * H * Math.pow(Math.max(0, y) / H, 2);
+      for (let j = 0; j <= rad; j++) {
+        const th = j / rad * Math.PI * 2, cs = Math.cos(th), sn = Math.sin(th);
+        dv.set(Nn.x * cs + B.x * sn, Nn.y * cs + B.y * sn, Nn.z * cs + B.z * sn);
+        const rr = r * (1 + fl * (0.65 + 0.55 * Math.cos(sp.lobes * th + b.phase) + 0.2 * Math.cos((sp.lobes + 3) * th)));
+        P.push(at.p.x + dv.x * rr, at.p.y + dv.y * rr, at.p.z + dv.z * rr); N.push(dv.x, dv.y, dv.z);
+        UV.push(j / rad * uRep, s * vScale); C.push(cr * ao, cg * ao, cb * ao);
+        WW.push(w0, w[0], w[1], 0); WP.push(b.p1, b.p2, 0);
+      }
+      vtx += rad + 1;
+    }
+    for (let k = 0; k < ring.length - 1; k++) for (let j = 0; j < rad; j++) { const a = start + k * (rad + 1) + j, c = a + rad + 1; I.push(a, a + 1, c, a + 1, c + 1, c); tris += 2; }
+  }
+  const bark = makeGeo(P, N, UV, C, WW, WP, I);
+  // ---- Laub: Blattgruppen (Sprays) entlang der Zweige, mit Lücken aus 3D-Rauschen ----
+  const cr = crownBounds(sk), LP = [], LN = [], LUV = [], LC = [], LWW = [], LWP = [], LI = [];
+  let lv = 0, ltris = 0, cards = 0;
+  const shape = st.quad ? QUAD : HEX;
+  const cnt = st.cardN * (lod ? 0.075 : detail) * S.foliage, sizeMul = st.card * (lod ? 2.7 : 1 / Math.sqrt(Math.max(0.2, detail)));
+  const out = new V3(), upv = new V3(), side = new V3(), nn = new V3(), rnd = new V3(), pv = new V3(), nv = new V3();
+  for (const b of branches) {
+    if (!b.ex || b.dead) continue;
+    let ok = b.level >= Math.min(1, sp.leafMin); if (b.level === 0) ok = b.cl < 6; if (!ok) continue;
+    let lastKid = 0; for (const k of b.kids) lastKid = Math.max(lastKid, k.s);
+    let s0;
+    if (b.level === 0) s0 = 0.35 * b.cl;
+    else if (sp.leafAlong) s0 = (b.level === sp.maxLevel ? 0.05 : 0.35) * b.cl;
+    else s0 = b.level === sp.maxLevel ? 0.08 * b.cl : Math.max(0.3 * b.cl, Math.min(lastKid * 0.85, b.cl * 0.85));
+    const span = b.cl - s0; if (span <= 0.02) continue;
+    const r = rngFrom(hash2(b.seed, 4242)), ex = span / sp.spray * cnt; let n = Math.floor(ex); if (r() < ex - n) n++;
+    for (let i = 0; i < n; i++) {
+      const u = [r(), r(), r(), r(), r(), r(), r(), r()];
+      const s = s0 + span * (i + 0.15 + 0.7 * u[0]) / n, at = sampleCurve(b, s);
+      if (vnoise3(at.p.x * sp.gapScale, at.p.y * sp.gapScale, at.p.z * sp.gapScale, (S.seed * 7 + 3) | 0) < sp.gap) continue;
+      out.subVectors(at.p, cr.c).divide(cr.rv); const inner = out.length(); if (inner < 1e-4) out.copy(UP); out.normalize();
+      upv.copy(at.d).multiplyScalar(0.5).addScaledVector(out, 0.65); upv.x += (u[1] - 0.5) * 0.9; upv.y += (u[2] - 0.5) * 0.5 + sp.cardUp - sp.droop; upv.z += (u[3] - 0.5) * 0.9; upv.normalize();
+      rnd.set(u[4] - 0.5, u[5] - 0.5, u[6] - 0.5); side.crossVectors(upv, rnd); if (side.lengthSq() < 1e-6) side.set(1, 0, 0); side.normalize(); nn.crossVectors(side, upv);
+      if (nn.dot(out) + 0.4 * nn.y < 0) { side.negate(); nn.negate(); }
+      const size = sp.card * (0.75 + 0.5 * u[7]) * sizeMul, tile = Math.floor(u[0] * 97) % 4, col = tile % 2, row = tile >> 1;
+      const ao = 0.36 + 0.64 * sstep(0.2, 1.0, inner);
+      let tr = 0.93 + 0.14 * u[4], tg = 0.93 + 0.14 * u[5], tb = 0.9 + 0.12 * u[6];
+      if (paint) { const h = clamp((at.p.y - cr.c.y) / cr.rv.y * 0.5 + 0.5, 0, 1); tr *= 0.78 + 0.42 * h; tg *= 0.95 + 0.1 * h; tb *= 1.12 - 0.42 * h; }
+      const wB = windAt(sp, b, s), ph = u[5] * 6.283, fold = sp.fold * st.fold * size;
+      const verts = st.quad ? shape.map(v => [v[0], v[1], 0]) : [[0, 0.5, 1], ...shape.map(v => [v[0], v[1], 0])];
+      const base = lv;
+      for (const [lx, ly, c] of verts) {
+        pv.copy(at.p).addScaledVector(side, lx * size).addScaledVector(upv, ly * size).addScaledVector(nn, c ? fold : -0.06 * size * Math.abs(lx));
+        nv.subVectors(pv, cr.c).divide(cr.rv).normalize().multiplyScalar(0.68).addScaledVector(nn, 0.32).normalize();
+        LP.push(pv.x, pv.y, pv.z); LN.push(nv.x, nv.y, nv.z);
+        LUV.push((col + 0.5 + lx * 0.98) / 2, (row + 1 - (0.01 + ly * 0.98)) / 2);
+        const a = ao * (0.9 + 0.1 * ly); LC.push(tr * a, tg * a, tb * a);
+        LWW.push(sp.wind[0] * H * Math.pow(Math.max(0, pv.y) / H, 2), wB[0], wB[1], sp.wind[3] * ly * size); LWP.push(b.p1, b.p2, ph);
+        lv++;
+      }
+      if (st.quad) { LI.push(base, base + 1, base + 2, base, base + 2, base + 3); ltris += 2; }
+      else { for (let k = 0; k < 6; k++) LI.push(base, base + 1 + k, base + 1 + (k + 1) % 6); ltris += 6; }
+      cards++;
+    }
+  }
+  const leaves = makeGeo(LP, LN, LUV, LC, LWW, LWP, LI);
+  const bb = new THREE.Box3().copy(bark.boundingBox).union(leaves.boundingBox.isEmpty() ? bark.boundingBox : leaves.boundingBox);
+  const trunk = branches[0];
+  return { bark, leaves, info: { tris: tris + ltris, barkTris: tris, leafTris: ltris, cards, branches: branches.filter(b => b.ex).length,
+    height: bb.max.y, box: bb, crownC: cr.c, crownR: Math.max(cr.rv.x, cr.rv.z), trunkR: radiusAt(sp, trunk, Math.min(trunk.cl, 1.35)) * M } };
+}
+
+/* ============================== 2. LOOK ============================== */
+const U = {   // gemeinsame Uniforms für alle Baum-Materialien
+  uTime: { value: 0 }, uWindDir: { value: new V3(1, 0, 0.35).normalize() }, uWindStr: { value: 0.6 }, uWindQ: { value: 2 },
+  uSunView: { value: new V3(0, 1, 0) }, uSunI: { value: 1 }, uTransCol: { value: new THREE.Color(0.75, 0.95, 0.25) }
+};
+const WIND_GLSL = /* glsl */`
+uniform float uTime; uniform vec3 uWindDir; uniform float uWindStr; uniform float uWindQ;
+attribute vec4 aWindW; attribute vec3 aWindP; attribute float aFade;
+varying float vFade;
+vec3 windOffset(vec3 p){
+  vec3 wd = uWindDir; float ph0 = 0.0;
+  #ifdef USE_INSTANCING
+    wd = normalize(transpose(mat3(instanceMatrix)) * uWindDir);
+    ph0 = dot(instanceMatrix[3].xz, vec2(0.11, 0.07));
+  #endif
+  float t = uTime, s = uWindStr;
+  float gust = 0.55 + 0.45 * sin(t * 0.37 + ph0 * 0.5) * sin(t * 0.21 + 1.3 + ph0 * 0.3);
+  vec3 side = normalize(cross(wd, vec3(0.0, 1.0, 0.0)));
+  vec3 o = wd * aWindW.x * s * gust * (1.6 + 0.4 * sin(t * 0.9 + ph0));
+  if (uWindQ > 0.5) {
+    float a = sin(t * 1.6 + aWindP.x + ph0);
+    o += (wd * (0.7 + 0.5 * a) + side * 0.45 * sin(t * 1.15 + aWindP.x * 1.7) + vec3(0.0, 0.35 * a, 0.0)) * aWindW.y * s * gust;
+  }
+  if (uWindQ > 1.5) {
+    float b = sin(t * 2.9 + aWindP.y + ph0);
+    o += (side * b + wd * 0.5 * (1.0 + b) + vec3(0.0, 0.5 * cos(t * 2.3 + aWindP.y), 0.0)) * aWindW.z * s * (0.4 + gust);
+    float c = sin(t * 8.0 + aWindP.z * 6.0) * (0.5 + 0.5 * sin(t * 1.3 + aWindP.z));
+    o += vec3(0.6 * c, c, -0.4 * c) * aWindW.w * s * (0.3 + gust);
+  }
+  return o;
+}`;
+const DITHER_GLSL = /* glsl */`
+{ float ign = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+  if (vFade < 1.5) { if (ign < vFade) discard; } else { if (ign >= vFade - 2.0) discard; } }`;
+function patchMat(mat, kind) {
+  const leaf = kind.startsWith('leaf') || kind.startsWith('grass');
+  mat.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, U);
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\n' + WIND_GLSL)
+      .replace('#include <begin_vertex>', 'vec3 transformed = vec3(position) + windOffset(position);\nvFade = aFade;');
+    if (kind.endsWith('depth')) return;
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vFade; uniform vec3 uSunView; uniform float uSunI; uniform vec3 uTransCol;')
+      .replace('#include <alphatest_fragment>', DITHER_GLSL + '\n#include <alphatest_fragment>');
+    if (leaf) {
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n normal *= faceDirection;')  // kugelige Kronen-Normale auch auf der Rückseite
+        .replace('#include <color_fragment>', '#include <color_fragment>\n if (!gl_FrontFacing) diffuseColor.rgb *= vec3(1.12, 1.18, 0.9);')  // hellere, gelblichere Blattunterseiten
+        .replace('#include <opaque_fragment>', `
+          float bl = pow(max(dot(normalize(-vViewPosition), uSunView), 0.0), 5.0);
+          float back = max(dot(-normal, uSunView), 0.0);
+          outgoingLight += diffuseColor.rgb * uTransCol * uSunI * (bl * 1.1 + back * 0.22);
+          #include <opaque_fragment>`);
+    }
+  };
+  mat.customProgramCacheKey = () => 'tl-' + kind;
+  return mat;
+}
+// ---- prozedurale Texturen (DataTexture, kachelbar, keine Downloads) ----
+function dataTex(data, w, h, srgb, rep = true, nearest = false) {
+  const t = new THREE.DataTexture(data, w, h, THREE.RGBAFormat);
+  t.wrapS = t.wrapT = rep ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
+  t.magFilter = nearest ? THREE.NearestFilter : THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true;
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.needsUpdate = true; return t;
+}
+function heightToNormal(h, w, hh, k) {
+  const n = new Uint8Array(w * hh * 4);
+  for (let y = 0; y < hh; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x, dx = h[y * w + (x + 1) % w] - h[y * w + (x - 1 + w) % w], dy = h[((y + 1) % hh) * w + x] - h[((y - 1 + hh) % hh) * w + x];
+    const nx = -dx * k, ny = -dy * k, l = Math.hypot(nx, ny, 1);
+    n[i * 4] = (nx / l * 0.5 + 0.5) * 255; n[i * 4 + 1] = (ny / l * 0.5 + 0.5) * 255; n[i * 4 + 2] = (1 / l * 0.5 + 0.5) * 255; n[i * 4 + 3] = 255;
+  }
+  return n;
+}
+function makeBark(spKey, style) {
+  const lo = style === 'ps2', W = lo ? 64 : 256, Hh = lo ? 128 : 512, hgt = new Float32Array(W * Hh), col = new Uint8Array(W * Hh * 4);
+  const seed = { oak: 11, birch: 23, pine: 37 }[spKey], paint = style === 'painterly';
+  // Kiefer: Voronoi-Platten (kachelbar)
+  const NX = 7, NY = 16, cells = []; for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) cells.push([(i + 0.15 + 0.7 * lat(i, j, 1, seed)) / NX, (j + 0.15 + 0.7 * lat(i, j, 2, seed)) / NY, lat(i, j, 3, seed)]);
+  for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
+    const u = x / W, v = y / Hh, i = y * W + x; let h, r, g, b;
+    if (spKey === 'oak') {
+      const warp = pfbm(u, v, 4, 3, 3, seed) * 1.7;
+      let f = Math.pow(Math.abs(Math.sin(Math.PI * (u * 9 + warp))), 0.55);
+      const brk = pfbm(u, v, 6, 7, 3, seed + 5); f *= 0.55 + 0.45 * sstep(0.3, 0.55, brk);
+      h = f * 0.85 + pfbm(u, v, 24, 24, 2, seed + 9) * 0.15;
+      const lich = sstep(0.6, 0.7, pfbm(u, v, 5, 5, 3, seed + 40)) * h;
+      r = 0.15 + 0.3 * h; g = 0.125 + 0.27 * h; b = 0.105 + 0.22 * h;
+      r += (0.42 - r) * lich * 0.6; g += (0.47 - g) * lich * 0.6; b += (0.3 - b) * lich * 0.6;
+      if (paint) { const q = Math.floor(h * 4) / 3; r = 0.22 + 0.33 * q; g = 0.15 + 0.27 * q; b = 0.2 + 0.2 * q; }
+    } else if (spKey === 'birch') {
+      const base = 0.5 + 0.1 * pfbm(u, v, 12, 12, 2, seed);
+      const len = pfbm(u, v, 3, 36, 2, seed + 1), dark = sstep(0.66, 0.72, len), patch = sstep(0.6, 0.66, pfbm(u, v, 4, 6, 3, seed + 3));
+      h = base - 0.35 * dark - 0.25 * patch;
+      const nz = pfbm(u, v, 16, 32, 2, seed + 7);
+      r = 0.84 + 0.08 * nz; g = 0.83 + 0.07 * nz; b = 0.78 + 0.07 * nz;
+      const dk = Math.max(dark * 0.85, patch); r += (0.14 - r) * dk; g += (0.13 - g) * dk; b += (0.13 - b) * dk;
+      if (paint) { r = r * 0.95 + 0.04; g = g * 0.95 + 0.02; b = b * 0.9 + 0.08; if (dk > 0.5) { r = 0.2; g = 0.22; b = 0.3; } }
+    } else {
+      let f1 = 9, f2 = 9, id = 0; const gi = Math.floor(u * NX), gj = Math.floor(v * NY);
+      for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+        const ii = gi + ox, jj = gj + oy, c = cells[((jj + NY) % NY) * NX + ((ii + NX) % NX)];
+        const dx = (c[0] + Math.floor(ii / NX) - u) * 1.0, dy = (c[1] + Math.floor(jj / NY) - v) * 1.15, d = Math.hypot(dx, dy) + 0.012 * pn2(u * 24, v * 24, 24, 24, seed + 4);
+        if (d < f1) { f2 = f1; f1 = d; id = c[2]; } else if (d < f2) f2 = d;
+      }
+      h = sstep(0.0, 0.025, f2 - f1) * (0.55 + 0.45 * pfbm(u, v, 14, 20, 3, seed + 2));
+      r = 0.13 + (0.26 + 0.1 * id) * h; g = 0.11 + (0.18 + 0.05 * id) * h; b = 0.1 + (0.14 + 0.03 * id) * h;
+      if (paint) { const q = Math.floor(h * 3.99) / 3; r = 0.2 + 0.45 * q; g = 0.12 + 0.25 * q; b = 0.12 + 0.12 * q; }
+    }
+    if (lo) { const P = 5; r = Math.round(r * P) / P; g = Math.round(g * P) / P; b = Math.round(b * P) / P; }
+    hgt[i] = h; col[i * 4] = clamp(r, 0, 1) * 255; col[i * 4 + 1] = clamp(g, 0, 1) * 255; col[i * 4 + 2] = clamp(b, 0, 1) * 255; col[i * 4 + 3] = 255;
+  }
+  return { map: dataTex(col, W, Hh, true, true, false), normal: lo ? null : dataTex(heightToNormal(hgt, W, Hh, paint ? 1.2 : 4), W, Hh, false) };
+}
+const LEAF_HSL = {
+  natural: { oak: [98, 42, 30], birch: [80, 52, 36], pine: [140, 30, 20] },
+  painterly: { oak: [112, 44, 27], birch: [82, 48, 36], pine: [172, 34, 22] },
+  ps2: { oak: [100, 50, 28], birch: [82, 58, 36], pine: [140, 36, 20] }
+};
+function leafShape(ctx, len, wid, type, r) {
+  ctx.beginPath(); const up = [], dn = [];
+  const lobes = 4 + Math.floor(r() * 2);
+  for (let k = 0; k <= 32; k++) {
+    const t = k / 32; let w;
+    if (type === 'oak') w = wid * Math.pow(Math.sin(Math.PI * Math.min(1, t * 1.05)), 0.7) * (0.62 + 0.38 * Math.abs(Math.sin(t * Math.PI * lobes)));
+    else w = wid * (t < 0.38 ? Math.sin(t / 0.38 * Math.PI / 2) : Math.cos((t - 0.38) / 0.62 * Math.PI / 2)) * (1 + 0.07 * (k % 2));
+    up.push([t * len, -w]); dn.push([t * len, w]);
+  }
+  ctx.moveTo(0, 0); for (const p of up) ctx.lineTo(p[0], p[1]); for (let k = dn.length - 1; k >= 0; k--) ctx.lineTo(dn[k][0], dn[k][1]); ctx.closePath();
+}
+function drawSpray(ctx, T, spKey, style, r) {
+  const P = (lx, ly) => [(lx + 0.5) * T, (1 - ly) * T];
+  ctx.save(); ctx.beginPath(); HEX.forEach(([x, y], i) => { const [a, b] = P(x * 0.97, y * 0.97 + 0.01); i ? ctx.lineTo(a, b) : ctx.moveTo(a, b); }); ctx.closePath(); if (style !== 'ps2') ctx.clip();
+  const [hh, ss, ll] = LEAF_HSL[style][spKey];
+  const hsl = (dh = 0, ds = 0, dl = 0) => `hsl(${hh + dh + (r() - 0.5) * 16},${clamp(ss + ds + (r() - 0.5) * 12, 0, 100)}%,${clamp(ll + dl + (r() - 0.5) * 9, 0, 100)}%)`;
+  const bend = (r() - 0.5) * 0.25, stem = t => P(bend * Math.sin(t * Math.PI * 0.9), 0.02 + t * 0.86);
+  ctx.strokeStyle = spKey === 'birch' ? '#3b2a22' : '#4a3a24'; ctx.lineWidth = Math.max(1, T * 0.012); ctx.beginPath();
+  for (let k = 0; k <= 12; k++) { const [x, y] = stem(k / 12); k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke();
+  if (style === 'painterly' && spKey !== 'pine') {   // gemalte Laubballen statt Einzelblättern
+    for (let k = 0; k < 13; k++) {
+      const t = 0.25 + 0.7 * r(), [sx, sy] = stem(t), rr = T * (0.1 + 0.08 * r()), ox = (r() - 0.5) * T * 0.55 * (0.4 + t), oy = (r() - 0.5) * T * 0.25;
+      const gr = ctx.createRadialGradient(sx + ox - rr * 0.3, sy + oy - rr * 0.4, rr * 0.1, sx + ox, sy + oy, rr);
+      gr.addColorStop(0, hsl(-20, 8, 18)); gr.addColorStop(0.6, hsl(0, 0, 0)); gr.addColorStop(1, hsl(15, -5, -9));
+      ctx.fillStyle = gr; ctx.beginPath();
+      for (let a = 0; a <= 12; a++) { const an = a / 12 * 6.283, w = rr * (0.85 + 0.25 * Math.sin(an * 3 + k)); a ? ctx.lineTo(sx + ox + Math.cos(an) * w, sy + oy + Math.sin(an) * w) : ctx.moveTo(sx + ox + w, sy + oy); }
+      ctx.fill();
+    }
+    ctx.lineWidth = T * 0.012; ctx.lineCap = 'round';
+    for (let k = 0; k < 26; k++) { const [sx, sy] = stem(0.3 + 0.65 * r()), ox = (r() - 0.5) * T * 0.6, oy = (r() - 0.6) * T * 0.25; ctx.strokeStyle = hsl(-30, 10, 26); ctx.beginPath(); ctx.arc(sx + ox, sy + oy, T * 0.03, 3.6, 5.2); ctx.stroke(); }
+  } else if (spKey === 'pine') {
+    ctx.lineCap = 'round';
+    for (let k = 0; k < 70; k++) {
+      const t = 0.08 + 0.9 * (k / 70), [sx, sy] = stem(t), side = k % 2 ? 1 : -1, an = -Math.PI / 2 + side * (0.5 + 0.5 * r()), len = T * (0.13 + 0.08 * r()) * (1 - 0.35 * t);
+      ctx.strokeStyle = hsl(0, 0, (r() - 0.3) * 10); ctx.lineWidth = Math.max(1, T * (style === 'painterly' ? 0.02 : 0.008));
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + Math.cos(an) * len, sy + Math.sin(an) * len); ctx.stroke();
+    }
+  } else {
+    const n = spKey === 'oak' ? 8 + Math.floor(r() * 3) : 11 + Math.floor(r() * 4);
+    for (let k = 0; k < n; k++) {
+      const t = 0.12 + 0.84 * (k + 0.5) / n, [sx, sy] = stem(t), side = k % 2 ? 1 : -1;
+      const len = T * (spKey === 'oak' ? 0.2 + 0.08 * r() : 0.13 + 0.05 * r()) * (spKey === 'oak' ? 1 - 0.25 * Math.abs(t - 0.6) : 1);
+      const an = -Math.PI / 2 + side * (0.6 + 0.6 * r()) + (spKey === 'birch' ? side * 0.5 : 0);
+      ctx.save(); ctx.translate(sx, sy); ctx.rotate(an);
+      leafShape(ctx, len, len * (spKey === 'oak' ? 0.36 : 0.32), spKey, r);
+      const g = ctx.createLinearGradient(0, -len * 0.3, 0, len * 0.3); g.addColorStop(0, hsl(-4, 0, 7)); g.addColorStop(1, hsl(4, 0, -6));
+      ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = 'rgba(20,35,10,.35)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.strokeStyle = hsl(-10, -10, 16); ctx.lineWidth = Math.max(0.6, T * 0.004); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(len * 0.9, 0); ctx.stroke();
+      ctx.restore();
+    }
+  }
+  ctx.restore();
+}
+function makeLeafAtlas(spKey, style) {
+  const T = 256, cv = document.createElement('canvas'); cv.width = cv.height = 2 * T; const ctx = cv.getContext('2d');
+  const r = rngFrom(hash2({ oak: 1, birch: 2, pine: 3 }[spKey], { natural: 1, painterly: 2, ps2: 3 }[style]));
+  for (let k = 0; k < 4; k++) { ctx.save(); ctx.translate((k % 2) * T, (k >> 1) * T); drawSpray(ctx, T, spKey, style, r); ctx.restore(); }
+  let W = 2 * T, src = cv;
+  if (style === 'ps2') { const c2 = document.createElement('canvas'); c2.width = c2.height = 128; const x2 = c2.getContext('2d'); x2.imageSmoothingEnabled = true; x2.drawImage(cv, 0, 0, 128, 128); src = c2; W = 128; }
+  const img = src.getContext('2d').getImageData(0, 0, W, W).data, data = new Uint8Array(img.length);
+  let ar = 0, ag = 0, ab = 0, an = 0;
+  for (let i = 0; i < img.length; i += 4) if (img[i + 3] > 128) { ar += img[i]; ag += img[i + 1]; ab += img[i + 2]; an++; }
+  ar /= an || 1; ag /= an || 1; ab /= an || 1;
+  for (let i = 0; i < img.length; i += 4) {
+    let a = img[i + 3];
+    if (style === 'ps2') { a = a > 110 ? 255 : 0; }
+    if (a < 8) { data[i] = ar; data[i + 1] = ag; data[i + 2] = ab; data[i + 3] = 0; continue; }   // Farbe in leere Pixel ziehen → keine dunklen Säume in Mipmaps
+    const k = 255 / a; let rr = Math.min(255, img[i] * k), gg = Math.min(255, img[i + 1] * k), bb = Math.min(255, img[i + 2] * k);
+    if (style === 'ps2') { rr = Math.round(rr / 36) * 36; gg = Math.round(gg / 36) * 36; bb = Math.round(bb / 36) * 36; }
+    data[i] = rr; data[i + 1] = gg; data[i + 2] = bb; data[i + 3] = a;
+  }
+  const tex = dataTex(data, W, W, true, false, false);
+  return { tex, avg: new THREE.Color().setRGB(ar / 255, ag / 255, ab / 255, THREE.SRGBColorSpace) };
+}
+let toonGrad = null;
+function getToonGrad() { if (!toonGrad) { toonGrad = new THREE.DataTexture(new Uint8Array([70, 70, 70, 255, 150, 150, 150, 255, 215, 215, 215, 255, 255, 255, 255, 255]), 4, 1); toonGrad.magFilter = toonGrad.minFilter = THREE.NearestFilter; toonGrad.needsUpdate = true; } return toonGrad; }
+/** Materialbibliothek: je Art × Stil genau ein Rinden- und ein Laubmaterial (geteilt von Exemplar + allen Waldbäumen). */
+const MatLib = {
+  cache: new Map(),
+  get(spKey, style) {
+    const key = spKey + '|' + style; if (this.cache.has(key)) return this.cache.get(key);
+    const bt = makeBark(spKey, style), la = makeLeafAtlas(spKey, style);
+    let bark, leaf;
+    if (style === 'natural') {
+      bark = new THREE.MeshStandardMaterial({ map: bt.map, normalMap: bt.normal, normalScale: new THREE.Vector2(1.3, 1.3), roughness: 0.93, metalness: 0, vertexColors: true });
+      leaf = new THREE.MeshStandardMaterial({ map: la.tex, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.62, metalness: 0, vertexColors: true });
+    } else if (style === 'painterly') {
+      bark = new THREE.MeshToonMaterial({ map: bt.map, normalMap: bt.normal, normalScale: new THREE.Vector2(0.5, 0.5), gradientMap: getToonGrad(), vertexColors: true });
+      leaf = new THREE.MeshToonMaterial({ map: la.tex, alphaTest: 0.45, side: THREE.DoubleSide, gradientMap: getToonGrad(), vertexColors: true });
+    } else {
+      bark = new THREE.MeshLambertMaterial({ map: bt.map, flatShading: true, vertexColors: true });
+      leaf = new THREE.MeshLambertMaterial({ map: la.tex, alphaTest: 0.5, side: THREE.DoubleSide, vertexColors: true });
+    }
+    patchMat(bark, 'bark-' + style); patchMat(leaf, 'leaf-' + style);
+    const barkDepth = patchMat(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }), 'bark-depth');
+    const leafDepth = patchMat(new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: la.tex, alphaTest: 0.5 }), 'leaf-depth');
+    const m = { bark, leaf, barkDepth, leafDepth, avg: la.avg, textures: [bt.map, bt.normal, la.tex].filter(Boolean) };
+    this.cache.set(key, m); return m;
+  },
+  prune(keepStyle) {
+    for (const [k, m] of this.cache) if (!k.endsWith('|' + keepStyle)) { [m.bark, m.leaf, m.barkDepth, m.leafDepth].forEach(x => x.dispose()); m.textures.forEach(t => t.dispose()); this.cache.delete(k); }
+  }
+};
+
+/* ============================== 3. WALD ============================== */
+const CAP = 5200;           // feste Kapazität je Instanz-Puffer → Dichte ändern ohne neue GPU-Puffer
+const MAXV = 16;            // Varianten-Bibliothek (4×4-Impostor-Atlas)
+function variantDefs(T, mix) {
+  const list = [], sps = mix ? ['oak', 'birch', 'pine'] : [T.species];
+  const ages = mix ? [1, 0.82, 0.64, 0.46, 0.3] : [1, 0.93, 0.82, 0.7, 0.58, 0.46, 0.34, 0.24];
+  for (const spk of sps) ages.forEach((a, k) => {
+    const same = spk === T.species, r = rngFrom(hash2(T.seed, k * 31 + spk.length * 7));
+    const S = same ? { ...T, species: spk } : { ...DEFAULT_TREE, species: spk };
+    S.seed = (k === 0 && same) ? T.seed : (hash2(T.seed, k * 131 + spk.length) % 100000);
+    S.age = (k === 0 && same) ? T.age : a; S.height = ((same && T.height) || SPECIES[spk].H) * (k === 0 && same ? 1 : 0.88 + 0.24 * r());
+    list.push({ species: spk, S });
+  });
+  return list.slice(0, MAXV);
+}
+function placeForest(N, seed, defs, half = 180) {
+  const r = rngFrom(hash2(seed, 77)), out = [], grid = new Map();
+  let minD = clamp(Math.sqrt((2 * half) ** 2 / N) * 0.5, 1.8, 12);
+  const key = (x, z, c) => Math.floor(x / c) + ',' + Math.floor(z / c);
+  const w = defs.map(d => 0.55 + 0.45 * d.S.age), wsum = w.reduce((a, b) => a + b, 0);
+  for (let pass = 0; pass < 6 && out.length < N; pass++) {
+    const cell = minD * 2, g2 = new Map();
+    for (const t of out) { const k = key(t.x, t.z, cell); (g2.get(k) || g2.set(k, []).get(k)).push(t); }
+    for (let k = 0; k < N * 30 && out.length < N; k++) {
+      const x = (r() * 2 - 1) * half, z = (r() * 2 - 1) * half;
+      if (x * x + z * z < 144) continue;                                   // Start-Lichtung
+      const field = fbm2(x * 0.012 + 3.1, z * 0.012 - 1.7, seed);           // Cluster & Lichtungen
+      const dens = sstep(0.36, 0.58, field) * (0.6 + 0.4 * vnoise3(x * 0.06, 0, z * 0.06, seed + 9));
+      if (r() > dens + 0.04) continue;
+      let pick = r() * wsum, v = 0; while (v < w.length - 1 && (pick -= w[v]) > 0) v++;
+      if (field < 0.45 && r() < 0.6) v = defs.length - 1 - Math.floor(r() * Math.min(3, defs.length));   // junge Bäume am Lichtungsrand
+      const sc = 0.85 + 0.3 * r(), rad = minD * (0.55 + 0.6 * defs[v].S.age) * sc;
+      const cx = Math.floor(x / cell), cz = Math.floor(z / cell); let ok = true;
+      for (let dz = -1; dz <= 1 && ok; dz++) for (let dx = -1; dx <= 1 && ok; dx++) { const L = g2.get((cx + dx) + ',' + (cz + dz)); if (L) for (const t of L) if ((t.x - x) ** 2 + (t.z - z) ** 2 < (Math.max(rad, t.rad) * 0.9) ** 2) { ok = false; break; } }
+      if (!ok) continue;
+      const t = { x, z, rot: r() * 6.283, scale: sc, v, rad, tint: 0.9 + 0.2 * r(), tintG: 0.92 + 0.16 * r() };
+      out.push(t); const kk = cx + ',' + cz; (g2.get(kk) || g2.set(kk, []).get(kk)).push(t);
+    }
+    minD *= 0.82;
+  }
+  return out;
+}
+function backdropPlacement(seed, defs) {   // Waldrand hinter dem Exemplar (Lichtung vorne)
+  const r = rngFrom(hash2(seed, 5)), out = [];
+  for (let i = 0; i < 260 && out.length < 150; i++) {
+    const a = Math.PI + (r() - 0.5) * Math.PI * 1.35, d = 24 + Math.pow(r(), 0.8) * 120, x = Math.cos(a) * d + 4, z = Math.sin(a) * d;
+    if (out.some(t => (t.x - x) ** 2 + (t.z - z) ** 2 < 30)) continue;
+    const v = 1 + Math.floor(r() * (defs.length - 1));
+    out.push({ x, z, rot: r() * 6.283, scale: 0.85 + 0.3 * r(), v, rad: 3, tint: 0.88 + 0.2 * r(), tintG: 0.92 + 0.16 * r() });
+  }
+  return out;
+}
+const BB_VERT = /* glsl */`
+attribute vec3 iPos; attribute vec4 iData; attribute vec3 iTint;
+uniform vec4 uTile[${MAXV}]; uniform vec3 uCamPos; uniform vec3 uSunH;
+varying vec2 vUv; varying vec3 vTint; varying float vFade; varying float vShade;
+#include <common>
+#include <fog_pars_vertex>
+void main(){
+  vec3 toCam = uCamPos - iPos; toCam.y = 0.0; toCam = normalize(toCam + vec3(1e-4, 0.0, 0.0));
+  vec3 right = vec3(toCam.z, 0.0, -toCam.x);
+  float S = iData.x;
+  vec3 wp = iPos + right * (position.x * S) + vec3(0.0, (position.y - 0.02) * S, 0.0);
+  vec4 mvPosition = viewMatrix * vec4(wp, 1.0);
+  gl_Position = projectionMatrix * mvPosition;
+  vec4 t = uTile[int(iData.y + 0.5)]; vUv = t.xy + uv * t.zw;
+  vTint = iTint; vFade = iData.z; vShade = 0.72 + 0.4 * (0.5 + 0.5 * dot(toCam, uSunH));
+  #include <fog_vertex>
+}`;
+const BB_FRAG = /* glsl */`
+uniform sampler2D uAtlas; uniform float uBright;
+varying vec2 vUv; varying vec3 vTint; varying float vFade; varying float vShade;
+#include <common>
+#include <fog_pars_fragment>
+void main(){
+  vec4 c = texture2D(uAtlas, vUv);
+  if (c.a < 0.35) discard;
+  ${DITHER_GLSL}
+  gl_FragColor = vec4(c.rgb * vTint * vShade * uBright, 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+  #include <fog_fragment>
+}`;
+/** Wald: Varianten bauen (zeitgeteilt), platzieren, pro Frame LOD + Culling. */
+class Forest {
+  constructor({ renderer, scene, atlasSize = 2048 }) {
+    this.renderer = renderer; this.scene = scene; this.atlasSize = atlasSize; this.group = new THREE.Group(); this.group.name = 'TreeLabForest';
+    scene.add(this.group); this.variants = []; this.ready = false; this.trees = []; this.cells = [];
+    this.lod = { near: 16, mid: 60, far: 240 }; this.shadowsMid = true;
+    this.stats = { placed: 0, visible: 0, l0: 0, l1: 0, bb: 0, genMs: 0 };
+    this._lastCam = new THREE.Matrix4(); this._frustum = new THREE.Frustum(); this._m = new THREE.Matrix4(); this._sph = new THREE.Sphere(); this._dirty = true;
+  }
+  /** Varianten erzeugen. Zwischen den Varianten wird ein Frame abgegeben → Laufen bleibt flüssig. */
+  async build(defs, style, detail, onProgress = () => {}, token = {}) {
+    let ms = 0;
+    for (let i = 0; i < defs.length; i++) {
+      if (token.cancel) { this._disposeVariants(); return false; }
+      const t0 = performance.now(), d = defs[i];
+      const sk = resolveAge(generateSkeleton(d.species, d.S), d.S.age);
+      const g0 = buildTree(sk, { style, lod: 0, detail }), g1 = buildTree(sk, { style, lod: 1, detail });
+      this.variants.push({ def: d, g: [g0, g1], mats: MatLib.get(d.species, style), info: g0.info });
+      ms += performance.now() - t0; onProgress((i + 1) / defs.length);
+      await new Promise(r => requestAnimationFrame(() => r()));
+    }
+    if (token.cancel) { this._disposeVariants(); return false; }
+    const t1 = performance.now(); this._makeMeshes(); this.bake(); ms += performance.now() - t1;
+    this.stats.genMs = ms; this.ready = true; return true;
+  }
+  _makeMeshes() {
+    for (const v of this.variants) {
+      v.inst = [0, 1].map(l => {
+        const im = new THREE.InstancedBufferAttribute(new Float32Array(CAP * 16), 16), ic = new THREE.InstancedBufferAttribute(new Float32Array(CAP * 3), 3), fa = new THREE.InstancedBufferAttribute(new Float32Array(CAP), 1);
+        [im, ic, fa].forEach(a => a.setUsage(THREE.DynamicDrawUsage));
+        const parts = [[v.g[l].bark, v.mats.bark, v.mats.barkDepth], [v.g[l].leaves, v.mats.leaf, v.mats.leafDepth]].map(([geo, mat, dm]) => {
+          geo.setAttribute('aFade', fa);
+          const m = new THREE.InstancedMesh(geo, mat, 1); m.instanceMatrix = im; m.instanceColor = ic; m.count = 0;
+          m.frustumCulled = false; m.castShadow = l === 0; m.receiveShadow = true; m.customDepthMaterial = dm; this.group.add(m); return m;
+        });
+        return { im, ic, fa, parts, n: 0 };
+      });
+    }
+    // Ferne: ein einziger Draw-Call für alle Impostor-Billboards
+    const g = new THREE.InstancedBufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute([-0.5, 0, 0, 0.5, 0, 0, 0.5, 1, 0, -0.5, 1, 0], 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2)); g.setIndex([0, 1, 2, 0, 2, 3]);
+    this.bbPos = new THREE.InstancedBufferAttribute(new Float32Array(CAP * 3), 3); this.bbData = new THREE.InstancedBufferAttribute(new Float32Array(CAP * 4), 4); this.bbTint = new THREE.InstancedBufferAttribute(new Float32Array(CAP * 3), 3);
+    [this.bbPos, this.bbData, this.bbTint].forEach(a => a.setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute('iPos', this.bbPos); g.setAttribute('iData', this.bbData); g.setAttribute('iTint', this.bbTint); g.instanceCount = 0;
+    this.rt = new THREE.WebGLRenderTarget(this.atlasSize, this.atlasSize, { generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, type: THREE.HalfFloatType });
+    this.bbMat = new THREE.ShaderMaterial({ vertexShader: BB_VERT, fragmentShader: BB_FRAG, fog: true,
+      uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uTile: { value: Array.from({ length: MAXV }, () => new THREE.Vector4()) }, uCamPos: { value: new V3() }, uSunH: { value: new V3(1, 0, 0) }, uBright: { value: 1 } }]) });
+    this.bbMat.uniforms.uAtlas = { value: this.rt.texture };
+    this.bbGeo = g; this.bb = new THREE.Mesh(g, this.bbMat); this.bb.frustumCulled = false; this.group.add(this.bb);
+  }
+  /** Impostor-Atlas backen (4×4 Kacheln, eine je Variante). Neu backen, wenn sich die Sonne ändert. */
+  bake() {
+    if (!this.rt) return;
+    const R = this.renderer, sc = new THREE.Scene(), cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 400);
+    sc.add(new THREE.HemisphereLight(0xcfe0ff, 0x56603a, 1.5)); const dl = new THREE.DirectionalLight(0xfff0d8, 2.6); dl.position.set(0.5, 0.8, 1); sc.add(dl);
+    const oldW = U.uWindStr.value, oldS = U.uSunI.value, oldRT = R.getRenderTarget(), oldAC = R.autoClear, oldCC = R.getClearColor(new THREE.Color()), oldCA = R.getClearAlpha(), oldSM = R.shadowMap.enabled;
+    U.uWindStr.value = 0; U.uSunI.value = 0; R.autoClear = true; R.shadowMap.enabled = false;
+    const ts = this.atlasSize / 4;
+    this.variants.forEach((v, k) => {
+      const g = v.g[0], box = g.info.box, w = Math.max(-box.min.x, box.max.x, -box.min.z, box.max.z), S = Math.max(2 * w, box.max.y) * 1.04;
+      v.S = S;
+      cam.left = -S / 2; cam.right = S / 2; cam.bottom = -0.02 * S; cam.top = 0.98 * S; cam.position.set(0, 0, 150); cam.lookAt(0, 0, 0); cam.updateProjectionMatrix();
+      const mb = new THREE.Mesh(g.bark, v.mats.bark), ml = new THREE.Mesh(g.leaves, v.mats.leaf); sc.add(mb, ml);
+      const col = k % 4, row = k >> 2;
+      this.rt.viewport.set(col * ts, row * ts, ts, ts); this.rt.scissor.set(col * ts, row * ts, ts, ts); this.rt.scissorTest = true;
+      R.setClearColor(v.mats.avg, 0); R.setRenderTarget(this.rt); R.render(sc, cam); sc.remove(mb, ml);
+      this.bbMat.uniforms.uTile.value[k].set(col / 4, row / 4, 1 / 4, 1 / 4);
+    });
+    this.rt.scissorTest = false; this.rt.viewport.set(0, 0, this.atlasSize, this.atlasSize);
+    R.setRenderTarget(oldRT); R.autoClear = oldAC; R.setClearColor(oldCC, oldCA); R.shadowMap.enabled = oldSM;
+    U.uWindStr.value = oldW; U.uSunI.value = oldS; this._dirty = true;
+  }
+  /** Bäume platzieren: Liste von { x, z, rot, scale, v, tint }. Höhe kommt aus heightFn. */
+  setPlacement(list, heightFn = () => 0) {
+    const n = Math.min(list.length, CAP), q = new THREE.Quaternion(), m = new THREE.Matrix4(), s = new V3(), p = new V3();
+    this.trees = list.slice(0, n).map(t => ({ ...t, v: Math.min(t.v, this.variants.length - 1), y: heightFn(t.x, t.z) }));
+    this.mats = new Float32Array(n * 16);
+    this.trees.forEach((t, i) => { q.setFromAxisAngle(UP, t.rot); s.setScalar(t.scale); p.set(t.x, t.y, t.z); m.compose(p, q, s); m.toArray(this.mats, i * 16);
+      const v = this.variants[t.v]; t.h = (v ? v.info.height : 10) * t.scale; t.trunk = (v ? v.info.trunkR : 0.3) * t.scale; });
+    const C = 32, map = new Map(); this.cells = [];
+    this.trees.forEach((t, i) => { const k = Math.floor(t.x / C) + ',' + Math.floor(t.z / C); let c = map.get(k);
+      if (!c) { c = { box: new THREE.Box3(new V3(Infinity, Infinity, Infinity), new V3(-Infinity, -Infinity, -Infinity)), items: [] }; map.set(k, c); this.cells.push(c); }
+      c.items.push(i); c.box.expandByPoint(p.set(t.x - 8, t.y - 1, t.z - 8)); c.box.expandByPoint(p.set(t.x + 8, t.y + t.h + 1, t.z + 8)); });
+    this.cells.forEach(c => { c.center = c.box.getCenter(new V3()); c.rad = c.box.getSize(new V3()).length() / 2; });
+    this.grid = map; this.gridC = C; this.stats.placed = n; this._dirty = true;
+  }
+  setLOD({ near, mid, far }) { if (near) this.lod.near = near; if (mid) this.lod.mid = mid; if (far) this.lod.far = far; this._dirty = true; }
+  /** Pro Frame: Zellen gegen Frustum testen, Bäume nach Distanz in LOD-Töpfe sortieren, Übergänge per Dither überblenden. */
+  update(camera, sunDir) {
+    if (!this.ready || !this.trees.length) return;
+    camera.updateMatrixWorld();
+    if (!this._dirty && this._lastCam.equals(camera.matrixWorld)) return;
+    this._lastCam.copy(camera.matrixWorld); this._dirty = false;
+    this._frustum.setFromProjectionMatrix(this._m.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+    for (const v of this.variants) for (const L of v.inst) L.n = 0;
+    let nb = 0, vis = 0, c0 = 0, c1 = 0;
+    const cx = camera.position.x, cz = camera.position.z, { near, mid, far } = this.lod, b0 = Math.max(1.2, near * 0.08), b1 = Math.max(3, mid * 0.06), bf = 18;
+    const fr = this._frustum, sph = this._sph, mats = this.mats, bp = this.bbPos.array, bd = this.bbData.array, bt = this.bbTint.array;
+    const push = (t, i, l, fade) => { const L = this.variants[t.v].inst[l], k = L.n++; L.im.array.set(mats.subarray(i * 16, i * 16 + 16), k * 16); L.fa.array[k] = fade; L.ic.array[k * 3] = t.tint; L.ic.array[k * 3 + 1] = t.tint * t.tintG; L.ic.array[k * 3 + 2] = t.tint * 0.96; };
+    const pushB = (t, fade) => { const k = nb++, v = this.variants[t.v]; bp[k * 3] = t.x; bp[k * 3 + 1] = t.y; bp[k * 3 + 2] = t.z; bd[k * 4] = v.S * t.scale; bd[k * 4 + 1] = t.v; bd[k * 4 + 2] = fade; bt[k * 3] = t.tint; bt[k * 3 + 1] = t.tint * t.tintG; bt[k * 3 + 2] = t.tint * 0.96; };
+    for (const c of this.cells) {
+      const dd = Math.hypot(c.center.x - cx, c.center.z - cz) - c.rad; if (dd > far) continue;
+      if (!fr.intersectsBox(c.box)) continue;
+      for (const i of c.items) {
+        const t = this.trees[i], d = Math.hypot(t.x - cx, t.z - cz); if (d > far) continue;
+        sph.center.set(t.x, t.y + t.h * 0.5, t.z); sph.radius = t.h * 0.62 + 1; if (!fr.intersectsSphere(sph)) continue;
+        vis++;
+        if (d < near - b0) { push(t, i, 0, 0); c0++; }
+        else if (d < near + b0) { const f = (d - (near - b0)) / (2 * b0); push(t, i, 0, f); push(t, i, 1, 2 + f); c0++; }
+        else if (d < mid - b1) { push(t, i, 1, 0); c1++; }
+        else if (d < mid + b1) { const f = (d - (mid - b1)) / (2 * b1); push(t, i, 1, f); pushB(t, 2 + f); c1++; }
+        else pushB(t, d > far - bf ? (d - (far - bf)) / bf : 0);
+      }
+    }
+    for (const v of this.variants) for (const L of v.inst) {
+      for (const m of L.parts) m.count = L.n;
+      if (L.n) { for (const a of [L.im, L.ic, L.fa]) { a.clearUpdateRanges(); a.addUpdateRange(0, L.n * a.itemSize); a.needsUpdate = true; } }
+    }
+    this.bbGeo.instanceCount = nb;
+    for (const a of [this.bbPos, this.bbData, this.bbTint]) { a.clearUpdateRanges(); a.addUpdateRange(0, Math.max(1, nb) * a.itemSize); a.needsUpdate = true; }
+    this.bbMat.uniforms.uCamPos.value.copy(camera.position);
+    if (sunDir) this.bbMat.uniforms.uSunH.value.set(sunDir.x, 0, sunDir.z).normalize();
+    this.stats.visible = vis; this.stats.l0 = c0; this.stats.l1 = c1; this.stats.bb = nb;
+  }
+  /** Stämme in der Nähe (für einfache Kollision im Spiel). */
+  nearTrunks(x, z, r = 3) {
+    const out = [], C = this.gridC; if (!this.grid) return out;
+    for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) { const c = this.grid.get((Math.floor(x / C) + dx) + ',' + (Math.floor(z / C) + dz)); if (c) for (const i of c.items) { const t = this.trees[i]; if (Math.abs(t.x - x) < r + 2 && Math.abs(t.z - z) < r + 2) out.push(t); } }
+    return out;
+  }
+  _disposeVariants() { for (const v of this.variants) for (const g of v.g) { g.bark.dispose(); g.leaves.dispose(); } this.variants = []; }
+  dispose() {
+    this._disposeVariants(); this.group.removeFromParent();
+    if (this.bbGeo) { this.bbGeo.dispose(); this.bbMat.dispose(); this.rt.dispose(); }
+    this.ready = false;
+  }
+}
+
+/* ============================== 4. API ============================== */
+function normTree(s) { const S = { ...DEFAULT_TREE, ...s }; S.height = S.height || SPECIES[S.species].H; return S; }
+const TreeLab = {
+  version: '1.0.0', SPECIES: Object.keys(SPECIES), STYLES: Object.keys(STYLES), uniforms: U,
+  /** Einen Baum erzeugen. settings: { species, seed, age 0.05–1, height m, girth, spread, dens, foliage }
+   *  opts: { style:'natural'|'painterly'|'ps2', lod:0|1, detail:0.3–1 } → { object, bark, leaves, info, dispose() } */
+  createTree(settings = {}, opts = {}) {
+    const t0 = performance.now(), S = normTree(settings), style = opts.style || 'natural';
+    const sk = resolveAge(generateSkeleton(S.species, S), S.age), g = buildTree(sk, { style, lod: opts.lod || 0, detail: opts.detail ?? 1 }), m = MatLib.get(S.species, style);
+    const object = new THREE.Group(), bark = new THREE.Mesh(g.bark, m.bark), leaves = new THREE.Mesh(g.leaves, m.leaf);
+    for (const [mesh, dm] of [[bark, m.barkDepth], [leaves, m.leafDepth]]) { mesh.castShadow = mesh.receiveShadow = true; mesh.customDepthMaterial = dm; object.add(mesh); }
+    return { object, bark, leaves, skeleton: sk, info: { ...g.info, ms: performance.now() - t0 },
+      dispose() { g.bark.dispose(); g.leaves.dispose(); object.removeFromParent(); } };
+  },
+  /** Wald füllen. { renderer, scene, count, seed, tree:{…settings}, mix, style, detail, placement?, heightFn? }
+   *  → Forest mit .ready (Promise), .update(camera, sunDir), .setLOD({near,mid,far}), .setPlacement(list), .dispose() */
+  createForest({ renderer, scene, count = 1500, seed = 1, tree = {}, mix = false, style = 'natural', detail = 0.8, placement = null, heightFn, atlasSize = 2048, onProgress } = {}) {
+    const f = new Forest({ renderer, scene, atlasSize }), defs = variantDefs(normTree(tree), mix);
+    f.ready = f.build(defs, style, detail, onProgress).then(ok => { if (ok) f.setPlacement(placement || placeForest(count, seed, defs), heightFn); return f; });
+    f.defs = defs; return f;
+  },
+  placeForest, backdropPlacement, variantDefs,
+  /** Pro Frame aufrufen: Wind-Zeit weiterdrehen, Sonnenrichtung für das Durchscheinen der Blätter setzen. */
+  update(dt, camera, sunDir, wind = {}) {
+    U.uTime.value += dt;
+    if (wind.strength != null) U.uWindStr.value = wind.strength; if (wind.quality != null) U.uWindQ.value = wind.quality; if (wind.dir) U.uWindDir.value.copy(wind.dir).normalize();
+    if (camera && sunDir) U.uSunView.value.copy(sunDir).transformDirection(camera.matrixWorldInverse);
+  },
+  disposeMaterials(keepStyle) { MatLib.prune(keepStyle); },
+  _internal: { generateSkeleton, resolveAge, buildTree, Forest, MatLib }
+};
+window.TreeLab = TreeLab;
+
+/* ============================== 5. DEMO ============================== */
+const Q = new URLSearchParams(location.search);
+const isTouch = matchMedia('(pointer: coarse)').matches;
+const T = { ...DEFAULT_TREE, species: Q.get('art') || 'oak', seed: +(Q.get('seed') || 1337), age: +(Q.get('alter') || 1) };
+T.height = SPECIES[T.species].H;
+const PRESETS = {
+  mobile:   { scale: 0.6, shadow: 1024, shadowDist: 30, detail: 0.5, lod: 0.6, windQ: 1 },
+  balanced: { scale: 0.85, shadow: 2048, shadowDist: 50, detail: 0.75, lod: 0.85, windQ: 2 },
+  high:     { scale: 1, shadow: 4096, shadowDist: 80, detail: 1, lod: 1.5, windQ: 2 }
+};
+const G = { preset: Q.get('preset') || (isTouch ? 'mobile' : 'balanced'), adaptive: false, ...PRESETS[Q.get('preset') || (isTouch ? 'mobile' : 'balanced')] };
+const W = { style: Q.get('stil') || 'natural', wind: 0.6, sunAz: 5, sunEl: 40, person: false, forestN: +(Q.get('dichte') || 1500), mix: Q.get('misch') === '1', forestSeed: 1, benchLock: true };
+let view = Q.get('ansicht') === 'wald' ? 'forest' : 'specimen';
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !isTouch, powerPreference: 'high-performance' });
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+const FOG = new THREE.Color(0xc4d6e4); scene.fog = new THREE.Fog(FOG, 80, 600);
+const camera = new THREE.PerspectiveCamera(55, 1, 0.08, 1500);
+const sunDir = new V3();
+const sun = new THREE.DirectionalLight(0xfff0d6, 3.1); sun.castShadow = true; scene.add(sun, sun.target);
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.03;
+const hemi = new THREE.HemisphereLight(0xc2dcff, 0x4d5a2c, 1.3); scene.add(hemi);
+// Himmel
+const sky = new THREE.Mesh(new THREE.SphereGeometry(1200, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, uniforms: { uSun: { value: sunDir } },
+  vertexShader: 'varying vec3 vD; void main(){ vD = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: `uniform vec3 uSun; varying vec3 vD;
+  void main(){ vec3 d = normalize(vD); float h = max(d.y, 0.0);
+    vec3 c = mix(vec3(0.58,0.7,0.8), vec3(0.17,0.36,0.72), pow(h, 0.55));
+    float s = max(dot(d, uSun), 0.0); c += vec3(1.0,0.8,0.55) * (pow(s, 6.0) * 0.35 + pow(s, 900.0) * 8.0);
+    if (d.y < 0.0) c = mix(c, vec3(0.33,0.38,0.3), min(1.0, -d.y * 5.0));
+    gl_FragColor = vec4(c, 1.0);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }` }));
+sky.renderOrder = -1; scene.add(sky);
+// Boden: kachelbare Gras/Erde-Textur
+function groundTex() {
+  const N = 256, d = new Uint8Array(N * N * 4);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const u = x / N, v = y / N, i = (y * N + x) * 4, a = pfbm(u, v, 6, 6, 4, 3), b = pfbm(u, v, 40, 40, 2, 8), dirt = 0.6 * sstep(0.62, 0.75, pfbm(u, v, 3, 3, 3, 21));
+    let r = 0.2 + 0.1 * a + 0.06 * b, g = 0.3 + 0.12 * a + 0.08 * b, bb = 0.1 + 0.05 * a;
+    r += (0.33 - r) * dirt; g += (0.27 - g) * dirt; bb += (0.18 - bb) * dirt;
+    d[i] = r * 255; d[i + 1] = g * 255; d[i + 2] = bb * 255; d[i + 3] = 255;
+  }
+  const t = dataTex(d, N, N, true); return t;
+}
+const gTex = groundTex(); gTex.repeat.set(150, 150);
+const terrainH = (x, z) => 1.6 * Math.sin(x * 0.019) * Math.cos(z * 0.016) + 0.7 * Math.sin((x + z) * 0.041) + 0.25 * Math.sin(x * 0.09 - z * 0.07);
+const groundFlat = new THREE.Mesh(new THREE.CircleGeometry(700, 64).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: gTex, roughness: 1, color: 0xb4b89c }));
+groundFlat.receiveShadow = true; scene.add(groundFlat);
+const tg = new THREE.PlaneGeometry(900, 900, 180, 180).rotateX(-Math.PI / 2); { const p = tg.attributes.position; for (let i = 0; i < p.count; i++) p.setY(i, terrainH(p.getX(i), p.getZ(i))); tg.computeVertexNormals(); }
+const gTex2 = gTex.clone(); gTex2.repeat.set(190, 190); gTex2.needsUpdate = true;
+const groundForest = new THREE.Mesh(tg, new THREE.MeshStandardMaterial({ map: gTex2, roughness: 1, color: 0xb9c2a6 })); groundForest.receiveShadow = true; scene.add(groundForest);
+// Grasbüschel rund um das Exemplar (gleiches Windsystem)
+function makeGrass() {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d'), r = rngFrom(9);
+  for (let k = 0; k < 34; k++) { const bx = 64 + (r() - 0.5) * 90, h = 60 + r() * 64, lean = (r() - 0.5) * 40; x.strokeStyle = `hsl(${70 + r() * 28},${30 + r() * 16}%,${22 + r() * 16}%)`; x.lineWidth = 2 + r() * 2.5; x.beginPath(); x.moveTo(bx, 128); x.quadraticCurveTo(bx + lean * 0.3, 128 - h * 0.6, bx + lean, 128 - h); x.stroke(); }
+  const img = x.getImageData(0, 0, 128, 128).data, d = new Uint8Array(img.length);
+  for (let i = 0; i < img.length; i += 4) { const a = img[i + 3]; if (a < 8) { d[i] = 70; d[i + 1] = 95; d[i + 2] = 40; d[i + 3] = 0; } else { const k = 255 / a; d[i] = img[i] * k; d[i + 1] = img[i + 1] * k; d[i + 2] = img[i + 2] * k; d[i + 3] = a; } }
+  const tex = dataTex(d, 128, 128, true, false);
+  const P = [], UVs = [], Nn = [], Cc = [], WWs = [], WPs = [], I = [];
+  for (let q = 0; q < 2; q++) { const a = q * Math.PI / 2, cx = Math.cos(a) * 0.32, cz = Math.sin(a) * 0.32, b = P.length / 3;
+    P.push(-cx, 0, -cz, cx, 0, -cz * -1 * -1 + 2 * cz - cz, cx, 0.42, cz, -cx, 0.42, -cz); }
+  P.length = 0;
+  for (let q = 0; q < 2; q++) { const a = q * Math.PI / 2, cx = Math.cos(a) * 0.32, cz = Math.sin(a) * 0.32, b = P.length / 3;
+    P.push(-cx, 0, -cz, cx, 0, cz, cx, 0.42, cz, -cx, 0.42, -cz); UVs.push(0, 1, 1, 1, 1, 0, 0, 0); Nn.push(0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0);
+    Cc.push(0.7, 0.7, 0.7, 0.7, 0.7, 0.7, 1, 1, 1, 1, 1, 1); WWs.push(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.05, 0, 0, 0, 0.05); WPs.push(0, 0, 0, 0, 0, 0, 0, 0, q, 0, 0, q); I.push(b, b + 1, b + 2, b, b + 2, b + 3); }
+  const g = makeGeo(P, Nn, UVs, Cc, WWs, WPs, I); g.setAttribute('aFade', new THREE.InstancedBufferAttribute(new Float32Array(4000), 1));
+  const mat = patchMat(new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide, vertexColors: true }), 'grass');
+  const m = new THREE.InstancedMesh(g, mat, 4000), mm = new THREE.Matrix4(), qq = new THREE.Quaternion(), s = new V3(), p = new V3(), rr = rngFrom(4); let n = 0;
+  for (let k = 0; k < 9000 && n < 4000; k++) { const a = rr() * 6.283, d = 1.2 + Math.pow(rr(), 0.6) * 40, x2 = Math.cos(a) * d, z2 = Math.sin(a) * d;
+    if (x2 < -6 && rr() < 0.7) continue; qq.setFromAxisAngle(UP, rr() * 6.283); s.setScalar(0.45 + rr() * 0.6); m.setMatrixAt(n, mm.compose(p.set(x2, 0, z2), qq, s));
+    m.setColorAt(n, new THREE.Color().setHSL(0.2 + rr() * 0.05, 0.25, 0.42 + rr() * 0.15)); n++; }
+  m.count = n; m.receiveShadow = true; return m;
+}
+const grass = makeGrass(); scene.add(grass);
+// Mensch 1,8 m
+const person = new THREE.Group(); { const mat = new THREE.MeshLambertMaterial({ color: 0x7088a8 });
+  const add = (geo, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; person.add(m); };
+  add(new THREE.CylinderGeometry(0.07, 0.06, 0.86, 8), -0.1, 0.43, 0); add(new THREE.CylinderGeometry(0.07, 0.06, 0.86, 8), 0.1, 0.43, 0);
+  add(new THREE.CapsuleGeometry(0.17, 0.4, 4, 10), 0, 1.16, 0); add(new THREE.SphereGeometry(0.11, 12, 10), 0, 1.69, 0);
+  add(new THREE.CylinderGeometry(0.045, 0.04, 0.62, 6), -0.24, 1.08, 0); add(new THREE.CylinderGeometry(0.045, 0.04, 0.62, 6), 0.24, 1.08, 0); }
+person.position.set(4.5, 0, 2.5); person.visible = false; scene.add(person);
+
+// ---- Exemplar ----
+let hero = null, heroMs = 0;
+function rebuildHero() {
+  const t0 = performance.now();
+  const nt = TreeLab.createTree(T, { style: W.style, detail: Math.max(0.5, G.detail) });
+  if (hero) hero.dispose(); hero = nt; scene.add(hero.object); hero.object.visible = view === 'specimen';
+  heroMs = performance.now() - t0; dirtyShadow = true;
+}
+// ---- Wald (eine Bibliothek für Exemplar-Hintergrund und begehbaren Wald) ----
+let forest = null, forestJob = null, forestMs = 0, placeMs = 0;
+function startForestBuild() {
+  if (forestJob) forestJob.cancel = true;
+  const token = { cancel: false }; forestJob = token;
+  const f = new Forest({ renderer, scene, atlasSize: G.preset === 'mobile' ? 1024 : 2048 }), defs = variantDefs(T, W.mix);
+  f.defs = defs; showBusy('Wald-Bibliothek 0 %');
+  f.build(defs, W.style, G.detail, p => showBusy(`Wald-Bibliothek ${Math.round(p * 100)} %`), token).then(ok => {
+    if (!ok || token.cancel) { f.dispose(); return; }
+    if (forest) forest.dispose(); forest = f; forestMs = f.stats.genMs; applyLOD(); applyPlacement(); showBusy(''); forestJob = null;
+    MatLib.prune(W.style);
+  });
+}
+function applyPlacement() {
+  if (!forest) return; const t0 = performance.now();
+  if (view === 'forest') forest.setPlacement(placeForest(W.forestN, benchState ? 4242 : W.forestSeed, forest.defs), terrainH);
+  else forest.setPlacement(backdropPlacement(T.seed, forest.defs), () => 0);
+  placeMs = performance.now() - t0;
+}
+function applyLOD() { if (forest) forest.setLOD({ near: 16 * G.lod, mid: 60 * G.lod, far: view === 'forest' ? 230 : 600 }); }
+
+// ---- Grafik ----
+let renderScale = G.scale, dirtyShadow = true;
+function applyGraphics() {
+  renderScale = G.scale; resize();
+  sun.castShadow = G.shadow > 0;
+  if (G.shadow > 0 && sun.shadow.mapSize.x !== G.shadow) { sun.shadow.mapSize.set(G.shadow, G.shadow); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
+  U.uWindQ.value = G.windQ; applyLOD(); dirtyShadow = true;
+}
+function resize() {
+  const w = innerWidth, h = innerHeight; renderer.setPixelRatio(Math.min(devicePixelRatio, 2) * renderScale); renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.fov = w < h ? 72 : 55; camera.updateProjectionMatrix(); if (forest) forest._dirty = true;
+}
+addEventListener('resize', resize);
+function updateSun() {
+  sunDir.set(Math.cos(W.sunAz * D) * Math.cos(W.sunEl * D), Math.sin(W.sunEl * D), Math.sin(W.sunAz * D) * Math.cos(W.sunEl * D)).normalize();
+  const k = sstep(3, 25, W.sunEl); sun.intensity = 3.1 * k + 0.2; sun.color.setRGB(1, 0.82 + 0.13 * k, 0.62 + 0.24 * k);
+  U.uSunI.value = 0.35 + 0.65 * k; dirtyShadow = true;
+}
+let bakeTimer = 0;
+function updateShadowCam() {
+  const c = sun.shadow.camera; let ext, cen = new V3();
+  if (view === 'specimen' && hero) { const i = hero.info; ext = Math.max(i.crownR * 1.35, i.height * 0.6) + 3; cen.set(0, i.height * 0.45, 0); }
+  else { ext = G.shadowDist; const f = new V3(); camera.getWorldDirection(f); f.y = 0; f.normalize(); cen.copy(camera.position).addScaledVector(f, ext * 0.45); const s = ext * 2 / G.shadow; cen.x = Math.round(cen.x / s) * s; cen.z = Math.round(cen.z / s) * s; }
+  c.left = -ext; c.right = ext; c.top = ext; c.bottom = -ext; c.near = 1; c.far = 400; c.updateProjectionMatrix();
+  sun.target.position.copy(cen); sun.position.copy(cen).addScaledVector(sunDir, 180);
+}
+
+// ---- Kamera / Steuerung ----
+const orbit = new OrbitControls(camera, canvas); orbit.enableDamping = true; orbit.minDistance = 0.4; orbit.maxDistance = 140; orbit.maxPolarAngle = Math.PI * 0.53;
+const specCam = { pos: new V3(21, 3.2, 18), tgt: new V3(0, 8, 0) };
+const walk = { x: 0, z: 6, yaw: 0, pitch: 0.06, keys: new Set(), joy: { x: 0, y: 0 } };
+function setView(v) {
+  if (v === view && forest) { /* nur neu platzieren */ }
+  if (view === 'specimen') { specCam.pos.copy(camera.position); specCam.tgt.copy(orbit.target); }
+  view = v; document.getElementById('vSpec').classList.toggle('on', v === 'specimen'); document.getElementById('vWald').classList.toggle('on', v === 'forest');
+  const spec = v === 'specimen'; orbit.enabled = spec; groundFlat.visible = grass.visible = spec; groundForest.visible = !spec; if (hero) hero.object.visible = spec; person.visible = spec && W.person;
+  scene.fog.near = spec ? 80 : 40; scene.fog.far = spec ? 600 : 235;
+  document.getElementById('joy').style.display = !spec && isTouch ? 'block' : 'none';
+  if (spec) { camera.position.copy(specCam.pos); orbit.target.copy(specCam.tgt); orbit.update(); }
+  applyLOD(); applyPlacement(); dirtyShadow = true; refreshHelp();
+}
+addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; walk.keys.add(e.code); });
+addEventListener('keyup', e => walk.keys.delete(e.code));
+let look = null;
+canvas.addEventListener('pointerdown', e => { if (view !== 'forest' || benchState) return; look = { id: e.pointerId, x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointermove', e => { if (!look || e.pointerId !== look.id) return; const k = e.pointerType === 'mouse' ? 0.0035 : 0.006; walk.yaw -= (e.clientX - look.x) * k; walk.pitch = clamp(walk.pitch - (e.clientY - look.y) * k, -1.2, 1.2); look.x = e.clientX; look.y = e.clientY; });
+canvas.addEventListener('pointerup', () => look = null); canvas.addEventListener('pointercancel', () => look = null);
+{ const j = document.getElementById('joy'), k = document.getElementById('knob'); let id = null;
+  const mv = e => { const r = j.getBoundingClientRect(); let x = (e.clientX - r.left - 60) / 50, y = (e.clientY - r.top - 60) / 50; const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } walk.joy.x = x; walk.joy.y = y; k.style.left = 38 + x * 40 + 'px'; k.style.top = 38 + y * 40 + 'px'; };
+  j.addEventListener('pointerdown', e => { id = e.pointerId; j.setPointerCapture(id); mv(e); e.stopPropagation(); });
+  j.addEventListener('pointermove', e => { if (e.pointerId === id) mv(e); });
+  const end = () => { id = null; walk.joy.x = walk.joy.y = 0; k.style.left = k.style.top = '38px'; }; j.addEventListener('pointerup', end); j.addEventListener('pointercancel', end); }
+function updateWalk(dt) {
+  const K = walk.keys; let f = 0, s = 0;
+  if (K.has('KeyW') || K.has('ArrowUp')) f += 1; if (K.has('KeyS') || K.has('ArrowDown')) f -= 1; if (K.has('KeyD') || K.has('ArrowRight')) s += 1; if (K.has('KeyA') || K.has('ArrowLeft')) s -= 1;
+  if (K.has('KeyQ')) walk.yaw += dt * 1.6; if (K.has('KeyE')) walk.yaw -= dt * 1.6;
+  f -= walk.joy.y; s += walk.joy.x;
+  const sp = (K.has('ShiftLeft') || K.has('ShiftRight') ? 9 : 4.2) * dt, sy = Math.sin(walk.yaw), cy = Math.cos(walk.yaw);
+  walk.x += (-sy * f + cy * s) * sp; walk.z += (-cy * f - sy * s) * sp;
+  walk.x = clamp(walk.x, -175, 175); walk.z = clamp(walk.z, -175, 175);
+  if (forest) for (const t of forest.nearTrunks(walk.x, walk.z)) { const dx = walk.x - t.x, dz = walk.z - t.z, d = Math.hypot(dx, dz), m = t.trunk * 1.3 + 0.35; if (d < m && d > 1e-4) { walk.x = t.x + dx / d * m; walk.z = t.z + dz / d * m; } }
+  camera.position.set(walk.x, terrainH(walk.x, walk.z) + 1.7, walk.z); camera.rotation.set(walk.pitch, walk.yaw, 0, 'YXZ');
+}
+
+// ---- Messung ----
+const ft = [], FT_N = 240; let frames = 0, lastStats = 0;
+const medP = (arr, p) => { const a = [...arr].sort((x, y) => x - y); return a.length ? a[Math.min(a.length - 1, Math.floor(p * (a.length - 1) + 0.5))] : 0; };
+let benchState = null; const benchResults = [];
+const gpuName = (() => { try { const gl = renderer.getContext(), ext = gl.getExtension('WEBGL_debug_renderer_info'); return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); } catch { return '?'; } })();
+function benchPath(t, cam) {   // feste 20-s-Route quer durch den Wald (gleiche Stelle bei gleichem Seed)
+  const x = -70 + 140 * t, z = 18 * Math.sin(t * Math.PI * 3), dz = 18 * Math.PI * 3 * Math.cos(t * Math.PI * 3) / 140;
+  walk.x = x; walk.z = z; walk.yaw = Math.atan2(-1, -dz) + 0.55 * Math.sin(t * Math.PI * 4); walk.pitch = 0.05 + 0.12 * Math.sin(t * Math.PI * 2);
+  cam.position.set(x, terrainH(x, z) + 1.7, z); cam.rotation.set(walk.pitch, walk.yaw, 0, 'YXZ');
+}
+function startBench() {
+  if (benchState) return;
+  benchState = { phase: 'wait', t: 0, rec: [], calls: [], tris: [], savedScale: renderScale, savedSeed: W.forestSeed };
+  if (view !== 'forest') setView('forest'); else applyPlacement();
+  document.getElementById('panel').classList.add('zu');
+}
+function benchStep(dt) {
+  const b = benchState;
+  if (b.phase === 'wait') { if (forest && !forestJob) { b.phase = 'warm'; b.t = 0; applyPlacement(); } else return; }
+  b.t += dt;
+  const total = 2 + 20, t = b.phase === 'warm' ? b.t / total : (2 + b.t) / total;
+  benchPath(Math.min(1, t), camera);
+  if (b.phase === 'warm' && b.t >= 2) { b.phase = 'run'; b.t = 0; }
+  else if (b.phase === 'run' && b.t >= 20) finishBench();
+  showBusy(b.phase === 'warm' ? 'Messfahrt: Aufwärmen …' : `Messfahrt läuft … ${Math.max(0, 20 - b.t).toFixed(0)} s`);
+}
+function finishBench() {
+  const b = benchState, n = b.rec.length, sum = b.rec.reduce((a, c) => a + c, 0), avg = a => a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
+  const res = { zeit: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }), dichte: forest.stats.placed, preset: G.preset, skala: renderScale.toFixed(2), stil: W.style, art: W.mix ? 'misch' : T.species,
+    fps: n / (sum / 1000), med: medP(b.rec, 0.5), p95: medP(b.rec, 0.95), draws: Math.round(avg(b.calls)), tris: avg(b.tris), aufl: `${renderer.domElement.width}×${renderer.domElement.height}`,
+    schatten: G.shadow, frames: n };
+  benchResults.unshift(res); benchState = null; showBusy(''); renderBench(); setView('forest');
+  document.getElementById('panel').classList.remove('zu'); document.getElementById('secWald').open = true;
+}
+
+// ---- Bedienfeld ----
+const $ = s => document.querySelector(s);
+function h(tag, attrs = {}, ...kids) { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) { if (k.startsWith('on')) e[k] = v; else e.setAttribute(k, v); } e.append(...kids); return e; }
+const refreshers = [];
+function section(title, open, id) { const d = h('details', id ? { id } : {}); if (open) d.open = true; d.append(h('summary', {}, title)); $('#panel').append(d); return d; }
+function slider(sec, label, get, set, min, max, step, fmt = v => v) {
+  const val = h('b'), inp = h('input', { type: 'range', min, max, step }); const row = h('label', { class: 'row' }, h('span', {}, label), val, inp);
+  const ref = () => { inp.value = get(); val.textContent = fmt(+get()); }; ref(); inp.oninput = () => { set(+inp.value); val.textContent = fmt(+inp.value); }; sec.append(row); refreshers.push(ref); return inp;
+}
+function buttons(sec, items, get, set) { const box = h('div', { class: 'btns' }); const bs = items.map(([k, l]) => { const b = h('button', { onclick: () => { set(k); upd(); } }, l); box.append(b); return [k, b]; });
+  const upd = () => bs.forEach(([k, b]) => b.classList.toggle('on', get() === k)); upd(); refreshers.push(upd); sec.append(box); }
+function check(sec, label, get, set) { const i = h('input', { type: 'checkbox' }); i.checked = get(); i.onchange = () => set(i.checked); sec.append(h('label', { class: 'chk' }, i, label)); refreshers.push(() => i.checked = get()); }
+const timers = {}; const later = (k, ms, fn) => { clearTimeout(timers[k]); timers[k] = setTimeout(fn, ms); };
+const treeChanged = () => { later('hero', 140, rebuildHero); later('forest', 800, startForestBuild); };
+function buildPanel() {
+  const s1 = section('🌳 Baum', true);
+  buttons(s1, Object.entries(SPECIES).map(([k, v]) => [k, v.label]), () => T.species, k => { T.species = k; T.height = SPECIES[k].H; refreshers.forEach(f => f()); treeChanged(); });
+  const seedIn = h('input', { type: 'number', value: T.seed }); seedIn.onchange = () => { T.seed = (+seedIn.value) >>> 0; treeChanged(); };
+  refreshers.push(() => seedIn.value = T.seed);
+  s1.append(h('div', { class: 'btns' }, h('span', { style: 'align-self:center' }, 'Seed'), seedIn, h('button', { onclick: () => { T.seed = Math.floor(Math.random() * 99999); seedIn.value = T.seed; treeChanged(); } }, '🎲 Neuer Seed')));
+  slider(s1, 'Alter', () => T.age, v => { T.age = v; treeChanged(); }, 0.05, 1, 0.01, v => `≈ ${Math.round(v * SPECIES[T.species].years)} Jahre`);
+  slider(s1, 'Höhe (ausgewachsen)', () => T.height, v => { T.height = v; treeChanged(); }, 6, 32, 0.5, v => v.toFixed(1) + ' m');
+  slider(s1, 'Stammdicke', () => T.girth, v => { T.girth = v; treeChanged(); }, 0.5, 1.8, 0.01, v => '×' + v.toFixed(2));
+  slider(s1, 'Kronenbreite', () => T.spread, v => { T.spread = v; treeChanged(); }, 0.6, 1.5, 0.01, v => '×' + v.toFixed(2));
+  slider(s1, 'Astdichte', () => T.dens, v => { T.dens = v; treeChanged(); }, 0.4, 1.6, 0.01, v => '×' + v.toFixed(2));
+  slider(s1, 'Laubdichte', () => T.foliage, v => { T.foliage = v; treeChanged(); }, 0.2, 1.6, 0.01, v => '×' + v.toFixed(2));
+  s1.append(h('div', { class: 'btns' }, h('button', { onclick: copySettings }, '📋 Einstellungen kopieren')));
+  const s2 = section('🎨 Stil', true);
+  buttons(s2, Object.entries(STYLES).map(([k, v]) => [k, v.label]), () => W.style, k => { W.style = k; later('hero', 10, rebuildHero); later('forest', 300, startForestBuild); });
+  s2.append(h('div', { class: 'klein' }, 'Art, Seed, Alter und Kamera bleiben beim Umschalten gleich.'));
+  const s3 = section('☀ Licht & Wind', false);
+  slider(s3, 'Sonne Richtung', () => W.sunAz, v => { W.sunAz = v; updateSun(); later('bake', 400, () => forest && forest.bake()); }, 0, 360, 1, v => v + '°');
+  slider(s3, 'Sonne Höhe', () => W.sunEl, v => { W.sunEl = v; updateSun(); later('bake', 400, () => forest && forest.bake()); }, 4, 85, 1, v => v + '°');
+  slider(s3, 'Wind', () => W.wind, v => { W.wind = v; }, 0, 1.6, 0.01, v => v.toFixed(2));
+  check(s3, 'Mensch 1,8 m einblenden', () => W.person, v => { W.person = v; person.visible = v && view === 'specimen'; });
+  const s4 = section('🌲 Wald & Messung', false, 'secWald');
+  slider(s4, 'Bäume im Wald', () => Math.log(W.forestN / 100) / Math.log(50), v => { W.forestN = Math.round(100 * Math.pow(50, v)); later('place', 200, () => view === 'forest' && applyPlacement()); }, 0, 1, 0.001, v => String(Math.round(100 * Math.pow(50, v))));
+  const fsIn = h('input', { type: 'number', value: W.forestSeed }); fsIn.onchange = () => { W.forestSeed = (+fsIn.value) >>> 0; if (view === 'forest') applyPlacement(); };
+  s4.append(h('div', { class: 'btns' }, h('span', { style: 'align-self:center' }, 'Wald-Seed'), fsIn, h('button', { onclick: () => { W.forestSeed = Math.floor(Math.random() * 9999); fsIn.value = W.forestSeed; if (view === 'forest') applyPlacement(); } }, '🎲')));
+  check(s4, 'Mischwald (Eiche + Birke + Kiefer)', () => W.mix, v => { W.mix = v; startForestBuild(); });
+  check(s4, 'Auflösung während der Messung sperren', () => W.benchLock, v => W.benchLock = v);
+  s4.append(h('div', { class: 'btns' }, h('button', { onclick: startBench }, '▶ Messfahrt 20 s'), h('button', { onclick: copyBench }, '📋 Ergebnisse')));
+  s4.append(h('div', { class: 'klein' }, 'Feste Route, fester Wald-Seed 4242, 2 s Aufwärmen. Eine Einstellung ändern, dann erneut messen.'));
+  s4.append(h('div', { id: 'benchTab' }));
+  const s5 = section('⚙ Grafik', false);
+  buttons(s5, [['mobile', 'Mobil'], ['balanced', 'Ausgewogen'], ['high', 'Hoch'], ['custom', 'Eigene']], () => G.preset, k => { const old = G.detail; G.preset = k; if (PRESETS[k]) Object.assign(G, PRESETS[k]); refreshers.forEach(f => f()); applyGraphics(); if (old !== G.detail) { later('hero', 50, rebuildHero); later('forest', 400, startForestBuild); } });
+  const custom = () => { G.preset = 'custom'; refreshers.forEach(f => f()); };
+  slider(s5, 'Render-Skala', () => G.scale, v => { G.scale = v; custom(); applyGraphics(); }, 0.35, 1, 0.05, v => '×' + v.toFixed(2));
+  const sel = h('select', {}, ...[[0, 'Aus'], [1024, '1024'], [2048, '2048'], [4096, '4096']].map(([v, l]) => h('option', { value: v }, l)));
+  sel.value = G.shadow; sel.onchange = () => { G.shadow = +sel.value; custom(); applyGraphics(); }; refreshers.push(() => sel.value = G.shadow);
+  s5.append(h('label', { class: 'row' }, h('span', {}, 'Schatten-Qualität'), sel));
+  slider(s5, 'Schatten-Distanz (Wald)', () => G.shadowDist, v => { G.shadowDist = v; custom(); }, 15, 120, 1, v => v + ' m');
+  slider(s5, 'Laub-Detail', () => G.detail, v => { G.detail = v; custom(); later('hero', 200, rebuildHero); later('forest', 900, startForestBuild); }, 0.3, 1, 0.05, v => Math.round(v * 100) + ' %');
+  slider(s5, 'LOD-Distanz', () => G.lod, v => { G.lod = v; custom(); applyLOD(); }, 0.4, 2.5, 0.05, v => `×${v.toFixed(2)} (nah ${Math.round(16 * v)} m / mittel ${Math.round(60 * v)} m)`);
+  buttons(s5, [[0, 'Wind: Stamm'], [1, '+ Äste'], [2, '+ Zweige & Blätter']], () => G.windQ, k => { G.windQ = k; custom(); applyGraphics(); });
+  check(s5, 'Adaptive Auflösung (Ziel 60 FPS)', () => G.adaptive, v => { G.adaptive = v; if (!v) { renderScale = G.scale; resize(); } });
+  s5.append(h('div', { class: 'klein' }, `Gerät: ${gpuName} · DPR ${devicePixelRatio}`));
+}
+function renderBench() {
+  const t = $('#benchTab'); if (!benchResults.length) { t.innerHTML = '<div class="klein">Noch keine Messung.</div>'; return; }
+  t.innerHTML = '<table><tr><th>Zeit</th><th>Bäume</th><th>Preset</th><th>FPS</th><th>Med</th><th>P95</th><th>Draws</th><th>Dreiecke</th><th>Auflösung</th></tr>' +
+    benchResults.slice(0, 8).map(r => `<tr><td>${r.zeit} ${r.stil.slice(0, 4)}</td><td>${r.dichte}</td><td>${r.preset} ×${r.skala}</td><td>${r.fps.toFixed(1)}</td><td>${r.med.toFixed(1)}</td><td>${r.p95.toFixed(1)}</td><td>${r.draws}</td><td>${(r.tris / 1e6).toFixed(2)} M</td><td>${r.aufl}</td></tr>`).join('') + '</table>';
+}
+function toastText(title, text) { const t = $('#toast'); t.innerHTML = ''; const ta = h('textarea'); ta.value = text; t.append(h('div', {}, title), ta, h('div', {}, h('button', { onclick: () => t.style.display = 'none' }, 'Schließen'))); t.style.display = 'block'; ta.select(); }
+async function copyText(title, text) { try { await navigator.clipboard.writeText(text); const t = $('#toast'); t.textContent = '✓ ' + title + ' kopiert'; t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 1600); } catch { toastText(title + ' (bitte manuell kopieren):', text); } }
+function copySettings() { copyText('Einstellungen', JSON.stringify({ tree: { ...T }, style: W.style, graphics: { ...G }, forest: { count: W.forestN, seed: W.forestSeed, mix: W.mix } }, null, 1)); }
+function copyBench() { copyText('Messergebnisse', `Tree Lab Messfahrt · ${navigator.userAgent}\nGPU: ${gpuName} · DPR ${devicePixelRatio} · Fenster ${innerWidth}×${innerHeight}\n` + benchResults.map(r => JSON.stringify(r)).join('\n')); }
+function showBusy(t) { const b = $('#busy'); b.textContent = t; b.style.display = t ? 'block' : 'none'; }
+function refreshHelp() { $('#hilfe').textContent = view === 'forest' ? 'WASD/Pfeile laufen · Shift rennen · Maus ziehen = umsehen · Q/E drehen' : 'Ziehen = drehen · Rad/Pinch = zoomen · Rechts/zwei Finger = verschieben'; }
+$('#bPanel').onclick = () => $('#panel').classList.toggle('zu');
+$('#bStats').onclick = () => { $('#stats').style.display = $('#stats').style.display === 'none' ? 'block' : 'none'; $('#bStats').classList.toggle('on'); };
+$('#vSpec').onclick = () => setView('specimen'); $('#vWald').onclick = () => setView('forest');
+
+// ---- Hauptschleife ----
+let last = performance.now(), adaptT = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dtMs = Math.min(100, now - last); last = now; const dt = dtMs / 1000;
+  ft.push(dtMs); if (ft.length > FT_N) ft.shift();
+  if (benchState) benchStep(dt); else if (view === 'forest') updateWalk(dt); else { orbit.update(); if (camera.position.y < 0.25) camera.position.y = 0.25; }
+  TreeLab.update(dt, camera, sunDir, { strength: W.wind });
+  sky.position.copy(camera.position);
+  if (forest) forest.update(camera, sunDir);
+  if (view === 'forest' || dirtyShadow) { updateShadowCam(); dirtyShadow = false; }
+  renderer.render(scene, camera);
+  const inf = renderer.info.render;
+  if (benchState && benchState.phase === 'run') { benchState.rec.push(dtMs); benchState.calls.push(inf.calls); benchState.tris.push(inf.triangles); }
+  // adaptive Auflösung (bei Messfahrt optional gesperrt)
+  adaptT += dt;
+  if (G.adaptive && adaptT > 0.75 && !(benchState && W.benchLock)) { adaptT = 0; const m = medP(ft.slice(-45), 0.5);
+    if (m > 18.5 && renderScale > 0.4) { renderScale = Math.max(0.4, renderScale - 0.05); resize(); } else if (m < 14.5 && renderScale < G.scale) { renderScale = Math.min(G.scale, renderScale + 0.05); resize(); } }
+  if (now - lastStats > 250) { lastStats = now;
+    const fs = forest ? forest.stats : { placed: 0, visible: 0, l0: 0, l1: 0, bb: 0 };
+    $('#stats').textContent =
+      `FPS ${(1000 / medP(ft, 0.5)).toFixed(1)}  Median ${medP(ft, 0.5).toFixed(1)} ms  P95 ${medP(ft, 0.95).toFixed(1)} ms\n` +
+      `Draws ${inf.calls}  Dreiecke ${(inf.triangles / 1e6).toFixed(2)} M\n` +
+      `Auflösung ${renderer.domElement.width}×${renderer.domElement.height} (×${renderScale.toFixed(2)}${G.adaptive ? ' adaptiv' : ''})\n` +
+      (view === 'forest' ? `Bäume ${fs.placed} platziert · ${fs.visible} sichtbar\n  nah ${fs.l0} · mittel ${fs.l1} · fern ${fs.bb}\n` : `Exemplar ${hero ? hero.info.branches : 0} Äste · ${hero ? hero.info.cards : 0} Laubkarten · ${hero ? (hero.info.tris / 1000).toFixed(0) : 0}k Dr.\n`) +
+      `Erzeugung: Baum ${heroMs.toFixed(0)} ms · Wald ${(forestMs / 1000).toFixed(2)} s · Platz ${placeMs.toFixed(0)} ms`;
+  }
+}
+
+// ---- Start ----
+buildPanel(); renderBench(); updateSun(); applyGraphics(); rebuildHero();
+camera.position.copy(specCam.pos); orbit.target.copy(specCam.tgt); orbit.update();
+const ort = Q.get('ort');
+if (ort === 'rinde') { camera.position.set(1.4, 1.1, 0.9); orbit.target.set(0, 1.0, 0); }
+if (ort === 'unten') { camera.position.set(2.6, 1.4, 1.6); orbit.target.set(-0.5, 10, 0.4); }
+if (ort === 'nah') { camera.position.set(9, 6, 8); orbit.target.set(0, 8, 0); }
+if (ort === 'weit') { camera.position.set(40, 6, 34); orbit.target.set(0, 7, 0); }
+orbit.update();
+setView(view === 'forest' ? 'forest' : 'specimen');
+if (!isTouch && !Q.has('test')) $('#panel').classList.remove('zu');
+startForestBuild();
+if (Q.get('bench') === '1') startBench();
+requestAnimationFrame(frame);
+window.TL_DEMO = { T, W, G, camera, orbit, walk, setView, rebuildHero, startForestBuild, applyPlacement, startBench, get forest() { return forest; }, get hero() { return hero; }, benchResults };
+</script>
+</body>
+</html>
