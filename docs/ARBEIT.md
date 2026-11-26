@@ -13,6 +13,7 @@
 | Erde-Fundament: Voxel-Nahzone (`engine/world/voxel-kugel.js`, `labore/erde/js/voxel-erde.js`, Graben/Kollision in `planet.js`, `aktionen.js`) | Claude | `claude/erde-fundament` | 25.11. | Gruben + Tunnel mit echten Schichten, Plan `docs/plaene/ERDE-FUNDAMENT.md` |
 | Riesenjagd (`spiele/riesenjagd`): Seil-Haken, Riesen erklettern, Sternenfall | Claude | `claude/riesenjagd` | 25.11. | Spielbarer Kern: Wald der Riesen, Troll + Zyklop, Haken/Klettern/Runen/Großzauber |
 | Erde-Labor (`labore/erde`) + geteilte Natur-Assets/Mond nach `engine/` | Claude (+ Agents) | `claude/erde-aufraeumen`, danach `claude/erde-*` | 24.11. | Spiel-Module auf dem Planeten: Überleben, Herstellen, Bauen, Tiere, Gleiter, Schmiede, Tagebuch, Figur (fertig auf `claude/erde-nacht`), Felder (läuft) |
+| Tree Lab (`labore/treeclaude/`) – prozedurale Bäume Eiche/Birke/Kiefer, Wald-LOD, Messfahrt | Claude | `claude/treeclaude` | 26.11. | Exemplar + begehbarer Wald, 3 Stile, Benchmark, kleine API |
 
 ## Geteilte Dateien (nur beim Zusammenführen ändern)
 Diese Dateien fasst nur der **Zusammenführ-Schritt** an (ein eigener Branch/PR, nachdem die Modul-PRs drin sind),
