@@ -48,6 +48,14 @@ a.b{text-decoration:none}
 #ziel.treffer::after{content:attr(data-text);position:absolute;left:16px;top:-4px;font-size:11px;color:#ffd04a;white-space:nowrap}
 #legende{position:absolute;left:0;right:0;bottom:0;font-size:10px;background:rgba(6,10,20,.7);padding:2px 5px;pointer-events:none}
 #legende b{display:inline-block;width:8px;height:8px;margin:0 3px 0 6px;border-radius:2px}
+#grafikBox{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(88vw,340px);max-height:80vh;overflow-y:auto;display:none;z-index:9;background:rgba(6,10,20,.88);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:8px 10px 10px}
+#grafikBox.auf{display:block}
+#grafikBox .titel{font-size:10px;letter-spacing:.08em;text-transform:uppercase;opacity:.55;margin:6px 2px 4px}
+#grafikBox .raster4{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+#grafikBox .raster4 .b{min-width:0;font-size:12px;padding:6px 2px}
+#grafikBox .zeile{display:flex;justify-content:space-between;align-items:center;padding:9px 6px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px;cursor:pointer;user-select:none}
+#grafikBox .zeile b{color:#ffd04a;font-weight:600}
+#grafikBox .zeile:active{background:rgba(70,110,170,.5)}
 #kpunkt{position:absolute;width:10px;height:10px;margin:-5px;border-radius:50%;background:#ffd04a;border:2px solid #000;pointer-events:none}
 </style>
 </head>
@@ -71,6 +79,7 @@ a.b{text-decoration:none}
       <div class="b" id="bGrafik">Grafik</div><div class="b" id="bInfo">Info: voll</div>
       <div class="b" id="bKleiner">A−</div><div class="b" id="bGroesser">A+</div>
       <div class="b" id="bLod">LOD-Farben</div><div class="b" id="bPerson">3. Person</div>
+      <div class="b gelb" id="bGrafikMehr">Grafik ⚙</div>
     </div>
     <div class="titel">Welt</div>
     <div class="raster">
@@ -82,6 +91,7 @@ a.b{text-decoration:none}
 <div id="hochrunter" class="ui"><div class="b" id="hoch">▲</div><div class="b" id="runter">▼</div></div>
 <div id="karteBox"><canvas id="karte"></canvas><div id="kpunkt"></div><div id="legende"></div></div>
 <div id="aktionen" class="ui"><div class="b" id="aNehmen">✋ Nehmen</div><div class="b" id="aGraben">⛏ Graben</div><div class="b" id="aBauen">⛰ Aufschütten</div></div>
+<div id="grafikBox" class="ui"></div>
 <div id="meldung"></div>
 <div id="ziel"></div>
 <div id="joy"><div id="knob"></div></div>

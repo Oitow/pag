@@ -1,8 +1,8 @@
 # 🌍 Wildgrund (Erde-Labor)
 
 Erfundener Planet (Standard R = 100 km) vom Orbit bis zum Boden, zu Fuß begehbar, mit Geologie, Klima, Wetter, Natur und Graben.
-Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Baum-Galerie: `labore/erde/baeume.html` (`?art=eiche`, `?zeit=herbst`, `?nah=1`) · Sprungmarken `?ort=orbit|berg|kueste|strand|boden|himmel|fluss|ufer|see|vulkan|krater|wald|biom0…9|gestein0…4`
-· Testschalter `?test=1` (kein Spielstand), `?hunger=0.2`, `?tasche=voll`, `?herstellen=offen`, `?bautest=1`, `?tiere=test|aus`, `?ueberleben=aus`, `?schmiedetest=1`, `?gleiter=1&flug=1` (300 m) / `&flug=800`, `?tagebuch=offen|aus`, `?feldtest=1`, `?wetter=regen|schnee|gewitter|nebel|sturm|klar`, `?uhr=19` (Ortszeit), `?seed=`, `?r=` (km), `?neu=1`.
+Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Baum-Galerie: `labore/erde/baeume.html` (`?art=eiche`, `?zeit=herbst`, `?nah=1`) · Sprungmarken `?ort=orbit|berg|kueste|strand|boden|himmel|fluss|ufer|see|vulkan|krater|wald|tafel|biom0…9|gestein0…4`
+· Testschalter `?grafik=Niedrig|Mittel|Hoch|Ultra`, `?test=1` (kein Spielstand), `?hunger=0.2`, `?tasche=voll`, `?herstellen=offen`, `?bautest=1`, `?tiere=test|aus`, `?ueberleben=aus`, `?schmiedetest=1`, `?gleiter=1&flug=1` (300 m) / `&flug=800`, `?tagebuch=offen|aus`, `?feldtest=1`, `?wetter=regen|schnee|gewitter|nebel|sturm|klar`, `?uhr=19` (Ortszeit), `?seed=`, `?r=` (km), `?neu=1`.
 
 ## Module (`js/`, reine Logik ohne THREE wo möglich → Tests in `tests/erde-*.test.mjs`)
 | Datei | Aufgabe |
@@ -34,7 +34,11 @@ Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Baum-Galerie: `labor
 Aus der Engine (geteilt mit Naturstimmungen/Gigantwelt): `engine/models/natur/naturfundus.js`, `landschaftsgruppen.js` (Wollgras, Pilzholz,
 Flechtenbank), `fundmodelle.js` (Erzbrocken, Ammonit, Quarzdruse – liegen nach Gestein halb im Boden), `engine/render/mond.js` (`nachtseite: 'durchsichtig'`).
 Testschalter `?ort=gestein0…4` (je Gesteinsart), `?zeige=<art>` (vor das nächste Stück dieser Art stellen).
-Grafik-Stufe Hoch/Mittel/Niedrig (Knopf, gespeichert): Schatten, Sichtweite der Natur, Geländedetail, Auflösung. Das HUD zeigt,
+Grafik: Stufe Niedrig/Mittel/Hoch/Ultra (Knopf „Grafik“, Handy = Mittel) + Fenster „Grafik ⚙“ mit einzelnen Reglern
+(Auflösung, Gelände-Detail, Natur-Weite, Schatten nah 1024–4096, **Bergschatten** `fernschatten.js` (zweite grobe Schattenkarte ±1,6 km,
+selten neu gerendert, Floating-Origin-Matrix), **Gelände-AO** (`hohl` aus der Krümmung in `kachel-bau.js`), Wasser einfach/Wellen/Kräusel, Dunst);
+eigene Einstellung wird gespeichert. Topografie (`planet-hoehe.js`): Tafelberge/Terrassen + Schluchten in trocken-warmen Gegenden, Küstenklippen,
+schärfere Grate + Kare im Hochgebirge, Felsbänder, Schutthalden. Das HUD zeigt,
 welche Natur-Arten die meisten Dreiecke kosten.
 
 ## Assets – Vertrag (für jede KI, die daran arbeitet)

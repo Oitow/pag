@@ -47,7 +47,7 @@ try {
 } catch (e) { meldungen.push('laden: ' + e.message); }
 fs.mkdirSync(path.join(ROOT, 'test-results'), { recursive: true });
 const bild = path.join('test-results', `bild-${name}.png`);
-await page.screenshot({ path: path.join(ROOT, bild) });
+await page.screenshot({ path: path.join(ROOT, bild), timeout: 150000 });
 console.log(`Bild: ${bild}`);
 console.log(meldungen.length ? [...new Set(meldungen)].slice(0, 12).join('\n') : 'keine Konsolen-Fehler');
 await browser.close(); srv.kill();

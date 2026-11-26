@@ -27,6 +27,7 @@ import { createErweiterungen } from './erweiterungen.js';
 import { createVulkanRauch } from './vulkan-rauch.js';
 import { createWolken } from './wolken.js';
 import { WERKZEUGE } from './herstellen-daten.js';
+import { createFernSchatten } from './fernschatten.js';
 
 const P = new URLSearchParams(location.search);
 const SEED = +(P.get('seed') || 7);
@@ -64,6 +65,7 @@ const sonne = new THREE.DirectionalLight(0xfff1dc, 2.4);
 sonne.position.copy(SONNE);
 // Schatten der Sonne: Kasten ±SCHATTEN m um den Spieler, folgt der Kamera in Texel-Schritten (kein Flimmern)
 const SCHATTEN = 40, SCHATTEN_KARTE = Math.min(innerWidth, innerHeight) < 700 ? 1024 : 2048;
+let SCHATTEN_TEXEL = (2 * SCHATTEN) / SCHATTEN_KARTE;   // ändert sich mit der Grafik-Einstellung
 sonne.castShadow = true;
 sonne.shadow.mapSize.set(SCHATTEN_KARTE, SCHATTEN_KARTE);
 Object.assign(sonne.shadow.camera, { left: -SCHATTEN, right: SCHATTEN, top: SCHATTEN, bottom: -SCHATTEN, near: 1, far: 700 });
@@ -71,7 +73,9 @@ sonne.shadow.camera.updateProjectionMatrix();
 sonne.shadow.bias = -0.0004;
 sonne.shadow.normalBias = 0.06;
 const himmelLicht = new THREE.HemisphereLight(0xa8ccff, 0x3b3424, 0.7);
-scene.add(sonne, sonne.target, himmelLicht, new THREE.AmbientLight(0x404858, 0.25));
+// Fernschatten (Berge über Täler, ~1,6 km): zweites, dunkles Richtungslicht direkt nach der Sonne (Schattenindex 1)
+const fern = createFernSchatten({ renderer });
+scene.add(sonne, sonne.target, fern.licht, fern.licht.target, himmelLicht, new THREE.AmbientLight(0x404858, 0.25));
 installiereDunst(); // vor dem ersten Material: Nebel-Bausteine ersetzen
 scene.fog = new THREE.FogExp2(0x9cc4ec, 0);
 
@@ -101,12 +105,12 @@ bool imLoch(vec3 p) {
 // Weltlage = Kachellage relativ zur Kamera + Kamera (wasserCam) → Wellen bleiben beim Fliegen am Ort.
 // bodenVers = Kameralage modulo 1024 m und Kamera-Radius modulo Schicht-Periode – in JS (double) gerechnet, sonst wackelt das Muster (float32 bei 1e5 m ≈ 1 cm)
 const SCHICHT_PER = Math.PI * 2 * 20 / 11;
-const wasserU = { wZeit: { value: 0 }, wasserCam: { value: new THREE.Vector3() }, wHimmel: { value: new THREE.Color() }, bodenVers: { value: new THREE.Vector4() }, uFuell: { value: 0 } };
+const wasserU = { uHohl: { value: 1 }, uWasserQ: { value: 1 }, wZeit: { value: 0 }, wasserCam: { value: new THREE.Vector3() }, wHimmel: { value: new THREE.Color() }, bodenVers: { value: new THREE.Vector4() }, uFuell: { value: 0 } };
 bodenMat.onBeforeCompile = (sh) => {
   Object.assign(sh.uniforms, wasserU);
-  sh.vertexShader = 'attribute float nass;\nattribute vec3 land;\nvarying vec3 vLand;\nuniform vec3 wasserCam;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\nvarying vec3 vRelW;\n' + sh.vertexShader
-    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvNass = nass;\nvLand = land;\nvRelW = (modelMatrix * vec4(position, 1.0)).xyz;\nvWelt = vRelW + wasserCam;\nvObenW = normalize(vWelt);');
-  sh.fragmentShader = 'uniform float wZeit;\nuniform vec3 wHimmel;\nvarying vec3 vLand;\nvarying float vNass;\nfloat wT;\nfloat wSchaum;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\nuniform vec3 wasserCam;\nuniform vec4 bodenVers;\nuniform float uFuell;\n' + LOCH_GLSL + BODEN_RAUSCHEN + sh.fragmentShader
+  sh.vertexShader = 'attribute float nass;\nattribute float hohl;\nvarying float vHohl;\nattribute vec3 land;\nvarying vec3 vLand;\nuniform vec3 wasserCam;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\nvarying vec3 vRelW;\n' + sh.vertexShader
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\n#ifdef VOXEL\nvHohl = 1.0;\n#else\nvHohl = hohl;\n#endif\nvNass = nass;\nvLand = land;\nvRelW = (modelMatrix * vec4(position, 1.0)).xyz;\nvWelt = vRelW + wasserCam;\nvObenW = normalize(vWelt);');
+  sh.fragmentShader = 'uniform float wZeit;\nuniform float uHohl;\nuniform float uWasserQ;\nvarying float vHohl;\nuniform vec3 wHimmel;\nvarying vec3 vLand;\nvarying float vNass;\nfloat wT;\nfloat wSchaum;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\nuniform vec3 wasserCam;\nuniform vec4 bodenVers;\nuniform float uFuell;\n' + LOCH_GLSL + BODEN_RAUSCHEN + sh.fragmentShader
     // vNass = Wassertiefe (0.5 = Uferlinie, ±3.2 m): flaches Wasser klar (Grund scheint durch), Schaumsaum, nasser Sand
     .replace('#include <color_fragment>', `#include <color_fragment>
 wT = smoothstep(0.497, 0.51, vNass);
@@ -129,9 +133,14 @@ if (wT > 0.01) {
   vec3 st = vec3(sin(p.x * 1.1 + t * 1.3) + 0.6 * sin((p.y + p.z) * 2.3 - t * 1.7),
                  sin(p.y * 0.9 - t * 1.1) + 0.6 * sin((p.z - p.x) * 2.1 + t * 1.5),
                  sin(p.z * 1.0 + t * 0.9) + 0.6 * sin((p.x + p.y) * 1.9 + t * 1.2));
+  float wD = length(vViewPosition);
+  if (uWasserQ > 1.5) {   // Wasser-Detail Hoch: feine Kräusel (Wind), quer laufend – bricht die Spiegelung auf
+    vec3 q = vWelt * 2.3;
+    st += 0.45 * (1.0 - smoothstep(8.0, 70.0, wD)) * vec3(sin(q.x * 1.7 - t * 3.1 + sin(q.z * 0.9)), sin(q.y * 1.5 + t * 2.7 + sin(q.x * 1.1)), sin(q.z * 1.9 - t * 2.9 + sin(q.y * 0.8)));
+  }
   st -= vObenW * dot(st, vObenW);                       // nur in der Wasserebene kippen
-  float nahW = 1.0 - smoothstep(25.0, 220.0, length(vViewPosition));   // fern: keine Wellen (sonst Gittermuster)
-  vec3 nW = normalize(vObenW + st * 0.07 * wT * nahW);
+  float nahW = 1.0 - smoothstep(25.0, 140.0 + 160.0 * uWasserQ, wD);   // fern: keine Wellen (sonst Gittermuster)
+  vec3 nW = normalize(vObenW + st * 0.07 * wT * nahW * min(1.0, uWasserQ + 0.35));
   normal = normalize((viewMatrix * vec4(nW, 0.0)).xyz);
 }`)
     .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
@@ -176,6 +185,12 @@ if (wT > 0.01) {
     normal = normalize(abs(det) * normal - sign(det) * (dh.x * r1 + dh.y * r2));
   }
 }`)
+    .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+{ // Gelände-Verdeckung (Mulden, Täler, Hangfüße): weniger Himmelslicht, etwas weniger Sonne
+  float ao = mix(1.0, vHohl, uHohl * (1.0 - wT));
+  reflectedLight.indirectDiffuse *= ao; reflectedLight.indirectSpecular *= ao;
+  reflectedLight.directDiffuse *= mix(1.0, ao, 0.35);
+}`)
     .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
 totalEmissiveRadiance += diffuseColor.rgb * smoothstep(0.72, 0.9, diffuseColor.r - diffuseColor.b) * 1.6; // Lava glüht
 #ifdef VOXEL
@@ -183,10 +198,10 @@ totalEmissiveRadiance += diffuseColor.rgb * uFuell;   // Streulicht in Gruben/Tu
 #endif
 if (wT > 0.01) {
   float fr = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 4.0);
-  totalEmissiveRadiance += wHimmel * fr * 0.55 * wT;
+  totalEmissiveRadiance += wHimmel * fr * (0.45 + 0.15 * uWasserQ) * wT;
 }`);
 };
-bodenMat.customProgramCacheKey = () => 'erde-boden-wasser-detail3';
+bodenMat.customProgramCacheKey = () => 'erde-boden-wasser-detail4';
 // Schattenbild der Kacheln: dieselbe Loch-Maske (sonst wirft der unsichtbare alte Boden Schatten in die Grube)
 const bodenTiefe = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
 bodenTiefe.onBeforeCompile = (sh) => {
@@ -259,12 +274,13 @@ function erzeuge(d) {
   geo.setAttribute('color', new THREE.BufferAttribute(d.col, 3, true));
   geo.setAttribute('nass', new THREE.BufferAttribute(d.nass, 1, true));
   geo.setAttribute('land', new THREE.BufferAttribute(d.land, 3, true));
+  geo.setAttribute('hohl', new THREE.BufferAttribute(d.hohl, 1, true));
   geo.setIndex(new THREE.BufferAttribute(d.idx, 1));
   geo.computeBoundingSphere();
   const m = new THREE.Mesh(geo, stufenFarben ? stufenMat[d.L] : bodenMat);
   m.receiveShadow = true;
   m.customDepthMaterial = bodenTiefe;
-  m.castShadow = d.L >= MAX_STUFE - 2;   // nur feine Kacheln nahe am Spieler werfen Schatten (Böschungen, Grubenränder)
+  m.castShadow = true;   // nah: feine Kacheln (Böschungen, Grubenränder); fern: Berge in die Fernschatten-Karte
   m.userData = { mitte: d.mitte, L: d.L };
   m.visible = false;
   if (d.baeume) {
@@ -463,10 +479,17 @@ const orte = (() => {
     const g = gst[geo.gestein[c]], sc = D(c).dot(D(kueste));
     if (sc > g.s) { g.s = sc; g.c = c; }
   }
+  // Tafelberge: trocken-warm, Sandstein/Kalk, kein Gebirge, mittlere Höhe – am liebsten mit Fluss (Schlucht) in der Nähe
+  let tafel = kueste, tBest = -1;
+  for (let c = 0; c < n; c++) {
+    if (H[c] < 150 || H[c] > 1500 || geo.gestein[c] > 1 || geo.gebirge[c] > 0.12 || F[c] > H[c] + 1 || geo.feuchte[c] > 0.36 || geo.temp0[c] < 9) continue;
+    const w = Math.min(1, (0.4 - geo.feuchte[c]) / 0.2) * Math.min(1, (geo.temp0[c] - 7) / 7) * (A[c] > geo.amin ? 1.5 : 1);
+    if (w > tBest) { tBest = w; tafel = c; }
+  }
   const biomOrte = {};
   gst.forEach((g, i) => { if (g.c >= 0) biomOrte['gestein' + i] = D(g.c); });
   biome.forEach((b, i) => { if (b.c >= 0) biomOrte['biom' + i] = D(b.c); });
-  return { ...biomOrte, wald: D(wald),
+  return { ...biomOrte, wald: D(wald), tafel: D(tafel),
     berg: D(berg), kueste: D(kueste), meer: D(meer >= 0 ? meer : kueste), fluss: D(fluss >= 0 ? fluss : kueste),
     flussAb: D(fluss >= 0 ? ab[ab[ab[fluss]] >= 0 ? ab[fluss] : fluss] : kueste),
     see: D(see >= 0 ? see : kueste), vulkan: new THREE.Vector3(...v.d), kraterWeg: (v.rad || 0.035) * R * 0.32,
@@ -478,7 +501,7 @@ const sU = new THREE.Vector3(), sV = new THREE.Vector3(), sZiel = new THREE.Vect
 function schattenZiel(s) {
   sU.set(0, 1, 0).cross(s); if (sU.lengthSq() < 1e-6) sU.set(1, 0, 0).cross(s); sU.normalize();
   sV.crossVectors(s, sU);
-  const texel = (2 * SCHATTEN) / SCHATTEN_KARTE;
+  const texel = SCHATTEN_TEXEL;
   const u = cam.dot(sU), v = cam.dot(sV);
   sZiel.copy(sU).multiplyScalar(Math.round(u / texel) * texel - u).addScaledVector(sV, Math.round(v / texel) * texel - v);
   sonne.target.position.copy(sZiel);
@@ -515,6 +538,7 @@ const ORTE = {
   krater: { ziel: 'vulkan', h: 1500, nei: -55, blick: 'vulkan', weg: orte.kraterWeg },
   wald:   { ziel: 'wald', h: 1.8, nei: 2, blick: 'berg', gehen: true },
   strand: { ziel: 'kueste', h: 1.8, nei: -9, blick: 'meer', gehen: true },
+  tafel:  { ziel: 'tafel', h: 120, nei: -10, blick: 'berg', weg: 900 },
 };
 const BIOM_ORTE = Object.keys(orte).filter((k) => k.startsWith('biom'));
 for (const k of Object.keys(orte).filter((k) => k.startsWith('gestein'))) ORTE[k] = { ziel: k, h: 1.8, nei: -6, blick: 'berg', gehen: true, weg: 3 };
@@ -687,27 +711,69 @@ menueZeigen();
 // Hilfe-Text nur am Anfang
 setTimeout(() => { const h = document.getElementById('hilfe'); if (h) h.style.transition = 'opacity 1s', h.style.opacity = 0; }, 12000);
 
-// ---------- Grafik-Stufe (Handy: Mittel) ----------
-const GRAFIK = {
-  Hoch:    { schatten: true, natur: 1, teilung: 1.8, pixel: 2 },
-  Mittel:  { schatten: true, natur: 0.75, teilung: 1.5, pixel: 1.5 },
-  Niedrig: { schatten: false, natur: 0.5, teilung: 1.25, pixel: 1 },
+// ---------- Grafik: Stufen + einzelne Regler (Handy: Mittel) ----------
+// Stufe setzt alle Regler; einzelne Regler im Fenster „Grafik ⚙“ ändern → Stufe „Eigen“. Gespeichert im Browser.
+// Testschalter ?grafik=Niedrig|Mittel|Hoch|Ultra (wird nicht gespeichert).
+const REGLER = {
+  pixel:    { name: 'Auflösung',       werte: [1, 1.5, 2, 3], text: (v) => v + '×' },
+  teilung:  { name: 'Gelände-Detail',  werte: [1.25, 1.5, 1.8, 2.2], text: (v) => ['grob', 'mittel', 'fein', 'sehr fein'][[1.25, 1.5, 1.8, 2.2].indexOf(v)] },
+  natur:    { name: 'Natur-Weite',     werte: [0.5, 0.75, 1, 1.25], text: (v) => Math.round(v * 100) + ' %' },
+  schatten: { name: 'Schatten nah',    werte: [0, 1024, 2048, 4096], text: (v) => v ? (v === 4096 ? '4096 weich' : v) : 'aus' },
+  fern:     { name: 'Bergschatten',    werte: [0, 1024, 2048, 4096], text: (v) => v ? v + ' (1,6 km)' : 'aus' },
+  hohl:     { name: 'Gelände-AO',      werte: [0, 0.6, 1], text: (v) => v ? (v < 1 ? 'leicht' : 'voll') : 'aus' },
+  wasser:   { name: 'Wasser',          werte: [0, 1, 2], text: (v) => ['einfach', 'Wellen', 'Wellen + Kräusel'][v] },
+  dunst:    { name: 'Luft/Dunst',      werte: [0.6, 1, 1.4], text: (v) => ['klar', 'normal', 'dicht'][[0.6, 1, 1.4].indexOf(v)] },
 };
-let grafik = 'Hoch';
-try { grafik = localStorage.getItem('erde-grafik') || ((navigator.maxTouchPoints > 0 || innerWidth < 700) ? 'Mittel' : 'Hoch'); } catch { /* egal */ }
-if (P.get('grafik')) grafik = P.get('grafik');   // Testschalter ?grafik=Hoch|Mittel|Niedrig (wird nicht gespeichert)
-if (!GRAFIK[grafik]) grafik = 'Hoch';
-function setzeGrafik(name) {
-  grafik = name;
-  const g = GRAFIK[name];
+const GRAFIK = {
+  Niedrig: { pixel: 1,   teilung: 1.25, natur: 0.5,  schatten: 0,    fern: 0,    hohl: 0.6, wasser: 0, dunst: 1 },
+  Mittel:  { pixel: 1.5, teilung: 1.5,  natur: 0.75, schatten: 1024, fern: 1024, hohl: 1,   wasser: 1, dunst: 1 },
+  Hoch:    { pixel: 2,   teilung: 1.8,  natur: 1,    schatten: 2048, fern: 2048, hohl: 1,   wasser: 2, dunst: 1 },
+  Ultra:   { pixel: 3,   teilung: 2.2,  natur: 1.25, schatten: 4096, fern: 4096, hohl: 1,   wasser: 2, dunst: 1 },
+};
+let grafik = 'Hoch', G_OPT = null;
+try {
+  const gespeichert = JSON.parse(localStorage.getItem('erde-grafik2') || 'null');
+  if (gespeichert && gespeichert.opt) { grafik = gespeichert.stufe; G_OPT = { ...GRAFIK.Mittel, ...gespeichert.opt }; }
+  else grafik = localStorage.getItem('erde-grafik') || ((navigator.maxTouchPoints > 0 || innerWidth < 700) ? 'Mittel' : 'Hoch');
+} catch { /* egal */ }
+if (P.get('grafik')) { grafik = P.get('grafik'); G_OPT = null; }
+if (grafik !== 'Eigen' && !GRAFIK[grafik]) grafik = 'Hoch';
+if (!G_OPT) G_OPT = { ...GRAFIK[grafik === 'Eigen' ? 'Mittel' : grafik] };
+const gEl = document.getElementById('grafikBox');
+function wendeGrafikAn(speichern = true) {
+  const g = G_OPT;
   renderer.setPixelRatio(Math.min(devicePixelRatio, g.pixel));
   renderer.setSize(innerWidth, innerHeight);
   natur.setzeWeite(g.natur);
-  document.getElementById('bGrafik').textContent = 'Grafik: ' + name;
-  try { localStorage.setItem('erde-grafik', name); } catch { /* egal */ }
+  // Sonnenschatten nah: Kartengröße; 4096 = weich (PCFSoft, alle Materialien werden einmal neu übersetzt)
+  if (g.schatten && sonne.shadow.mapSize.x !== g.schatten) {
+    sonne.shadow.mapSize.set(g.schatten, g.schatten);
+    if (sonne.shadow.map) { sonne.shadow.map.dispose(); sonne.shadow.map = null; }
+    SCHATTEN_TEXEL = (2 * SCHATTEN) / g.schatten;
+  }
+  const typ = g.schatten === 4096 ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+  if (renderer.shadowMap.type !== typ) { renderer.shadowMap.type = typ; scene.traverse((o) => { if (o.material) [].concat(o.material).forEach((m) => { m.needsUpdate = true; }); }); bodenMat.needsUpdate = true; }
+  fern.setzeGroesse(g.fern);
+  wasserU.uHohl.value = g.hohl;
+  wasserU.uWasserQ.value = g.wasser;
+  document.getElementById('bGrafik').textContent = 'Grafik: ' + grafik;
+  if (gEl) gEl.innerHTML = '<div class="titel">Grafik-Stufe</div><div class="raster4">' +
+    Object.keys(GRAFIK).map((n) => `<div class="b${n === grafik ? ' on' : ''}" data-stufe="${n}">${n}</div>`).join('') + '</div>' +
+    '<div class="titel">Einzeln (tippen = nächster Wert)</div>' +
+    Object.entries(REGLER).map(([k, r]) => `<div class="zeile" data-regler="${k}"><span>${r.name}</span><b>${r.text(g[k])}</b></div>`).join('') +
+    '<div class="b" data-zu="1" style="margin-top:6px">Schließen</div>';
+  if (speichern) try { localStorage.setItem('erde-grafik2', JSON.stringify({ stufe: grafik, opt: G_OPT })); } catch { /* egal */ }
 }
+function setzeGrafik(name) { grafik = name; G_OPT = { ...GRAFIK[name] }; wendeGrafikAn(); }
 document.getElementById('bGrafik').onclick = () => { const n = Object.keys(GRAFIK); setzeGrafik(n[(n.indexOf(grafik) + 1) % n.length]); };
-setzeGrafik(grafik);
+document.getElementById('bGrafikMehr').onclick = () => gEl.classList.toggle('auf');
+gEl.addEventListener('click', (e) => {
+  const st = e.target.closest('[data-stufe]'), rg = e.target.closest('[data-regler]');
+  if (st) setzeGrafik(st.dataset.stufe);
+  else if (rg) { const k = rg.dataset.regler, w = REGLER[k].werte; G_OPT[k] = w[(w.indexOf(G_OPT[k]) + 1) % w.length]; grafik = 'Eigen'; wendeGrafikAn(); }
+  else if (e.target.closest('[data-zu]')) gEl.classList.remove('auf');
+});
+wendeGrafikAn(!P.get('grafik'));
 
 // ---------- Steuerung ----------
 const tasten = new Set();
@@ -956,7 +1022,7 @@ function bild() {
   wahlT += dt;
   if (wahlT > 0.1) {
     wahlT = 0;
-    const wunsch = waehleKacheln([cam.x, cam.y, cam.z], { R, maxStufe: MAX_STUFE, hBoden: Math.max(0, g2), teilung: GRAFIK[grafik].teilung }).filter((k) => !k.verdeckt);
+    const wunsch = waehleKacheln([cam.x, cam.y, cam.z], { R, maxStufe: MAX_STUFE, hBoden: Math.max(0, g2), teilung: G_OPT.teilung }).filter((k) => !k.verdeckt);
     info = strom.update(wunsch);
   }
   // Natur nur nah am Boden
@@ -1039,6 +1105,7 @@ function bild() {
   himmel.r += blitz * 0.5; himmel.g += blitz * 0.5; himmel.b += blitz * 0.55;
   scene.background = himmel;
   aktualisiereDunst({ fog: scene.fog, himmel, hs, tag, raum, hoehe: hoeheBoden, W, R });
+  scene.fog.density *= G_OPT.dunst;   // Grafik-Regler Luft/Dunst
   // Sonne: Stand aus der Uhr, abends rötlich, Wolken dämpfen
   sonne.intensity = 2.4 * THREE.MathUtils.smoothstep(hs, -0.03, 0.12) * (1 - 0.7 * wolken) + blitz * 2;
   sonne.color.setRGB(1, 0.95, 0.86).lerp(abend, (1 - THREE.MathUtils.smoothstep(hs, 0.02, 0.3)) * 0.8);
@@ -1047,15 +1114,18 @@ function bild() {
   himmelLicht.intensity = 0.12 + (0.5 * tag * (1 - 0.3 * wolken) + blitz) * (1 - raum);
   wasserU.uFuell.value = 0.05 + 0.3 * tag * (1 - 0.3 * wolken);
   // Schatten nur nah am Boden und wenn die Sonne scheint; Wolken machen sie weich/blass
-  const schattenAn = GRAFIK[grafik].schatten && hoeheBoden < 300 && hs > -0.03 && !stufenFarben;
+  const schattenAn = G_OPT.schatten > 0 && hoeheBoden < 300 && hs > -0.03 && !stufenFarben;
   sonne.shadow.intensity = schattenAn ? 0.85 * (1 - 0.75 * wolken) : 0;
+  // Bergschatten (bis 1,6 km): solange die Sonne über dem Horizont steht und man nicht hoch im Himmel ist
+  fern.update(dt, cam, SONNE, G_OPT.fern > 0 && hs > 0 && hoeheBoden < 4000 && !stufenFarben,
+    0.8 * (1 - 0.75 * wolken) * THREE.MathUtils.smoothstep(hs, 0, 0.06));
   mond.update({ kamera: nullPunkt, richtung: mondRichtung(SONNE, zw.uhr), sonne: SONNE, oben, nacht: (1 - tag) * (1 - 0.8 * wolken), anker: sZiel, sichtbar: raum < 0.2 });
-  renderer.shadowMap.autoUpdate = schattenAn || (tag < 0.5 && GRAFIK[grafik].schatten);
+  renderer.shadowMap.autoUpdate = schattenAn || (tag < 0.5 && G_OPT.schatten > 0);
   sterne.visible = raum > 0.5 || (tag < 0.3 && wolken < 0.6);
 
   // Fernwald: Pixelmaßstab, Licht wie die Natur (Sonne + Himmel), Nebel wie die Szene
   fernU.uPixel.value = renderer.domElement.height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
-  fernU.uNah.value = 270 * GRAFIK[grafik].natur;
+  fernU.uNah.value = 270 * G_OPT.natur;
   const lichtStaerke = 0.3 + 0.85 * THREE.MathUtils.smoothstep(hs, -0.05, 0.25) * (1 - 0.5 * wolken) + 0.1 * (1 - tag);
   fernU.uLicht.value.copy(sonne.color).multiplyScalar(lichtStaerke);
   fernU.uNebelDichte.value = scene.fog.density;
@@ -1071,6 +1141,7 @@ function bild() {
   wolkenDecke?.update(dt, { cam, wetter: W, windWelt: zw.windWelt, sonne: SONNE, tag, licht: fernU.uLicht.value, himmel, raum });
   renderer.info.reset();
   renderer.render(scene, camera);
+  fern.nachRender();
   zw.zeichne(renderer, camera);
   karteMarker();
   zielAnzeigen();

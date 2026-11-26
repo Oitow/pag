@@ -43,6 +43,9 @@ export function baueKachel(k, planet, N = ZELLEN) {
   // land: Bodenfarbe auch unter Wasserpunkten (Strand/Ufer) – der Shader nimmt sie überall, wo die Fläche nicht ganz Wasser ist.
   // So färbt das Wasser keine Hangdreiecke an der Küste mehr ein (vorher blaue Zacken den Hang hinauf).
   const land = new Uint8Array(nv * 3);
+  // hohl: Gelände-Verdeckung (Ambient Occlusion) aus der Krümmung – Mulden, Täler, Hangfüße bekommen weniger Himmelslicht.
+  // Rechnet nur mit dem schon vorhandenen Höhengitter (1 Punkt Rand → gleiche Werte an Kachelkanten), kostet fast nichts.
+  const hohl = new Uint8Array(nv);
   const farbe = [0, 0, 0], info = {};
   let v = 0;
   for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++, v++) {
@@ -57,6 +60,11 @@ export function baueKachel(k, planet, N = ZELLEN) {
     const flach = nx * dx + ny * dy + nz * dz;
     pos[v * 3] = P[g * 3] - cx; pos[v * 3 + 1] = P[g * 3 + 1] - cy; pos[v * 3 + 2] = P[g * 3 + 2] - cz;
     nor[v * 3] = nx; nor[v * 3 + 1] = ny; nor[v * 3 + 2] = nz;
+    { // Laplace der Höhe (4 Nachbarn + halb gewichtete Diagonalen) je Punktabstand: > 0 = Mulde
+      const lap = (H[gl] + H[gr] + H[gu] + H[go] + 0.5 * (H[gu - 1] + H[gu + 1] + H[go - 1] + H[go + 1])) / 6 - H[g];
+      const k = Math.max(0, lap / abstand);
+      hohl[v] = Math.round(255 / (1 + 5 * k + 8 * k * k));
+    }
     for (let f = 0; f < NF; f++) info[FELDER[f]] = IF[g * NF + f];
     // nass = Wassertiefe, 128 = Uferlinie (40 Stufen je m, ±3.2 m). Land neben Wasser bekommt eine negative Tiefe
     // zum Spiegel des Nachbarn → die Uferlinie läuft im Shader glatt quer durchs Dreieck statt im Zickzack an den Kanten.
@@ -91,7 +99,7 @@ export function baueKachel(k, planet, N = ZELLEN) {
     pos[v * 3 + 1] = pos[a * 3 + 1] - D[g * 3 + 1] * tiefe;
     pos[v * 3 + 2] = pos[a * 3 + 2] - D[g * 3 + 2] * tiefe;
     for (let c = 0; c < 3; c++) { nor[v * 3 + c] = nor[a * 3 + c]; col[v * 3 + c] = col[a * 3 + c] * 0.8; land[v * 3 + c] = land[a * 3 + c] * 0.8; }
-    nass[v] = nass[a];
+    nass[v] = nass[a]; hohl[v] = hohl[a];
   }
 
   const idx = new Uint16Array(N * N * 6 + rand * 6);
@@ -109,7 +117,7 @@ export function baueKachel(k, planet, N = ZELLEN) {
   }
 
   const baeume = fernBaeume(k, planet, N, M, P, D, IF, nor, kante, abstand, cx, cy, cz);
-  return { key: k.key, L: k.L, pos, nor, col, land, nass, idx, mitte: [cx, cy, cz], minH, maxH, kante, baeume };
+  return { key: k.key, L: k.L, pos, nor, col, land, nass, hohl, idx, mitte: [cx, cy, cz], minH, maxH, kante, baeume };
 }
 
 // ---------- Fernwald: Bäume als Punkte (ein Eckpunkt je Baum, im Shader als Silhouette) ----------
