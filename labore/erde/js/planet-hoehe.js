@@ -13,7 +13,8 @@ const glatt = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a)
 export const flussBreite = (aKm2) => Math.min(140, 3 + 2.4 * Math.sqrt(aKm2));
 
 /** eingriffe (optional) = createEingriffe(): Graben/Aufschütten verändert die Höhe (siehe eingriffe.js). */
-export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, eingriffe = null }) {
+/** feld (optional) = createGrabFeld() aus graben-feld.js: feines Höhenfeld der Grabstellen (0,2 m). */
+export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, eingriffe = null, feld = null }) {
   const n = createNoise3D(seed);
   const R = radius;
   const G = gitter || createGeoGitter(geo.N);
@@ -51,7 +52,7 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
     return Math.min(1, sum * (1.1 + 0.3 * scharf));
   }
 
-  const aus = { vulkan: 0, lava: 0, eingriff: 0, h: 0, wasser: -Infinity, ufer: 0, fluss: 0, gebirge: 0, meer: 0, temp: 0, feuchte: 0, fr: 0, fg: 0, fb: 0, gestein: 0 };
+  const aus = { vulkan: 0, lava: 0, eingriff: 0, feld: 0, h: 0, wasser: -Infinity, ufer: 0, fluss: 0, gebirge: 0, meer: 0, temp: 0, feuchte: 0, fr: 0, fg: 0, fb: 0, gestein: 0 };
 
   /** Füllt `aus`: h = Boden (m über Meer), wasser = Wasserspiegel (−∞ = kein Wasser), ufer 0…1, fluss 0/1,
    *  temp (°C am Ort), feuchte 0…1, fr/fg/fb = Felsfarbe des Gesteins (weich gemischt), gestein = Index der nächsten Zelle. */
@@ -182,7 +183,8 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
       }
     }
     // Eingriffe (Graben/Aufschütten): ändern den Boden, nicht den Wasserspiegel – wer am Ufer gräbt, gräbt ins Wasser
-    const dE = eingriffe ? eingriffe.delta(dx, dy, dz) : 0;
+    const dF = feld ? feld.delta(dx, dy, dz) : 0;
+    const dE = (eingriffe ? eingriffe.delta(dx, dy, dz) : 0) + dF;
     h += dE;
     if (wasser > 0 && !fluss && wasser < h - 0.01 && Fm >= 0.5) wasser = -Infinity;   // Ufer über dem Seespiegel: trocken
     // Unter Meereshöhe ohne Wasser (Rauschen drückt den Küstensaum unter 0) → Meer läuft hinein, keine trockene Mulde
@@ -190,7 +192,7 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
     if (h < 0 && wasser < 0) { wasser = 0; meer = 1; }
     let fr = 0, fg = 0, fb = 0;
     for (let i = 0; i < 4; i++) { const fc = GESTEIN_FARBE[GS[gw.z[i]]], w = gw.w[i]; fr += fc[0] * w; fg += fc[1] * w; fb += fc[2] * w; }
-    aus.vulkan = vulkan; aus.lava = lava; aus.eingriff = dE; aus.h = h; aus.wasser = wasser; aus.ufer = ufer; aus.fluss = fluss; aus.gebirge = gb; aus.meer = meer; // Klippen/Terrassen stecken schon in h
+    aus.vulkan = vulkan; aus.lava = lava; aus.eingriff = dE; aus.feld = dF; aus.h = h; aus.wasser = wasser; aus.ufer = ufer; aus.fluss = fluss; aus.gebirge = gb; aus.meer = meer; // Klippen/Terrassen stecken schon in h
     aus.temp = tempAm(G.lese(GT, gw), h); aus.feuchte = Math.min(1, G.lese(GFe, gw) + 0.25 * ufer);
     aus.fr = fr; aus.fg = fg; aus.fb = fb; aus.gestein = GS[gw.naechste];
     return aus;
@@ -263,7 +265,7 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
   /** Fleckenrauschen 0…1 (Waldflecken, Farbvariation) – gleich wie in farbe(). */
   const flecken = (dx, dy, dz) => n(dx * R / 700 + 5.5, dy * R / 700, dz * R / 700 - 3.3) * 0.5 + 0.5;
 
-  return { radius: R, seed, probe, hoehe, oberflaeche, farbe, flecken, G, eingriffe };
+  return { radius: R, seed, probe, hoehe, oberflaeche, farbe, flecken, G, eingriffe, feld };
 }
 
 /** Felder von probe(), die der Kachelbau je Punkt für die Farbe aufhebt. */

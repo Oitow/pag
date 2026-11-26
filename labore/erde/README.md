@@ -12,6 +12,7 @@ Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Baum-Galerie: `labor
 | `wachstum.js` | **was wächst wo**: Klimaansprüche je Baum/Feldfrucht → Eignung 0…1 |
 | `boden.js` | **Bodenschichten** (Schnee → Oberboden → Unterboden → Gestein), Stoffe mit Härte, Erze/Funde |
 | `ernte.js` | was gibt ein Baum/Busch/Fels, welches Werkzeug braucht es |
+| `graben-feld.js` | **Graben/Aufschütten**: feines Höhenfeld (0,2 m) in ~19-m-Flecken, Gruben als Kegel (flacher Boden, ~60° Wände), gleich im Worker; Kacheln dort 1 Stufe feiner. `?grabtest=1` (Grube + Rampe + Hügel). Voxel-Gruben nur noch `?voxel=1` |
 | `eingriffe.js` | **Graben/Aufschütten** als Höhenänderung + entfernte Natur, speicherbar |
 | `voxel-erde.js` | **Voxel-Nahzone**: Graben/Aufschütten in Blickrichtung (Gruben, Tunnel) mit `engine/world/voxel-kugel.js`; Stoff je Voxel aus `boden.js`-Schichten, Gesteinsbänke; Loch-Maske im Bodenshader, Kollision (Boden/Wand/Decke), Kamera im Tunnel. Testschalter `?grabtest=1` (Grube) / `2` (im Tunnel). Plan: `docs/plaene/ERDE-FUNDAMENT.md` |
 | `aktionen.js` | Spieler: graben, aufschütten, nehmen (Regeln + Eingriffe + Inventar) |

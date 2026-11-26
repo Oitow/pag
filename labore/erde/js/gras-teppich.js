@@ -17,10 +17,10 @@ export const GRAS_EBENE = 5;   // Layer der Gelände-Kacheln für den Höhenkart
 // Ringe je Stufe: abst = Raster (m), bis = Außenradius (m), halme je Zelle, seg = Segmente je Halm
 export const GRAS_STUFEN = [
   null,                                                                                                    // 0: aus
-  { res: 512,  ringe: [{ abst: 0.4, bis: 12, halme: 3, seg: 2 }, { abst: 0.85, bis: 32, halme: 3, seg: 1 }] },
-  { res: 512,  ringe: [{ abst: 0.32, bis: 15, halme: 3, seg: 2 }, { abst: 0.65, bis: 38, halme: 3, seg: 1 }, { abst: 1.3, bis: 70, halme: 2, seg: 1 }] },
-  { res: 1024, ringe: [{ abst: 0.26, bis: 19, halme: 3, seg: 3 }, { abst: 0.52, bis: 45, halme: 3, seg: 2 }, { abst: 1.05, bis: 90, halme: 3, seg: 1 }] },
-  { res: 1024, ringe: [{ abst: 0.2, bis: 24, halme: 4, seg: 3 }, { abst: 0.42, bis: 55, halme: 3, seg: 2 }, { abst: 0.85, bis: 120, halme: 3, seg: 1 }] },
+  { res: 512,  ringe: [{ abst: 0.36, bis: 12, halme: 3, seg: 2 }, { abst: 1.18, bis: 32, halme: 3, seg: 1 }] },
+  { res: 512,  ringe: [{ abst: 0.29, bis: 15, halme: 3, seg: 2 }, { abst: 0.8, bis: 38, halme: 3, seg: 1 }, { abst: 1.6, bis: 70, halme: 2, seg: 1 }] },
+  { res: 1024, ringe: [{ abst: 0.23, bis: 19, halme: 3, seg: 2 }, { abst: 0.55, bis: 45, halme: 3, seg: 2 }, { abst: 1.15, bis: 90, halme: 3, seg: 1 }] },
+  { res: 1024, ringe: [{ abst: 0.18, bis: 24, halme: 4, seg: 2 }, { abst: 0.45, bis: 55, halme: 3, seg: 2 }, { abst: 0.9, bis: 120, halme: 3, seg: 1 }] },
 ];
 
 const H_BEREICH = 512;   // Höhe in Bild A: ±512 m um die Kamera (1,6 cm Schritte)
@@ -59,11 +59,8 @@ uint grHash(uvec2 v) {
   v = v * 1664525u + 1013904223u; v.x += v.y * 1664525u; v.y += v.x * 1664525u; v ^= v >> 16u;
   v.x += v.y * 1664525u; v.y += v.x * 1664525u; v ^= v >> 16u; return v.x ^ v.y;
 }
-float gr01(uvec2 z, uint s) { return float(grHash(z + uvec2(s * 7919u, s * 104729u)) & 0xffffffu) / 16777216.0; }
-float grRausch(vec2 p) {   // Wertrauschen fürs Büschel-Muster (Flecken dicht/licht)
-  vec2 i = floor(p), f = p - i; f = f * f * (3.0 - 2.0 * f); uvec2 u = uvec2(ivec2(i));
-  return mix(mix(gr01(u, 91u), gr01(u + uvec2(1u, 0u), 91u), f.x), mix(gr01(u + uvec2(0u, 1u), 91u), gr01(u + uvec2(1u, 1u), 91u), f.x), f.y);
-}
+float grBits(uint h, uint sh, uint m) { return (float((h >> sh) & m) + 0.5) / float(m + 1u); }   // Zufall 0…1 aus einem Bitfeld des Hashes
+float grFleck(vec2 p) { return 0.5 + 0.25 * sin(p.x * 1.3 + 1.7 * sin(p.y * 0.9)) + 0.25 * sin(p.y * 1.1 - p.x * 0.7 + 2.0); }   // billige Flecken ohne Hash
 `;
 
 const GRAS_VERT = /* glsl */`
@@ -73,50 +70,58 @@ vT = halm.y;
   ivec2 zi = ivec2(floor(uCamGitter / uAbst) + zelle);
   uvec2 zu = uvec2(zi);
   uint b = uint(halm.x + 0.5);
-  vec2 gP = (vec2(zi) + vec2(gr01(zu, 1u), gr01(zu, 2u))) * uAbst;        // Büschel-Mitte, weltfest (Anker-Ebene)
-  vec2 off = (vec2(gr01(zu, 20u + b), gr01(zu, 30u + b)) - 0.5) * uAbst * 0.8;
-  vec2 hP = gP + off;                                                      // Halm-Fuß
-  vec2 rel = hP - uCamGitter;
+  uint h1 = grHash(zu);                                                    // Zellwerte: 6 Bit Lage x/y, Sicht, Menge · 8 Bit Rispe
+  vec2 gP = (vec2(zi) + vec2(grBits(h1, 0u, 63u), grBits(h1, 6u, 63u))) * uAbst;   // Büschel-Mitte, weltfest (Anker-Ebene)
+  vec2 rel = gP - uCamGitter;
   float d = length(rel);
-  vec2 refP = hP - uRefGitter;
+  vec2 refP = gP - uRefGitter;
   vec2 uv = 0.5 + refP / uS;
   // Ring: innen einblenden (wo der feinere Ring ausblendet), außen ausblenden – erst danach Bild lesen (spart die meisten Zugriffe)
   float wIn = uVonBand > 0.0 ? smoothstep(uVon - uVonBand, uVon, d) : 1.0;
   float wAus = 1.0 - smoothstep(uBis - uBisBand, uBis, d);
-  float sicht = step(gr01(zu, 4u), wIn * wAus) * step(max(abs(uv.x - 0.5), abs(uv.y - 0.5)), 0.495) * step(uAus, 0.99);
+  float sicht = step(grBits(h1, 12u, 63u), wIn * wAus) * step(max(abs(uv.x - 0.5), abs(uv.y - 0.5)), 0.495) * step(uAus, 0.99);
   // hinter der Kamera (Höhe grob = Augenhöhe): weglassen – spart rund die Hälfte der Arbeit
   vec4 vGrob = viewMatrix * vec4(uRef + uT1 * refP.x + uT2 * refP.y, 1.0);
   sicht *= step(vGrob.z, 2.5 + uAbst * 2.0);
   vec4 A = vec4(0.0);
   if (sicht > 0.5) {
     A = textureLod(uKarteA, uv, 0.0);
-    float menge = A.b * (0.45 + 1.1 * grRausch(gP * 0.16)) * (0.75 + 0.5 * grRausch(gP * 0.9 + 17.0));
-    sicht = step(gr01(zu, 3u), menge);
+    float menge = A.b * (0.5 + 0.95 * grFleck(gP * 0.16));
+    sicht = step(grBits(h1, 18u, 63u), menge);
   }
   float hRel = (A.r * 65280.0 + A.g * 255.0) / 65535.0 * ${(2 * H_BEREICH).toFixed(1)} - ${H_BEREICH.toFixed(1)};
   if (sicht > 0.5) {
-    float ang = gr01(zu, 10u + b) * 6.2832;
-    vec3 seit = uT1 * cos(ang) + uT2 * sin(ang);
-    vec3 vor = cross(uU, seit);
+    uint h2 = grHash(uvec2(zu.x * 2654435761u + b * 40503u + 17u, zu.y + 0x68e31da4u));        // Halmwerte: Richtung, Abstand, Höhe, Neigung
+    uint h3 = grHash(uvec2(zu.y * 2246822519u + b * 61561u + 5u, zu.x + 0x2f0b4a27u));         // Breite, Zitterfrequenz, -phase, Helligkeit
+    float ang = grBits(h2, 0u, 255u) * 6.2832;
+    vec2 aus2 = vec2(cos(ang), sin(ang));
+    vec3 vor = uT1 * aus2.x + uT2 * aus2.y;                                  // Büschel fächert nach außen: Halm neigt sich vom Büschelmittelpunkt weg
+    vec3 seit = cross(uU, vor);                                              // Breitenrichtung quer dazu
+    refP += aus2 * (grBits(h2, 8u, 255u) * uAbst * 0.32);
     float rand = smoothstep(uBis, uBis - uBisBand * 2.0, d);                 // am äußersten Rand kleiner werden
-    float hoehe = uHoehe * (0.5 + 0.85 * gr01(zu, 40u + b)) * (0.55 + 0.6 * A.b) * (0.35 + 0.65 * rand) * (1.0 - uAus);   // uAus: beim Hochfliegen sanft einziehen
-    float breite = uBreite * (0.7 + 0.6 * gr01(zu, 50u + b));
-    // Neigung: eigene Richtung + Wind (große Böen-Wellen übers Feld + Zittern)
+    float hoehe = uHoehe * (0.5 + 0.85 * grBits(h2, 16u, 255u)) * (0.55 + 0.6 * A.b) * (0.35 + 0.65 * rand) * (1.0 - uAus);   // uAus: beim Hochfliegen sanft einziehen
+    float breite = uBreite * 1.6 * (0.7 + 0.6 * grBits(h3, 0u, 255u));
+    // Neigung: Fächer nach außen + Wind (große Böen-Wellen übers Feld + Zittern)
     vec3 wd = uWindRicht - uU * dot(uWindRicht, uU);
-    float boe = 0.5 + 0.5 * sin(uZeit * 1.3 - dot(hP, vec2(0.23, 0.17)) * (1.0 + 0.3 * sin(uZeit * 0.11)));
-    float zittern = sin(uZeit * (5.0 + 3.0 * gr01(zu, 60u + b)) + gr01(zu, 61u + b) * 6.28) * 0.12;
-    vec3 neig = vor * (gr01(zu, 70u + b) - 0.5) * 0.9 + wd * uWind * (0.15 + 0.65 * boe * boe) + seit * zittern * uWind;
+    float boe = 0.5 + 0.5 * sin(uZeit * 1.3 - dot(gP, vec2(0.23, 0.17)) * (1.0 + 0.3 * sin(uZeit * 0.11)));
+    float zittern = sin(uZeit * (5.0 + 3.0 * grBits(h3, 8u, 255u)) + grBits(h3, 16u, 255u) * 6.28) * 0.12;
+    vec3 neig = vor * (0.12 + 0.6 * grBits(h2, 24u, 255u)) + wd * uWind * (0.15 + 0.65 * boe * boe) + seit * zittern * uWind;
     float t = halm.y;
     float biege = t * t;
-    vec3 fuss = uRef + uT1 * refP.x + uT2 * refP.y + uU * (hRel - 0.03);
+    vec3 fuss = uRef + uT1 * refP.x + uT2 * refP.y + uU * (hRel - 0.03 - 0.06 * uAbst);
     grasPos = fuss + uU * hoehe * t * (1.0 - 0.3 * biege * min(1.0, length(neig))) + neig * hoehe * biege
-            + seit * breite * halm.z * (1.0 - t * 0.8);
-    grasNorm = normalize(uU + 0.45 * normalize(neig + vor * 0.3));
-    // Farbe: Bodenfarbe mit Grasfarbe gemischt (frisch ↔ Stroh), unten dunkel (Verdeckung im Büschel), Spitze heller
+            + seit * breite * halm.z * (1.0 - t * 0.7);
+    // Rundung: Normale über die Halmbreite kippen → Licht/Schatten-Verlauf im Halm
+    grasNorm = normalize(uU + 0.45 * normalize(neig + vor * 0.3) + 0.35 * halm.z * seit);
+    // Farbe: unten dunkel/satt, Spitze heller und gelblich; je Büschel blaugrün ↔ gelblich; ~3 % Büschel mit Samenrispen
     vec3 boden = textureLod(uKarteB, uv, 0.0).rgb;
-    vec3 gras = mix(vec3(0.07, 0.19, 0.025), vec3(0.36, 0.3, 0.1), clamp(A.a + 0.3 * (grRausch(gP * 0.07 + 3.0) - 0.5), 0.0, 1.0));
-    vec3 c = mix(boden, gras, 0.72) * (0.8 + 0.4 * gr01(zu, 80u + b));
-    c *= mix(0.32, 1.0, smoothstep(0.0, 0.7, t)) * (1.0 + 0.18 * t * t);
+    float fl = grFleck(gP * 0.07 + 3.0), var = grFleck(gP * 0.9 + 11.0);
+    vec3 gras = mix(vec3(0.05, 0.17, 0.03), vec3(0.34, 0.28, 0.1), clamp(A.a + 0.3 * (fl - 0.5), 0.0, 1.0));
+    vec3 c = mix(boden, gras, 0.78) * mix(vec3(0.8, 1.0, 1.15), vec3(1.2, 1.08, 0.7), var) * (0.82 + 0.36 * grBits(h3, 24u, 255u));
+    vec3 spitze = c * vec3(1.45, 1.4, 0.95) + vec3(0.05, 0.05, 0.0);
+    c *= mix(0.3, 1.0, smoothstep(0.0, 0.6, t));
+    c = mix(c, spitze, smoothstep(0.45, 1.0, t));
+    if (t > 0.99 && grBits(h1, 24u, 255u) > 0.97) c = vec3(0.9, 0.8, 0.5);   // Samenrispe (nur oberste Vertexreihe)
     vColor = c;
   } else vColor = vec3(0.0);
 }
@@ -186,7 +191,7 @@ void main() {
       const band = Math.max(2.5, rg.bis * 0.14);
       const K = Math.ceil((2 * (rg.bis + rg.abst)) / rg.abst) + 2;
       const eigen = { uAbst: { value: rg.abst }, uVon: { value: von }, uVonBand: { value: vonBand }, uBis: { value: rg.bis }, uBisBand: { value: band },
-        uBreite: { value: 0.022 * Math.pow(rg.abst / 0.26, 0.75) * (4 / (rg.halme + 1)) }, uHoehe: { value: 0.42 } };
+        uBreite: { value: 0.018 * Math.pow(rg.abst / 0.26, 0.75) * (4 / (rg.halme + 1)) }, uHoehe: { value: 0.36 } };   // etwas zierlicher (Knöchel- bis Wadenhöhe)
       const mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
       mat.onBeforeCompile = (sh) => {
         Object.assign(sh.uniforms, gemeinsam, eigen);
@@ -202,10 +207,15 @@ void main() {
 { // Gegenlicht: Sonne hinter dem Halm → Spitzen leuchten grün-gelb durch
   float tr = pow(max(dot(normalize(-vViewPosition), -directionalLights[0].direction), 0.0), 4.0);
   reflectedLight.directDiffuse += diffuseColor.rgb * vec3(1.1, 1.25, 0.6) * directionalLights[0].color * tr * vT * vT * 0.45;
+  // Glanz: schwacher Spekular + flache Aufhellung der Spitzen bei Sonne im Rücken der Kamera
+  vec3 gV = normalize(vViewPosition), gL = directionalLights[0].direction;
+  // (Lambert zählt directSpecular nicht mit → auf directDiffuse; ein pow reicht)
+  float sp = pow(max(dot(normal, normalize(gL + gV)), 0.0), 16.0) * 0.25 + max(dot(gL, gV), 0.0) * 0.06;
+  reflectedLight.directDiffuse += directionalLights[0].color * vec3(1.0, 0.95, 0.75) * sp * vT * vT;
 }
 #endif`);
       };
-      mat.customProgramCacheKey = () => 'gras-teppich-1';
+      mat.customProgramCacheKey = () => 'gras-teppich-2';
       const mesh = new THREE.Mesh(halmGeometrie(K, rg.halme, rg.seg), mat);
       mesh.frustumCulled = false;
       mesh.receiveShadow = true;

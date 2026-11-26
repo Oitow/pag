@@ -30,6 +30,7 @@ import { WERKZEUGE } from './herstellen-daten.js';
 import { createFernSchatten } from './fernschatten.js';
 import { createBodenNetz } from './boden-netz.js';
 import { createGrasTeppich, GRAS_EBENE } from './gras-teppich.js';
+import { createGrabFeld } from './graben-feld.js';
 
 const P = new URLSearchParams(location.search);
 const SEED = +(P.get('seed') || 7);
@@ -51,7 +52,20 @@ const SPEICHER = `erde-${SEED}-${R}`;
 let stand = null;
 try { if (!P.has('neu') && !P.has('test')) stand = JSON.parse(localStorage.getItem(SPEICHER) || 'null'); } catch { stand = null; }
 const eingriffe = createEingriffe({ radius: R, zustand: stand?.eingriffe });
-const planet = createPlanetHoehe({ seed: SEED, radius: R, geo, G: GITTER, eingriffe });
+// Graben = feines Höhenfeld (graben-feld.js, 0,2 m) – Voxel-Gruben/Tunnel nur noch zum Ausprobieren mit ?voxel=1
+const VOXEL_MODUS = P.get('voxel') === '1';
+let planet = null;
+const feld = createGrabFeld({ radius: R, basis: (x, y, z) => { const p = planet.probe(x, y, z, 1); return p.h - p.feld; } });
+planet = createPlanetHoehe({ seed: SEED, radius: R, geo, G: GITTER, eingriffe, feld });
+{ // alter Spielstand mit Voxel-Gruben → als Gruben ins Höhenfeld übernehmen
+  let fz = stand?.feld;
+  if (!fz && stand?.voxel?.ops?.length && !VOXEL_MODUS) fz = { ops: stand.voxel.ops.flatMap((o) => {
+    const l = Math.hypot(o.x, o.y, o.z), h = l - R, d = [o.x / l, o.y / l, o.z / l];
+    if (h < planet.oberflaeche(d[0], d[1], d[2], 1) - 3.5) return [];   // tief im Berg (Tunnel): geht im Höhenfeld nicht
+    return [{ typ: o.typ, d, r: o.r * 1.15, ziel: o.typ === 'weg' ? h - o.r * 0.8 : h + o.r * 0.8 }];
+  }) };
+  if (fz) feld.lade(fz);
+}
 
 // ---------- Renderer ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
@@ -60,7 +74,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 // Filmische Tonwerte: helle Sonne ohne ausgebrannte Flächen, satte Schatten (Himmel-Hintergrund bleibt unberührt)
 renderer.toneMapping = P.get('ton') === 'aus' ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = +(P.get('belichtung') || 1.3);
+renderer.toneMappingExposure = +(P.get('belichtung') || 1.15);   // 1,3 wirkte am Handy blass/ausgewaschen
 renderer.info.autoReset = false; // Zählung über Hauptszene + Niederschlag (Reset je Bild in der Schleife)
 renderer.setSize(innerWidth, innerHeight);
 document.body.prepend(renderer.domElement);
@@ -317,7 +331,7 @@ function erzeuge(d) {
   return m;
 }
 // Boden-Netz: welche Kachel gerade gezeichnet wird → Natur sitzt genau auf dem sichtbaren Boden (boden-netz.js)
-const bodenNetz = createBodenNetz({ N: ZELLEN, maxStufe: MAX_STUFE });
+const bodenNetz = createBodenNetz({ N: ZELLEN, maxStufe: MAX_STUFE + 2 });   // +2: feinere Kacheln an Grabstellen
 let netzNeu = false, netzT = 0;
 function netzDaten(d) {
   const [f, L, ix, iy] = String(d.key).split('/').map(Number), M = ZELLEN + 1, radien = new Float32Array(M * M);
@@ -355,7 +369,7 @@ function starteWorker() {
         for (const [key, k] of w.offen) (key.startsWith('s:') ? streuQueue : hauptQueue).push(k);
         w.terminate();
       };
-      w.postMessage({ art: 'planet', opts: { seed: SEED, radius: R, geo }, eingriffe: eingriffe.zustand() });
+      w.postMessage({ art: 'planet', opts: { seed: SEED, radius: R, geo }, eingriffe: eingriffe.zustand(), feld: feld.zustand() });
       worker.push(w);
     }
   } catch { worker = []; }
@@ -410,7 +424,7 @@ function speichern() {
   if (P.get('test')) return;   // ?test=1: kein Spielstand
   clearTimeout(speicherT);
   speicherT = setTimeout(() => {
-    try { localStorage.setItem(SPEICHER, JSON.stringify({ eingriffe: eingriffe.zustand(), voxel: voxel.zustand(), inventar: inventar.zustand(), zeit: zw.zustand(), erw: erw?.zustand() })); } catch { /* voll/privat */ }
+    try { localStorage.setItem(SPEICHER, JSON.stringify({ eingriffe: eingriffe.zustand(), feld: feld.zustand(), voxel: VOXEL_MODUS ? voxel.zustand() : stand?.voxel, inventar: inventar.zustand(), zeit: zw.zustand(), erw: erw?.zustand() })); } catch { /* voll/privat */ }
   }, 800);
 }
 /** Kachel vom Eingriff e betroffen? (Mitte näher als halbe Diagonale + Radius) */
@@ -423,7 +437,7 @@ function betroffen(k, e) {
 const voxelGruppe = new THREE.Group();
 scene.add(voxelGruppe);
 const voxel = createVoxelErde({
-  THREE, planet, gruppe: voxelGruppe, material: voxelMat, zustand: stand?.voxel,
+  THREE, planet, gruppe: voxelGruppe, material: voxelMat, zustand: VOXEL_MODUS ? stand?.voxel : null,
   sende(job) { if (!worker.length) return false; worker[wi++ % worker.length].postMessage(job); return true; },
 });
 Object.assign(wasserU, voxel.uniforms);
@@ -431,8 +445,13 @@ Object.assign(wasserU, voxel.uniforms);
 let lochAlt = -1;
 var grasTeppich = createGrasTeppich({ renderer, scene, loch: { uniforms: voxel.uniforms, glsl: LOCH_GLSL } });
 const aktionen = createAktionen({
-  planet, eingriffe, natur, inventar, seed: SEED, voxel,
+  planet, eingriffe, natur, inventar, seed: SEED, voxel: VOXEL_MODUS ? voxel : null, feld: VOXEL_MODUS ? null : feld,
   beiVoxel: () => speichern(),
+  beiFeld: ({ op, betroffen }) => {
+    for (const w of worker) w.postMessage({ art: 'feld', op });
+    strom.erneuere((k) => k.L >= 7 && feld.kachelTrifft(k, betroffen));   // grobe Kacheln: eine Grube sieht man dort nicht
+    speichern();
+  },
   beiEingriff: (e) => { for (const w of worker) w.postMessage({ art: 'eingriff', e }); strom.erneuere((k) => betroffen(k, e)); speichern(); },
   beiEntfernen: () => { natur.neu(); speichern(); },
 });
@@ -560,6 +579,7 @@ const cam = new THREE.Vector3();
 const vorn = new THREE.Vector3();
 let neigung = 0;
 const oben = new THREE.Vector3(), blick = new THREE.Vector3(), rechts = new THREE.Vector3(), tmp = new THREE.Vector3();
+const wandAlt = new THREE.Vector3(), schrittV = new THREE.Vector3();
 const boden = (v) => { tmp.copy(v).normalize(); return Math.max(0, planet.oberflaeche(tmp.x, tmp.y, tmp.z, 0.5)); };
 
 const ORTE = {
@@ -1008,9 +1028,15 @@ function bild() {
   } else if (gehen) {
     // waagerecht laufen (Blick hoch/runter ändert die Richtung nicht), Sprung mit ▲/Leertaste
     const l = Math.hypot(vor, seit);
-    const schritt = tmp.set(0, 0, 0).addScaledVector(vorn, vor).addScaledVector(rechts, seit);
+    const schritt = schrittV.set(0, 0, 0).addScaledVector(vorn, vor).addScaledVector(rechts, seit);   // eigener Vektor: boden() benutzt tmp
     if (l > 1) schritt.multiplyScalar(1 / l);
-    cam.addScaledVector(schritt, tempo * dt);
+    // Steile Wände (Grubenrand, Klippe) kann man nicht hinauflaufen: Schritt verwerfen, wenn der Boden vorn zu steil steigt
+    if (amBoden && !schwimmt && l > 0) {
+      wandAlt.copy(cam);
+      const hAlt = boden(cam), weit = tempo * dt;
+      cam.addScaledVector(schritt, weit);
+      if ((boden(cam) - hAlt) / Math.max(weit, 0.02) > 2.4) cam.copy(wandAlt);   // steiler als ~67°: Wand (springen geht, Rampe graben auch)
+    } else cam.addScaledVector(schritt, tempo * dt);
     if (amBoden && !schwimmt && hoch <= 0) kleben = 0.6 + tempo * dt * Math.min(l, 1) * 1.5;
     if (hoch > 0 && (amBoden || schwimmt)) { fallV = schwimmt ? 2.5 : SPRUNG; amBoden = false; }
     fallV -= G_ERDE * dt;
@@ -1062,7 +1088,7 @@ function bild() {
   wahlT += dt;
   if (wahlT > 0.1) {
     wahlT = 0;
-    const wunsch = waehleKacheln([cam.x, cam.y, cam.z], { R, maxStufe: MAX_STUFE, hBoden: Math.max(0, g2), teilung: G_OPT.teilung }).filter((k) => !k.verdeckt);
+    const wunsch = waehleKacheln([cam.x, cam.y, cam.z], { R, maxStufe: MAX_STUFE, hBoden: Math.max(0, g2), teilung: G_OPT.teilung, fein: (k) => feld.inFleck(k.f, k.L, k.ix, k.iy) }).filter((k) => !k.verdeckt);
     info = strom.update(wunsch);
   }
   // Natur nur nah am Boden
@@ -1247,7 +1273,23 @@ if (P.get('zeige')) setTimeout(() => {
   neigung = baum ? 0.32 : -0.75;
 }, 9000);
 // Testschalter ?grabtest=1 (an den Rand einer 4-m-Grube mit Tunnel stellen) | 2 (im Tunnel stehen): Voxel-Graben ansehen
-if (P.get('grabtest')) {
+if (P.get('grabtest') && !VOXEL_MODUS) {
+  // Feines Höhenfeld: Grube 3 m tief (2 × 4 m) mit Rampe, daneben ein Erdhügel – so wie ein Spieler es gräbt (Schlag für Schlag)
+  const auf = cam.clone().normalize(), v = vorn.clone(), q = new THREE.Vector3().crossVectors(auf, v).normalize();
+  const dir = (vor, quer) => auf.clone().multiplyScalar(R).addScaledVector(v, vor).addScaledVector(q, quer).normalize();
+  const hier = (d) => feld.hoehe(d.x, d.y, d.z);
+  const alle = [];
+  for (let t = 0; t < 7; t++) for (let a = 0; a <= 4; a += 0.7) for (const b of [-0.7, 0, 0.7]) {
+    const d = dir(6 + a, b);
+    alle.push(...feld.setze({ typ: 'weg', d: [d.x, d.y, d.z], r: 0.95, ziel: hier(d) - 0.45 }).betroffen);
+  }
+  for (let a = 0; a < 3; a += 0.5) { const d = dir(6 - a * 0.9, 0); const ziel = hier(dir(6, 0)) + a; alle.push(...feld.setze({ typ: 'weg', d: [d.x, d.y, d.z], r: 0.9, ziel: Math.min(ziel, hier(d)) }).betroffen); }   // Rampe
+  for (let t = 0; t < 4; t++) { const d = dir(8, 3.5); alle.push(...feld.setze({ typ: 'fest', d: [d.x, d.y, d.z], r: 1.3, ziel: hier(d) + 0.45 }).betroffen); }
+  for (const w of worker) w.postMessage({ art: 'planet', opts: { seed: SEED, radius: R, geo }, eingriffe: eingriffe.zustand(), feld: feld.zustand() });
+  setzeGehen(true);
+  cam.copy(dir(1.5, -1.2)).multiplyScalar(R + boden(dir(1.5, -1.2)) + AUGE);
+  neigung = -0.45;
+} else if (P.get('grabtest')) {
   const auf = cam.clone().normalize(), v = vorn.clone();
   const bei = (vor, tief) => { const d = auf.clone().multiplyScalar(R).addScaledVector(v, vor).normalize(); return d.multiplyScalar(R + boden(d) - tief); };
   for (let t = 0; t <= 4; t += 0.5) voxel.eingriff('weg', bei(7, t), 1.4);                 // Grube

@@ -218,3 +218,17 @@ test('Gras-Teppich: Menge je Ort – Wiese viel, Wüste kaum, Wasser/Steilhang/G
   const d = baueKachel({ f: 2, L: 9, ix: 200, iy: 311, key: schluessel({ f: 2, L: 9, ix: 200, iy: 311 }) }, createPlanetHoehe({ seed: 5, radius: R, geo, G }), 8);
   assert.equal(d.gras.length, (d.pos.length / 3) * 2);
 });
+
+test('Graben-Feld: Grube mit flachem Boden, Worker-Kopie gleich, Kachel-Zuordnung', async () => {
+  const { createGrabFeld, FLECK_L } = await import('../labore/erde/js/graben-feld.js');
+  const basis = (x, y, z) => 10 + 3 * x;            // glatter Boden (m)
+  const a = createGrabFeld({ radius: R, basis }), b = createGrabFeld({ radius: R, basis });
+  const d = [0.3, 0.8, 0.52]; const l = Math.hypot(...d); const u = d.map((x) => x / l);
+  for (let i = 0; i < 4; i++) { const ziel = a.hoehe(...u) - 0.45; const r = a.setze({ typ: 'weg', d: u, r: 1, ziel }); b.stempel(r.op); }
+  assert.ok(Math.abs(a.hoehe(...u) - (basis(...u) - 1.8)) < 0.05, `Mitte ${a.hoehe(...u)}`);       // 4 × 0,45 m tief
+  assert.equal(a.delta(...u), b.delta(...u));                                                 // Worker rechnet dasselbe
+  const weit = [u[0] + 10 / R, u[1], u[2]]; const wl = Math.hypot(...weit);
+  assert.equal(a.delta(weit[0] / wl, weit[1] / wl, weit[2] / wl), 0);                          // 10 m daneben unberührt
+  const [fl] = a.flecken.values();
+  assert.ok(a.kachelTrifft({ f: fl.f, L: 9, ix: fl.ix >> 4, iy: fl.iy >> 4 }, [fl]) && a.inFleck(fl.f, FLECK_L + 2, fl.ix * 4 + 1, fl.iy * 4 + 3));
+});

@@ -4,6 +4,14 @@ Ziel: Der Planet in `labore/erde` soll sich anfühlen wie **Valheim + Enshrouded
 dazu echtes Graben (Löcher, Tunnel, Höhlen), sichtbare Erd- und Gesteinsschichten, Gras bis weit hinaus, verlässliches Wasser.
 Bäume, Assets, Sounds, Effekte: später. Hier geht es nur um **Boden, Fels, Wasser, Topografie, Bewegung darauf**.
 
+## 0. Entscheidung 26.11.: Graben = feines Höhenfeld (Voxel ruhen)
+Am Handy machte die Mischung Höhenfeld + Voxel-Säulen Ärger: Stufen/Wände am Säulenrand (Kachel-LOD ≠ Voxel-Oberfläche), höchstens 12 ausgeschnittene
+Säulen (dahinter „verschwanden“ Gruben), Loch-Schleife im Bodenshader für jedes Pixel, Neubau ganzer 16-m-Würfel mit allen Ops je Schlag.
+Jetzt: `labore/erde/js/graben-feld.js` – Flecken (Stufe-13-Kacheln, ~19 m) mit 0,2-m-Höhenraster, Gruben als Kegel (flacher Boden, ~60°-Wände),
+Abfrage O(1), Gelände-Kacheln über Flecken 1 Stufe feiner (~0,3 m). Keine Nähte, keine Zusatz-Netze. Steile Wände kann man nicht hochlaufen.
+Tunnel/Höhlen später als **exakte Mischung** (Recherche 26.11.): Voxel-Dichte aus dem GEZEICHNETEN Höhenfeld, Randpunkte auf das Kachelnetz
+schnappen, Höhenfeld-Vierecke aus dem Index nehmen statt `discard`, triplanar. Bis dahin: alter Voxel-Weg mit `?voxel=1`.
+
 ## 1. Grundsatz: eine Wahrheit, zwei Darstellungen
 | | Fern (bis Horizont) | Nah (um Grabstellen, ~16-m-Würfel) |
 |---|---|---|
