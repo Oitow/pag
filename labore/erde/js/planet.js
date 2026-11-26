@@ -308,7 +308,7 @@ function erzeuge(d) {
   geo.setAttribute('hohl', new THREE.BufferAttribute(d.hohl, 1, true));
   geo.setAttribute('gras', new THREE.BufferAttribute(d.gras, 2, true));   // Gras-Teppich: Menge, Trockenheit
   geo.setIndex(new THREE.BufferAttribute(d.idx, 1));
-  geo.computeBoundingSphere();
+  if (d.kugel) geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(d.kugel[0], d.kugel[1], d.kugel[2]), d.kugel[3]); else geo.computeBoundingSphere();
   const m = new THREE.Mesh(geo, stufenFarben ? stufenMat[d.L] : bodenMat);
   m.receiveShadow = true;
   m.customDepthMaterial = bodenTiefe;
@@ -334,8 +334,8 @@ function erzeuge(d) {
 const bodenNetz = createBodenNetz({ N: ZELLEN, maxStufe: MAX_STUFE + 2 });   // +2: feinere Kacheln an Grabstellen
 let netzNeu = false, netzT = 0;
 function netzDaten(d) {
-  const [f, L, ix, iy] = String(d.key).split('/').map(Number), M = ZELLEN + 1, radien = new Float32Array(M * M);
-  for (let v = 0; v < M * M; v++) radien[v] = Math.hypot(d.pos[v * 3] + d.mitte[0], d.pos[v * 3 + 1] + d.mitte[1], d.pos[v * 3 + 2] + d.mitte[2]);
+  const [f, L, ix, iy] = String(d.key).split('/').map(Number), M = ZELLEN + 1, radien = d.radien ?? new Float32Array(M * M);
+  if (!d.radien) for (let v = 0; v < M * M; v++) radien[v] = Math.hypot(d.pos[v * 3] + d.mitte[0], d.pos[v * 3 + 1] + d.mitte[1], d.pos[v * 3 + 2] + d.mitte[2]);
   return { key: d.key, k: { f, L, ix, iy }, radien, nass: d.nass.subarray(0, M * M) };
 }
 const zeige = (m, an) => {
@@ -396,7 +396,8 @@ function hauptBau(budgetMs) {
 const STREU_L = streuStufe(R), STREU_RADIUS = 330;
 const streuQueue = [], streuDa = new Map(), streuLaeuft = new Set();
 let streuSchnitt = 0; // reihum über die Worker
-function streuFertig(d) { streuLaeuft.delete(d.key); streuDa.set(d.key, d); natur.neu(); }
+let naturNeu = false;   // neue Streu-Kachel → Natur neu, aber nicht im selben Bild wie neue Kachel-Meshes
+function streuFertig(d) { streuLaeuft.delete(d.key); streuDa.set(d.key, d); naturNeu = true; }
 function streuen(wunsch) {
   for (const k of wunsch) {
     if (streuDa.has(k.key) || streuLaeuft.has(k.key)) continue;
@@ -445,12 +446,17 @@ Object.assign(wasserU, voxel.uniforms);
 let lochAlt = -1;
 const naturBlick = { dir: new THREE.Vector3(0, 0, 1), cos: 0 };
 var grasTeppich = createGrasTeppich({ renderer, scene, loch: { uniforms: voxel.uniforms, glsl: LOCH_GLSL } });
+let grobT = 0;
+const grobOffen = [];
 const aktionen = createAktionen({
   planet, eingriffe, natur, inventar, seed: SEED, voxel: VOXEL_MODUS ? voxel : null, feld: VOXEL_MODUS ? null : feld,
   beiVoxel: () => speichern(),
   beiFeld: ({ op, betroffen }) => {
     for (const w of worker) w.postMessage({ art: 'feld', op });
-    strom.erneuere((k) => k.L >= 7 && feld.kachelTrifft(k, betroffen));   // grobe Kacheln: eine Grube sieht man dort nicht
+    // je Schlag nur die feinen Kacheln (≤ ~40 m) sofort neu; grobe (bis ~1,2 km) gesammelt 2 s nach dem letzten Schlag
+    strom.erneuere((k) => k.L >= 11 && feld.kachelTrifft(k, betroffen));
+    grobOffen.push(...betroffen); clearTimeout(grobT);
+    grobT = setTimeout(() => { const b = grobOffen.splice(0); strom.erneuere((k) => k.L >= 7 && k.L < 11 && feld.kachelTrifft(k, b)); }, 2000);
     speichern();
   },
   beiEingriff: (e) => { for (const w of worker) w.postMessage({ art: 'eingriff', e }); strom.erneuere((k) => betroffen(k, e)); speichern(); },
@@ -458,7 +464,7 @@ const aktionen = createAktionen({
 });
 
 starteWorker();
-const strom = createKachelStrom({ bauen, erzeuge, zeige, entsorge, parallel: Math.max(3, worker.length * 3) });
+const strom = createKachelStrom({ bauen, erzeuge, zeige, entsorge, parallel: Math.max(3, worker.length * 3), budget: true });   // Meshes je Bild nach Budget (Sinkflug)
 
 // ---------- Lufthülle von außen, Sterne ----------
 const atmo = new THREE.Mesh(new THREE.SphereGeometry(R + ATMO, 160, 80), new THREE.ShaderMaterial({
@@ -1090,15 +1096,19 @@ function bild() {
   wahlT += dt;
   if (wahlT > 0.1) {
     wahlT = 0;
-    const wunsch = waehleKacheln([cam.x, cam.y, cam.z], { R, maxStufe: MAX_STUFE, hBoden: Math.max(0, g2), teilung: G_OPT.teilung, fein: (k) => feld.inFleck(k.f, k.L, k.ix, k.iy) }).filter((k) => !k.verdeckt);
+    camera.getWorldDirection(tmp);
+    const wunsch = waehleKacheln([cam.x, cam.y, cam.z], { R, maxStufe: MAX_STUFE, hBoden: Math.max(0, g2), teilung: G_OPT.teilung, fein: (k) => feld.inFleck(k.f, k.L, k.ix, k.iy), blick: [tmp.x, tmp.y, tmp.z] }).filter((k) => !k.verdeckt);
     info = strom.update(wunsch);
   }
   // Natur nur nah am Boden
   const naturAn = hoeheBoden < 1200 && !stufenFarben;
   if (wahlT === 0 && naturAn) streuen(streuKacheln([cam.x, cam.y, cam.z], R, STREU_L, STREU_RADIUS));
   if (!worker.length) hauptBau(geladen ? 8 : 30);
+  const neuMeshes = strom.verarbeite(geladen ? 2.5 : 30, geladen ? 3 : 200);   // Kachel-Meshes: Bild-Budget, wichtigste zuerst
+  bodenNetz.fokus(oben.x, oben.y, oben.z, 1500 / R);   // nur Netz-Änderungen nahe der Kamera betreffen die Natur
   netzT += dt;
-  if (netzNeu && netzT > 0.6) { netzNeu = false; netzT = 0; natur.neu(); }   // Kacheln verfeinert/neu → Natur neu aufs Netz setzen
+  if (naturNeu && !neuMeshes) { naturNeu = false; natur.neu(); }
+  if (netzNeu && !neuMeshes && netzT > 0.6) { netzNeu = false; netzT = 0; natur.neu(); }   // Kacheln verfeinert/neu → Natur neu aufs Netz setzen
   { // Blickkegel für die Natur: halbe Bild-Diagonale + 30° Rand
   const tv = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), diag = Math.atan(Math.hypot(tv, tv * camera.aspect));
   camera.getWorldDirection(naturBlick.dir);
@@ -1245,7 +1255,7 @@ natur.update(cam, naturAn ? [...streuDa.values()] : [], jetzt / 1000, naturAn, h
     `Höhe        ${laenge(Math.max(0, hoeheBoden))} über Boden\n` +
     `Meereshöhe  ${laenge(Math.max(0, g2))} Boden · ${laenge(Math.max(0, ueberMeer))} Kamera\n` +
     `Tempo       ${Math.round(tempoAnzeige * 3.6).toLocaleString('de-DE')} km/h\n` +
-    `Kacheln     ${info.angezeigt} sichtbar · ${info.gebaut} gebaut · ${info.offen} offen\n` +
+    `Kacheln     ${info.angezeigt} sichtbar · ${info.gebaut} gebaut · ${info.offen} offen · ${info.eingang} im Eingang\n` +
     `Bau         ${worker.length ? worker.length + ' Worker' : 'Hauptthread'} · ${(bauMs / Math.max(1, bauN)).toFixed(1)} ms/Kachel\n` +
     `Planet      R ${laenge(R)} · Seed ${SEED} · Stufen 0–${MAX_STUFE}\n` +
     `Natur       ${natur.info.anzahl.toLocaleString('de-DE')} Stück · ${natur.info.dreiecke.toLocaleString('de-DE')} Dreiecke (${natur.info.top}) · ${streuDa.size} Streu-Kacheln\n` +

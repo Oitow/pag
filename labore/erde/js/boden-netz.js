@@ -3,7 +3,7 @@
 // Punktabstand gezeichnet – an Klippen, Graten, Uferböschungen liegen dazwischen Meter. Dann stecken Pflanzen im Boden
 // oder schweben. Hier: welche Kachel ist gerade sichtbar, wo im Dreieck liegt der Punkt → Netz-Radius.
 // Natur fragt das beim Aufbau ab und setzt jedes Stück genau auf das sichtbare Netz.
-import { SEITEN, wuerfelZuKugel } from './planet-baum.js';
+import { SEITEN, wuerfelZuKugel, kachelMitte } from './planet-baum.js';
 
 /** Richtung (Einheitsvektor) → { f, u, v } auf der Würfelseite (Umkehrung von wuerfelZuKugel, Newton). */
 export function kugelZuWuerfel(dx, dy, dz, out = { f: 0, u: 0, v: 0 }) {
@@ -35,13 +35,32 @@ const nKey = (f, L, ix, iy) => ((f * 32 + L) * 1048576 + ix) * 1048576 + iy;
 /** N = Zellen je Kachel. setze(key, {f,L,ix,iy}, radien (N+1)², nass Uint8 (N+1)² oder null) / weg(key) / radius(d) / radiusUV(f,u,v) */
 export function createBodenNetz({ N = 32, maxStufe = 20 } = {}) {
   const kacheln = new Map(), zahl = new Map();   // Text-Schlüssel → Zahl-Schlüssel
-  let maxL = 0, stand = 0;
+  let maxL = 0, stand = 0, F = null;
   const w = { f: 0, u: 0, v: 0 };
+  // Fokus (Richtung + Winkel): nur Kacheln, die ihn berühren, zählen als Änderung. Beim Sinkflug wechseln ständig ferne
+  // grobe Kacheln – dort steht keine Natur, also muss sie deswegen auch nicht alle Stücke neu aufs Netz setzen.
+  function trifft(k) {
+    if (!F) return true;
+    const { d, kante } = kachelMitte(k, 1);
+    const c = d[0] * F[0] + d[1] * F[1] + d[2] * F[2];
+    return Math.acos(Math.max(-1, Math.min(1, c))) < kante + F[3];
+  }
   function setze(key, k, radien, nass) {
     const nk = nKey(k.f, k.L, k.ix, k.iy);
-    zahl.set(key, nk); kacheln.set(nk, { ...k, radien, nass }); if (k.L > maxL) maxL = k.L; stand++;
+    zahl.set(key, nk); kacheln.set(nk, { ...k, radien, nass }); if (k.L > maxL) maxL = k.L;
+    if (trifft(k)) stand++;
   }
-  function weg(key) { const nk = zahl.get(key); if (nk === undefined) return; zahl.delete(key); kacheln.delete(nk); stand++; }
+  function weg(key) {
+    const nk = zahl.get(key); if (nk === undefined) return;
+    const k = kacheln.get(nk);
+    zahl.delete(key); kacheln.delete(nk);
+    if (trifft(k)) stand++;
+  }
+  /** Fokus setzen: Einheitsrichtung + Winkel (rad), z. B. Kamera und 1,5 km / R. Ohne Aufruf zählt jede Änderung. */
+  function fokus(dx, dy, dz, winkel) {
+    if (F && Math.abs(F[3] - winkel) < 1e-12 && F[0] * dx + F[1] * dy + F[2] * dz > Math.cos(winkel * 0.25)) return;   // kaum bewegt
+    F = [dx, dy, dz, winkel];
+  }
   /** Radius (m) des gezeichneten Landes an Würfelstelle (f,u,v), oder NaN (keine Kachel / Wasser). */
   function radiusUV(f, u, v) {
     for (let L = Math.min(maxL, maxStufe); L >= 0; L--) {
@@ -63,5 +82,5 @@ export function createBodenNetz({ N = 32, maxStufe = 20 } = {}) {
   /** Radius (m) des gezeichneten Landes in Richtung d, oder NaN (keine Kachel / Wasser). */
   function radius(dx, dy, dz) { kugelZuWuerfel(dx, dy, dz, w); return radiusUV(w.f, w.u, w.v); }
   // stand: zählt jede Änderung – Nutzer merken sich Ergebnisse und rechnen nur neu, wenn sich das Netz geändert hat
-  return { setze, weg, radius, radiusUV, get anzahl() { return kacheln.size; }, get stand() { return stand; } };
+  return { setze, weg, fokus, radius, radiusUV, get anzahl() { return kacheln.size; }, get stand() { return stand; } };
 }

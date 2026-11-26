@@ -102,6 +102,37 @@ test('Kachel-Strom: beim Teilen bleibt die alte Kachel, bis alle Kinder fertig s
   assert.ok([...sichtbar].every((s) => kinder.some((c) => c.key === s)));
 });
 
+test('Kachel-Strom mit Bild-Budget: höchstens n Meshes je Bild, wichtigste zuerst, Vorbeigeflogenes wird verworfen', () => {
+  const offen = [], erzeugt = [];
+  const strom = createKachelStrom({ bauen: (k) => offen.push(k), erzeuge: (d) => (erzeugt.push(d.key), d.key), zeige: () => {}, entsorge: () => {}, parallel: 10, budget: true });
+  const mk = (ix, prio) => ({ f: 0, L: 3, ix, iy: 0, key: schluessel({ f: 0, L: 3, ix, iy: 0 }), dist: 0, prio });
+  const w = [mk(0, 0.1), mk(1, 0.9), mk(2, 0.5), mk(3, 0.3)];
+  strom.update(w);
+  assert.equal(offen[0].key, w[1].key);                       // Bauauftrag: größte Bildschirmfläche zuerst
+  for (const k of offen.splice(0)) strom.fertigGebaut(k.key, { key: k.key });
+  assert.equal(erzeugt.length, 0);                            // ohne verarbeite(): noch kein Mesh
+  assert.equal(strom.verarbeite(100, 2), 2);
+  assert.deepEqual(erzeugt, [w[1].key, w[2].key]);
+  strom.update([w[0], w[1], w[2]]);                           // w[3] nicht mehr gewünscht
+  assert.equal(strom.verarbeite(100, 5), 1);
+  assert.deepEqual(erzeugt.slice(2), [w[0].key]);             // w[3] verworfen, nie hochgeladen
+  assert.equal(strom.eingang, 0);
+});
+
+test('Boden-Netz-Fokus: nur Kacheln nahe der Kamera zählen als Änderung (Natur muss nicht alles neu setzen)', async () => {
+  const { createBodenNetz } = await import('../labore/erde/js/boden-netz.js');
+  const bn = createBodenNetz({ N: 2 });
+  const r = new Float32Array(9).fill(R);
+  bn.fokus(1, 0, 0, 1500 / R);                                // Mitte der Würfelseite 0
+  const s0 = bn.stand;
+  bn.setze('fern', { f: 3, L: 6, ix: 5, iy: 5 }, r, null);   // andere Würfelseite
+  assert.equal(bn.stand, s0);
+  bn.setze('nah', { f: 0, L: 12, ix: 2048, iy: 2048 }, r, null);
+  assert.equal(bn.stand, s0 + 1);
+  bn.weg('fern'); assert.equal(bn.stand, s0 + 1);
+  assert.ok(Number.isNaN(bn.radius(0, -1, 0)));               // trotzdem wirklich entfernt
+});
+
 test('Klima und Gestein: kalt an den Polen, warm am Äquator; alle Gesteinsarten kommen vor', async () => {
   const { tempAm } = await import('../labore/erde/js/klima.js');
   let pol = 0, aeq = 0, np = 0, na = 0;

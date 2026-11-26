@@ -56,7 +56,9 @@ export function enthaelt(k1, k2) {
  *       sonst bekäme man auf Hochebenen nie die feinste Stufe)
  */
 // fein(k) → true: Kachel darf noch 1 Stufe feiner werden (Grabstellen: ~0,3 m Punktabstand nah an der Kamera)
-export function waehleKacheln(p, { R, maxStufe, teilung = 1.8, maxBerg = 4500, hBoden = 0, fein = null }) {
+// blick = [x,y,z] Blickrichtung (Einheit, optional) → jede Kachel bekommt `prio` = ungefähre Bildschirmgröße (Kante/Abstand),
+// im Blick voll, im Rücken/unter dem Bildrand ×0,35 – kachel-strom baut und lädt die wichtigsten zuerst.
+export function waehleKacheln(p, { R, maxStufe, teilung = 1.8, maxBerg = 4500, hBoden = 0, fein = null, blick = null }) {
   const lp = Math.hypot(p[0], p[1], p[2]);
   const pd = [p[0] / lp, p[1] / lp, p[2] / lp];
   // Horizont: bis wohin sieht man? Großzügig, damit Berge hinter der Kante nicht fehlen.
@@ -72,11 +74,21 @@ export function waehleKacheln(p, { R, maxStufe, teilung = 1.8, maxBerg = 4500, h
     const verdeckt = Math.acos(Math.max(-1, Math.min(1, cosW))) > hor + winkelKachel;
     const rb = R + hBoden;
     const dist = Math.hypot(d[0] * rb - p[0], d[1] * rb - p[1], d[2] * rb - p[2]);
-    if (!verdeckt && dist < teilung * kante && (k.L < maxStufe || (fein && k.L < maxStufe + 1 && fein(k)))) {
+    // Grabstellen: die letzten Stufen schon aus 3× Abstand teilen – sonst zeigt eine 0,6–1,2-m-Kachel die 60°-Wände
+    // einer Grube als Zacken/Stufen, sobald man ein paar Schritte zurückgeht. Nur dort, also kaum mehr Kacheln.
+    const grab = fein && k.L >= maxStufe - 2 && k.L <= maxStufe && dist < teilung * kante * 3 && fein(k);
+    if (!verdeckt && (dist < teilung * kante || grab) && (k.L < maxStufe || grab)) {
       for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++)
         stapel.push({ f: k.f, L: k.L + 1, ix: k.ix * 2 + i, iy: k.iy * 2 + j });
     } else {
-      raus.push({ ...k, key: schluessel(k), dist, verdeckt });
+      const t = { ...k, key: schluessel(k), dist, verdeckt };
+      if (blick) {
+        const ex = d[0] * rb - p[0], ey = d[1] * rb - p[1], ez = d[2] * rb - p[2];
+        const vorne = (ex * blick[0] + ey * blick[1] + ez * blick[2]) / Math.max(1, dist);
+        const w = Math.min(1, Math.max(0, (vorne + 0.2) / 0.8));
+        t.prio = (kante / Math.max(dist, kante * 0.4)) * (0.35 + 0.65 * w * w * (3 - 2 * w));
+      }
+      raus.push(t);
     }
   }
   return raus;
