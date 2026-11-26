@@ -3,6 +3,7 @@
 > Wird von `/ende` überschrieben und von `/start` gelesen. Höchstens 35 Zeilen. Dauerhafte Festlegungen: `docs/ENTSCHEIDUNGEN.md`.
 
 ## Zuletzt gemacht
+- **Wildgrund Welt-Fundament (26.11.)**: Bergschatten (`labore/erde/js/fernschatten.js`, ±1,6 km), Gelände-AO, Grafik-Stufen Niedrig/Mittel/Hoch/Ultra + Fenster „Grafik ⚙“ mit Einzelreglern, Wasser-Kräusel; Topografie: Tafelberge/Schluchten, Küstenklippen, Kare, Felsbänder, Schutthalden (`?ort=tafel`)
 - **Erde-Labor wird ein Spiel (Nacht 24./25.11.)**: Andock-Stelle `labore/erde/js/erweiterungen.js` + Module Überleben (Hunger, Durst, Wärme, Tod), Herstellen (14+ Rezepte, Kleidung), Bauen (Fundament/Wand/Dach/Treppe/Lagerfeuer/Werkbank, Einrasten, Kollision, draufstehen), Tiere (Reh, Hase, Keiler, Wolf; Jagd), Gleiter, Felder, Schmelze/Eisen, Tagebuch – Plan `docs/plaene/ERDE-UEBERLEBEN.md`. Welt: Vulkane mit Krater/Lava/Rauch, Wolkendecke, Dünen, Küste ohne Wasserzacken, Fernwald ohne Krümel
 - **Aufgeräumt (24.11.)**: geteilte Natur-Assets + Mond aus fremden Laboren nach `engine/models/natur/` bzw. `engine/render/mond.js`; Gigantwelt-Fundstellen seltener; Hauptseite verlinkt Erde/Gigantwelt/Naturstimmungen
 - **Startdorf Erlenwacht (23.11.)**: Modul `dorf` (Stufe spiel) – Platz mit Brunnen als Treffpunkt, Taverne, Schmiede, Tempel, 2 Wachtürme, ~10 Häuser mit Gärten/Zäunen, Palisade, Felder, Brücke, 23 Laternen + Nachtlicht; Erlbach (Hochland → Dorf → Klamm → Dämmerwald → Strand); Gras um den Spieler; Dorf-Tutorial (Brunnen → Schrein → Anschlagbrett → Schmied → Wirtin). Plan `docs/plaene/WELT-STARTDORF.md`
@@ -13,6 +14,7 @@
 - Vorher: Erlenwacht wird ein MMO (Klassen, Stufen, Beute, Gegner + Boss, Tutorial, Chat/Menü, Welt v2), siehe `docs/plaene/ERLENWACHT-MMO-PLAN.md`
 
 ## Läuft / kaputt
+- Erde-Welt 26.11.: Tests grün, Bilder (Küste/Mittel, Fluss/Hoch) ohne Konsolenfehler. NICHT geprüft: echtes Handy (Bildrate mit Bergschatten), Ultra-Stufe, Stufenkanten der Tafelberge beim LOD-Wechsel (können ~10 m springen)
 - Erde: Bilder aller neuen Teile angesehen, `tests/erde-*` grün, Smoke ok. NICHT geprüft: echtes Handy (Bildrate mit Tieren/Wolken/Bauteilen, Touch in Bau-Leiste/Fenstern), lange Spielsitzung am Stück
 - Dorf: Bilder angesehen (Platz, Südtor, Brücke, Nacht, Bach im Wald, Strandmündung), 852 Engine-Tests grün, Smoke erlenwacht/testfeld ok. NICHT geprüft: Dorf-Tutorial am Stück, Schrein-Wiedererscheinen, Bildrate Gras am Handy (`?gras=0` schaltet ab)
 - `npm test` grün (813 Engine-Tests, Smoke 8 Spiele); Bilder hochkant angesehen: Titel, Start (Alwe, Verfolger), Hochland (Wölfe/Keiler im Kampf), Wolfsfels – keine Konsolen-Fehler

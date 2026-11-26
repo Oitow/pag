@@ -37,7 +37,7 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
     }
     return norm ? sum / norm : 0;
   }
-  function gratBis(x, y, z, welle, feinste, maxOkt) {
+  function gratBis(x, y, z, welle, feinste, maxOkt, scharf = 0) {
     let sum = 0, amp = 0.5, prev = 1, w = welle;
     for (let o = 0; o < maxOkt; o++) {
       const g = glatt(feinste, feinste * 2, w);
@@ -45,9 +45,10 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
       const f = 1 / w;
       let v = 1 - Math.abs(n(x * f + 91.7, y * f + 3.1, z * f - 47.9 + o * 5.1));
       v *= v;
+      if (scharf > 0) v *= 1 - scharf + scharf * v;                               // Hochgebirge: spitzere Gipfel, schmalere Grate
       sum += v * amp * prev * g; prev = v; amp *= 0.5; w /= 2.1;
     }
-    return Math.min(1, sum * 1.1);
+    return Math.min(1, sum * (1.1 + 0.3 * scharf));
   }
 
   const aus = { vulkan: 0, lava: 0, eingriff: 0, h: 0, wasser: -Infinity, ufer: 0, fluss: 0, gebirge: 0, meer: 0, temp: 0, feuchte: 0, fr: 0, fg: 0, fb: 0, gestein: 0 };
@@ -68,7 +69,17 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
     // feines Gelände: Grate im Gebirge, Hügel und Bodenwellen sonst
     const land = glatt(-30, 15, Hm);
     let detail = 0;
-    if (gb > 0.01) detail += (gratBis(x, y, z, 2600, feinste, 7) - 0.3) * 700 * gb;
+    if (gb > 0.01) {
+      // Hochgebirge: Domain-Warp bricht die Grate auf, höhenabhängige Schärfe macht Gipfel markanter, Kare höhlen Talmulden aus
+      const sch = glatt(500, 2400, Hm) * gb;
+      let gx = x, gz = z;
+      if (sch > 0.05 && feinste < 1500) { gx += 420 * n(x / 4300 + 7.7, y / 4300, z / 4300); gz += 420 * n(x / 4300, y / 4300 - 5.2, z / 4300 + 1.3); }
+      detail += (gratBis(gx, y, gz, 2600, feinste, 7, sch) - 0.3) * 700 * gb;
+      if (feinste < 1500) {
+        const kar = glatt(0.3, 0.62, 0.5 + 0.5 * n(x / 1500 + 63, y / 1500, z / 1500 - 21)) * glatt(600, 1400, Hm) * (1 - glatt(2600, 3600, Hm));
+        detail -= kar * 120 * gb;                                                  // Mulde mit flachem Boden und steilen Wänden
+      }
+    }
     detail += fbmBis(x, y, z, 700, feinste, 6, 13.7) * (14 + 45 * (1 - gb)) * land;
     detail += fbmBis(x, y, z, 55, feinste, 4, 41.1) * 1.3 * land;
     detail += fbmBis(x, y, z, 1800, feinste, 3, 5.5) * 120 * (1 - land); // Meeresgrund
@@ -80,16 +91,40 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
     for (let i = 0; i < 4; i++) { const c = gw.z[i]; if (GF[c] > GH[c] + 1 && GF[c] > 0 && GF[c] > see) see = GF[c]; }
     if (see > -Infinity) { wasser = see; detail *= glatt(see, see - 25, Hm); }
     if (Fm < 0.5) wasser = 0;                                                         // Meer
+    // Küstenklippen: grenzt hohes Land (Nachbarzellen) ans Meer, springt das Ufer steil hoch statt flach auszulaufen
+    let klippe = 0;
+    if (Hm > -8 && Hm < 90 && see === -Infinity) {
+      let hmax = Hm;
+      for (let i = 0; i < 4; i++) { const hc = GH[gw.z[i]]; if (hc > hmax) hmax = hc; }
+      if (hmax > 70) klippe = Math.min(60, hmax * 0.3) * glatt(70, 380, hmax) * glatt(-0.35, 0.25, n(x / 2600 + 12.5, y / 2600, z / 2600 + 3.7));
+    }
     // Dünen in heißen, trockenen Ebenen: scharfe Kämme (gestreckt, Wellenlänge ~250 m), dazu Sandriffeln
     const fe0 = G.lese(GFe, gw), t0 = G.lese(GT, gw);
-    const wueste = glatt(0.24, 0.1, fe0) * glatt(10, 18, t0) * glatt(0, 60, Hm) * (1 - gb);
+    // Tafelberge/Terrassen in trockenen, warmen Gegenden (Steppe/Halbwüste, v. a. Sandstein/Kalk): Höhe in Stufen, Schluchten
+    const klima = glatt(0.4, 0.2, fe0) * glatt(7, 14, t0);
+    let mesa = 0;
+    if (klima > 0.01) {
+      let kalk = 0;
+      for (let i = 0; i < 4; i++) if (GS[gw.z[i]] <= 1) kalk += gw.w[i];
+      mesa = klima * glatt(10, 90, Hm) * (1 - glatt(0.15, 0.5, gb)) * (1 - glatt(1900, 2600, Hm)) * (0.3 + 0.7 * Math.min(1, kalk));
+    }
+    const wueste = glatt(0.24, 0.1, fe0) * glatt(10, 18, t0) * glatt(0, 60, Hm) * (1 - gb) * (1 - mesa);
     if (wueste > 0.01 && feinste < 120) {
       const kamm = 1 - Math.abs(n(x / 300 + 31.7, y / 110 - 8.2, z / 300 + 2.9));
       const duene = kamm * kamm * (0.6 + 0.4 * n(x / 1500, y / 1500 + 9.1, z / 1500)) * 22;
       const riffel = feinste < 6 ? (1 - Math.abs(n(x / 9, y / 4, z / 9))) * 0.25 : 0;
       detail = detail * (1 - 0.7 * wueste) + (duene + riffel) * wueste;
     }
-    let h = Hm + detail;
+    let h = Hm + detail + klippe * glatt(1, 14, Hm + detail) - klippe * 0.4 * glatt(0, -10, Hm);
+    const mfein = mesa * (1 - glatt(120, 500, feinste));                            // Stufenkanten nur, wo die Kachel sie auflöst
+    if (mfein > 0.01) {
+      // Höhenlinien-Relief, dann in Stufen (~26 m) gequantelt: flacher Absatz, schmale steile Felskante (Härte je Schicht verschieden)
+      let hr = h + mesa * (n(x / 2200 + 2.2, y / 2200, z / 2200 + 8.1) * 46 + (feinste < 350 ? n(x / 700, y / 700 + 4.4, z / 700) * 14 : 0));
+      const s = hr / 26, f = Math.floor(s), fr = s - f;
+      const hart = 0.62 + 0.28 * (Math.sin(f * 12.9898) * 0.5 + 0.5);
+      hr = (f + glatt(hart, 1, fr)) * 26;
+      h += (hr - h) * mfein;
+    }
     let vulkan = 0, lava = 0;
     for (const v of VULK) {
       const cs = dx * v.d[0] + dy * v.d[1] + dz * v.d[2];
@@ -106,6 +141,7 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
     // Flüsse: nächste Abfluss-Strecke (Zelle → Ziel) in der Nachbarschaft
     if (Hm > -5) {
       let best = Infinity, bLevel = 0, bBreite = 0;
+      const canyon = 24 * klima * (1 - glatt(0.2, 0.5, gb));                       // nur aus Klima (langsam veränderlich) → Fluss läuft weiter bergab
       const c0 = gw.naechste;
       for (let k = -1; k < 8; k++) {
         const c = k < 0 ? c0 : nb[c0 * 8 + k];
@@ -121,15 +157,16 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
         if (dist - breite / 2 < best) {
           best = dist - breite / 2;
           bBreite = breite;
-          bLevel = Math.max(0, GF[c] + (Math.max(0, GF[d]) - GF[c]) * t);
+          bLevel = Math.max(0, GF[c] + (Math.max(0, GF[d]) - GF[c]) * t - canyon);
         }
       }
       if (best < Infinity) {
-        const halb = bBreite / 2, tal = 30 + bBreite * 2.5;
+        const halb = bBreite / 2, tal = (30 + bBreite * 2.5) * (1 - 0.5 * canyon / 24);
         const dist = best + halb;
         if (dist < halb + tal) {
           // Talsohle/Ufer: Gelände senkt sich sanft zum Fluss, nie unter den Wasserspiegel
-          const k = glatt(halb, halb + tal, dist);
+          let k = glatt(halb, halb + tal, dist);
+          if (canyon > 3) k = k ** (1 - 0.6 * canyon / 24);                          // Canyon: steile Wände statt sanftem Tal
           const ufH = bLevel + 0.4 + (dist - halb) * 0.06;
           h = ufH + (h - ufH) * k;
           if (h < bLevel + 0.3) h = bLevel + 0.3;
@@ -153,7 +190,7 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
     if (h < 0 && wasser < 0) { wasser = 0; meer = 1; }
     let fr = 0, fg = 0, fb = 0;
     for (let i = 0; i < 4; i++) { const fc = GESTEIN_FARBE[GS[gw.z[i]]], w = gw.w[i]; fr += fc[0] * w; fg += fc[1] * w; fb += fc[2] * w; }
-    aus.vulkan = vulkan; aus.lava = lava; aus.eingriff = dE; aus.h = h; aus.wasser = wasser; aus.ufer = ufer; aus.fluss = fluss; aus.gebirge = gb; aus.meer = meer;
+    aus.vulkan = vulkan; aus.lava = lava; aus.eingriff = dE; aus.h = h; aus.wasser = wasser; aus.ufer = ufer; aus.fluss = fluss; aus.gebirge = gb; aus.meer = meer; // Klippen/Terrassen stecken schon in h
     aus.temp = tempAm(G.lese(GT, gw), h); aus.feuchte = Math.min(1, G.lese(GFe, gw) + 0.25 * ufer);
     aus.fr = fr; aus.fg = fg; aus.fb = fb; aus.gestein = GS[gw.naechste];
     return aus;
@@ -179,11 +216,24 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
     const sand = p.meer ? 1 - glatt(1.5, 6 + v * 5, h) : 0;            // Strand nur am Meer
     r += (0.78 - r) * sand; g += (0.71 - g) * sand; b += (0.52 - b) * sand;
     const kies = p.ufer * (1 - sand);                                  // Flussufer: Kies/Schlamm
-    r += (0.47 - r) * kies; g += (0.43 - g) * kies; b += (0.34 - b) * kies;
+    const trocken = glatt(0.4, 0.18, p.feuchte - 0.25 * p.ufer) * glatt(6, 14, p.temp);   // Steppe/Halbwüste: Canyon-Ufer in Gesteinsfarbe
+    const kr = 0.47 + (p.fr * 0.85 - 0.47) * trocken, kg = 0.43 + (p.fg * 0.8 - 0.43) * trocken, kb = 0.34 + (p.fb * 0.75 - 0.34) * trocken;
+    r += (kr - r) * kies; g += (kg - g) * kies; b += (kb - b) * kies;
     // Fels: steile Hänge, Hochgebirge über der Baumgrenze – Farbe nach Gestein
     const fels = Math.max(1 - glatt(0.7, 0.85, flach), glatt(1, -4, p.temp + (v - 0.5) * 3) * (0.4 + 0.6 * p.gebirge));
-    const hell = 0.9 + 0.2 * v;
+    let hell = 0.9 + 0.2 * v;
+    // Schichtung der Felswände: waagrechte Streifen (stark in Terrassen-Gegenden), feine Maserung nur nah genug
+    if (fels > 0.25) {
+      const st = Math.sin(h * 0.55 + 2.2 * n(x / 90, y / 90, z / 90)) * 0.5 + Math.sin(h * 0.13 + 1.7) * 0.5;
+      hell *= 1 + st * (0.04 + 0.1 * trocken) * fels;
+    }
     r += (p.fr * hell - r) * fels; g += (p.fg * hell - g) * fels; b += (p.fb * hell - b) * fels;
+    // Geröll/Schutthalden: helleres, graues Gestein an mittelsteilen Hängen unter den Felswänden (Gebirge, Klippen)
+    const schutt = glatt(0.5, 0.64, flach) * (1 - glatt(0.76, 0.9, flach)) * Math.max(p.gebirge * 1.3, glatt(15, 60, h) * (p.meer ? 0.5 : 0.3)) * glatt(0.2, 0.55, n(x / 40 + 3.1, y / 40, z / 40 - 8.8) * 0.5 + 0.5 + 0.3 * (v - 0.5)) * (1 - glatt(-2, -6, p.temp));
+    if (schutt > 0.01) {
+      const gr = (p.fr + p.fg + p.fb) / 3 * 0.55 + 0.4;
+      r += (gr * 1.02 - r) * schutt * 0.8; g += (gr - g) * schutt * 0.8; b += (gr * 0.97 - b) * schutt * 0.8;
+    }
     // Vulkan: dunkles Lavagestein und Asche zum Gipfel hin, Lava (glüht im Shader) am Kraterboden
     if (p.vulkan > 0) {
       const a = p.vulkan * 0.85 * (0.8 + 0.2 * v);
