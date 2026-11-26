@@ -15,6 +15,7 @@ Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Baum-Galerie: `labor
 | `eingriffe.js` | **Graben/Aufschütten** als Höhenänderung + entfernte Natur, speicherbar |
 | `voxel-erde.js` | **Voxel-Nahzone**: Graben/Aufschütten in Blickrichtung (Gruben, Tunnel) mit `engine/world/voxel-kugel.js`; Stoff je Voxel aus `boden.js`-Schichten, Gesteinsbänke; Loch-Maske im Bodenshader, Kollision (Boden/Wand/Decke), Kamera im Tunnel. Testschalter `?grabtest=1` (Grube) / `2` (im Tunnel). Plan: `docs/plaene/ERDE-FUNDAMENT.md` |
 | `aktionen.js` | Spieler: graben, aufschütten, nehmen (Regeln + Eingriffe + Inventar) |
+| `boden-netz.js` | Höhe des **gezeichneten** Kachel-Netzes an jedem Punkt → Natur sitzt genau auf dem sichtbaren Boden (auch an Klippen, nach Graben) |
 | `planet-hoehe.js` | Höhe/Wasser/Farbe an jedem Punkt (Geologie + feines Rauschen + Flussbetten + Eingriffe) |
 | `planet-baum.js`, `kachel-bau.js`, `kachel-strom.js`, `kachel-worker.js` | Würfel-Kugel-Quadtree, Kachelbau im Worker, nahtloser Austausch |
 | `natur-streu.js` → `natur.js` | Natur je 80-m-Kachel streuen (Worker) → InstancedMesh, Wind, nah/mittel/fern. Laubbäume + Kiefer/Pinie aus `engine/models/natur/astbaum.js` (echte Äste, Zweige, Blätter): nah bis 16 m (~5k △), nah bis 25 m, mittel bis 50 m, weit bis 90 m; fern **Impostor** (`engine/render/baum-impostor.js`: Foto des nahen Modells aus 8 Richtungen, 2 △ je Baum, alle Baumarten) |
