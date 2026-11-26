@@ -1,0 +1,11 @@
+{
+  "eintrag": "js/main.js",
+  "html": "index.html",
+  "entfernen": [
+    "<a id=\"back\" href=\"../../\">← Spiele</a>"
+  ],
+  "smoke": {
+    "query": "?ort=troll&test=1&q=niedrig",
+    "warte": 14000
+  }
+}

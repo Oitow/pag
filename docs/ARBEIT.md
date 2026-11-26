@@ -11,6 +11,7 @@
 | welt, riesenwald-Boden, dorf (neu), tutorial | Claude (Weltgen + 5 Agents) | `claude/welt-startdorf` | 23.11. | Startdorf Erlenwacht, Bäche, Gras, Dorf-Assets, Licht, Dorf-Tutorial – Plan `docs/plaene/WELT-STARTDORF.md` |
 | Wildgrund/Erde: Astbäume (`engine/models/natur/astbaum.js`, `labore/erde/js/natur.js`, Baum-Galerie) | Claude | `claude/erde-baeume-aeste` | 25.11. | Bäume mit echten Ästen, Zweigen, Blättern statt Kugel-Kronen; danach Wasser/Küste, Bodendetail, Licht |
 | Erde-Fundament: Voxel-Nahzone (`engine/world/voxel-kugel.js`, `labore/erde/js/voxel-erde.js`, Graben/Kollision in `planet.js`, `aktionen.js`) | Claude | `claude/erde-fundament` | 25.11. | Gruben + Tunnel mit echten Schichten, Plan `docs/plaene/ERDE-FUNDAMENT.md` |
+| Riesenjagd (`spiele/riesenjagd`): Seil-Haken, Riesen erklettern, Sternenfall | Claude | `claude/riesenjagd` | 25.11. | Spielbarer Kern: Wald der Riesen, Troll + Zyklop, Haken/Klettern/Runen/Großzauber |
 | Erde-Labor (`labore/erde`) + geteilte Natur-Assets/Mond nach `engine/` | Claude (+ Agents) | `claude/erde-aufraeumen`, danach `claude/erde-*` | 24.11. | Spiel-Module auf dem Planeten: Überleben, Herstellen, Bauen, Tiere, Gleiter, Schmiede, Tagebuch, Figur (fertig auf `claude/erde-nacht`), Felder (läuft) |
 
 ## Geteilte Dateien (nur beim Zusammenführen ändern)
