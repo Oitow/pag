@@ -1,13 +1,13 @@
 /**
  * @modul    baum-impostor
  * @zweck    Ferne Bäume als „Foto“ des echten Modells: jede Art wird beim Start aus N Richtungen und 2 Höhen (seitlich, 40° von oben) in einen Atlas (Farbe + Normale) gerendert und fern als EIN Quad (2 Dreiecke) gezeigt, das sich zur Kamera dreht; Licht aus der gebackenen Normale → sieht aus wie der nahe Baum, kostet fast nichts
- * @api      createBaumImpostor({ renderer, baeume: [{ art, geometrie }], richtungen = 8, px = 128, streulicht = 0.28, alphaTest = 0.42, spalten = 1, zone = false }) (Instanz-Attribut `ueber` optional, engine/render/ueberblenden, mit Option zone das Attribut `ueberZone` und Abstand im Shader, mit Option spalten liegen Einträge nebeneinander im Atlas, z. B. Varianten – `art` ist nur ein Schlüssel) -> { material, geometrie(art) -> BufferGeometry (Quad, für InstancedMesh), hat(art), dispose() }
+ * @api      createBaumImpostor({ renderer, baeume: [{ art, geometrie }], richtungen = 8, px = 128, streulicht = 0.28, alphaTest = 0.42, spalten = 1, zone = false, saum = 0.25, mipAlpha = 0, normalStaerke = 1 }) (Instanz-Attribut `ueber` optional, engine/render/ueberblenden, mit Option zone das Attribut `ueberZone` und Abstand im Shader, mit Option spalten liegen Einträge nebeneinander im Atlas, z. B. Varianten – `art` ist nur ein Schlüssel) -> { material, geometrie(art) -> BufferGeometry (Quad, für InstancedMesh), hat(art), dispose() }
  * @beispiel
  *   import { createBaumImpostor } from '../../engine/render/baum-impostor.js';
  *   const imp = createBaumImpostor({ renderer, baeume: [{ art: 'eiche', geometrie: eicheGeo }] });
  *   const fern = new THREE.InstancedMesh(imp.geometrie('eiche'), imp.material, 500);   // Instanz-Matrix: Fußpunkt, +Y = oben, Drehung, Skala
  * @tags     render, baum, impostor, billboard, atlas, lod, fern, wald, performance, handy
- * @version  1.2.0
+ * @version  1.3.0
  * @status   entwurf
  * @three    ja
  */
@@ -52,7 +52,10 @@ ${zone ? 'if (vUeber < 0.0) gl_Position = vec4(0.0, 0.0, -2.0, 1.0);' : ''}
 `;
 
 /** Atlas bauen: Zeile = Art, Spalte = Richtung. Ursprung der Geometrien am Fußpunkt, +Y oben, Meter. */
-export function createBaumImpostor({ renderer, baeume, richtungen = 8, px = 128, streulicht = 0.28, alphaTest = 0.42, spalten = 1, zone = false } = {}) {
+// saum: Helligkeit der Randfarbe (× mittlere Kronenfarbe) – 1 = keine dunklen Umrisse in der Ferne (alt 0.25)
+// normalStaerke: < 1 mischt die gebackene Normale mit „zur Kamera“ → keine dunklen Ränder an der Krone (1 = wie bisher)
+// mipAlpha: Deckkraft mit der Entfernung (Mip-Stufe) anheben → Kronen bleiben geschlossen statt zu „Krümeln“ zu zerfallen
+export function createBaumImpostor({ renderer, baeume, richtungen = 8, px = 128, streulicht = 0.28, alphaTest = 0.42, spalten = 1, zone = false, saum = 0.25, mipAlpha = 0, normalStaerke = 1 } = {}) {
   spalten = Math.max(1, Math.min(spalten | 0, baeume.length));
   const n = Math.ceil(baeume.length / spalten), W = richtungen * px * spalten, H = n * 2 * px;
   const ziel = (srgb) => {
@@ -94,7 +97,7 @@ export function createBaumImpostor({ renderer, baeume, richtungen = 8, px = 128,
     mesh.geometry = geometrie;
     // Rand-Farbe = mittlere Kronenfarbe mit Alpha 0 → keine dunklen Säume in den Mipmaps
     const summe = Math.max(1e-6, (mittelF[0] + mittelF[1] + mittelF[2]) / 3) ;
-    const rand = new THREE.Color(mittelF[0] / summe * 0.25, mittelF[1] / summe * 0.25, mittelF[2] / summe * 0.25);
+    const rand = new THREE.Color(mittelF[0] / summe * saum, mittelF[1] / summe * saum, mittelF[2] / summe * saum);
     for (const [rt, mat, klar] of [[farbRT, farbMat, rand], [normRT, normMat, new THREE.Color(0.5, 0.5, 1)]]) {
       mesh.material = mat;
       renderer.setRenderTarget(rt);
@@ -140,13 +143,18 @@ export function createBaumImpostor({ renderer, baeume, richtungen = 8, px = 128,
     sh.vertexShader = vertKopf(zone) + sh.vertexShader.replace('#include <project_vertex>', vertProjekt(zone));
     sh.fragmentShader = UEBER_FRAG_KOPF + 'uniform sampler2D impNormal;\nvarying vec2 vImpUv;\nvarying vec3 vImpSeite, vImpOben, vImpZu;\n' + sh.fragmentShader
       .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n' + UEBER_FRAG)
-      .replace('#include <map_fragment>', 'diffuseColor *= texture2D(map, vImpUv);')
+      .replace('#include <map_fragment>', mipAlpha > 0
+        ? `{ vec4 tc = texture2D(map, vImpUv); vec2 tg = vImpUv * vec2(textureSize(map, 0));
+  float tm = max(0.0, 0.5 * log2(max(dot(dFdx(tg), dFdx(tg)), dot(dFdy(tg), dFdy(tg)))));
+  tc.a *= 1.0 + tm * ${mipAlpha.toFixed(3)}; diffuseColor *= tc; }`
+        : 'diffuseColor *= texture2D(map, vImpUv);')
       .replace('#include <normal_fragment_begin>', `#include <normal_fragment_begin>
 { vec3 iN = texture2D(impNormal, vImpUv).xyz * 2.0 - 1.0;
+  iN = normalize(mix(vec3(0.0, 0.35, 1.0), iN, ${normalStaerke.toFixed(3)}));
   normal = normalize((viewMatrix * vec4(normalize(vImpSeite * iN.x + vImpOben * iN.y + vImpZu * iN.z), 0.0)).xyz); }`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * ${streulicht.toFixed(3)};`);
   };
-  material.customProgramCacheKey = () => 'baum-impostor' + (zone ? '-zone' : '');
+  material.customProgramCacheKey = () => 'baum-impostor' + (zone ? '-zone' : '') + (mipAlpha > 0 ? '-mip' + mipAlpha : '') + (normalStaerke !== 1 ? '-n' + normalStaerke : '');
 
   return {
     material,

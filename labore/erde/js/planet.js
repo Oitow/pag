@@ -443,6 +443,7 @@ const voxel = createVoxelErde({
 Object.assign(wasserU, voxel.uniforms);
 // Gras-Teppich: Gras überall (GPU), liest Höhe/Menge aus einer Höhenkarte der gezeichneten Kacheln; Grabstellen bleiben frei
 let lochAlt = -1;
+const naturBlick = { dir: new THREE.Vector3(0, 0, 1), cos: 0 };
 var grasTeppich = createGrasTeppich({ renderer, scene, loch: { uniforms: voxel.uniforms, glsl: LOCH_GLSL } });
 const aktionen = createAktionen({
   planet, eingriffe, natur, inventar, seed: SEED, voxel: VOXEL_MODUS ? voxel : null, feld: VOXEL_MODUS ? null : feld,
@@ -745,7 +746,8 @@ setInterval(speichern, 15000); // Uhr/Wetter ab und zu sichern
 const MENUE = (() => { try { return JSON.parse(localStorage.getItem('erde-menue') || 'null'); } catch { return null; } })()
   || { auf: !(navigator.maxTouchPoints > 0 || innerWidth < 700), groesse: 1, info: innerWidth < 640 ? 'kurz' : 'voll' };
 const menueEl = document.getElementById('menue'), hudEl = document.getElementById('hud');
-if (P.get('info')) MENUE.info = P.get('info');   // Testschalter: ?info=kurz|aus
+if (P.get('info')) MENUE.info = P.get('info');
+if (P.get('debug')) window.__erde = { natur, renderer, scene, grasTeppich, get cam() { return cam; } };   // Testschalter: Messen im Browser   // Testschalter: ?info=kurz|aus
 if (P.get('person')) MENUE.person = +P.get('person') === 1 ? 1 : 3;
 else if (MENUE.person == null) MENUE.person = 3;
 function menueSichern() { try { localStorage.setItem('erde-menue', JSON.stringify(MENUE)); } catch { /* egal */ } }
@@ -1097,7 +1099,12 @@ function bild() {
   if (!worker.length) hauptBau(geladen ? 8 : 30);
   netzT += dt;
   if (netzNeu && netzT > 0.6) { netzNeu = false; netzT = 0; natur.neu(); }   // Kacheln verfeinert/neu → Natur neu aufs Netz setzen
-  natur.update(cam, naturAn ? [...streuDa.values()] : [], jetzt / 1000, naturAn, hoeheBoden);
+  { // Blickkegel für die Natur: halbe Bild-Diagonale + 30° Rand
+  const tv = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), diag = Math.atan(Math.hypot(tv, tv * camera.aspect));
+  camera.getWorldDirection(naturBlick.dir);
+  naturBlick.cos = Math.cos(Math.min(Math.PI * 0.95, diag + 0.52));
+}
+natur.update(cam, naturAn ? [...streuDa.values()] : [], jetzt / 1000, naturAn, hoeheBoden, naturBlick);
   voxel.update(cam);
 
   // Floating Origin: Kamera im Ursprung, Welt verschoben
@@ -1252,7 +1259,8 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 setzeOrt(P.get('ort') || 'orbit');
-if (P.get('nei')) neigung = THREE.MathUtils.degToRad(+P.get('nei'));   // Testschalter: Blick-Neigung in Grad
+if (P.get('nei')) neigung = THREE.MathUtils.degToRad(+P.get('nei'));
+if (P.get('ueber')) { setzeGehen(false); cam.setLength(R + boden(cam) + +P.get('ueber')); }   // Testschalter: so viele m über dem Boden schweben   // Testschalter: Blick-Neigung in Grad
 // Testschalter: ?wetter=regen|schnee|gewitter|nebel|sturm|klar … und ?uhr=19 (Ortszeit)
 if (P.get('wetter')) zw.wetter.setze(P.get('wetter'), true);
 // Testschalter ?zeige=<art>: nach dem Laden vor das nächste Stück dieser Art stellen (z. B. ammonit, quarzdruse)

@@ -41,7 +41,8 @@ function sicht(art) {
   // Bäume: nah volles Asset, mittel (nur Engine) Detailstufe 0, fern schlanke Form
   if (art === 'fichte') return { nah: 70, mittel: 0, fern: 320, varianten: 3 };
   if (art === 'birke') return { nah: 30, mittel: 0, fern: 320, varianten: 3 };
-  if (AST(art)) return { nah: 25, mittel: 50, weit: 90, fern: 320, varianten: 3 };   // Astbaum: nah ~5k, mittel ~1.5k, weit ~450, fern ~110 Dreiecke (× Grafik-Stufe)
+  // Astbaum: nah ~5k, mittel ~1.5k, weit ~450 Dreiecke, dann Foto-Quad (× Grafik-Stufe). Enger als früher (25/50/90): im Regenwald waren das 300k Dreiecke
+  if (AST(art)) return { nah: 18, mittel: 36, weit: 62, fern: 320, varianten: 3 };
   if (BAUM.has(art)) return { nah: 22, mittel: 65, fern: 320, varianten: 3 };
   if (art === 'grasbueschel') return { nah: 30, fern: 0, varianten: 3 };
   if (KLEIN.has(art)) return { nah: 45, fern: 0, varianten: 2 };
@@ -261,7 +262,7 @@ export function createNatur(scene, { istWeg = () => false, renderer = null, bode
       NAH[art].forEach((t, v) => { if (!t.geo.attributes.normal) t.geo.computeVertexNormals(); liste.push({ art: art + '#' + v, geometrie: t.geo }); });
     }
     if (liste.length) {
-      impostor = createBaumImpostor({ renderer, baeume: liste, spalten: 3, px: 96, zone: true });
+      impostor = createBaumImpostor({ renderer, baeume: liste, spalten: 3, px: 128, zone: true, saum: 1, mipAlpha: 0.35, normalStaerke: 0.5, streulicht: 0.36 });   // hellere Säume + geschlossene Kronen in der Ferne
       for (const art of Object.keys(FERN)) {
         if (!impostor.hat(art + '#0')) continue;
         for (const alt of FERN[art]) { alt.geo.dispose(); toepfe.splice(toepfe.indexOf(alt), 1); }
@@ -297,7 +298,7 @@ export function createNatur(scene, { istWeg = () => false, renderer = null, bode
   };
 
   const kachelHash = new Map();
-  const anker = new THREE.Vector3(), letzteKamera = new THREE.Vector3(1e12, 0, 0);
+  const anker = new THREE.Vector3(), letzteKamera = new THREE.Vector3(1e12, 0, 0), letzterBlick = new THREE.Vector3(0, 0, 1);
   const teuer = new Map(); // Art → Dreiecke (fürs HUD: wo geht die Leistung hin?)
   let schmutzig = true, fische = [], hindernisse = [], nahe = [], dreiecke = 0, anzahl = 0;
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), qd = new THREE.Quaternion(), oben = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
@@ -339,16 +340,20 @@ export function createNatur(scene, { istWeg = () => false, renderer = null, bode
   let bauNr = 0, bauZeit = -1e9;
 
   /** Neu aufbauen, wenn neue Streu-Kacheln da sind oder die Kamera > NEU_AB m weiter ist. kacheln = [{mitte, daten, anzahl}].
-   *  hoehe = Kamera über Boden (m): hoch oben reicht seltener Neuaufbau (nichts ist nah). */
-  function update(cam, kacheln, zeit, aktiv, hoehe = 0) {
+   *  hoehe = Kamera über Boden (m): hoch oben reicht seltener Neuaufbau (nichts ist nah).
+   *  blick = { dir: Blickrichtung (Einheitsvektor), cos: Kegel-Grenze } → Mittel-/Fern-Stufen hinter/neben der Kamera weglassen
+   *  (InstancedMesh zeichnet sonst ALLE Stücke, auch die im Rücken). Nahe Bäume bleiben (Schatten). Neuaufbau bei Drehung > ~20°. */
+  function update(cam, kacheln, zeit, aktiv, hoehe = 0, blick = null) {
     gruppe.visible = aktiv;
     if (!aktiv) return;
     wind.kwZeit.value = zeit;
     wind.kwCam.value.copy(cam);
     const neuAb = NEU_AB + Math.max(0, hoehe - 4) * 0.3;
     // neue Kacheln: höchstens alle paar Bilder (beim Fliegen kommen sie im Sekundentakt) – Bewegung zählt sofort
-    if ((schmutzig && zeit - bauZeit > 0.25) || cam.distanceTo(letzteKamera) > neuAb) {
+    const gedreht = blick && blick.dir.dot(letzterBlick) < 0.94;
+    if ((schmutzig && zeit - bauZeit > 0.25) || cam.distanceTo(letzteKamera) > neuAb || gedreht) {
       schmutzig = false;
+      if (blick) letzterBlick.copy(blick.dir);
       bauZeit = zeit; bauNr++;
       letzteKamera.copy(cam);
       anker.copy(cam);
@@ -382,6 +387,9 @@ export function createNatur(scene, { istWeg = () => false, renderer = null, bode
             nahe.push({ id, art, x: ax, y: ay, z: az, s: sk, fest: cfg.kolli > 0, h: cfg.hoehe * sk,
               r: BAUM.has(art) ? Math.max(0.45, cfg.kolli * sk * 1.6) : Math.max(0.25, cfg.groesse * sk) });
           }
+          // im Rücken? (nur ab 12 m; Kegel mit Rand für Drehen bis zum nächsten Neuaufbau)
+          const abW = ab * weiteF;
+          const aussen = blick && abW > 12 && ((ax - cam.x) * blick.dir.x + (ay - cam.y) * blick.dir.y + (az - cam.z) * blick.dir.z) < blick.cos * abW;
           const st = STUFEN[art];
           if (st) {   // Bäume: jede Stufe, deren Sichtbereich (± Überblend-Zone) erreichbar ist; der Shader blendet nach echtem Abstand
             const letzte = st.length - 1;
@@ -392,6 +400,7 @@ export function createNatur(scene, { istWeg = () => false, renderer = null, bode
               if (s > 0 && ab < lo - bl - M) continue;
               if (s < letzte && ab > hi + bh + M) continue;
               if (s === letzte && ab >= 230 && zuf < 0.5) continue;   // ganz weit: jeder zweite reicht
+              if (s > 0 && aussen) continue;
               let zone = KEINE;
               const unten = s > 0 && ab < lo + bl + M, oben = s < letzte && ab > hi - bh - M;
               if (unten && (!oben || ab - lo < hi - ab)) zone = ueberZone(lo * weiteF, bl * weiteF, 'ein');
@@ -406,7 +415,7 @@ export function createNatur(scene, { istWeg = () => false, renderer = null, bode
           let t = null;
           if (ab < cfg.nah) t = NAH[art][v];
           else if (FERN[art] && ab < cfg.fern && (ab < 140 || zuf < (ab < 230 ? 0.5 : 0.34))) t = FERN[art][v % FERN[art].length]; // weit weg: jeder zweite/dritte reicht
-          if (!t) continue;
+          if (!t || (aussen && abW > 25)) continue;
           t.n++;
           wahl.push(t, ax, ay, az, o, d, KEINE);
           if (cfg.kolli && ab < 60) hindernisse.push({ x: ax, y: ay, z: az, r: cfg.kolli * d[o + 4] });
