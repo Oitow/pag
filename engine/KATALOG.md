@@ -3577,10 +3577,10 @@ Teil: { id, typ, variante = 0, x, z, winkel (Drehung um Y; lokal +z zeigt nach (
 Welt = (x + lx·cos w + lz·sin w, z − lx·sin w + lz·cos w). Kasten-bx/bz der Assets sind HALBE Maße (wie in world/kollision).
 Anker-Eintrag: { teilId, typ, art (Anker-Name, bei station deren art), x, y, z, winkel, daten (Original-Anker) }.
 
-### baum-impostor · `engine/render/baum-impostor.js` · v1.2.0 · entwurf
+### baum-impostor · `engine/render/baum-impostor.js` · v1.3.0 · entwurf
 Ferne Bäume als „Foto“ des echten Modells: jede Art wird beim Start aus N Richtungen und 2 Höhen (seitlich, 40° von oben) in einen Atlas (Farbe + Normale) gerendert und fern als EIN Quad (2 Dreiecke) gezeigt, das sich zur Kamera dreht; Licht aus der gebackenen Normale → sieht aus wie der nahe Baum, kostet fast nichts
 
-- `createBaumImpostor({ renderer, baeume: [{ art, geometrie }], richtungen = 8, px = 128, streulicht = 0.28, alphaTest = 0.42, spalten = 1, zone = false }) (Instanz-Attribut `ueber` optional, engine/render/ueberblenden, mit Option zone das Attribut `ueberZone` und Abstand im Shader, mit Option spalten liegen Einträge nebeneinander im Atlas, z. B. Varianten – `art` ist nur ein Schlüssel) -> { material, geometrie(art) -> BufferGeometry (Quad, für InstancedMesh), hat(art), dispose() }`
+- `createBaumImpostor({ renderer, baeume: [{ art, geometrie }], richtungen = 8, px = 128, streulicht = 0.28, alphaTest = 0.42, spalten = 1, zone = false, saum = 0.25, mipAlpha = 0, normalStaerke = 1 }) (Instanz-Attribut `ueber` optional, engine/render/ueberblenden, mit Option zone das Attribut `ueberZone` und Abstand im Shader, mit Option spalten liegen Einträge nebeneinander im Atlas, z. B. Varianten – `art` ist nur ein Schlüssel) -> { material, geometrie(art) -> BufferGeometry (Quad, für InstancedMesh), hat(art), dispose() }`
 
 ```js
 import { createBaumImpostor } from '../../engine/render/baum-impostor.js';

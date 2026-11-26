@@ -1,5 +1,8 @@
 # Engine-Changelog
 
+## 2026-11-26 – Baum-Fotos (Impostor) ohne dunkle Ränder
+- render/baum-impostor 1.3.0 (additiv): Optionen `saum` (Randfarbe, alt 0.25), `mipAlpha` (Kronen bleiben in der Ferne geschlossen), `normalStaerke` (weichere Kronen-Ränder); Standard wie bisher
+
 ## 2026-11-23 – Startdorf Erlenwacht, Erlbach, Gras (Welt v3, Bauplan docs/plaene/WELT-STARTDORF.md)
 - spiel/modul-dorf 1.0.0 (neu, Stufe spiel): Dorf am Ort 'siedlung' – Plan, Gebäude/Kleinkram mit Kollision, Nachtlicht, Platz/Gassen/Felder, Brücke über den Erlbach, Stationen Brunnen/Schrein/Anschlagbrett/Amboss/Feuer (Ereignisse dorf:benutzt, dorf:gebunden), Schrein = Wiedererscheinen
 - world/dorf-plan 1.0.0 + dorf-plan-kern (neu, ohne THREE): handgesetzter Platz-Kern + prozedurale Häuser, Gärten, Zäune, Laternen, Palisade, Felder, NPC-Punkte, pruefe()
