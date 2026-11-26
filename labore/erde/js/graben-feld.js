@@ -11,6 +11,9 @@ import { kugelZuWuerfel } from './boden-netz.js';
 
 export const FLECK_L = 13;    // Stufe der Flecken (Kantenlänge ≈ 19 m bei R = 100 km)
 export const FLECK_M = 96;    // Zellen je Fleck → ~0,2 m
+const GROB = 4;               // Basis-Höhe beim Anlegen nur jeden 4. Punkt (~0,8 m) abfragen, dazwischen bilinear:
+                              // 625 statt 9409 teure probe()-Aufrufe je Fleck → kein Ruckler beim ersten Schlag an einer neuen Stelle.
+                              // Feines Rauschen bleibt trotzdem sichtbar: Höhe = echte Basis + dh, nur der Schnitt rechnet mit der groben.
 const EIMER = 64;             // grobe Vorab-Prüfung „gibt es hier überhaupt Flecken?“ (ohne Newton)
 
 function eimerVon(x, y, z) {
@@ -41,12 +44,17 @@ export function createGrabFeld({ radius = 100_000, basis, zustand = null } = {})
     let fl = flecken.get(k);
     if (fl || !anlegen) return fl;
     const dh = new Float32Array(P * P), b = new Float32Array(P * P), d = new Float32Array(P * P * 3);
-    const u0 = -1 + ix * s, v0 = -1 + iy * s;
+    const u0 = -1 + ix * s, v0 = -1 + iy * s, G = M / GROB, GP = G + 1, gb = new Float32Array(GP * GP);
     for (let j = 0; j < P; j++) for (let i = 0; i < P; i++) {
       const q = j * P + i;
       wuerfelZuKugel(f, u0 + (s * i) / M, v0 + (s * j) / M, t3);
       d[q * 3] = t3[0]; d[q * 3 + 1] = t3[1]; d[q * 3 + 2] = t3[2];
-      still = true; b[q] = basis(t3[0], t3[1], t3[2]); still = false;
+      if (i % GROB === 0 && j % GROB === 0) { still = true; gb[(j / GROB) * GP + i / GROB] = basis(t3[0], t3[1], t3[2]); still = false; }
+    }
+    for (let j = 0; j < P; j++) for (let i = 0; i < P; i++) {
+      const gi = Math.min(G - 1, Math.floor(i / GROB)), gj = Math.min(G - 1, Math.floor(j / GROB));
+      const a = i / GROB - gi, c = j / GROB - gj, q = gj * GP + gi;
+      b[j * P + i] = (gb[q] * (1 - a) + gb[q + 1] * a) * (1 - c) + (gb[q + GP] * (1 - a) + gb[q + GP + 1] * a) * c;
     }
     fl = { f, ix, iy, dh, b, d };
     flecken.set(k, fl);
@@ -81,7 +89,11 @@ export function createGrabFeld({ radius = 100_000, basis, zustand = null } = {})
         if (ix < 0 || iy < 0 || ix >= n || iy >= n) continue;   // Würfelkante: Nachbarseite fehlt (selten, ~6 Linien)
         const fl = fleck(c.f, ix, iy, true);
         let hit = false;
-        for (let q = 0; q < P * P; q++) {
+        // nur die Punkte im Umkreis (Würfelkoordinaten-Fenster) statt aller 97² je Fleck
+        const g = M / s, i0 = Math.max(0, Math.floor((c.u - du + 1 - ix * s) * g)), i1 = Math.min(M, Math.ceil((c.u + du + 1 - ix * s) * g));
+        const j0 = Math.max(0, Math.floor((c.v - du + 1 - iy * s) * g)), j1 = Math.min(M, Math.ceil((c.v + du + 1 - iy * s) * g));
+        for (let jj = j0; jj <= j1; jj++) for (let ii = i0; ii <= i1; ii++) {
+          const q = jj * P + ii;
           const ex = fl.d[q * 3] - dx, ey = fl.d[q * 3 + 1] - dy, ez = fl.d[q * 3 + 2] - dz;
           const ab = Math.sqrt(ex * ex + ey * ey + ez * ez) * R;
           if (ab >= rand) continue;

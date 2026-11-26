@@ -138,8 +138,21 @@ export function baueKachel(k, planet, N = ZELLEN) {
     idx[t++] = b; idx[t++] = sa; idx[t++] = sb;
   }
 
+  // Gleich hier (im Worker) statt im Hauptthread: Radien des gezeichneten Netzes (boden-netz.js) und Hüllkugel (Sichtprüfung)
+  const radien = new Float32Array(innen);
+  for (let q = 0; q < innen; q++) radien[q] = Math.hypot(pos[q * 3] + cx, pos[q * 3 + 1] + cy, pos[q * 3 + 2] + cz);
+  let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+  for (let q = 0; q < nv * 3; q += 3) {
+    const x = pos[q], y = pos[q + 1], z = pos[q + 2];
+    if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (z < z0) z0 = z; if (z > z1) z1 = z;
+  }
+  const kx = (x0 + x1) / 2, ky = (y0 + y1) / 2, kz = (z0 + z1) / 2;
+  let kr = 0;
+  for (let q = 0; q < nv * 3; q += 3) kr = Math.max(kr, (pos[q] - kx) ** 2 + (pos[q + 1] - ky) ** 2 + (pos[q + 2] - kz) ** 2);
+  const kugel = [kx, ky, kz, Math.sqrt(kr)];
+
   const baeume = fernBaeume(k, planet, N, M, P, D, IF, nor, kante, abstand, cx, cy, cz);
-  return { key: k.key, L: k.L, pos, nor, col, land, nass, hohl, gras, idx, mitte: [cx, cy, cz], minH, maxH, kante, baeume };
+  return { key: k.key, L: k.L, pos, nor, col, land, nass, hohl, gras, idx, radien, kugel, mitte: [cx, cy, cz], minH, maxH, kante, baeume };
 }
 
 // ---------- Fernwald: Bäume als Punkte (ein Eckpunkt je Baum, im Shader als Silhouette) ----------
