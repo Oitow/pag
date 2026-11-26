@@ -3,6 +3,7 @@
 > Wird von `/ende` überschrieben und von `/start` gelesen. Höchstens 35 Zeilen. Dauerhafte Festlegungen: `docs/ENTSCHEIDUNGEN.md`.
 
 ## Zuletzt gemacht
+- **Wildgrund Boden (26.11. mittags)**: Natur sitzt jetzt genau auf dem gezeichneten Gelände-Netz (`labore/erde/js/boden-netz.js`, nichts steckt mehr im Boden/schwebt), Bodentextur neu (an die Welt geheftet statt an die Kamera → rutscht nicht mehr, keine Wurm-Linien, Fels-Schichten auf jede Entfernung), Graben/Aufschütten räumt Gras im Umkreis mit weg
 - **Wildgrund Welt-Fundament (26.11.)**: Bergschatten (`labore/erde/js/fernschatten.js`, ±1,6 km), Gelände-AO, Grafik-Stufen Niedrig/Mittel/Hoch/Ultra + Fenster „Grafik ⚙“ mit Einzelreglern, Wasser-Kräusel; Topografie: Tafelberge/Schluchten, Küstenklippen, Kare, Felsbänder, Schutthalden (`?ort=tafel`)
 - **Erde-Labor wird ein Spiel (Nacht 24./25.11.)**: Andock-Stelle `labore/erde/js/erweiterungen.js` + Module Überleben (Hunger, Durst, Wärme, Tod), Herstellen (14+ Rezepte, Kleidung), Bauen (Fundament/Wand/Dach/Treppe/Lagerfeuer/Werkbank, Einrasten, Kollision, draufstehen), Tiere (Reh, Hase, Keiler, Wolf; Jagd), Gleiter, Felder, Schmelze/Eisen, Tagebuch – Plan `docs/plaene/ERDE-UEBERLEBEN.md`. Welt: Vulkane mit Krater/Lava/Rauch, Wolkendecke, Dünen, Küste ohne Wasserzacken, Fernwald ohne Krümel
 - **Aufgeräumt (24.11.)**: geteilte Natur-Assets + Mond aus fremden Laboren nach `engine/models/natur/` bzw. `engine/render/mond.js`; Gigantwelt-Fundstellen seltener; Hauptseite verlinkt Erde/Gigantwelt/Naturstimmungen

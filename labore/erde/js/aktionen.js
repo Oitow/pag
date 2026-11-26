@@ -54,6 +54,13 @@ export function createAktionen({ planet, eingriffe, natur, inventar, seed = 1, v
     return o;
   }
 
+  // Kleines Grünzeug im Umkreis mit wegräumen (sonst bleibt es über dem Loch hängen / steckt im Aufgeschütteten)
+  function raeumeKleines(p, umkreis) {
+    const liste = natur.kleineIm ? natur.kleineIm(p, umkreis) : [];
+    for (const o of liste) eingriffe.entferne(o.id);
+    if (liste.length) beiEntfernen();
+  }
+
   function graben(p, blickR = null) {
     if (voxel && blickR) return grabenVoxel(p, blickR);
     const o = naturImWeg(p);
@@ -63,6 +70,7 @@ export function createAktionen({ planet, eingriffe, natur, inventar, seed = 1, v
     const g = grabung(u.stoff, [p.x, p.y, p.z], u.tiefe, hacke, seed);
     if (!g.ok) return { ok: false, text: `${NAME(u.stoff)}: ${STOFFE[u.stoff] ? hackeName(STOFFE[u.stoff].haerte) + ' nötig' : g.grund}` };
     if (o) { eingriffe.entferne(o.id); beiEntfernen(); }
+    raeumeKleines(p, GRAB_RADIUS * 0.8);
     const e = eingriffe.setze(u.d, GRAB_RADIUS, -GRAB_TIEFE);
     beiEingriff(e);
     inventar.gib(g.stoff, g.menge);
@@ -82,6 +90,7 @@ export function createAktionen({ planet, eingriffe, natur, inventar, seed = 1, v
     const g = grabung(stoff, [p.x, p.y, p.z], tiefe, hacke, seed);
     if (!g.ok) return { ok: false, text: `${NAME(stoff)}: ${STOFFE[stoff] ? hackeName(STOFFE[stoff].haerte) + ' nötig' : g.grund}` };
     if (o) { eingriffe.entferne(o.id); beiEntfernen(); }
+    raeumeKleines(p, VOXEL_GRAB_R + 0.3);   // Gras/Blumen in der Grube schweben sonst in der Luft
     voxel.eingriff('weg', { x: p.x + richtung.x * 0.35, y: p.y + richtung.y * 0.35, z: p.z + richtung.z * 0.35 }, VOXEL_GRAB_R);
     beiVoxel();
     inventar.gib(g.stoff, g.menge);
@@ -98,6 +107,7 @@ export function createAktionen({ planet, eingriffe, natur, inventar, seed = 1, v
       inventar.nimm(stoff, 1);
       const o = natur.finde(p, GRAB_RADIUS * 0.5);
       if (o && o.r <= 0.5) { eingriffe.entferne(o.id); beiEntfernen(); }
+      raeumeKleines(p, VOXEL_AUF_R + 0.2);   // zugeschüttet
       voxel.eingriff('fest', { x: p.x - blickR.x * 0.45, y: p.y - blickR.y * 0.45, z: p.z - blickR.z * 0.45 }, VOXEL_AUF_R, stoff);
       beiVoxel();
       return { ok: true, text: `−1 ${NAME(stoff)} aufgeschüttet` };
@@ -106,6 +116,7 @@ export function createAktionen({ planet, eingriffe, natur, inventar, seed = 1, v
     inventar.nimm(stoff, 1);
     const o = natur.finde(p, GRAB_RADIUS * 0.5);
     if (o && o.r <= 0.5) { eingriffe.entferne(o.id); beiEntfernen(); }   // Kleines wird zugeschüttet
+    raeumeKleines(p, GRAB_RADIUS * 0.8);
     beiEingriff(eingriffe.setze(d, GRAB_RADIUS, GRAB_TIEFE));
     return { ok: true, text: `−1 ${NAME(stoff)} aufgeschüttet` };
   }

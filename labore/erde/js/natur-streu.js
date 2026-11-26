@@ -26,7 +26,7 @@ export const STREU_ARTEN = [
   'erzbrocken', 'ammonit', 'quarzdruse',
 ];
 const A = Object.fromEntries(STREU_ARTEN.map((a, i) => [a, i]));
-export const STRIDE = 10; // art, px, py, pz (m, relativ zur Kachelmitte auf Meereshöhe), skala, drehung, r, g, b, frei
+export const STRIDE = 10; // art, px, py, pz (m, relativ zur Kachelmitte auf Meereshöhe), skala, drehung, r, g, b, tiefer (m unter dem Boden)
 const RASTER = 20;        // 20×20 Kandidaten je Kachel
 const GRANIT_BASIS = [0.57, 0.545, 0.51];
 
@@ -95,13 +95,13 @@ export function streueKachel(k, planet) {
   const zelle = (s * R * Math.PI / 4) / M; // ~Abstand zweier Kandidaten (m)
   // 2) entscheiden
   const raus = [];
-  const ablegen = (dx, dy, dz, hh, art, skala, r, g, b) => {
+  const ablegen = (dx, dy, dz, hh, art, skala, r, g, b, tiefer = 0) => {
     const rr = R + hh;
-    raus.push(art, dx * rr - cx, dy * rr - cy, dz * rr - cz, skala, z() * Math.PI * 2, r, g, b, 0);
+    raus.push(art, dx * rr - cx, dy * rr - cy, dz * rr - cz, skala, z() * Math.PI * 2, r, g, b, tiefer);
   };
   const setze = (c, art, skala, r = 1, g = 1, b = 1, tiefer = 0) => {
     const p = P[c], wasserArt = art === A.forelle || art === A.barsch || art === A.seerose;
-    ablegen(D[c * 3], D[c * 3 + 1], D[c * 3 + 2], (wasserArt ? p.wasser : p.h) - tiefer, art, skala, r, g, b);
+    ablegen(D[c * 3], D[c * 3 + 1], D[c * 3 + 2], (wasserArt ? p.wasser : p.h) - tiefer, art, skala, r, g, b, tiefer);
   };
   const hAt = (i, j) => P[Math.min(M - 1, Math.max(0, j)) * M + Math.min(M - 1, Math.max(0, i))].h;
   for (let j = 0; j < M; j++) for (let i = 0; i < M; i++) {
@@ -179,7 +179,7 @@ export function streueKachel(k, planet) {
       wuerfelZuKugel(k.f, u0 + (s * fi) / M, v0 + (s * fj) / M, dir);
       const l = Math.hypot(dir[0], dir[1], dir[2]);
       const t = 0.85 + 0.3 * z();
-      ablegen(dir[0] / l, dir[1] / l, dir[2] / l, hh - 0.08, A.grasbueschel, 0.8 + 0.7 * z(), gr * t, t, gb * t);
+      ablegen(dir[0] / l, dir[1] / l, dir[2] / l, hh - 0.08, A.grasbueschel, 0.8 + 0.7 * z(), gr * t, t, gb * t, 0.08);
     }
   }
   return { key: k.key, mitte: [cx, cy, cz], daten: new Float32Array(raus), anzahl: raus.length / STRIDE };

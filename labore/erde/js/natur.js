@@ -133,7 +133,9 @@ const KEINE = [0, 0, 0];   // ueberZone: immer sichtbar
 const strHash = (t) => { let h = 2166136261; for (let i = 0; i < t.length; i++) h = Math.imul(h ^ t.charCodeAt(i), 16777619); return h >>> 0; };
 
 /** istWeg(kachelKey, index) → true: Stück wurde entfernt (gefällt, abgebaut, ausgegraben). */
-export function createNatur(scene, { istWeg = () => false, renderer = null } = {}) {
+// bodenRadius(dx,dy,dz) → Radius (m) des gezeichneten Bodens oder NaN: setzt jedes Stück genau aufs sichtbare Gelände-Netz
+// (sonst stecken Pflanzen an Klippen/Böschungen im Boden oder schweben, weil das Netz gröber ist als die echte Höhe).
+export function createNatur(scene, { istWeg = () => false, renderer = null, bodenRadius = null } = {}) {
   const gruppe = new THREE.Group();
   scene.add(gruppe);
   const wind = { kwZeit: { value: 0 }, kwStaerke: { value: 1 }, kwRicht: { value: new THREE.Vector3(1, 0.3, 0.6).normalize() }, kwCam: { value: new THREE.Vector3() } };
@@ -330,7 +332,12 @@ export function createNatur(scene, { istWeg = () => false, renderer = null } = {
         for (let i = 0; i < k.anzahl; i++) {
           if (istWeg(k.key, i)) continue;
           const o = i * STRIDE, art = STREU_ARTEN[d[o]], cfg = CFG[art];
-          const ax = mx + d[o + 1], ay = my + d[o + 2], az = mz + d[o + 3];
+          let ax = mx + d[o + 1], ay = my + d[o + 2], az = mz + d[o + 3];
+          if (bodenRadius && !FISCH.has(art) && art !== 'seerose') {
+            const r = Math.hypot(ax, ay, az), rb = bodenRadius(ax / r, ay / r, az / r);
+            const dr = rb - d[o + 9] - r;   // > 0: Netz liegt höher (Stück steckt drin) · < 0: Netz tiefer (Stück schwebt)
+            if (dr > -8 && dr < 8) { const f = (r + dr) / r; ax *= f; ay *= f; az *= f; }
+          }
           const ab = Math.hypot(ax - cam.x, ay - cam.y, az - cam.z) / weiteF;
           // Fester Zufall je Stück (Kachel + Nummer): Variante und Ausdünnen ändern sich nicht, wenn andere Kacheln dazukommen
           const zuf = (Math.imul(kh ^ Math.imul(i + 1, 0x9e3779b1), 0x85ebca6b) >>> 0) / 4294967296;
@@ -426,6 +433,15 @@ export function createNatur(scene, { istWeg = () => false, renderer = null } = {
     }
     return best;
   }
+  /** Alle kleinen Stücke (Gras, Blumen, Pilze, Steinchen; r ≤ rMax) im Umkreis um p (Graben/Aufschütten räumt sie mit weg). */
+  function kleineIm(p, umkreis, rMax = 0.5) {
+    const raus = [];
+    for (const o of nahe) {
+      if (o.r > rMax || o.fest) continue;
+      if (Math.hypot(p.x - o.x, p.y - o.y, p.z - o.z) < umkreis + o.r) raus.push(o);
+    }
+    return raus;
+  }
   /** Wind: staerke 0 (still) … 2 (Sturm), richtung = Weltvektor (wird je Pflanze in den Boden gelegt). */
   function setzeWind(staerke, richtung) { wind.kwStaerke.value = staerke; wind.kwRicht.value.copy(richtung); }
 
@@ -438,7 +454,7 @@ export function createNatur(scene, { istWeg = () => false, renderer = null } = {
 
   /** Sichtweiten-Faktor (Grafik-Stufe), 0.5 … 1 */
   function setzeWeite(f) { weiteF = f; schmutzig = true; for (const m of materialien.values()) { if (m.userData.u) m.userData.u.kwWeite.value = m.userData.weite * f; } }
-  return { update, naheHindernisse, finde, setzeWind, setzeWeite, neu: () => { schmutzig = true; }, dispose, get info() {
+  return { update, naheHindernisse, finde, kleineIm, setzeWind, setzeWeite, neu: () => { schmutzig = true; }, dispose, get info() {
     const top = [...teuer].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([a, n]) => `${a} ${Math.round(n / 1000)}k`).join(', ');
     return { anzahl, dreiecke: Math.round(dreiecke), top };
   } };

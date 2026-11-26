@@ -181,3 +181,26 @@ test('Seen sind flach (Spiegel steigt nicht am Ufer hoch); Fernwald-Punkte stehe
   }
   assert.ok(punkte >= 0);
 });
+
+test('Boden-Netz: findet die sichtbare Kachel und liefert genau die gezeichnete Höhe (Eckpunkte exakt, dazwischen im Dreieck)', async () => {
+  const { createBodenNetz, kugelZuWuerfel } = await import('../labore/erde/js/boden-netz.js');
+  const planet = createPlanetHoehe({ seed: 5, radius: R, geo, G });
+  const k = { f: 2, L: 9, ix: 200, iy: 311 }, N = 8;
+  const d = baueKachel({ ...k, key: schluessel(k) }, planet, N);
+  const M = N + 1, radien = new Float32Array(M * M);
+  for (let v = 0; v < M * M; v++) radien[v] = Math.hypot(d.pos[v * 3] + d.mitte[0], d.pos[v * 3 + 1] + d.mitte[1], d.pos[v * 3 + 2] + d.mitte[2]);
+  const netz = createBodenNetz({ N });
+  netz.setze(schluessel(k), k, radien, null);
+  const s = 2 / (1 << k.L), u0 = -1 + k.ix * s, v0 = -1 + k.iy * s, p = [0, 0, 0];
+  for (const [i, j] of [[1, 1], [3, 5], [7, 7], [7, 2]]) {   // Eckpunkte (innen): exakt
+    wuerfelZuKugel(k.f, u0 + s * i / N, v0 + s * j / N, p);
+    const l = Math.hypot(...p), w = kugelZuWuerfel(p[0] / l, p[1] / l, p[2] / l);
+    assert.equal(w.f, k.f);
+    assert.ok(Math.abs(netz.radius(p[0] / l, p[1] / l, p[2] / l) - radien[j * M + i]) < 0.01);
+  }
+  wuerfelZuKugel(k.f, u0 + s * 3.5 / N, v0 + s * 3.5 / N, p);           // Zellmitte: zwischen den Ecken
+  const l = Math.hypot(...p), r = netz.radius(p[0] / l, p[1] / l, p[2] / l);
+  const ecken = [3 * M + 3, 3 * M + 4, 4 * M + 3, 4 * M + 4].map((x) => radien[x]);
+  assert.ok(r >= Math.min(...ecken) - 0.01 && r <= Math.max(...ecken) + 0.01);
+  assert.ok(Number.isNaN(netz.radius(-p[0] / l, -p[1] / l, -p[2] / l)));     // keine Kachel → NaN
+});

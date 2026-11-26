@@ -28,6 +28,7 @@ import { createVulkanRauch } from './vulkan-rauch.js';
 import { createWolken } from './wolken.js';
 import { WERKZEUGE } from './herstellen-daten.js';
 import { createFernSchatten } from './fernschatten.js';
+import { createBodenNetz } from './boden-netz.js';
 
 const P = new URLSearchParams(location.search);
 const SEED = +(P.get('seed') || 7);
@@ -144,43 +145,50 @@ if (wT > 0.01) {
   normal = normalize((viewMatrix * vec4(nW, 0.0)).xyz);
 }`)
     .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
-{ // Nahdetail Land: Körnung, Grasflecken, Steine, Schichten am Hang, Bump – nur nah (<45 m), nie auf Wasser/Schaum/Lava
-  float bD = length(vViewPosition);
-  // kamerarelative Weltlage (klein, genau) + Versatz aus JS → kein Wackeln beim Laufen
-  vec3 bRel = transpose(mat3(viewMatrix)) * (-vViewPosition);
-  vec3 bP = bRel + bodenVers.xyz;
-  // Pixelgröße am Boden (m): feine Oktaven ausblenden, sobald ihre Zellen kleiner als ~1 Pixel werden (sonst Flimmern)
+{ // Boden-Detail (Land): großflächige Farbflecken, Erdstellen, Körnung, Felsstruktur, Bump.
+  // An die WELT geheftet: vRelW (Lage relativ zum Spieler) + Versatz aus JS – nicht an die Kamera (sonst rutscht das Muster
+  // mit Kopfwippen/3.-Person-Kamera mit). Jede Wellenlänge blendet aus, sobald sie kleiner als ~3 Pixel wird (kein Flimmern).
+  vec3 bP = vRelW + bodenVers.xyz;
   vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition);
-  float bPix = max(length(dpx), length(dpy));
-  float bAA2 = 1.0 - smoothstep(0.3, 0.8, bPix * 2.0), bAA8 = 1.0 - smoothstep(0.3, 0.8, bPix * 8.0), bAA32 = 1.0 - smoothstep(0.3, 0.8, bPix * 32.0);
-  float bNah = (1.0 - smoothstep(14.0, 45.0, bD)) * (1.0 - wT) * (1.0 - wSchaum) * (1.0 - smoothstep(0.55, 0.72, diffuseColor.r - diffuseColor.b));
-  if (bNah > 0.01) {
-    float n1 = bRausch(bP, 0.5);
-    float n2 = mix(0.5, bRausch(bP, 2.0), bAA2), n3 = mix(0.5, bRausch(bP, 8.0), bAA8);
-    float bKorn = (1.0 - smoothstep(4.0, 16.0, bD)) * bAA32;
-    float n4 = bKorn > 0.01 ? bRausch(bP, 32.0) : 0.5;
+  float bPix = max(max(length(dpx), length(dpy)), 1e-4);
+  float bLand = (1.0 - wT) * (1.0 - wSchaum) * (1.0 - smoothstep(0.55, 0.72, diffuseColor.r - diffuseColor.b));
+  if (bLand > 0.01) {
+    vec3 nW = normalize(transpose(mat3(viewMatrix)) * normal);
+    float bSteil = 1.0 - dot(nW, vObenW);
     vec3 c = diffuseColor.rgb;
     float sat = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
-    float gras = smoothstep(0.0, 0.05, c.g - max(c.r, c.b));
-    float fels = 1.0 - smoothstep(0.05, 0.16, sat);
-    float hoehe = n2 * 0.55 + n3 * 0.3 + n4 * 0.15 * bKorn;
-    float fleck = (n1 - 0.5) * 0.3 + (n2 - 0.5) * 0.28 + (n3 - 0.5) * 0.2 + (n4 - 0.5) * 0.22 * bKorn;
-    c *= 1.0 + fleck;
-    c = mix(c, c * vec3(1.18, 1.08, 0.66), gras * smoothstep(0.5, 0.72, n1) * 0.8);   // trockene Grasflecken
-    c = mix(c, c * vec3(0.78, 0.95, 0.8), gras * smoothstep(0.55, 0.3, n2) * 0.6);    // dunkle Büschel
-    float sW = 0.03 + bPix * 0.6;   // Kieselrand je nach Pixelgröße weicher → keine flimmernden Pixel-Linien
-    float stein = smoothstep(0.71 - sW, 0.71 + sW, n3 * 0.7 + n2 * 0.3 + 0.04) * (1.0 - gras * 0.7) * bAA8;
-    c = mix(c, vec3(dot(c, vec3(0.33))) * vec3(1.15, 1.1, 1.0) * (0.8 + 0.5 * n4), stein * (0.25 + 0.5 * fels));   // Kiesel
-    hoehe += stein * 0.3;
-    // steile Hänge: Gesteinsschichten (konzentrisch zum Planeten = waagrecht), grauer
-    float bSteil = 1.0 - dot(normalize(transpose(mat3(viewMatrix)) * normal), vObenW);
-    float fHang = smoothstep(0.12, 0.32, bSteil);
-    float schicht = 0.5 + 0.5 * sin((dot(bRel, vObenW) + bodenVers.w) * 11.0 + 4.0 * n1 + 2.0 * n2);
-    c = mix(c, mix(c, vec3(dot(c, vec3(0.33))) * vec3(1.05, 0.98, 0.9), 0.55) * (0.72 + 0.5 * schicht), fHang);
-    diffuseColor.rgb = mix(diffuseColor.rgb, c, bNah);
-    // Bump: Höhenfeld (cm) per Bildschirmableitung in die Normale
+    float gras = smoothstep(-0.03, 0.03, c.g - c.r) * smoothstep(0.03, 0.1, c.g - c.b);
+    float fels = max(1.0 - smoothstep(0.05, 0.15, sat), smoothstep(0.3, 0.55, bSteil) * (1.0 - gras * 0.5));
+    float a32 = 1.0 - smoothstep(0.08, 0.3, bPix / 32.0), a8 = 1.0 - smoothstep(0.08, 0.3, bPix / 8.0);
+    float a4 = 1.0 - smoothstep(0.1, 0.35, bPix / 4.0), a1 = 1.0 - smoothstep(0.1, 0.35, bPix / 1.0);
+    float a05 = 1.0 - smoothstep(0.1, 0.35, bPix / 0.5), a012 = 1.0 - smoothstep(0.1, 0.35, bPix / 0.125);
+    float m1 = mix(0.5, bRausch(bP, 1.0 / 32.0), a32);
+    float m2 = a8 > 0.01 ? mix(0.5, bRausch(bP, 0.125), a8) : 0.5;
+    float e1 = a4 > 0.01 ? mix(0.5, bRausch(bP, 0.25), a4) : 0.5;
+    float g1 = a1 > 0.01 ? mix(0.5, bRausch(bP, 1.0), a1) : 0.5;
+    float g2 = a05 > 0.01 ? mix(0.5, bRausch(bP, 2.0), a05) : 0.5;
+    float g3 = a012 > 0.01 ? mix(0.5, bRausch(bP, 8.0), a012) : 0.5;
+    // 1) großflächig: hell/dunkel + Gras mal trocken-gelblich, mal satt-grün
+    c *= 1.0 + (m1 - 0.5) * 0.26 + (m2 - 0.5) * 0.18;
+    c = mix(c, c * vec3(1.13, 1.06, 0.72), gras * smoothstep(0.55, 0.8, m1) * 0.7);
+    c = mix(c, c * vec3(0.8, 1.02, 0.84), gras * smoothstep(0.45, 0.2, m2) * 0.55);
+    // 2) offene Erde: weiche Flecken (kein harter Rand), an Hängen öfter
+    float erde = smoothstep(0.6, 0.8, e1 * 0.55 + m2 * 0.45 + 0.12 * smoothstep(0.1, 0.35, bSteil)) * (1.0 - fels) * (0.35 + 0.65 * gras);
+    c = mix(c, vec3(0.34, 0.27, 0.19) * (0.85 + 0.3 * m1), erde * 0.7);
+    // 3) Körnung: Halme/Krümel (Gras feiner und kontrastreicher, Erde gröber)
+    float korn = (g1 - 0.5) * 0.22 + (g2 - 0.5) * 0.28 + (g3 - 0.5) * (0.24 + 0.2 * gras);
+    c *= 1.0 + korn * (1.0 - 0.5 * fels);
+    // 4) Fels: Schichtbänder waagrecht (konzentrisch zum Planeten), Risse, gröbere Flecken – auf jede Entfernung
+    float hoeheW = dot(vRelW, vObenW) + bodenVers.w;
+    float band = 0.5 + 0.5 * sin(hoeheW * 1.7 + 5.0 * m2 + 2.0 * m1) * a1 + 0.25 * sin(hoeheW * 0.37 + 3.0 * m1) * a4;
+    float riss = a4 > 0.01 ? (1.0 - smoothstep(0.0, 0.05 + bPix * 0.3, abs(e1 - 0.5))) * a4 : 0.0;
+    vec3 fc = mix(c, vec3(dot(c, vec3(0.33))) * vec3(1.04, 1.0, 0.94), 0.45) * (0.78 + 0.34 * band) * (1.0 - 0.3 * riss);
+    c = mix(c, fc, fels);
+    diffuseColor.rgb = mix(diffuseColor.rgb, c, bLand);
+    // Bump: glattes Höhenfeld (cm) aus denselben Rauschen → keine Kantenlinien; per Bildschirmableitung in die Normale
+    float hoehe = m2 * 0.6 + e1 * 0.5 + g1 * 0.35 + g2 * 0.2 + g3 * 0.08 + fels * band * 0.6 - erde * 0.25;
     vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx); float det = dot(dpx, r1);
-    float hs = (0.07 + 0.08 * fHang * schicht) * bNah;
+    float hs = (0.05 + 0.1 * fels) * bLand * (1.0 - smoothstep(30.0, 90.0, length(vViewPosition)));
     vec2 dh = vec2(dFdx(hoehe), dFdy(hoehe)) * hs;
     normal = normalize(abs(det) * normal - sign(det) * (dh.x * r1 + dh.y * r2));
   }
@@ -201,7 +209,7 @@ if (wT > 0.01) {
   totalEmissiveRadiance += wHimmel * fr * (0.45 + 0.15 * uWasserQ) * wT;
 }`);
 };
-bodenMat.customProgramCacheKey = () => 'erde-boden-wasser-detail4';
+bodenMat.customProgramCacheKey = () => 'erde-boden-wasser-detail5';
 // Schattenbild der Kacheln: dieselbe Loch-Maske (sonst wirft der unsichtbare alte Boden Schatten in die Grube)
 const bodenTiefe = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
 bodenTiefe.onBeforeCompile = (sh) => {
@@ -281,7 +289,7 @@ function erzeuge(d) {
   m.receiveShadow = true;
   m.customDepthMaterial = bodenTiefe;
   m.castShadow = true;   // nah: feine Kacheln (Böschungen, Grubenränder); fern: Berge in die Fernschatten-Karte
-  m.userData = { mitte: d.mitte, L: d.L };
+  m.userData = { mitte: d.mitte, L: d.L, netz: netzDaten(d) };
   m.visible = false;
   if (d.baeume) {
     const g = new THREE.BufferGeometry();
@@ -297,8 +305,22 @@ function erzeuge(d) {
   welt.add(m);
   return m;
 }
-const zeige = (m, an) => { if (m) m.visible = an; };
-const entsorge = (m) => { welt.remove(m); m.geometry.dispose(); for (const c of m.children) c.geometry.dispose(); };
+// Boden-Netz: welche Kachel gerade gezeichnet wird → Natur sitzt genau auf dem sichtbaren Boden (boden-netz.js)
+const bodenNetz = createBodenNetz({ N: ZELLEN, maxStufe: MAX_STUFE });
+let netzNeu = false, netzT = 0;
+function netzDaten(d) {
+  const [f, L, ix, iy] = String(d.key).split('/').map(Number), M = ZELLEN + 1, radien = new Float32Array(M * M);
+  for (let v = 0; v < M * M; v++) radien[v] = Math.hypot(d.pos[v * 3] + d.mitte[0], d.pos[v * 3 + 1] + d.mitte[1], d.pos[v * 3 + 2] + d.mitte[2]);
+  return { key: d.key, k: { f, L, ix, iy }, radien, nass: d.nass.subarray(0, M * M) };
+}
+const zeige = (m, an) => {
+  if (!m) return;
+  m.visible = an;
+  const n = m.userData.netz;
+  if (an) bodenNetz.setze(n.key, n.k, n.radien, n.nass); else bodenNetz.weg(n.key);
+  netzNeu = true;
+};
+const entsorge = (m) => { bodenNetz.weg(m.userData.netz.key); welt.remove(m); m.geometry.dispose(); for (const c of m.children) c.geometry.dispose(); };
 
 // Worker-Pool; bei file:// oder Fehler: Bau im Hauptthread mit Zeitbudget
 const hauptQueue = [];
@@ -364,7 +386,7 @@ function streuen(wunsch) {
     for (const key of streuDa.keys()) if (!nah.has(key) && streuDa.size > 300) streuDa.delete(key);
   }
 }
-const natur = createNatur(scene, { istWeg: eingriffe.istWeg, renderer });
+const natur = createNatur(scene, { istWeg: eingriffe.istWeg, renderer, bodenRadius: bodenNetz.radius });
 
 // ---------- Zeit, Wetter, Inventar, Aktionen ----------
 const zw = createZeitWetter({ seed: SEED, zustand: stand?.zeit });
@@ -1029,6 +1051,8 @@ function bild() {
   const naturAn = hoeheBoden < 1200 && !stufenFarben;
   if (wahlT === 0 && naturAn) streuen(streuKacheln([cam.x, cam.y, cam.z], R, STREU_L, STREU_RADIUS));
   if (!worker.length) hauptBau(geladen ? 8 : 30);
+  netzT += dt;
+  if (netzNeu && netzT > 0.6) { netzNeu = false; netzT = 0; natur.neu(); }   // Kacheln verfeinert/neu → Natur neu aufs Netz setzen
   natur.update(cam, naturAn ? [...streuDa.values()] : [], jetzt / 1000, naturAn);
   voxel.update(cam);
 
