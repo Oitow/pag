@@ -2,11 +2,30 @@
 // Ergebnis: Typed Arrays, Lage relativ zum Kachel-Mittelpunkt auf Meereshöhe (genau genug für Float32).
 import { kachelUV, kachelMitte, wuerfelZuKugel } from './planet-baum.js';
 import { FELDER } from './planet-hoehe.js';
-import { waldDichte, nadelAnteil } from './klima.js';
+import { waldDichte, nadelAnteil, biom, BIOM } from './klima.js';
 import { rng, hashSeed } from '../../../engine/core/rng.js';
 const NF = FELDER.length, WI = FELDER.indexOf('wasser');
 
 export const ZELLEN = 32; // 33×33 Punkte je Kachel
+
+// Gras-Teppich: Grundmenge je Biom (0…1), wie die Gras-Büschel in natur-streu.js (GRAS / 4)
+const GRAS_BIOM = { [BIOM.TUNDRA]: 0.35, [BIOM.NADELWALD]: 0.3, [BIOM.MISCHWALD]: 0.55, [BIOM.LAUBWALD]: 0.45, [BIOM.GRASLAND]: 1,
+  [BIOM.STEPPE]: 0.75, [BIOM.WUESTE]: 0.04, [BIOM.SAVANNE]: 0.9, [BIOM.REGENWALD]: 0.4 };
+const gl01 = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+/** Gras am Punkt: [Menge 0…1, Trockenheit 0…1] (Shader: gras-teppich.js + Bodenfarbe). */
+export function grasAm(info, flach, out) {
+  if (info.wasser > info.h - 0.05 || (info.meer && info.h < 0.8) || info.lava > 0.05) { out[0] = 0; out[1] = 0; return out; }
+  const T = info.temp, F = info.feuchte;
+  let m = (GRAS_BIOM[biom(T, F)] || 0) * Math.min(1.15, 0.45 + 0.9 * F);
+  m *= gl01(0.7, 0.9, flach);                     // steile Hänge: Fels/Geröll statt Gras
+  m *= 1 - gl01(0.25, 0.55, info.vulkan);
+  m *= 1 - 0.6 * gl01(0.4, 0.9, info.ufer);       // Kiesufer
+  m *= 1 - gl01(0.6, 1.4, info.gebirge || 0) * gl01(900, 1800, info.h) * 0.8;   // Hochgebirge: karg
+  if (info.eingriff && Math.abs(info.eingriff) > 0.05) m = 0;   // gegraben/aufgeschüttet: nackte Erde
+  out[0] = Math.max(0, Math.min(1, m));
+  out[1] = Math.max(0, Math.min(1, gl01(0.4, 0.1, F) * 0.85 + gl01(22, 32, T) * 0.35 + gl01(4, -2, T) * 0.4));
+  return out;
+}
 
 export function baueKachel(k, planet, N = ZELLEN) {
   const R = planet.radius;
@@ -46,6 +65,7 @@ export function baueKachel(k, planet, N = ZELLEN) {
   // hohl: Gelände-Verdeckung (Ambient Occlusion) aus der Krümmung – Mulden, Täler, Hangfüße bekommen weniger Himmelslicht.
   // Rechnet nur mit dem schon vorhandenen Höhengitter (1 Punkt Rand → gleiche Werte an Kachelkanten), kostet fast nichts.
   const hohl = new Uint8Array(nv);
+  const gras = new Uint8Array(nv * 2), gw = [0, 0];   // Gras-Teppich: Menge, Trockenheit
   const farbe = [0, 0, 0], info = {};
   let v = 0;
   for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++, v++) {
@@ -73,6 +93,8 @@ export function baueKachel(k, planet, N = ZELLEN) {
     if (!istNass) for (const nb of [gl, gr, gu, go]) { const w = IF[nb * NF + WI]; if (w > spiegel) spiegel = w; }
     const tief = spiegel > -1e9 ? spiegel - info.h : -10;
     nass[v] = istNass ? Math.max(130, Math.min(255, Math.round(128 + tief * 40))) : Math.max(0, Math.min(126, Math.round(128 + tief * 40)));
+    grasAm(info, flach, gw);
+    gras[v * 2] = Math.round(gw[0] * 255); gras[v * 2 + 1] = Math.round(gw[1] * 255);
     planet.farbe(dx, dy, dz, info, flach, farbe);
     col[v * 3] = Math.min(255, farbe[0] * 255); col[v * 3 + 1] = Math.min(255, farbe[1] * 255); col[v * 3 + 2] = Math.min(255, farbe[2] * 255);
     if (istNass) { // Boden am Wasserspiegel: Sand am Meer, Kies am Fluss
@@ -99,7 +121,7 @@ export function baueKachel(k, planet, N = ZELLEN) {
     pos[v * 3 + 1] = pos[a * 3 + 1] - D[g * 3 + 1] * tiefe;
     pos[v * 3 + 2] = pos[a * 3 + 2] - D[g * 3 + 2] * tiefe;
     for (let c = 0; c < 3; c++) { nor[v * 3 + c] = nor[a * 3 + c]; col[v * 3 + c] = col[a * 3 + c] * 0.8; land[v * 3 + c] = land[a * 3 + c] * 0.8; }
-    nass[v] = nass[a]; hohl[v] = hohl[a];
+    nass[v] = nass[a]; hohl[v] = hohl[a]; gras[v * 2] = gras[a * 2]; gras[v * 2 + 1] = gras[a * 2 + 1];
   }
 
   const idx = new Uint16Array(N * N * 6 + rand * 6);
@@ -117,7 +139,7 @@ export function baueKachel(k, planet, N = ZELLEN) {
   }
 
   const baeume = fernBaeume(k, planet, N, M, P, D, IF, nor, kante, abstand, cx, cy, cz);
-  return { key: k.key, L: k.L, pos, nor, col, land, nass, hohl, idx, mitte: [cx, cy, cz], minH, maxH, kante, baeume };
+  return { key: k.key, L: k.L, pos, nor, col, land, nass, hohl, gras, idx, mitte: [cx, cy, cz], minH, maxH, kante, baeume };
 }
 
 // ---------- Fernwald: Bäume als Punkte (ein Eckpunkt je Baum, im Shader als Silhouette) ----------

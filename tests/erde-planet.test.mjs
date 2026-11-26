@@ -204,3 +204,17 @@ test('Boden-Netz: findet die sichtbare Kachel und liefert genau die gezeichnete 
   assert.ok(r >= Math.min(...ecken) - 0.01 && r <= Math.max(...ecken) + 0.01);
   assert.ok(Number.isNaN(netz.radius(-p[0] / l, -p[1] / l, -p[2] / l)));     // keine Kachel → NaN
 });
+
+test('Gras-Teppich: Menge je Ort – Wiese viel, Wüste kaum, Wasser/Steilhang/Grabstelle nichts; Kachel liefert 2 Werte je Punkt', async () => {
+  const { grasAm } = await import('../labore/erde/js/kachel-bau.js');
+  const basis = { h: 50, wasser: -Infinity, meer: 0, lava: 0, vulkan: 0, ufer: 0, gebirge: 0, eingriff: 0 };
+  const o = [0, 0];
+  const wiese = grasAm({ ...basis, temp: 14, feuchte: 0.55 }, 1, o)[0];
+  const wueste = grasAm({ ...basis, temp: 30, feuchte: 0.05 }, 1, o)[0];
+  assert.ok(wiese > 0.6 && wueste < 0.1, `wiese ${wiese} wüste ${wueste}`);
+  assert.equal(grasAm({ ...basis, temp: 14, feuchte: 0.55, wasser: 60 }, 1, o)[0], 0);
+  assert.equal(grasAm({ ...basis, temp: 14, feuchte: 0.55 }, 0.6, o)[0], 0);
+  assert.equal(grasAm({ ...basis, temp: 14, feuchte: 0.55, eingriff: -1 }, 1, o)[0], 0);
+  const d = baueKachel({ f: 2, L: 9, ix: 200, iy: 311, key: schluessel({ f: 2, L: 9, ix: 200, iy: 311 }) }, createPlanetHoehe({ seed: 5, radius: R, geo, G }), 8);
+  assert.equal(d.gras.length, (d.pos.length / 3) * 2);
+});

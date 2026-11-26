@@ -29,7 +29,9 @@ ${DUNST_GLSL}
 #endif`;
   C.fog_fragment = `#ifdef USE_FOG
 #ifdef FOG_EXP2
-float fogFactor = 1.0 - exp(-fogDensity * fogDensity * vFogDepth * vFogDepth);
+// Klare Luft: nur leichte Luftperspektive, die nie ganz zudeckt (Berge bleiben bis zum Horizont sichtbar).
+// Erst echter Wetter-Nebel/Regen (hohe Dichte) darf alles verschlucken.
+float fogFactor = (1.0 - exp(-fogDensity * vFogDepth)) * mix(0.42, 1.0, smoothstep(6e-5, 6e-4, fogDensity));
 #else
 float fogFactor = smoothstep(fogNear, fogFar, vFogDepth);
 #endif
@@ -50,6 +52,8 @@ export function aktualisiereDunst(o) {
   const daemmer = sm(hs, -0.15, 0.0) * (1 - sm(hs, 0.03, 0.35));
   fog.color.copy(himmel).lerp(_hell, 0.3 * tag * (1 - raum)).lerp(_warm, 0.25 * daemmer * (1 - raum));
   // Dichte: Grunddunst nimmt mit der Höhe ab (Tal dick, Berg dünn), Bodennebel morgens/abends tief unten
-  const grund = (0.45 + 0.55 * Math.exp(-Math.max(hoehe, 0) / 1800)) * (1 + 1.4 * daemmer * Math.exp(-Math.max(hoehe, 0) / 250));
-  fog.density = (1 - raum) * (3.4 / (R * 0.35) * grund + W.nebel * 0.006 + (W.regen + W.schnee) * 0.0012);
+  // Dichte (Kehrwert = Sichtweite-Maß in m, EXP linear): klar ~60 km → nur ein Hauch Blau auf fernen Bergen.
+  // Wetter: Nebel ~170 m, Regen/Schnee ~1–2 km. Dämmerung: nur leichter Bodendunst ganz unten.
+  const grund = (0.6 + 0.4 * Math.exp(-Math.max(hoehe, 0) / 1800)) * (1 + 0.6 * daemmer * Math.exp(-Math.max(hoehe, 0) / 250));
+  fog.density = (1 - raum) * ((1 / 60000) * (R / 100000) ** -0.5 * grund + W.nebel * 0.006 + (W.regen + W.schnee) * 0.0007 + W.wolken * W.wolken * 0.00004);
 }

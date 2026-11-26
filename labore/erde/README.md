@@ -2,7 +2,7 @@
 
 Erfundener Planet (Standard R = 100 km) vom Orbit bis zum Boden, zu Fuß begehbar, mit Geologie, Klima, Wetter, Natur und Graben.
 Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Baum-Galerie: `labore/erde/baeume.html` (`?art=eiche`, `?zeit=herbst`, `?nah=1`) · Sprungmarken `?ort=orbit|berg|kueste|strand|boden|himmel|fluss|ufer|see|vulkan|krater|wald|tafel|biom0…9|gestein0…4`
-· Testschalter `?grafik=Niedrig|Mittel|Hoch|Ultra`, `?test=1` (kein Spielstand), `?hunger=0.2`, `?tasche=voll`, `?herstellen=offen`, `?bautest=1`, `?tiere=test|aus`, `?ueberleben=aus`, `?schmiedetest=1`, `?gleiter=1&flug=1` (300 m) / `&flug=800`, `?tagebuch=offen|aus`, `?feldtest=1`, `?wetter=regen|schnee|gewitter|nebel|sturm|klar`, `?uhr=19` (Ortszeit), `?seed=`, `?r=` (km), `?neu=1`.
+· Testschalter `?grafik=Niedrig|Mittel|Hoch|Ultra`, `?gras=0…4`, `?nei=-12` (Blick-Neigung °), `?info=kurz|aus`, `?ton=aus`, `?belichtung=1.3`, `?test=1` (kein Spielstand), `?hunger=0.2`, `?tasche=voll`, `?herstellen=offen`, `?bautest=1`, `?tiere=test|aus`, `?ueberleben=aus`, `?schmiedetest=1`, `?gleiter=1&flug=1` (300 m) / `&flug=800`, `?tagebuch=offen|aus`, `?feldtest=1`, `?wetter=regen|schnee|gewitter|nebel|sturm|klar`, `?uhr=19` (Ortszeit), `?seed=`, `?r=` (km), `?neu=1`.
 
 ## Module (`js/`, reine Logik ohne THREE wo möglich → Tests in `tests/erde-*.test.mjs`)
 | Datei | Aufgabe |
@@ -19,6 +19,7 @@ Ausprobieren: `https://oitow.github.io/pag/labore/erde/` · Baum-Galerie: `labor
 | `planet-hoehe.js` | Höhe/Wasser/Farbe an jedem Punkt (Geologie + feines Rauschen + Flussbetten + Eingriffe) |
 | `planet-baum.js`, `kachel-bau.js`, `kachel-strom.js`, `kachel-worker.js` | Würfel-Kugel-Quadtree, Kachelbau im Worker, nahtloser Austausch |
 | `natur-streu.js` → `natur.js` | Natur je 80-m-Kachel streuen (Worker) → InstancedMesh, Wind, nah/mittel/fern. Laubbäume + Kiefer/Pinie aus `engine/models/natur/astbaum.js` (echte Äste, Zweige, Blätter): nah bis 16 m (~5k △), nah bis 25 m, mittel bis 50 m, weit bis 90 m; fern **Impostor** (`engine/render/baum-impostor.js`: Foto des nahen Modells aus 8 Richtungen, 2 △ je Baum, alle Baumarten) |
+| `gras-teppich.js` | **Gras überall** auf der Grafikkarte: Höhenkarte der gezeichneten Kacheln (Ebene 5, alle ~20 m neu) → Halme in 2–3 Ringen um die Kamera (weltfestes Raster, Wind, Gegenlicht, Schatten), kein Gras im Wasser/in Gruben/an Steilhängen; Menge/Trockenheit je Punkt aus `kachel-bau.js` (`grasAm`). Regler „Gras“ aus…sehr viel, `?gras=0…4` |
 | `zeit-wetter.js` | Uhr (engine `zeit`), Wetter (engine `wetter`), Regen/Schnee (engine `niederschlag`) auf der Kugel |
 | `planet.js` | Seite: Steuerung, Kamera, Himmel, Sonnenschatten, Mond, Grafik-Stufe, HUD, Karte |
 | `erweiterungen.js` | Andock-Stelle für Spiel-Module (Vertrag oben in der Datei); Plan: `docs/plaene/ERDE-UEBERLEBEN.md` |

@@ -3,6 +3,7 @@
 > Wird von `/ende` überschrieben und von `/start` gelesen. Höchstens 35 Zeilen. Dauerhafte Festlegungen: `docs/ENTSCHEIDUNGEN.md`.
 
 ## Zuletzt gemacht
+- **Wildgrund Sicht + Gras (26.11. nachmittags)**: kein Dunst-Schleier mehr bei klarem Wetter (Luftperspektive gedeckelt, Nebel nur bei Wetter), Ruckeln beim Hinunterfliegen behoben (Natur rechnete bei jedem Neuaufbau alle Stücke aufs Netz um; Bergschatten jedes Bild neu), Gras-Teppich auf der GPU (`labore/erde/js/gras-teppich.js`, Regler „Gras“), Boden unter Gras grüner, filmische Tonwerte (ACES), Himmelslicht in Himmelsfarbe
 - **Wildgrund Boden (26.11. mittags)**: Natur sitzt jetzt genau auf dem gezeichneten Gelände-Netz (`labore/erde/js/boden-netz.js`, nichts steckt mehr im Boden/schwebt), Bodentextur neu (an die Welt geheftet statt an die Kamera → rutscht nicht mehr, keine Wurm-Linien, Fels-Schichten auf jede Entfernung), Graben/Aufschütten räumt Gras im Umkreis mit weg
 - **Wildgrund Welt-Fundament (26.11.)**: Bergschatten (`labore/erde/js/fernschatten.js`, ±1,6 km), Gelände-AO, Grafik-Stufen Niedrig/Mittel/Hoch/Ultra + Fenster „Grafik ⚙“ mit Einzelreglern, Wasser-Kräusel; Topografie: Tafelberge/Schluchten, Küstenklippen, Kare, Felsbänder, Schutthalden (`?ort=tafel`)
 - **Erde-Labor wird ein Spiel (Nacht 24./25.11.)**: Andock-Stelle `labore/erde/js/erweiterungen.js` + Module Überleben (Hunger, Durst, Wärme, Tod), Herstellen (14+ Rezepte, Kleidung), Bauen (Fundament/Wand/Dach/Treppe/Lagerfeuer/Werkbank, Einrasten, Kollision, draufstehen), Tiere (Reh, Hase, Keiler, Wolf; Jagd), Gleiter, Felder, Schmelze/Eisen, Tagebuch – Plan `docs/plaene/ERDE-UEBERLEBEN.md`. Welt: Vulkane mit Krater/Lava/Rauch, Wolkendecke, Dünen, Küste ohne Wasserzacken, Fernwald ohne Krümel
@@ -15,6 +16,7 @@
 - Vorher: Erlenwacht wird ein MMO (Klassen, Stufen, Beute, Gegner + Boss, Tutorial, Chat/Menü, Welt v2), siehe `docs/plaene/ERLENWACHT-MMO-PLAN.md`
 
 ## Läuft / kaputt
+- Erde Gras 26.11.: Erde-Tests grün, Bilder Wiese/Ufer/Küste ohne Konsolenfehler. NICHT geprüft: echte Bildrate am Handy (Gras Mittel ≈ 150k, Hoch ≈ 700k Dreiecke max.), Fliegen von oben nach unten am echten Gerät
 - Erde-Welt 26.11.: Tests grün, Bilder (Küste/Mittel, Fluss/Hoch) ohne Konsolenfehler. NICHT geprüft: echtes Handy (Bildrate mit Bergschatten), Ultra-Stufe, Stufenkanten der Tafelberge beim LOD-Wechsel (können ~10 m springen)
 - Erde: Bilder aller neuen Teile angesehen, `tests/erde-*` grün, Smoke ok. NICHT geprüft: echtes Handy (Bildrate mit Tieren/Wolken/Bauteilen, Touch in Bau-Leiste/Fenstern), lange Spielsitzung am Stück
 - Dorf: Bilder angesehen (Platz, Südtor, Brücke, Nacht, Bach im Wald, Strandmündung), 852 Engine-Tests grün, Smoke erlenwacht/testfeld ok. NICHT geprüft: Dorf-Tutorial am Stück, Schrein-Wiedererscheinen, Bildrate Gras am Handy (`?gras=0` schaltet ab)

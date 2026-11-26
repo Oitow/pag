@@ -15,6 +15,7 @@ import { baueAstbaum, baueAstbaumFern, kannAstbaum } from '../../../engine/model
 import { createBaumImpostor } from '../../../engine/render/baum-impostor.js';
 import { UEBER_ZONE_VERT_KOPF, UEBER_FRAG_KOPF, UEBER_FRAG, ueberZone } from '../../../engine/render/ueberblenden.js';
 import { STREU_ARTEN, STRIDE } from './natur-streu.js';
+import { kugelZuWuerfel } from './boden-netz.js';
 
 const FUNDUS = new Set(['fichte', 'birke', 'granitblock', 'schiefer', 'rohrkolben', 'seerose', 'steinpilz', 'forelle', 'barsch']);
 // Astbäume (engine astbaum): echte Äste + Blätter; Fichte/Birke kommen weiter aus dem Naturfundus
@@ -135,7 +136,9 @@ const strHash = (t) => { let h = 2166136261; for (let i = 0; i < t.length; i++) 
 /** istWeg(kachelKey, index) → true: Stück wurde entfernt (gefällt, abgebaut, ausgegraben). */
 // bodenRadius(dx,dy,dz) → Radius (m) des gezeichneten Bodens oder NaN: setzt jedes Stück genau aufs sichtbare Gelände-Netz
 // (sonst stecken Pflanzen an Klippen/Böschungen im Boden oder schweben, weil das Netz gröber ist als die echte Höhe).
-export function createNatur(scene, { istWeg = () => false, renderer = null, bodenRadius = null } = {}) {
+// bodenNetz (boden-netz.js) statt bodenRadius: Würfellage je Stück wird einmal gemerkt, Höhe nur neu, wenn sich das Netz ändert
+// (vorher: bei jedem Neuaufbau für ALLE Stücke Newton + Text-Schlüssel → 10 fps beim Hinunterfliegen).
+export function createNatur(scene, { istWeg = () => false, renderer = null, bodenRadius = null, bodenNetz = null } = {}) {
   const gruppe = new THREE.Group();
   scene.add(gruppe);
   const wind = { kwZeit: { value: 0 }, kwStaerke: { value: 1 }, kwRicht: { value: new THREE.Vector3(1, 0.3, 0.6).normalize() }, kwCam: { value: new THREE.Vector3() } };
@@ -311,20 +314,48 @@ export function createNatur(scene, { istWeg = () => false, renderer = null, bode
     return m4.compose(pos, q, skal);
   }
 
-  /** Neu aufbauen, wenn neue Streu-Kacheln da sind oder die Kamera > NEU_AB m weiter ist. kacheln = [{mitte, daten, anzahl}]. */
-  function update(cam, kacheln, zeit, aktiv) {
+  // Netz-Höhe je Stück merken: Würfellage (fest) + Abstand zum Netz (neu, wenn bodenNetz.stand sich ändert)
+  const netzSpeicher = new Map();
+  const wue = { f: 0, u: 0, v: 0 };
+  function netzKorrektur(k, i, ax, ay, az, r, tiefer) {
+    let c = netzSpeicher.get(k.key);
+    if (!c || c.daten !== k.daten) {
+      c = { daten: k.daten, f: new Int8Array(k.anzahl).fill(-1), u: new Float32Array(k.anzahl), v: new Float32Array(k.anzahl), dr: new Float32Array(k.anzahl), stand: new Int32Array(k.anzahl).fill(-1) };
+      netzSpeicher.set(k.key, c);
+    }
+    c.benutzt = bauNr;
+    if (c.f[i] < 0) { kugelZuWuerfel(ax / r, ay / r, az / r, wue); c.f[i] = wue.f; c.u[i] = wue.u; c.v[i] = wue.v; }
+    const st = bodenNetz.stand;
+    if (c.stand[i] !== st) {
+      const rb = bodenNetz.radiusUV(c.f[i], c.u[i], c.v[i]);
+      const dr = rb - tiefer - r;   // > 0: Netz liegt höher (Stück steckt drin) · < 0: Netz tiefer (Stück schwebt)
+      c.dr[i] = dr > -8 && dr < 8 ? dr : 0;
+      c.stand[i] = st;
+    }
+    return c.dr[i];
+  }
+  // Weiteste Sichtweite je Art (m, ohne Grafik-Faktor): alles darüber wird gar nicht erst angefasst
+  const maxSicht = (cfg) => cfg._max ?? (cfg._max = Math.max(cfg.nah || 0, cfg.mittel || 0, cfg.weit || 0, cfg.fern || 0) * 1.06 + 2);
+  let bauNr = 0, bauZeit = -1e9;
+
+  /** Neu aufbauen, wenn neue Streu-Kacheln da sind oder die Kamera > NEU_AB m weiter ist. kacheln = [{mitte, daten, anzahl}].
+   *  hoehe = Kamera über Boden (m): hoch oben reicht seltener Neuaufbau (nichts ist nah). */
+  function update(cam, kacheln, zeit, aktiv, hoehe = 0) {
     gruppe.visible = aktiv;
     if (!aktiv) return;
     wind.kwZeit.value = zeit;
     wind.kwCam.value.copy(cam);
-    if (schmutzig || cam.distanceTo(letzteKamera) > NEU_AB) {
+    const neuAb = NEU_AB + Math.max(0, hoehe - 4) * 0.3;
+    // neue Kacheln: höchstens alle paar Bilder (beim Fliegen kommen sie im Sekundentakt) – Bewegung zählt sofort
+    if ((schmutzig && zeit - bauZeit > 0.25) || cam.distanceTo(letzteKamera) > neuAb) {
       schmutzig = false;
+      bauZeit = zeit; bauNr++;
       letzteKamera.copy(cam);
       anker.copy(cam);
       for (const t of toepfe) t.n = 0;
       const wahl = [];
       fische = []; hindernisse = []; nahe = [];
-      const M = (NEU_AB + 1) / weiteF;   // so weit kann die Kamera bis zum nächsten Neuaufbau laufen → beide Stufen schon bereit
+      const M = (neuAb + 1) / weiteF;   // so weit kann die Kamera bis zum nächsten Neuaufbau laufen → beide Stufen schon bereit
       for (const k of kacheln) {
         const d = k.daten, [mx, my, mz] = k.mitte;
         let kh = kachelHash.get(k.key);
@@ -333,10 +364,13 @@ export function createNatur(scene, { istWeg = () => false, renderer = null, bode
           if (istWeg(k.key, i)) continue;
           const o = i * STRIDE, art = STREU_ARTEN[d[o]], cfg = CFG[art];
           let ax = mx + d[o + 1], ay = my + d[o + 2], az = mz + d[o + 3];
-          if (bodenRadius && !FISCH.has(art) && art !== 'seerose') {
-            const r = Math.hypot(ax, ay, az), rb = bodenRadius(ax / r, ay / r, az / r);
-            const dr = rb - d[o + 9] - r;   // > 0: Netz liegt höher (Stück steckt drin) · < 0: Netz tiefer (Stück schwebt)
-            if (dr > -8 && dr < 8) { const f = (r + dr) / r; ax *= f; ay *= f; az *= f; }
+          if (Math.hypot(ax - cam.x, ay - cam.y, az - cam.z) / weiteF > maxSicht(cfg) + M + 8) continue;   // zu weit: gar nicht erst anfassen
+          if ((bodenNetz || bodenRadius) && !FISCH.has(art) && art !== 'seerose') {
+            const r = Math.hypot(ax, ay, az);
+            let dr;
+            if (bodenNetz) dr = netzKorrektur(k, i, ax, ay, az, r, d[o + 9]);
+            else { dr = bodenRadius(ax / r, ay / r, az / r) - d[o + 9] - r; if (!(dr > -8 && dr < 8)) dr = 0; }
+            if (dr) { const f = (r + dr) / r; ax *= f; ay *= f; az *= f; }
           }
           const ab = Math.hypot(ax - cam.x, ay - cam.y, az - cam.z) / weiteF;
           // Fester Zufall je Stück (Kachel + Nummer): Variante und Ausdünnen ändern sich nicht, wenn andere Kacheln dazukommen
@@ -378,6 +412,7 @@ export function createNatur(scene, { istWeg = () => false, renderer = null, bode
           if (cfg.kolli && ab < 60) hindernisse.push({ x: ax, y: ay, z: az, r: cfg.kolli * d[o + 4] });
         }
       }
+      if (netzSpeicher.size > kacheln.length + 16) for (const [key, c] of netzSpeicher) if (c.benutzt !== bauNr) netzSpeicher.delete(key);
       for (const t of toepfe) { kapazitaet(t, t.n); t.mesh.count = 0; }
       dreiecke = 0; anzahl = 0; teuer.clear();
       for (let w = 0; w < wahl.length; w += 7) {

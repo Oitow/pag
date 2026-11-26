@@ -67,7 +67,8 @@ export function createFernSchatten({ renderer }) {
     uhr += dt;
     if (!groesse || !an) { licht.shadow.intensity = 0; return; }
     licht.shadow.intensity = staerke;
-    const neu = !hatKarte || uhr > 1.5 || cam.distanceTo(C0) > 120 || sonne.dot(S0) < 0.99998;
+    // beim schnellen Fliegen nicht jedes Bild neu (ganze Welt in 2048²): Abstand/Sonne lösen höchstens alle 0,35 s aus
+    const neu = !hatKarte || uhr > 1.5 || ((cam.distanceTo(C0) > 120 || sonne.dot(S0) < 0.99998) && uhr > 0.35);
     if (neu) {
       // Kasten um die Kamera, in Texelschritten der Sonnenebene eingerastet (kein Flimmern an Kanten)
       u.set(0, 1, 0).cross(sonne); if (u.lengthSq() < 1e-6) u.set(1, 0, 0).cross(sonne); u.normalize();

@@ -29,6 +29,7 @@ import { createWolken } from './wolken.js';
 import { WERKZEUGE } from './herstellen-daten.js';
 import { createFernSchatten } from './fernschatten.js';
 import { createBodenNetz } from './boden-netz.js';
+import { createGrasTeppich, GRAS_EBENE } from './gras-teppich.js';
 
 const P = new URLSearchParams(location.search);
 const SEED = +(P.get('seed') || 7);
@@ -57,6 +58,9 @@ const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuff
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
+// Filmische Tonwerte: helle Sonne ohne ausgebrannte Flächen, satte Schatten (Himmel-Hintergrund bleibt unberührt)
+renderer.toneMapping = P.get('ton') === 'aus' ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = +(P.get('belichtung') || 1.3);
 renderer.info.autoReset = false; // Zählung über Hauptszene + Niederschlag (Reset je Bild in der Schleife)
 renderer.setSize(innerWidth, innerHeight);
 document.body.prepend(renderer.domElement);
@@ -74,6 +78,7 @@ sonne.shadow.camera.updateProjectionMatrix();
 sonne.shadow.bias = -0.0004;
 sonne.shadow.normalBias = 0.06;
 const himmelLicht = new THREE.HemisphereLight(0xa8ccff, 0x3b3424, 0.7);
+const hellBlau = new THREE.Color(0xa8ccff);
 // Fernschatten (Berge über Täler, ~1,6 km): zweites, dunkles Richtungslicht direkt nach der Sonne (Schattenindex 1)
 const fern = createFernSchatten({ renderer });
 scene.add(sonne, sonne.target, fern.licht, fern.licht.target, himmelLicht, new THREE.AmbientLight(0x404858, 0.25));
@@ -109,9 +114,9 @@ const SCHICHT_PER = Math.PI * 2 * 20 / 11;
 const wasserU = { uHohl: { value: 1 }, uWasserQ: { value: 1 }, wZeit: { value: 0 }, wasserCam: { value: new THREE.Vector3() }, wHimmel: { value: new THREE.Color() }, bodenVers: { value: new THREE.Vector4() }, uFuell: { value: 0 } };
 bodenMat.onBeforeCompile = (sh) => {
   Object.assign(sh.uniforms, wasserU);
-  sh.vertexShader = 'attribute float nass;\nattribute float hohl;\nvarying float vHohl;\nattribute vec3 land;\nvarying vec3 vLand;\nuniform vec3 wasserCam;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\nvarying vec3 vRelW;\n' + sh.vertexShader
-    .replace('#include <begin_vertex>', '#include <begin_vertex>\n#ifdef VOXEL\nvHohl = 1.0;\n#else\nvHohl = hohl;\n#endif\nvNass = nass;\nvLand = land;\nvRelW = (modelMatrix * vec4(position, 1.0)).xyz;\nvWelt = vRelW + wasserCam;\nvObenW = normalize(vWelt);');
-  sh.fragmentShader = 'uniform float wZeit;\nuniform float uHohl;\nuniform float uWasserQ;\nvarying float vHohl;\nuniform vec3 wHimmel;\nvarying vec3 vLand;\nvarying float vNass;\nfloat wT;\nfloat wSchaum;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\nuniform vec3 wasserCam;\nuniform vec4 bodenVers;\nuniform float uFuell;\n' + LOCH_GLSL + BODEN_RAUSCHEN + sh.fragmentShader
+  sh.vertexShader = 'attribute vec2 gras;\nvarying vec2 vGras;\nattribute float nass;\nattribute float hohl;\nvarying float vHohl;\nattribute vec3 land;\nvarying vec3 vLand;\nuniform vec3 wasserCam;\nvarying float vNass;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\nvarying vec3 vRelW;\n' + sh.vertexShader
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\n#ifdef VOXEL\nvHohl = 1.0;\nvGras = vec2(0.0);\n#else\nvHohl = hohl;\nvGras = gras;\n#endif\nvNass = nass;\nvLand = land;\nvRelW = (modelMatrix * vec4(position, 1.0)).xyz;\nvWelt = vRelW + wasserCam;\nvObenW = normalize(vWelt);');
+  sh.fragmentShader = 'varying vec2 vGras;\nuniform float wZeit;\nuniform float uHohl;\nuniform float uWasserQ;\nvarying float vHohl;\nuniform vec3 wHimmel;\nvarying vec3 vLand;\nvarying float vNass;\nfloat wT;\nfloat wSchaum;\nvarying vec3 vWelt;\nvarying vec3 vObenW;\nuniform vec3 wasserCam;\nuniform vec4 bodenVers;\nuniform float uFuell;\n' + LOCH_GLSL + BODEN_RAUSCHEN + sh.fragmentShader
     // vNass = Wassertiefe (0.5 = Uferlinie, ±3.2 m): flaches Wasser klar (Grund scheint durch), Schaumsaum, nasser Sand
     .replace('#include <color_fragment>', `#include <color_fragment>
 wT = smoothstep(0.497, 0.51, vNass);
@@ -184,6 +189,10 @@ if (wT > 0.01) {
     float riss = a4 > 0.01 ? (1.0 - smoothstep(0.0, 0.05 + bPix * 0.3, abs(e1 - 0.5))) * a4 : 0.0;
     vec3 fc = mix(c, vec3(dot(c, vec3(0.33))) * vec3(1.04, 1.0, 0.94), 0.45) * (0.78 + 0.34 * band) * (1.0 - 0.3 * riss);
     c = mix(c, fc, fels);
+    // 5) Gras-Teppich: Boden unter dem Gras dunkler/grüner (Wurzelschatten); fern trägt die Farbe allein das Gras-Bild
+    float gM = vGras.x * (0.6 + 0.8 * m2) * (1.0 - fels);
+    vec3 gF = mix(vec3(0.07, 0.17, 0.03), vec3(0.33, 0.28, 0.1), clamp(vGras.y + 0.3 * (m1 - 0.5), 0.0, 1.0));
+    c = mix(c, mix(c, gF, 0.55) * 0.8, clamp(gM, 0.0, 1.0) * 0.7);
     diffuseColor.rgb = mix(diffuseColor.rgb, c, bLand);
     // Bump: glattes Höhenfeld (cm) aus denselben Rauschen → keine Kantenlinien; per Bildschirmableitung in die Normale
     float hoehe = m2 * 0.6 + e1 * 0.5 + g1 * 0.35 + g2 * 0.2 + g3 * 0.08 + fels * band * 0.6 - erde * 0.25;
@@ -209,7 +218,7 @@ if (wT > 0.01) {
   totalEmissiveRadiance += wHimmel * fr * (0.45 + 0.15 * uWasserQ) * wT;
 }`);
 };
-bodenMat.customProgramCacheKey = () => 'erde-boden-wasser-detail5';
+bodenMat.customProgramCacheKey = () => 'erde-boden-wasser-detail6';
 // Schattenbild der Kacheln: dieselbe Loch-Maske (sonst wirft der unsichtbare alte Boden Schatten in die Grube)
 const bodenTiefe = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
 bodenTiefe.onBeforeCompile = (sh) => {
@@ -270,7 +279,7 @@ void main() {
   }
   #include <logdepthbuf_fragment>
   vec3 c = vFarbe * hell * uLicht;
-  float nebel = 1.0 - exp(-uNebelDichte * uNebelDichte * vNebel * vNebel);
+  float nebel = (1.0 - exp(-uNebelDichte * vNebel)) * mix(0.42, 1.0, smoothstep(6e-5, 6e-4, uNebelDichte));   // wie dunst.js
   gl_FragColor = vec4(mix(c, uNebelFarbe + dunstGlanz(vRicht, uSonneV, uSonneFarbe, nebel), nebel), 1.0);
   if (vAlpha < 0.5 && fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) > vAlpha * 2.0) discard; // weiches Einblenden ohne Sortieren
 }`,
@@ -283,11 +292,13 @@ function erzeuge(d) {
   geo.setAttribute('nass', new THREE.BufferAttribute(d.nass, 1, true));
   geo.setAttribute('land', new THREE.BufferAttribute(d.land, 3, true));
   geo.setAttribute('hohl', new THREE.BufferAttribute(d.hohl, 1, true));
+  geo.setAttribute('gras', new THREE.BufferAttribute(d.gras, 2, true));   // Gras-Teppich: Menge, Trockenheit
   geo.setIndex(new THREE.BufferAttribute(d.idx, 1));
   geo.computeBoundingSphere();
   const m = new THREE.Mesh(geo, stufenFarben ? stufenMat[d.L] : bodenMat);
   m.receiveShadow = true;
   m.customDepthMaterial = bodenTiefe;
+  m.layers.enable(GRAS_EBENE);   // Höhenkarte des Gras-Teppichs liest nur die Gelände-Kacheln
   m.castShadow = true;   // nah: feine Kacheln (Böschungen, Grubenränder); fern: Berge in die Fernschatten-Karte
   m.userData = { mitte: d.mitte, L: d.L, netz: netzDaten(d) };
   m.visible = false;
@@ -319,6 +330,7 @@ const zeige = (m, an) => {
   const n = m.userData.netz;
   if (an) bodenNetz.setze(n.key, n.k, n.radien, n.nass); else bodenNetz.weg(n.key);
   netzNeu = true;
+  if (an) grasTeppich?.neu();
 };
 const entsorge = (m) => { bodenNetz.weg(m.userData.netz.key); welt.remove(m); m.geometry.dispose(); for (const c of m.children) c.geometry.dispose(); };
 
@@ -386,7 +398,7 @@ function streuen(wunsch) {
     for (const key of streuDa.keys()) if (!nah.has(key) && streuDa.size > 300) streuDa.delete(key);
   }
 }
-const natur = createNatur(scene, { istWeg: eingriffe.istWeg, renderer, bodenRadius: bodenNetz.radius });
+const natur = createNatur(scene, { istWeg: eingriffe.istWeg, renderer, bodenNetz });
 
 // ---------- Zeit, Wetter, Inventar, Aktionen ----------
 const zw = createZeitWetter({ seed: SEED, zustand: stand?.zeit });
@@ -415,6 +427,9 @@ const voxel = createVoxelErde({
   sende(job) { if (!worker.length) return false; worker[wi++ % worker.length].postMessage(job); return true; },
 });
 Object.assign(wasserU, voxel.uniforms);
+// Gras-Teppich: Gras überall (GPU), liest Höhe/Menge aus einer Höhenkarte der gezeichneten Kacheln; Grabstellen bleiben frei
+let lochAlt = -1;
+var grasTeppich = createGrasTeppich({ renderer, scene, loch: { uniforms: voxel.uniforms, glsl: LOCH_GLSL } });
 const aktionen = createAktionen({
   planet, eingriffe, natur, inventar, seed: SEED, voxel,
   beiVoxel: () => speichern(),
@@ -710,6 +725,7 @@ setInterval(speichern, 15000); // Uhr/Wetter ab und zu sichern
 const MENUE = (() => { try { return JSON.parse(localStorage.getItem('erde-menue') || 'null'); } catch { return null; } })()
   || { auf: !(navigator.maxTouchPoints > 0 || innerWidth < 700), groesse: 1, info: innerWidth < 640 ? 'kurz' : 'voll' };
 const menueEl = document.getElementById('menue'), hudEl = document.getElementById('hud');
+if (P.get('info')) MENUE.info = P.get('info');   // Testschalter: ?info=kurz|aus
 if (P.get('person')) MENUE.person = +P.get('person') === 1 ? 1 : 3;
 else if (MENUE.person == null) MENUE.person = 3;
 function menueSichern() { try { localStorage.setItem('erde-menue', JSON.stringify(MENUE)); } catch { /* egal */ } }
@@ -745,12 +761,13 @@ const REGLER = {
   hohl:     { name: 'Gelände-AO',      werte: [0, 0.6, 1], text: (v) => v ? (v < 1 ? 'leicht' : 'voll') : 'aus' },
   wasser:   { name: 'Wasser',          werte: [0, 1, 2], text: (v) => ['einfach', 'Wellen', 'Wellen + Kräusel'][v] },
   dunst:    { name: 'Luft/Dunst',      werte: [0.6, 1, 1.4], text: (v) => ['klar', 'normal', 'dicht'][[0.6, 1, 1.4].indexOf(v)] },
+  gras:     { name: 'Gras',            werte: [0, 1, 2, 3, 4], text: (v) => ['aus', 'wenig', 'mittel', 'viel', 'sehr viel'][v] },
 };
 const GRAFIK = {
-  Niedrig: { pixel: 1,   teilung: 1.25, natur: 0.5,  schatten: 0,    fern: 0,    hohl: 0.6, wasser: 0, dunst: 1 },
-  Mittel:  { pixel: 1.5, teilung: 1.5,  natur: 0.75, schatten: 1024, fern: 1024, hohl: 1,   wasser: 1, dunst: 1 },
-  Hoch:    { pixel: 2,   teilung: 1.8,  natur: 1,    schatten: 2048, fern: 2048, hohl: 1,   wasser: 2, dunst: 1 },
-  Ultra:   { pixel: 3,   teilung: 2.2,  natur: 1.25, schatten: 4096, fern: 4096, hohl: 1,   wasser: 2, dunst: 1 },
+  Niedrig: { pixel: 1,   teilung: 1.25, natur: 0.5,  schatten: 0,    fern: 0,    hohl: 0.6, wasser: 0, dunst: 1, gras: 1 },
+  Mittel:  { pixel: 1.5, teilung: 1.5,  natur: 0.75, schatten: 1024, fern: 1024, hohl: 1,   wasser: 1, dunst: 1, gras: 2 },
+  Hoch:    { pixel: 2,   teilung: 1.8,  natur: 1,    schatten: 2048, fern: 2048, hohl: 1,   wasser: 2, dunst: 1, gras: 3 },
+  Ultra:   { pixel: 3,   teilung: 2.2,  natur: 1.25, schatten: 4096, fern: 4096, hohl: 1,   wasser: 2, dunst: 1, gras: 4 },
 };
 let grafik = 'Hoch', G_OPT = null;
 try {
@@ -767,6 +784,7 @@ function wendeGrafikAn(speichern = true) {
   renderer.setPixelRatio(Math.min(devicePixelRatio, g.pixel));
   renderer.setSize(innerWidth, innerHeight);
   natur.setzeWeite(g.natur);
+  grasTeppich.setzeStufe(P.get('gras') !== null ? +P.get('gras') : g.gras ?? 2);
   // Sonnenschatten nah: Kartengröße; 4096 = weich (PCFSoft, alle Materialien werden einmal neu übersetzt)
   if (g.schatten && sonne.shadow.mapSize.x !== g.schatten) {
     sonne.shadow.mapSize.set(g.schatten, g.schatten);
@@ -1053,7 +1071,7 @@ function bild() {
   if (!worker.length) hauptBau(geladen ? 8 : 30);
   netzT += dt;
   if (netzNeu && netzT > 0.6) { netzNeu = false; netzT = 0; natur.neu(); }   // Kacheln verfeinert/neu → Natur neu aufs Netz setzen
-  natur.update(cam, naturAn ? [...streuDa.values()] : [], jetzt / 1000, naturAn);
+  natur.update(cam, naturAn ? [...streuDa.values()] : [], jetzt / 1000, naturAn, hoeheBoden);
   voxel.update(cam);
 
   // Floating Origin: Kamera im Ursprung, Welt verschoben
@@ -1063,6 +1081,8 @@ function bild() {
   }
   atmo.position.set(-cam.x, -cam.y, -cam.z);
   anker.position.set(-cam.x, -cam.y, -cam.z);
+  if (voxel.uniforms.uLochN.value !== lochAlt) { lochAlt = voxel.uniforms.uLochN.value; grasTeppich.neu(); }   // neue Grabstelle → Gras dort weg
+  grasTeppich.update(dt, cam, { an: naturAn, aus: THREE.MathUtils.smoothstep(hoeheBoden, 45, 90), zeit: jetzt / 1000, wind: 0.25 + 1.1 * zw.wetter.wind, windRicht: zw.windWelt });
   erw.update(dt);
   camera.position.set(0, 0, 0);
   camera.up.copy(oben);
@@ -1135,6 +1155,10 @@ function bild() {
   sonne.color.setRGB(1, 0.95, 0.86).lerp(abend, (1 - THREE.MathUtils.smoothstep(hs, 0.02, 0.3)) * 0.8);
   atmo.visible = ueberMeer > ATMO * 0.6;
   himmelLicht.position.copy(oben);
+  // Himmelslicht in der Farbe des Himmels (abends warm, mittags blau), Bodenlicht = warmes Erdbraun, im Gras grünlich
+  himmelLicht.color.copy(himmel).lerp(hellBlau, 0.35 * tag);
+  { const m = Math.max(himmelLicht.color.r, himmelLicht.color.g, himmelLicht.color.b, 1e-3); himmelLicht.color.multiplyScalar(1 / m); }
+  himmelLicht.groundColor.setRGB(0.26, 0.24, 0.15);
   himmelLicht.intensity = 0.12 + (0.5 * tag * (1 - 0.3 * wolken) + blitz) * (1 - raum);
   wasserU.uFuell.value = 0.05 + 0.3 * tag * (1 - 0.3 * wolken);
   // Schatten nur nah am Boden und wenn die Sonne scheint; Wolken machen sie weich/blass
@@ -1202,6 +1226,7 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 setzeOrt(P.get('ort') || 'orbit');
+if (P.get('nei')) neigung = THREE.MathUtils.degToRad(+P.get('nei'));   // Testschalter: Blick-Neigung in Grad
 // Testschalter: ?wetter=regen|schnee|gewitter|nebel|sturm|klar … und ?uhr=19 (Ortszeit)
 if (P.get('wetter')) zw.wetter.setze(P.get('wetter'), true);
 // Testschalter ?zeige=<art>: nach dem Laden vor das nächste Stück dieser Art stellen (z. B. ammonit, quarzdruse)
