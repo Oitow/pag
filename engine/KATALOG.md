@@ -1178,7 +1178,7 @@ const r = rng(hashSeed('insel', 42));
 const baum = pick(r, ['eiche', 'tanne']);
 ```
 
-Genutzt von: daemmerwald, enklave, erde, figuren, gigantwelt, handwerk, natur, naturstimmungen, riesenjagd · Tags: zufall, seed, hash, welt · THREE: nein
+Genutzt von: daemmerwald, enklave, erde, figuren, gigantwelt, handwerk, natur, naturstimmungen, riesenjagd, stil · Tags: zufall, seed, hash, welt · THREE: nein
 
 ### schleife · `engine/core/schleife.js` · v1.0.0 · entwurf
 Spielschleife mit variablem oder festem Zeitschritt, dt-Begrenzung, FPS-Anzeige und Tab-Pause
@@ -2287,7 +2287,7 @@ const haus = createHaus({ seed: 3, variante: 1 });
 szene.add(new THREE.Mesh(haus.geometrie, standardMaterial()));
 ```
 
-Genutzt von: enklave · Tags: bau, gebaeude, haus, fachwerk, asset, lowpoly · THREE: ja
+Genutzt von: enklave, stil · Tags: bau, gebaeude, haus, fachwerk, asset, lowpoly · THREE: ja
 
 ### bau-licht · `engine/models/bau/licht.js` · v1.0.0 · entwurf
 Lichtquellen als Low-Poly-Asset mit Leucht-Geometrie (unbeleuchtet zeichnen): Laterne auf Pfahl, Wandfackel, Lagerfeuer mit Steinring
@@ -2301,7 +2301,7 @@ import { createLagerfeuer } from '../../engine/models/bau/licht.js';
 const feuer = createLagerfeuer({ seed: 5 });   // feuer.leucht = Flammen, feuer.anker.licht = PointLight-Vorlage
 ```
 
-Genutzt von: daemmerwald, enklave, erde · Tags: bau, licht, laterne, fackel, lagerfeuer, leucht, asset, lowpoly · THREE: ja
+Genutzt von: daemmerwald, enklave, erde, stil · Tags: bau, licht, laterne, fackel, lagerfeuer, leucht, asset, lowpoly · THREE: ja
 
 ### bau-markt · `engine/models/bau/markt.js` · v1.0.0 · entwurf
 Marktplatz-Kleinkram als Low-Poly-Asset: Marktstand mit Stoffdach (4 Farben), Brunnen mit Holzdach, Sitzbank
@@ -2628,7 +2628,7 @@ const held = createLook({ ...VORLAGEN.wanderer, haar: { farbe: '#c8a040' }, bril
 const npc = randomLook(hashSeed('dorf', 7));   // gleicher Seed → gleicher Look
 ```
 
-Genutzt von: daemmerwald, enklave, erde, erlenwacht, figuren, handwerk, riesenjagd · Tags: figur, charakter, aussehen, look, spieler, npc, avatar, editor, speichern, accessoires, mimik · THREE: nein
+Genutzt von: daemmerwald, enklave, erde, erlenwacht, figuren, handwerk, riesenjagd, stil · Tags: figur, charakter, aussehen, look, spieler, npc, avatar, editor, speichern, accessoires, mimik · THREE: nein
 1.1: neue Stile (Haar, Bart, Oberteil, Hose, Schuhe, Kopfbedeckung, Umhang), neue Teile brille/schal/schmuck,
    Körper schultern/muskeln, Feld ausdruck (Grund-Mimik), neue Vorlagen. Alte Spielstände bleiben gültig
    (fehlende Felder → Standard; erste Einträge in STILE und Körper-Standards unverändert).
@@ -2646,7 +2646,7 @@ figur.befestigen('handR', schwert);
 figur.setLook({ kopfbedeckung: { stil: 'krone' } });   // Rig-Gruppen & Befestigtes bleiben erhalten
 ```
 
-Genutzt von: erde, erlenwacht, riesenjagd · Tags: figur, charakter, modell, mesh, spieler, npc, avatar, editor, ausrüstung, mimik, gesicht · THREE: ja
+Genutzt von: erde, erlenwacht, riesenjagd, stil · Tags: figur, charakter, modell, mesh, spieler, npc, avatar, editor, ausrüstung, mimik, gesicht · THREE: ja
 1.3 (additiv): opts.koerper = 'organisch' → ein glatter, gehäuteter Körper aus SDF (figur-haut: Anatomie + Kleidung + Haar in einem Netz,
    biegt weich an den Gelenken); Kopfbedeckung, Umhang, Rucksack, Zubehör, Augen, Brille, Ohrringe bleiben starre Teile. opts.zelle = Feinheit (m).
    modell.koerper = 'organisch' | 'bloecke'; modell.setKoerper(art) schaltet live um.
@@ -3167,7 +3167,7 @@ const { geometrie } = baueAstbaum('eiche', 7, { detail: 2 });   // nah: Zweige +
 // Material: weich (kein flatShading), side: DoubleSide, Normalen NICHT umdrehen (Krone wird von außen beleuchtet)
 ```
 
-Genutzt von: erde, naturstimmungen · Tags: natur, baum, aeste, zweige, blaetter, laub, nadeln, lod, wind, prozedural · THREE: ja
+Genutzt von: erde, naturstimmungen, stil · Tags: natur, baum, aeste, zweige, blaetter, laub, nadeln, lod, wind, prozedural · THREE: ja
 
 ### baum-arten · `engine/models/natur/baum-arten.js` · v1.0.0 · entwurf
 Reine Parameter-Daten der Baumarten (Wuchs, Verzweigung, Laubform, Farben, Jahreszeiten) für baum-skelett/baum
@@ -3260,7 +3260,7 @@ const { geometrie } = erzeuge('felsbrocken', 42, { gestein: 'granit', moos: 0.4 
 scene.add(new THREE.Mesh(geometrie, standardMaterial()));
 ```
 
-Genutzt von: daemmerwald, riesenjagd · Tags: natur, fels, stein, geroell, prozedural, lowpoly, vertexfarben · THREE: ja
+Genutzt von: daemmerwald, riesenjagd, stil · Tags: natur, fels, stein, geroell, prozedural, lowpoly, vertexfarben · THREE: ja
 
 ### fundmodelle · `engine/models/natur/fundmodelle.js` · v1.0.0 · entwurf
 Fundstücke als reine Dreieckslisten: Erzbrocken, Ammonit, Quarzdruse (lineare RGB-Vertexfarben, Meter)
@@ -3529,7 +3529,7 @@ const wolke = createGaussWolke(); wolke.fuege(baum.splats); szene.add(wolke.mesh
 baum.kollision.hoehenkarte.hoeheBei(9, 2);      // lokal zum Baumfuß; NaN = blanker Boden
 ```
 
-Genutzt von: daemmerwald, natur, riesenjagd · Tags: natur, baum, riesenbaum, urwald, wald, sdf, splats, gauss, wurzel, groesse, daemmerwald · THREE: ja
+Genutzt von: daemmerwald, natur, riesenjagd, stil · Tags: natur, baum, riesenbaum, urwald, wald, sdf, splats, gauss, wurzel, groesse, daemmerwald · THREE: ja
 
 ### totholz-form · `engine/models/natur/totholz-form.js` · v1.0.0 · neu
 Reine Röhren-Geometrie (ohne THREE) für Totholz/Äste: Ringe entlang eines Pfads, Enden zu/Spitze/Jahresring-Scheibe, Markierung je Dreieck
@@ -3621,7 +3621,7 @@ saat.plus(0, 30, 0, 4, 3, 4, 0, 0, 0, 1, 0.08, 0.2, 0.06, 0.35, 1);             
 wolke.fuege(saat.fertig());
 ```
 
-Genutzt von: daemmerwald, natur · Tags: splat, gauss, gaussian, saat, streuen, netz, moos, laub, prozedural, quaternion · THREE: nein
+Genutzt von: daemmerwald, natur, stil · Tags: splat, gauss, gaussian, saat, streuen, netz, moos, laub, prozedural, quaternion · THREE: nein
 
 ### gauss-sortierung · `engine/render/gauss-sortierung.js` · v1.0.0 · entwurf
 Tiefen-Sortierung für Gauß-Splats: 16-Bit-Zähl-Sortierung entlang der Blickrichtung (hinten→vorn), ohne Allokation je Aufruf – 120 k Splats in ~1–3 ms
@@ -3650,7 +3650,7 @@ wolke.setze({ nebelFarbe: szene.fog.color, nebelDichte: szene.fog.density, licht
 // je Bild VOR renderer.render: wolke.update(kamera, zeit, canvas.width, canvas.height);
 ```
 
-Genutzt von: daemmerwald, natur, riesenjagd · Tags: splat, gauss, gaussian, 3dgs, wolke, instanziert, shader, transparenz, moos, laub, dunst · THREE: ja
+Genutzt von: daemmerwald, natur, riesenjagd, stil · Tags: splat, gauss, gaussian, 3dgs, wolke, instanziert, shader, transparenz, moos, laub, dunst · THREE: ja
 
 ### grosszauber-mesh · `engine/render/grosszauber-mesh.js` · v1.0.0 · entwurf
 Zeichnet laufende Großzauber (gameplay/grosszauber): je Wirkung eine Ansicht aus einer Ansichts-Fabrik je Art, legt sie an und räumt sie ab, sobald die Wirkung endet
