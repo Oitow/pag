@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>Organic Terrain Lab 0.2</title><style>
+<title>Organic Terrain Lab 0.3</title><style>
 body{margin:0;background:#101a1a;color:#eaf1e7;font:14px system-ui;overflow:hidden}canvas{display:block;touch-action:none}
 #toggle{position:fixed;top:10px;left:10px;z-index:5;background:#203d37;border:1px solid #89bca6;min-width:50px;font-weight:700}
 #hint{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:#162d2ddc;border-radius:16px;padding:8px 12px;pointer-events:none;font-size:12px;text-align:center;width:max-content;max-width:90vw}
@@ -11,7 +11,7 @@ body{margin:0;background:#101a1a;color:#eaf1e7;font:14px system-ui;overflow:hidd
 button,select,input{margin:4px;padding:7px;border:1px solid #536e64;border-radius:7px;background:#233b35;color:white}
 button{cursor:pointer}#stats{font:12px monospace;white-space:pre-line}label{display:block}
 </style><script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script></head>
-<body><button id="toggle" aria-label="Show or hide controls" aria-expanded="false">☰ Controls</button><div id="ui" class="hidden"><b>🌍 Organic Terrain Lab 0.2</b><p>Compare a heightfield and a smooth volumetric SDF. Click/tap terrain to dig. Drag to orbit.</p>
+<body><button id="toggle" aria-label="Show or hide controls" aria-expanded="false">☰ Controls</button><div id="ui" class="hidden"><b>🌍 Organic Terrain Lab 0.3</b><p>Compare a heightfield and a smooth volumetric SDF. Click/tap terrain to dig. Drag to orbit.</p>
 <label>Method <select id="method"><option value="sdf">SDF — caves possible</option><option value="height">Heightfield — surface only</option></select></label>
 <label>Brush radius <input id="radius" type="range" min="1" max="5" step=".5" value="2.5"></label>
 <label>Dig depth <input id="depth" type="range" min=".2" max="2" step=".1" value=".8"><output id="depthValue">0.8m</output></label>
@@ -29,7 +29,7 @@ const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(
 scene.add(new THREE.HemisphereLight(0xd7f0ff,0x524633,2));const sun=new THREE.DirectionalLight(0xffe2aa,2.2);sun.position.set(-8,25,12);scene.add(sun);
 const grid=new THREE.GridHelper(44,22,0x63756c,0x63756c);scene.add(grid);
 const material=new THREE.MeshStandardMaterial({color:0x73977a,roughness:.92,side:THREE.DoubleSide,flatShading:false});
-let mesh=null,edits=[],mode='dig',drag=false,moved=false,px=0,py=0,az=.82,el=.54,dist=38,focusY=2;const pointers=new Map();let pinchDistance=0;
+let mesh=null,edits=[],mode='dig',drag=false,moved=false,px=0,py=0,az=.82,el=.54,dist=38,focusY=2;const pointers=new Map();let pinchDistance=0,pinchActive=false,frames=0,lastFPS=performance.now(),fps=0;
 const $=id=>document.getElementById(id);
 function height(x,z){return 1.8*Math.sin(x*.29)*Math.cos(z*.24)+1.25*Math.sin(z*.51+x*.16)+.75*Math.cos(x*.67-z*.3)+2.3}
 function sdf(x,y,z){let d=y-height(x,z);for(const e of edits){const r=Math.hypot(x-e.x,y-e.y,z-e.z);const sphere=e.r-r;if(e.type==='dig')d=Math.max(d,sphere);else d=Math.min(d,-sphere)}return d}
@@ -45,7 +45,19 @@ for(const t of tets){const inside=t.filter(i=>v[i]<0),outside=t.filter(i=>v[i]>=
 if(inside.length===1||outside.length===1){const single=(inside.length===1?inside:outside)[0],others=(inside.length===1?outside:inside),a=cut(single,others[0]),b=cut(single,others[1]),c=cut(single,others[2]);vertices.push(...a,...b,...c)}
 else{const a=cut(inside[0],outside[0]),b=cut(inside[0],outside[1]),c=cut(inside[1],outside[0]),d=cut(inside[1],outside[1]);vertices.push(...a,...b,...c,...b,...d,...c)}
 }}}
-if(mesh){scene.remove(mesh);mesh.geometry.dispose()}const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geo.computeVertexNormals();mesh=new THREE.Mesh(geo,material);scene.add(mesh);
+if(mesh){scene.remove(mesh);mesh.geometry.dispose()}const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+// Use terrain-field gradients instead of per-triangle normals to avoid tetrahedron facets.
+// Gradients are evaluated once per quantized vertex position (shared by adjoining triangles).
+const normals=new Float32Array(vertices.length),normalCache=new Map(),eps=Math.max(.06,step*.16);
+const field=method==='sdf'?sdf:(x,y,z)=>y-hfield(x,z);
+for(let i=0;i<vertices.length;i+=3){
+ const x=vertices[i],y=vertices[i+1],z=vertices[i+2];
+ const key=Math.round(x*1000)+','+Math.round(y*1000)+','+Math.round(z*1000);
+ let v=normalCache.get(key);
+ if(!v){const nx=field(x+eps,y,z)-field(x-eps,y,z),ny=field(x,y+eps,z)-field(x,y-eps,z),nz=field(x,y,z+eps)-field(x,y,z-eps);const len=Math.hypot(nx,ny,nz)||1;v=[nx/len,ny/len,nz/len];normalCache.set(key,v)}
+ normals[i]=v[0];normals[i+1]=v[1];normals[i+2]=v[2];
+}
+geo.setAttribute('normal',new THREE.BufferAttribute(normals,3));mesh=new THREE.Mesh(geo,material);scene.add(mesh);
 $('stats').textContent='Triangles: '+vertices.length/9+'\nRebuild: '+Math.round(performance.now()-start)+' ms\nEdits: '+edits.length+'\nMethod: '+method;
 }
 function updateCamera(){camera.position.set(Math.sin(az)*Math.cos(el)*dist,Math.sin(el)*dist+focusY,Math.cos(az)*Math.cos(el)*dist);camera.lookAt(0,focusY,0)}
@@ -54,16 +66,19 @@ function editAt(clientX,clientY){const rect=renderer.domElement.getBoundingClien
  // Keep surface excavation shallow by placing the sphere center above the touched surface.
  // Heightfields use the same visual depth, while SDF can also open real underground cavities.
  const offset=mode==='dig'?Math.max(0,r-depth):-(Math.max(0,r-depth));
- edits.push({x:p.x,y:p.y+offset,z:p.z,r,depth,type:mode});rebuild()}
+ if(edits.length>=40){$('hint').textContent='40 edits max in this CPU prototype — Undo or Reset';return}edits.push({x:p.x,y:p.y+offset,z:p.z,r,depth,type:mode});rebuild()}
 
 function updatePointer(e){pointers.set(e.pointerId,{x:e.clientX,y:e.clientY})}
 renderer.domElement.addEventListener('pointerdown',e=>{updatePointer(e);drag=true;moved=false;px=e.clientX;py=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);
- if(pointers.size===2){const p=[...pointers.values()];pinchDistance=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);moved=true}});
+ if(pointers.size===2){const p=[...pointers.values()];pinchDistance=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);moved=true;pinchActive=true}});
 renderer.domElement.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;updatePointer(e);
  if(pointers.size===2){const p=[...pointers.values()],d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);if(pinchDistance)dist=Math.max(6,Math.min(85,dist*pinchDistance/d));pinchDistance=d;moved=true;updateCamera();return}
  const dx=e.clientX-px,dy=e.clientY-py;if(Math.abs(dx)+Math.abs(dy)>2)moved=true;if(moved){az-=dx*.008;el=Math.max(-.2,Math.min(1.48,el+dy*.006));updateCamera()}px=e.clientX;py=e.clientY});
-renderer.domElement.addEventListener('pointerup',e=>{const wasSingle=pointers.size===1;pointers.delete(e.pointerId);if(wasSingle&&!moved)editAt(e.clientX,e.clientY);drag=false;pinchDistance=0;moved=true});
-renderer.domElement.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);drag=false;moved=true;pinchDistance=0});
+renderer.domElement.addEventListener('pointerup',e=>{const wasSingle=pointers.size===1;pointers.delete(e.pointerId);if(wasSingle&&!moved&&!pinchActive)editAt(e.clientX,e.clientY);
+if(pointers.size===1){const remaining=[...pointers.values()][0];px=remaining.x;py=remaining.y;drag=true;moved=true}
+else{drag=false;pinchActive=false}
+pinchDistance=0;moved=true});
+renderer.domElement.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);drag=false;moved=true;pinchActive=false;pinchDistance=0});
 renderer.domElement.addEventListener('wheel',e=>{dist=Math.max(6,Math.min(85,dist+e.deltaY*.02));updateCamera()},{passive:true});
 $('toggle').onclick=()=>{const hidden=$('ui').classList.toggle('hidden');$('toggle').textContent=hidden?'☰ Controls':'✕ Close';$('toggle').setAttribute('aria-expanded',String(!hidden))};
 $('method').onchange=rebuild;$('resolution').onchange=rebuild;
@@ -84,5 +99,5 @@ $('home').onclick=()=>{az=.82;el=.54;dist=38;focusY=2;updateCamera()};
 $('zoomIn').onclick=()=>{dist=Math.max(6,dist*.8);updateCamera()};
 $('zoomOut').onclick=()=>{dist=Math.min(85,dist*1.25);updateCamera()};
 window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
-updateCamera();rebuild();renderer.setAnimationLoop(()=>renderer.render(scene,camera));
+updateCamera();rebuild();renderer.setAnimationLoop(t=>{renderer.render(scene,camera);frames++;if(t-lastFPS>=1000){fps=Math.round(frames*1000/(t-lastFPS));frames=0;lastFPS=t;const stat=$('stats');const base=stat.textContent.replace(/\\nFPS:.*$/s,'');stat.textContent=base+'\\nFPS: '+fps;}});
 </script></body></html>
