@@ -85,6 +85,8 @@ export function createUeberleben(welt) {
     schaden, heile,
     iss: (id) => !!esse(id)?.ok,
     get leben() { return z.leben; },
+    get satt() { return z.satt; },
+    get wasser() { return z.wasser; },
     get tot() { return ohnmacht > 0 || imVerlust; },
   };
 

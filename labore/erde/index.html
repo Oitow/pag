@@ -56,12 +56,41 @@ a.b{text-decoration:none}
 #grafikBox .zeile{display:flex;justify-content:space-between;align-items:center;padding:9px 6px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px;cursor:pointer;user-select:none}
 #grafikBox .zeile b{color:#ffd04a;font-weight:600}
 #grafikBox .zeile:active{background:rgba(70,110,170,.5)}
+#werkzeuge{display:contents}
+#bWerkzeuge,#aktionen #aBenutzen{display:none}
+#vital{display:none;gap:8px;margin-top:4px}
+#hud.kurz #vital.aktiv{display:flex}
+#vital label{display:grid;gap:2px;font:10px system-ui}
+#vital meter{width:3em;height:8px}
+@media(max-width:640px){
+  #hud,body.menueAuf #hud{box-sizing:border-box;max-width:calc(100vw / var(--ui,1) - 154px);max-height:48vh;overflow:auto;pointer-events:auto;touch-action:pan-y}
+  #hud.kurz{font:600 12px/1.4 system-ui;white-space:normal}
+  #bGehen{min-width:76px}
+  #rechts{max-height:82dvh}
+  #menue{touch-action:pan-y;background:#14202aee}
+  #unten{display:none;bottom:max(8px,env(safe-area-inset-bottom))}
+  body.menueAuf #unten,body.tempoFix #unten{display:flex}
+  #hochrunter{bottom:calc(12px + env(safe-area-inset-bottom))}
+  #hochrunter .b{min-width:46px;min-height:44px}
+  #aktionen{left:auto;right:64px;bottom:calc(12px + env(safe-area-inset-bottom));transform:none;max-width:calc(100vw / var(--ui,1) - 78px);justify-content:flex-end}
+  body.tempoFix #aktionen,body.tempoFix #hochrunter,body.menueAuf #aktionen,body.menueAuf #hochrunter{bottom:calc(54px + env(safe-area-inset-bottom))}
+  #aktionen #bWerkzeuge{display:flex}
+  #werkzeuge{display:none;position:absolute;right:0;bottom:calc(100% + 6px);grid-template-columns:1fr 1fr;gap:5px;width:min(210px,65vw);max-height:38dvh;overflow-y:auto;touch-action:pan-y;padding:7px;border:1px solid #ffffff30;border-radius:14px;background:#14202af5}
+  #werkzeuge.auf{display:grid}
+  #aktionen #aBenutzen{display:flex}
+  #aktionen #aNehmen:not(.zielbar){display:none}
+}
+@media(min-width:641px){#aktionen #bWerkzeuge,#bTempoFix{display:none}}
 #kpunkt{position:absolute;width:10px;height:10px;margin:-5px;border-radius:50%;background:#ffd04a;border:2px solid #000;pointer-events:none}
 </style>
 </head>
 <body>
 <div id="load"><div><b style="font-size:22px;letter-spacing:.12em">WILDGRUND</b><br>Erschaffe Planet…</div><i></i></div>
-<div id="hud" class="ui"></div>
+<div id="hud" class="ui"><span id="ortInfo"></span><div id="vital" aria-label="Überleben">
+  <label>Leben<meter id="vLeben" min="0" max="100"></meter></label>
+  <label>Satt<meter id="vSatt" min="0" max="100"></meter></label>
+  <label>Wasser<meter id="vWasser" min="0" max="100"></meter></label>
+</div></div>
 <div id="rechts" class="ui">
   <div class="kopf"><div class="b" id="bMenue" title="Menü auf/zu">☰</div><div class="b gelb" id="bGehen">🚶 Gehen</div></div>
   <div id="menue">
@@ -79,7 +108,7 @@ a.b{text-decoration:none}
       <div class="b" id="bGrafik">Grafik</div><div class="b" id="bInfo">Info: voll</div>
       <div class="b" id="bKleiner">A−</div><div class="b" id="bGroesser">A+</div>
       <div class="b" id="bLod">LOD-Farben</div><div class="b" id="bPerson">3. Person</div>
-      <div class="b gelb" id="bGrafikMehr">Grafik ⚙</div>
+      <button type="button" class="b" id="bTempoFix">Tempo anheften</button><div class="b gelb" id="bGrafikMehr">Grafik ⚙</div>
     </div>
     <div class="titel">Welt</div>
     <div class="raster">
@@ -90,7 +119,7 @@ a.b{text-decoration:none}
 </div>
 <div id="hochrunter" class="ui"><div class="b" id="hoch">▲</div><div class="b" id="runter">▼</div></div>
 <div id="karteBox"><canvas id="karte"></canvas><div id="kpunkt"></div><div id="legende"></div></div>
-<div id="aktionen" class="ui"><div class="b" id="aNehmen">✋ Nehmen</div><div class="b" id="aGraben">⛏ Graben</div><div class="b" id="aBauen">⛰ Aufschütten</div></div>
+<div id="aktionen" class="ui"><div class="b" id="aNehmen">✋ Nehmen</div><button class="b" id="bWerkzeuge" aria-expanded="false" aria-controls="werkzeuge">Werkzeuge</button><div id="werkzeuge"><button class="b" id="aBenutzen" type="button">Benutzen</button><div class="b" id="aGraben">⛏ Graben</div><div class="b" id="aBauen">⛰ Aufschütten</div></div></div>
 <div id="grafikBox" class="ui"></div>
 <div id="meldung"></div>
 <div id="ziel"></div>
