@@ -137,8 +137,12 @@ wT = smoothstep(0.497, 0.51, vNass);
 #ifndef VOXEL
 if (wT < 0.5 && imLoch(vRelW)) discard;   // Grabstelle: hier zeigen die Voxel den Boden (Wasserfläche bleibt)
 #endif
-float wKlar = 1.0 - smoothstep(0.505, 0.62, vNass);
-vec3 wFarbe = mix(diffuseColor.rgb, mix(vLand, diffuseColor.rgb * vec3(0.75, 1.05, 1.08), 0.5), wKlar);
+// Kies im Flachwasser, blaugrüner Übergang und dunklere Fahrrinne.
+float wGrund = 1.0 - smoothstep(0.50, 0.76, vNass);
+float wTief = smoothstep(0.60, 0.96, vNass);
+vec3 wFarbe = mix(diffuseColor.rgb * vec3(0.80, 1.03, 0.96),
+                  diffuseColor.rgb * vec3(0.48, 0.71, 0.83), wTief);
+wFarbe = mix(wFarbe, vLand * vec3(0.80, 0.92, 0.85), 0.78 * wGrund);
 diffuseColor.rgb = mix(vLand, wFarbe, wT);
 diffuseColor.rgb *= 1.0 - 0.32 * smoothstep(0.44, 0.497, vNass) * (1.0 - wT);
 float wFern = 1.0 - smoothstep(60.0, 420.0, length(vViewPosition));
@@ -669,7 +673,7 @@ const erwWelt = {
     const el = document.createElement('div');
     el.className = 'b'; el.id = id; el.textContent = text;
     el.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); onklick(); });
-    document.getElementById('aktionen').appendChild(el);
+    document.getElementById('werkzeuge').appendChild(el);
     return el;
   },
 };
@@ -713,14 +717,25 @@ function handle(was) {
   melde(r.text, r.ok);
   invText = inventarText();
 }
+const nehmenEl = document.getElementById('aNehmen');
+const werkzeuge = document.getElementById('werkzeuge');
+const werkzeugTaste = document.getElementById('bWerkzeuge');
+function werkzeugeZeigen(auf) {
+  werkzeuge.classList.toggle('auf', auf);
+  werkzeugTaste.setAttribute('aria-expanded', String(auf));
+}
+werkzeugTaste.onclick = () => werkzeugeZeigen(!werkzeuge.classList.contains('auf'));
+werkzeuge.addEventListener('click', () => werkzeugeZeigen(false));
 let zielT = 0;
 function zielAnzeigen() {
   zielEl.style.display = gehen ? 'block' : 'none';
   if (!gehen || (zielT += 1) % 6) return; // nicht jedes Bild
   const z = zielSuchen();
+  nehmenEl.classList.toggle('zielbar', z?.art === 'natur' || schwimmt);
   zielEl.classList.toggle('treffer', !!z);
   zielEl.dataset.text = z ? (z.art === 'natur' ? z.o.art : 'Boden') : '';
 }
+document.getElementById('aBenutzen').onclick = () => handle('nehmen');
 document.getElementById('aNehmen').onclick = () => handle('nehmen');
 document.getElementById('aGraben').onclick = () => handle('graben');
 document.getElementById('aBauen').onclick = () => handle('bauen');
@@ -756,10 +771,18 @@ function menueZeigen() {
   document.body.classList.toggle('menueAuf', MENUE.auf);
   document.getElementById('bMenue').classList.toggle('on', MENUE.auf);
   document.documentElement.style.setProperty('--ui', MENUE.groesse);
+  document.body.classList.toggle('tempoFix', !!MENUE.tempoFix);
+  document.getElementById('bTempoFix').setAttribute('aria-pressed', String(!!MENUE.tempoFix));
+  document.getElementById('bTempoFix').classList.toggle('on', !!MENUE.tempoFix);
+  hudEl.classList.toggle('kurz', MENUE.info === 'kurz');
   hudEl.classList.toggle('aus', MENUE.info === 'aus');
   document.getElementById('bInfo').textContent = 'Info: ' + MENUE.info;
 }
 document.getElementById('bMenue').onclick = () => { MENUE.auf = !MENUE.auf; menueZeigen(); menueSichern(); };
+document.getElementById('bTempoFix').onclick = () => {
+  MENUE.tempoFix = !MENUE.tempoFix;
+  menueZeigen(); menueSichern();
+};
 document.getElementById('bKleiner').onclick = () => { MENUE.groesse = Math.max(0.7, +(MENUE.groesse - 0.1).toFixed(2)); menueZeigen(); menueSichern(); };
 document.getElementById('bGroesser').onclick = () => { MENUE.groesse = Math.min(1.5, +(MENUE.groesse + 0.1).toFixed(2)); menueZeigen(); menueSichern(); };
 document.getElementById('bPerson').textContent = MENUE.person === 1 ? '1. Person' : '3. Person';
@@ -965,7 +988,9 @@ function karteMarker() {
 }
 
 // ---------- Schleife ----------
-const hud = document.getElementById('hud');
+const hud = document.getElementById('ortInfo');
+const vital = document.getElementById('vital');
+const vitalMeter = ['vLeben', 'vSatt', 'vWasser'].map(id => document.getElementById(id));
 const nullPunkt = new THREE.Vector3();
 const kamOff = new THREE.Vector3(), kamAbs = new THREE.Vector3(), kamZiel = new THREE.Vector3();
 // Kamera-Lebendigkeit (nur Darstellung, die Physik-Position `cam` bleibt unberührt)
@@ -1235,10 +1260,17 @@ natur.update(cam, naturAn ? [...streuDa.values()] : [], jetzt / 1000, naturAn, h
   if (ortT > 0.3) { ortT = 0; ortText = ortsInfo(oben); invText = inventarText(); }
   const zeitText = zw.text(oben);
   const kompakt = MENUE.info === 'kurz';
+  const leben = erwWelt.dienste.ueberleben;
+  vital.classList.toggle('aktiv', kompakt && gehen && !!leben);
+  if (kompakt && gehen && leben) {
+    const werte = [leben.leben, 100 * leben.satt, 100 * leben.wasser];
+    for (let i = 0; i < werte.length; i++) {
+      const wert = Math.round(werte[i]);
+      if (vitalMeter[i].value !== wert) vitalMeter[i].value = wert;
+    }
+  }
   hud.textContent = kompakt ?
-    `${ortText}\n${zeitText}\n` + (gehen ? `${invText}\n` + erw.hud().map((z) => z + '\n').join('') : '') +
-    `Höhe ${laenge(Math.max(0, hoeheBoden))} · Boden ${laenge(Math.max(0, g2))} · ${Math.round(tempoAnzeige * 3.6)} km/h\n` +
-    `${fps.toFixed(0)} fps · ${r.triangles.toLocaleString('de-DE')} Dreiecke · Natur ${natur.info.anzahl}` :
+    `${ortText.split(' · ', 1)[0]} · ${zw.tJetzt.toFixed(0)} °C · ${laenge(Math.max(0, hoeheBoden))}` :
     `Hier        ${ortText}\n` +
     `Zeit        ${zeitText} · Tempo ${zw.tempo}×\n` +
     (gehen ? `Boden       ${bodenText}\nWächst      ${waechstText}\nTasche      ${invText}\n` + erw.hud().map((z) => z + '\n').join('') : '') +

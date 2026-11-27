@@ -88,16 +88,34 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
     let wasser = -Infinity, ufer = 0, fluss = 0;
     // See: Spiegel flach aus den See-Zellen der Umgebung (nicht zwischen See und Land interpolieren –
     // sonst steigt das Wasser am Ufer den Hang hinauf). Ufer = wo das Gelände den Spiegel schneidet.
-    let see = -Infinity;
-    for (let i = 0; i < 4; i++) { const c = gw.z[i]; if (GF[c] > GH[c] + 1 && GF[c] > 0 && GF[c] > see) see = GF[c]; }
-    if (see > -Infinity) { wasser = see; detail *= glatt(see, see - 25, Hm); }
+    let see = -Infinity, seeGewicht = 0;
+    for (let i = 0; i < 4; i++) {
+      const c = gw.z[i];
+      if (gw.w[i] > 0 && GF[c] > GH[c] + 1 && GF[c] > 0) {
+        see = Math.max(see, GF[c]);
+        seeGewicht += gw.w[i];
+      }
+    }
+    // Der Einfluss auf das Relief läuft am Rand der Geologiezelle kontinuierlich aus.
+    const seeEinfluss = glatt(0, 0.35, seeGewicht);
+    if (seeGewicht > 0) {
+      wasser = see;
+      detail *= 1 - seeEinfluss * glatt(see - 25, see, Hm);
+    }
     if (Fm < 0.5) wasser = 0;                                                         // Meer
     // Küstenklippen: grenzt hohes Land (Nachbarzellen) ans Meer, springt das Ufer steil hoch statt flach auszulaufen
     let klippe = 0;
-    if (Hm > -8 && Hm < 90 && see === -Infinity) {
-      let hmax = Hm;
-      for (let i = 0; i < 4; i++) { const hc = GH[gw.z[i]]; if (hc > hmax) hmax = hc; }
-      if (hmax > 70) klippe = Math.min(60, hmax * 0.3) * glatt(70, 380, hmax) * glatt(-0.35, 0.25, n(x / 2600 + 12.5, y / 2600, z / 2600 + 3.7));
+    if (Hm > -18 && Hm < 105 && seeEinfluss < 1) {
+      // Gewichtete Reliefenergie verhindert einen Höhensprung beim Wechsel der vier Stützstellen.
+      let relief2 = 0;
+      for (let i = 0; i < 4; i++) {
+        const anstieg = Math.max(0, GH[gw.z[i]] - Hm);
+        relief2 += gw.w[i] * anstieg * anstieg;
+      }
+      const relief = Math.sqrt(relief2);
+      const kuestensaum = glatt(-18, -3, Hm) * (1 - glatt(38, 105, Hm));
+      const felsband = glatt(-0.35, 0.35, n(x / 2600 + 12.5, y / 2600, z / 2600 + 3.7));
+      klippe = 48 * glatt(30, 190, relief) * kuestensaum * felsband * (1 - seeEinfluss);
     }
     // Dünen in heißen, trockenen Ebenen: scharfe Kämme (gestreckt, Wellenlänge ~250 m), dazu Sandriffeln
     const fe0 = G.lese(GFe, gw), t0 = G.lese(GT, gw);
@@ -116,7 +134,7 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
       const riffel = feinste < 6 ? (1 - Math.abs(n(x / 9, y / 4, z / 9))) * 0.25 : 0;
       detail = detail * (1 - 0.7 * wueste) + (duene + riffel) * wueste;
     }
-    let h = Hm + detail + klippe * glatt(1, 14, Hm + detail) - klippe * 0.4 * glatt(0, -10, Hm);
+    let h = Hm + detail + klippe * glatt(0, 26, Hm + detail) - klippe * 0.4 * glatt(0, -10, Hm);
     const mfein = mesa * (1 - glatt(120, 500, feinste));                            // Stufenkanten nur, wo die Kachel sie auflöst
     if (mfein > 0.01) {
       // Höhenlinien-Relief, dann in Stufen (~26 m) gequantelt: flacher Absatz, schmale steile Felskante (Härte je Schicht verschieden)
@@ -141,7 +159,7 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
 
     // Flüsse: nächste Abfluss-Strecke (Zelle → Ziel) in der Nachbarschaft
     if (Hm > -5) {
-      let best = Infinity, bLevel = 0, bBreite = 0;
+      let best = Infinity, bLevel = 0, bBreite = 0, bBank = 0;
       const canyon = 24 * klima * (1 - glatt(0.2, 0.5, gb));                       // nur aus Klima (langsam veränderlich) → Fluss läuft weiter bergab
       const c0 = gw.naechste;
       for (let k = -1; k < 8; k++) {
@@ -153,29 +171,38 @@ export function createPlanetHoehe({ seed = 1, radius = 100_000, geo, G: gitter, 
         const bx = dir[d * 3] - ax, by = dir[d * 3 + 1] - ay, bz = dir[d * 3 + 2] - az;
         const t = Math.max(0, Math.min(1, ((qx - ax) * bx + (qy - ay) * by + (qz - az) * bz) / (bx * bx + by * by + bz * bz)));
         const ex = qx - ax - bx * t, ey = qy - ay - by * t, ez = qz - az - bz * t;
-        const dist = Math.hypot(ex, ey, ez) * R;
-        const breite = flussBreite(GA2[c]);
+        const laenge2 = bx * bx + by * by + bz * bz;
+        const segment = Math.sqrt(laenge2);
+        // Seitliche Krümmung endet an beiden Knoten glatt, damit Zuflüsse verbunden bleiben.
+        const links = ((ay * bz - az * by) * ex + (az * bx - ax * bz) * ey + (ax * by - ay * bx) * ez) / segment;
+        const breite0 = flussBreite(GA2[c]);
+        const bogen = Math.sin(Math.PI * t) ** 2;
+        const richtung = Math.sin(c * 0.71 + seed);
+        const versatz = bogen * richtung * Math.min(segment * 0.12, breite0 / R * 1.8);
+        const dist = R * Math.sqrt(Math.max(0, ex * ex + ey * ey + ez * ez + versatz * (versatz - 2 * links)));
+        const breite = breite0 * (1 + 0.18 * bogen * Math.sin(c * 1.27 + seed));
         if (dist - breite / 2 < best) {
           best = dist - breite / 2;
           bBreite = breite;
+          bBank = bogen * richtung * Math.max(-1, Math.min(1, (links - versatz) * R / Math.max(1, breite)));
           bLevel = Math.max(0, GF[c] + (Math.max(0, GF[d]) - GF[c]) * t - canyon);
         }
       }
       if (best < Infinity) {
-        const halb = bBreite / 2, tal = (30 + bBreite * 2.5) * (1 - 0.5 * canyon / 24);
+        const halb = bBreite / 2, tal = (30 + bBreite * 2.5) * (1 - 0.5 * canyon / 24) * (1 - 0.32 * bBank);
         const dist = best + halb;
         if (dist < halb + tal) {
           // Talsohle/Ufer: Gelände senkt sich sanft zum Fluss, nie unter den Wasserspiegel
           let k = glatt(halb, halb + tal, dist);
           if (canyon > 3) k = k ** (1 - 0.6 * canyon / 24);                          // Canyon: steile Wände statt sanftem Tal
-          const ufH = bLevel + 0.4 + (dist - halb) * 0.06;
+          const ufH = bLevel + Math.max(0, dist - halb) * (0.065 + 0.035 * bBank);
           h = ufH + (h - ufH) * k;
-          if (h < bLevel + 0.3) h = bLevel + 0.3;
+          h = Math.max(bLevel + 0.3 * k, h);
           ufer = 1 - glatt(halb, halb + 12 + bBreite * 0.3, dist);
           // Bett nur, wenn die Kachel fein genug ist, um es zu zeigen
           if (dist < halb && feinste < bBreite * 1.5) {
             const tiefe = 0.7 + bBreite * 0.05;
-            h = bLevel - tiefe * (1 - (dist / halb) ** 2);
+            h = bLevel - tiefe * (1 - (dist / halb) ** 2) * (1 + 0.45 * bBank);
             if (bLevel > wasser) wasser = bLevel;
             fluss = 1;
           }

@@ -123,10 +123,25 @@ export function streueKachel(k, planet) {
     }
     if (p.h < 0.8 && p.meer) continue;                    // Strand
     const bi = biom(p.temp, p.feuchte);
-    // Ufer: Schilf, ab und zu eine Weide
-    if ((p.ufer > 0.35 || amSee) && p.temp > 2) {
-      if (w < 0.4) { setze(c, p.temp < 8 && z() < 0.45 ? A.wollgras : A.rohrkolben, 0.8 + z() * 0.6); continue; }
-      if (w > 0.96 && p.temp > 5) { setze(c, A.weide, 0.8 + 0.4 * z(), 1, 1, 1, 0.2); continue; }
+    // Weltkoordinaten halten Kiesbänke und Schilfgürtel über Kachelgrenzen zusammen.
+    // Keine weiteren Zufallsziehungen: Instanz-Indizes für gespeicherte Ernten bleiben stabil.
+    const amUfer = p.ufer > 0.35 || amSee;
+    let kiesbank = false;
+    if (amUfer) {
+      const x = D[c * 3] * R, y = D[c * 3 + 1] * R, zz = D[c * 3 + 2] * R;
+      const muster = Math.sin(x * 0.034 - y * 0.022 + zz * 0.043)
+        + 0.5 * Math.sin(x * 0.057 + y * 0.047 - zz * 0.031);
+      kiesbank = muster > 0.2 && steil < 0.45;
+    }
+    // Schilf wächst in Gruppen; dazwischen liegen flache Kiesbänke mit niedrigem Gebüsch.
+    if (amUfer && p.temp > 2) {
+      if (w < 0.4) {
+        const halm = p.temp < 8 && z() < 0.45 ? A.wollgras : A.rohrkolben;
+        const skala = 0.8 + z() * 0.6;
+        setze(c, kiesbank ? A.geroell : halm, kiesbank ? skala * 0.42 : skala);
+        continue;
+      }
+      if (w > 0.96 && p.temp > 5) { setze(c, kiesbank ? A.busch : A.weide, 0.8 + 0.4 * z(), 1, 1, 1, 0.2); continue; }
     }
     // Fels: Steilhang, Gebirge, über der Baumgrenze – sonst vereinzelte Findlinge
     const fels = Math.max(glatt(0.5, 1.1, steil), glatt(1, -4, p.temp) * 0.6, p.gebirge * 0.4);
@@ -154,7 +169,7 @@ export function streueKachel(k, planet) {
       if (art) {
         const g = 0.85 + 0.3 * z();
         const tot = z() < 0.015;                         // ab und zu ein toter Baum
-        setze(c, tot ? A.toterBaum : A[art], 0.75 + 0.5 * z(), g, g, g, 0.3);
+        setze(c, kiesbank ? A.busch : tot ? A.toterBaum : A[art], 0.75 + 0.5 * z(), g, g, g, kiesbank ? 0.05 : 0.3);
         continue;
       }
     }
