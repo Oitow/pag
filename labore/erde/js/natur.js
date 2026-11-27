@@ -39,7 +39,7 @@ export const ZIEL_HOEHE = {
 // Sichtweiten (m): nah = volles Asset, fern = Fern-Form (nur Bäume)
 function sicht(art) {
   // Bäume: nah volles Asset, mittel (nur Engine) Detailstufe 0, fern schlanke Form
-  if (art === 'fichte') return { nah: 70, mittel: 0, fern: 320, varianten: 3 };
+  if (art === 'fichte') return { nah: 21, mittel: 48, fern: 320, varianten: 3 };
   if (art === 'birke') return { nah: 30, mittel: 0, fern: 320, varianten: 3 };
   // Astbaum: nah ~5k, mittel ~1.5k, weit ~450 Dreiecke, dann Foto-Quad (× Grafik-Stufe). Enger als früher (25/50/90): im Regenwald waren das 300k Dreiecke
   if (AST(art)) return { nah: 18, mittel: 36, weit: 62, fern: 320, varianten: 3 };
@@ -223,7 +223,12 @@ export function createNatur(scene, { istWeg = () => false, renderer = null, bode
     if (cfg.mittel) {
       MITTEL_T[art] = [];
       for (let v = 0; v < V; v++) {
-        const g = ast ? baueAstbaum(art, 31 + v * 977, { detail: 1, dichte: VOLL[v % 3] }).geometrie : engineGrob.holen(art, v).geometrie;
+        let g;
+        if (art === 'fichte') {
+          const baum = baueNaturAsset(art, 11 + v * 977, { fern: true });
+          baum.material.dispose();
+          g = mitWind(baum.geometry, art);
+        } else g = ast ? baueAstbaum(art, 31 + v * 977, { detail: 1, dichte: VOLL[v % 3] }).geometrie : engineGrob.holen(art, v).geometrie;
         aufZiel(art, g);
         MITTEL_T[art].push({ art, geo: g, mat: material(0, ast), mesh: null, n: 0, kap: 0, stufe: 'mittel' });
       }
