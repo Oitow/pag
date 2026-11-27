@@ -18,7 +18,7 @@ export const arten = Object.freeze(['forelle', 'barsch', 'fichte', 'birke',
 
 // Eine Geometrie und ein Material pro Mesh. Für Gruppen gleicher Art lassen
 // sich beide direkt mit THREE.InstancedMesh teilen. Aufrufer gibt beide frei.
-export function baueNaturAsset(art, seed = 1) {
+export function baueNaturAsset(art, seed = 1, { fern = false } = {}) {
   if (!arten.includes(art)) throw new RangeError('Unbekannte Art: ' + art);
   let state = seed >>> 0;
   function zufall() {
@@ -57,11 +57,52 @@ export function baueNaturAsset(art, seed = 1) {
     }
     teil(kegel(),0x616849,-.015,h*.92,0,.067,.075,.012,0,0,.35);
   } else if (art === 'fichte') {
-    teil(stamm(),0x624939,0,2,0,.19,4,.19);
-    for (let i=0;i<4;i++) {
-      const r = 1.45-i*.29;
-      teil(kegel(),[0x254c40,0x305b46,0x39684c,0x447957][i],0,2+i*.88,0,r,2.4-i*.21,r,0,dreh());
+    const hoehe = 5.6, ansatz = 0.95 + zufall() * 0.85;
+    const breite = 1.35 + zufall() * 0.55, phase = dreh();
+    teil(new T.CylinderGeometry(.018, .19, hoehe, fern ? 5 : 8), 0x645343,
+      0, hoehe / 2, 0, 1, 1, 1);
+    const positionen = [], farben = [];
+    const dunkel = new T.Color(0x294239), hell = new T.Color(0x688064);
+    function dreieck(a, b, c, ton) {
+      const farbe = dunkel.clone().lerp(hell, ton);
+      positionen.push(...a, ...b, ...c);
+      for (let e = 0; e < 3; e++) farben.push(farbe.r, farbe.g, farbe.b);
     }
+    // Jeder Wedel verzweigt sich seitlich und hängt in der Mitte durch.
+    // Die grobe Stufe behält dieselben Astachsen und Kronenlücken.
+    for (let etage = 0; etage < 10; etage++) {
+      const t = etage / 10, y = ansatz + (hoehe - ansatz) * t;
+      const anzahl = 5 + (etage % 3);
+      for (let ast = 0; ast < anzahl; ast++) {
+        const winkel = phase + etage * 2.4 + (ast + zufall() * .45) * 2 * Math.PI / anzahl;
+        const laenge = breite * (1 - t) ** .72 * (.75 + zufall() * .4);
+        const ton = .15 + .35 * t + .25 * zufall(), versatz = (zufall() - .5) * .25;
+        const punkt = (u, quer, hoch) => {
+          const r = u * laenge, q = quer * laenge;
+          return [Math.cos(winkel) * r - Math.sin(winkel) * q,
+            y + versatz + laenge * (.16 * u - .31 * Math.sin(Math.PI * u) + hoch),
+            Math.sin(winkel) * r + Math.cos(winkel) * q];
+        };
+        const segmente = fern ? 2 : 5;
+        for (let k = 0; k < segmente; k++) {
+          const u = k / segmente, v = (k + 1) / segmente;
+          const f = (.12 + .23 * Math.sin(Math.PI * v)) * (1 - u);
+          const innen = punkt(u, 0, .04), spitze = punkt(v, 0, .015);
+          for (const seite of [-1, 1]) {
+            const rand = punkt(v + .06, seite * f, -.12 * (1 - u));
+            const unten = punkt(u, 0, -.065);
+            const links = seite < 0;
+            dreieck(innen, links ? spitze : rand, links ? rand : spitze, ton + .08 * u);
+            dreieck(unten, links ? rand : spitze, links ? spitze : rand, ton * .45);
+          }
+        }
+      }
+    }
+    const wedel = new T.BufferGeometry();
+    wedel.setAttribute('position', new T.Float32BufferAttribute(positionen, 3));
+    wedel.setAttribute('color', new T.Float32BufferAttribute(farben, 3));
+    wedel.computeVertexNormals();
+    teile.push(wedel);
   } else if (art === 'birke') {
     teil(stamm(),0xd5d0bb,0,2.05,0,.14,4.1,.14);
     for (let i=0;i<7;i++) {
